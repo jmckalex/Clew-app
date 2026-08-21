@@ -48,6 +48,12 @@ class WorkspaceStore extends Emitter {
 		return tab;
 	}
 
+	openFile(path, opts) {
+		const tab = tree.openFile(this.state, path, opts);
+		this.#commit();
+		return tab;
+	}
+
 	openTab(groupId, tab, opts) {
 		tree.openTab(this.state, groupId, tab, opts);
 		this.#commit();
@@ -92,8 +98,8 @@ class WorkspaceStore extends Emitter {
 		this.#commit('sizes-changed', { splitId, sizes });
 	}
 
-	navigate(tabId, path) {
-		tree.navigateTab(this.state, tabId, path);
+	navigate(tabId, path, kind = 'note') {
+		tree.navigateTab(this.state, tabId, path, kind);
 		this.#commit();
 	}
 

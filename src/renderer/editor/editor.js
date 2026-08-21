@@ -18,21 +18,19 @@ import { clewEditorTheme, clewHighlighting } from './theme.js';
 import { wikilinkCompletions } from './complete/wikilinks.js';
 import { tagCompletions } from './complete/tags.js';
 import { wikilinkClick } from './wikilink-click.js';
+import { attachments } from './attachments.js';
+import { citationCompletions } from './complete/citations.js';
 import { jmdOverlay } from './jmd/overlay.js';
 import { jmdFolding } from './jmd/folding.js';
 
 /**
- * @param {object} opts
- * @param {string} opts.doc
- * @param {(update: import('@codemirror/view').ViewUpdate) => void} [opts.onUpdate]
+ * Build an EditorState for a note. `handlerRef` is a mutable `{fn}` box the
+ * update listener reads through — so a cached state (per-path undo history,
+ * see editor/pool.js) can be re-adopted by a different tab later and have its
+ * events rebound by assigning `handlerRef.fn`, without rebuilding the state.
  */
-export function createNoteEditor({ doc = '', onUpdate }) {
-	return new EditorView({
-		state: makeNoteState(doc, onUpdate),
-	});
-}
-
-export function makeNoteState(doc, onUpdate) {
+export function makeNoteState(doc, handlerRef) {
+	const onUpdate = (update) => handlerRef.fn?.(update);
 	return EditorState.create({
 		doc,
 		extensions: [
@@ -53,8 +51,9 @@ export function makeNoteState(doc, onUpdate) {
 			clewEditorTheme,
 			jmdOverlay(),
 			jmdFolding(),
-			autocompletion({ override: [wikilinkCompletions, tagCompletions] }),
+			autocompletion({ override: [wikilinkCompletions, tagCompletions, citationCompletions] }),
 			wikilinkClick(),
+			attachments(),
 			search({ top: true }),
 			keymap.of([
 				...closeBracketsKeymap,

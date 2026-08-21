@@ -15,6 +15,7 @@ export const CH = {
 	FS_CREATE_FOLDER: 'clew:fs-create-folder',
 	FS_RENAME: 'clew:fs-rename',
 	FS_TRASH: 'clew:fs-trash',
+	ATTACH_SAVE: 'clew:attach-save',
 	FS_REVEAL: 'clew:fs-reveal',
 
 	// invoke: persistence
@@ -32,6 +33,7 @@ export const CH = {
 	// invoke: index & search
 	INDEX_GET: 'clew:index-get',
 	SEARCH: 'clew:search',
+	BIB_ENTRIES: 'clew:bib-entries',
 
 	// invoke: rendering (reading mode / preview)
 	RENDER_SUBSCRIBE: 'clew:render-subscribe',

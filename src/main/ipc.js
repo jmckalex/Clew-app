@@ -9,10 +9,12 @@ import { indexer } from './indexer.js';
 import { propagateRename } from './rename-links.js';
 import { SearchService } from './search.js';
 import { exportNote } from './export.js';
+import { parseBib } from '../shared/bib.js';
 import fs from 'node:fs';
 import nodePath from 'node:path';
 
 const searchService = new SearchService({ vaults, indexer });
+const bibCache = new Map(); // abs path -> {mtimeMs, entries}
 
 // Vault-state file names must stay simple basenames (workspace.json etc.).
 const sanitizeStateName = (name) => {
@@ -46,6 +48,36 @@ export function registerIpc() {
 	handle(CH.SEARCH, ({ query }) => searchService.search(query));
 	handle(CH.FS_TRASH, ({ path }) => vaults.trash(path));
 	handle(CH.FS_REVEAL, ({ path }) => vaults.reveal(path));
+	handle(CH.ATTACH_SAVE, ({ name, data }) =>
+		vaults.saveAttachment(name, data, settings.get('attachmentFolder') || 'Attachments'));
+
+	// Citation completion: every entry from every .bib in the vault,
+	// mtime-cached per file.
+	handle(CH.BIB_ENTRIES, () => {
+		if (!vaults.isOpen) return [];
+		const out = [];
+		const walk = (dir) => {
+			let entries;
+			try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+			for (const entry of entries) {
+				if (entry.name.startsWith('.') || ['node_modules', '.trash'].includes(entry.name)) continue;
+				const abs = nodePath.join(dir, entry.name);
+				if (entry.isDirectory()) walk(abs);
+				else if (entry.name.toLowerCase().endsWith('.bib')) {
+					const mtimeMs = fs.statSync(abs).mtimeMs;
+					const cached = bibCache.get(abs);
+					const entries2 = cached?.mtimeMs === mtimeMs
+						? cached.entries
+						: parseBib(fs.readFileSync(abs, 'utf8'));
+					bibCache.set(abs, { mtimeMs, entries: entries2 });
+					const rel = nodePath.relative(vaults.root, abs);
+					out.push(...entries2.map((e) => ({ ...e, file: rel })));
+				}
+			}
+		};
+		walk(vaults.root);
+		return out;
+	});
 
 	handle(CH.RENDER_SUBSCRIBE, ({ path }) => renderService.subscribe(path));
 	handle(CH.RENDER_UNSUBSCRIBE, ({ path }) => renderService.unsubscribe(path));

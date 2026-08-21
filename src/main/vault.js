@@ -126,6 +126,24 @@ export class VaultManager {
 		fs.mkdirSync(this.resolve(rel), { recursive: true });
 	}
 
+	/**
+	 * Save pasted/dropped bytes into the attachment folder, deduplicating the
+	 * name ("x.png" → "x 1.png" …). Returns the vault-relative path.
+	 */
+	saveAttachment(name, data, folder) {
+		const safe = path.basename(name).replace(/[/\\:]/g, '-');
+		const dir = this.resolve(folder || 'Attachments');
+		fs.mkdirSync(dir, { recursive: true });
+		const ext = path.extname(safe);
+		const stem = safe.slice(0, safe.length - ext.length) || 'attachment';
+		let candidate = path.join(dir, safe);
+		for (let i = 1; fs.existsSync(candidate); i++) {
+			candidate = path.join(dir, `${stem} ${i}${ext}`);
+		}
+		fs.writeFileSync(candidate, Buffer.from(data));
+		return path.relative(this.root, candidate);
+	}
+
 	rename(rel, newRel) {
 		const from = this.resolve(rel);
 		const to = this.resolve(newRel);

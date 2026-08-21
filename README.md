@@ -19,15 +19,23 @@ Early but broadly functional. Working today:
   reveal, inline rename); external edits picked up live (chokidar)
 - **Editor**: CodeMirror 6 with full jmarkdown-dialect highlighting
   (`/italics/`, `*strong*`, `**intense**`, `==highlight==`, directives,
-  `@begin` environments, math, citations, footnotes), `[[` and `#`
-  autocompletion, Cmd+click link following, auto-save
+  `@begin` environments, math, citations, footnotes), autocompletion for
+  `[[` links, `#` tags, and `\cite{` keys (from the vault's .bib files),
+  Cmd+click link following, auto-save, undo history that survives
+  navigation, and a conflict banner when a file changes on disk under
+  unsaved edits
 - **Reading mode** (Cmd+E): the full jmarkdown engine renders the note —
   MathJax, TikZ, footnotes, theorem environments — in a sandboxed preview
   that live-updates in place (morphdom) as you type, with wikilink
   navigation and Cmd+click inverse search back to the editor line
 - **Wikilinks**: `[[Note]]`, `[[Note|alias]]`, `[[Note#Heading]]`,
-  `![[Note]]` transclusion embeds; unresolved links styled + click-to-create;
-  renames rewrite links across the vault
+  `![[Note]]` transclusion embeds — plus media embeds: `![[img.png]]`,
+  `![[paper.pdf]]` (Chromium's PDF viewer, in the note), audio and video;
+  unresolved links styled + click-to-create; renames rewrite links across
+  the vault
+- **Attachments**: paste or drop images/files into the editor (saved to
+  the attachment folder, embed inserted); images, PDFs, audio, and video
+  open in viewer tabs from the explorer
 - **Workspace**: tabs, split panes (drag tabs to rearrange/split), per-tab
   history, layout persisted per vault
 - **Navigation**: quick switcher (Cmd+O), command palette (Cmd+P), backlinks
@@ -44,6 +52,10 @@ Early but broadly functional. Working today:
 
 Not yet: live-preview (WYSIWYG) editing, plugins, canvas, sync — see the
 project plan for what's deliberately deferred.
+
+The `demo-vault/` in this repository is Clew's documentation — a vault of
+guide notes covering every feature, which the app opens like any other
+vault.
 
 ## Development
 

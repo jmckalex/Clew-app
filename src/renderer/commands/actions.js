@@ -68,6 +68,15 @@ export async function openWikilink(target, { newTab = false, mode } = {}) {
 	if (!name) return; // same-file heading link — nothing to open
 	let path = vaultStore.resolveNoteName(name);
 	if (!path) {
+		// An attachment reference ([[img.png]], ![[paper.pdf]]) opens a viewer
+		// tab rather than creating a note by that name.
+		const filePath = vaultStore.resolveFileName(name);
+		if (filePath) {
+			workspaceStore.openFile(filePath, { newTab });
+			return;
+		}
+	}
+	if (!path) {
 		try {
 			path = await ipc.invoke(CH.NOTE_CREATE, { path: `${name}.md` });
 		} catch (err) {

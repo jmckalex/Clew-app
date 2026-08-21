@@ -11,6 +11,7 @@ export function tabTitle(tab) {
 		const base = tab.path.split('/').pop();
 		return base.replace(/\.(md|jmd)$/i, '');
 	}
+	if (tab.kind === 'file' && tab.path) return tab.path.split('/').pop();
 	if (tab.kind === 'graph') return 'Graph view';
 	if (tab.kind === 'settings') return 'Settings';
 	return 'New tab';

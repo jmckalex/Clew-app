@@ -9,6 +9,7 @@ import './clew-editor-view.js';
 import './clew-preview-view.js';
 import '../views/clew-graph-view.js';
 import '../views/clew-settings-view.js';
+import '../views/clew-file-view.js';
 
 class ClewTabGroup extends ClewElement {
 	groupId = null;
@@ -73,6 +74,11 @@ class ClewTabGroup extends ClewElement {
 			body.replaceChildren(view);
 		} else if (active.kind === 'note') {
 			const view = document.createElement('clew-editor-view');
+			view.tabId = active.id;
+			view.path = active.path;
+			body.replaceChildren(view);
+		} else if (active.kind === 'file') {
+			const view = document.createElement('clew-file-view');
 			view.tabId = active.id;
 			view.path = active.path;
 			body.replaceChildren(view);

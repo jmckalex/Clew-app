@@ -47,6 +47,7 @@ function createWindow() {
 			preload: path.join(distDir, 'preload', 'preload.cjs'),
 			contextIsolation: true,
 			nodeIntegration: false,
+			plugins: true, // Chromium's built-in PDF viewer
 		},
 	});
 
@@ -64,6 +65,10 @@ function createWindow() {
 		shell.openExternal(url);
 		return { action: 'deny' };
 	});
+
+	// Defense in depth for the unsandboxed preview frames: nothing may
+	// navigate the app's main frame away from the bundled index.html.
+	win.webContents.on('will-navigate', (event) => event.preventDefault());
 
 	win.on('closed', () => { win = null; });
 

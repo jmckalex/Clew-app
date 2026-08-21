@@ -17,14 +17,29 @@ import path from 'node:path';
 const NOTE_EXT = /\.(md|jmd)$/i;
 const IGNORED = new Set(['.obsidian', '.clew', '.git', 'node_modules', '.trash']);
 
+const MEDIA_KIND = {
+	'.png': 'image', '.jpg': 'image', '.jpeg': 'image', '.gif': 'image',
+	'.webp': 'image', '.avif': 'image', '.svg': 'image', '.bmp': 'image',
+	'.pdf': 'pdf',
+	'.mp3': 'audio', '.m4a': 'audio', '.wav': 'audio', '.ogg': 'audio', '.flac': 'audio',
+	'.mp4': 'video', '.webm': 'video', '.mov': 'video',
+};
+const mediaKind = (p) => MEDIA_KIND[p.slice(p.lastIndexOf('.')).toLowerCase()] ?? null;
+
 let noteIndex = null; // Map<lowercased basename-no-ext, string[] of vault-relative paths>
+let fileIndex = null; // Map<lowercased basename WITH ext, string[]> for non-note files
 
 function vaultRoot() {
 	return process.env.CLEW_VAULT_ROOT || null;
 }
 
-function buildIndex(root) {
-	const index = new Map();
+function buildIndexes(root) {
+	noteIndex = new Map();
+	fileIndex = new Map();
+	const add = (index, key, rel) => {
+		if (!index.has(key)) index.set(key, []);
+		index.get(key).push(rel);
+	};
 	const walk = (dir, rel) => {
 		let entries;
 		try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
@@ -33,15 +48,17 @@ function buildIndex(root) {
 			const childRel = rel ? `${rel}/${entry.name}` : entry.name;
 			if (entry.isDirectory()) walk(path.join(dir, entry.name), childRel);
 			else if (NOTE_EXT.test(entry.name)) {
-				const key = entry.name.replace(NOTE_EXT, '').toLowerCase();
-				if (!index.has(key)) index.set(key, []);
-				index.get(key).push(childRel);
+				add(noteIndex, entry.name.replace(NOTE_EXT, '').toLowerCase(), childRel);
+			} else {
+				add(fileIndex, entry.name.toLowerCase(), childRel);
 			}
 		}
 	};
 	walk(root, '');
-	return index;
 }
+
+const shortestOf = (matches) =>
+	matches?.length ? [...matches].sort((a, b) => a.length - b.length || a.localeCompare(b))[0] : null;
 
 /**
  * Resolve a wikilink target to a vault-relative path, Obsidian-style:
@@ -51,7 +68,7 @@ function buildIndex(root) {
 export function resolveTarget(target) {
 	const root = vaultRoot();
 	if (!root) return null;
-	if (noteIndex === null) noteIndex = buildIndex(root);
+	if (noteIndex === null) buildIndexes(root);
 
 	const clean = target.trim();
 	if (!clean) return null;
@@ -61,10 +78,26 @@ export function resolveTarget(target) {
 		}
 		return null;
 	}
-	const matches = noteIndex.get(clean.replace(NOTE_EXT, '').toLowerCase());
-	if (!matches || matches.length === 0) return null;
-	return [...matches].sort((a, b) => a.length - b.length || a.localeCompare(b))[0];
+	return shortestOf(noteIndex.get(clean.replace(NOTE_EXT, '').toLowerCase()));
 }
+
+/** Resolve a non-note file target (attachment) to a vault-relative path. */
+export function resolveFileTarget(target) {
+	const root = vaultRoot();
+	if (!root) return null;
+	if (fileIndex === null) buildIndexes(root);
+
+	const clean = target.trim();
+	if (!clean) return null;
+	if (clean.includes('/')) {
+		return fs.existsSync(path.join(root, clean)) && !NOTE_EXT.test(clean) ? clean : null;
+	}
+	return shortestOf(fileIndex.get(clean.toLowerCase()));
+}
+
+/** Site-absolute URL path for a vault file (the preview's document host
+ *  serves the vault root, so "/rel/path" resolves through the protocol). */
+const sitePath = (rel) => '/' + rel.split('/').map(encodeURIComponent).join('/');
 
 const escapeAttr = (s) =>
 	s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -96,7 +129,9 @@ export const wikilink = {
 	},
 	renderer(token) {
 		if (global.isLatex) return token.label;
-		const resolved = token.target ? resolveTarget(token.target) !== null : true;
+		const resolved = token.target
+			? resolveTarget(token.target) !== null || resolveFileTarget(token.target) !== null
+			: true;
 		const cls = resolved ? 'internal-link' : 'internal-link unresolved';
 		return `<a class="${cls}" href="#" data-href="${escapeAttr(token.full)}">${escapeHtml(token.label)}</a>`;
 	},
@@ -143,6 +178,13 @@ export const wikiembed = {
 		const link = parseLink(match);
 		const token = { type: 'wikiembed', raw: match[0], ...link, tokens: [], failed: null };
 
+		// Media embeds: ![[img.png]], ![[paper.pdf]], ![[clip.mp3]] …
+		const fileRel = link.target ? resolveFileTarget(link.target) : null;
+		if (fileRel && mediaKind(fileRel)) {
+			token.media = { rel: fileRel, kind: mediaKind(fileRel) };
+			return token;
+		}
+
 		const rel = link.target ? resolveTarget(link.target) : null;
 		if (!rel) {
 			token.failed = 'unresolved';
@@ -172,7 +214,32 @@ export const wikiembed = {
 	},
 	renderer(token) {
 		if (global.isLatex) {
+			if (token.media) {
+				// Images (and single-page PDFs) go through includegraphics; other
+				// media has no LaTeX rendering.
+				if (token.media.kind === 'image' || token.media.kind === 'pdf') {
+					const abs = path.join(vaultRoot(), token.media.rel);
+					return `\\begin{center}\\includegraphics[max width=\\linewidth]{${abs}}\\end{center}\n`;
+				}
+				return '';
+			}
 			return token.failed ? '' : this.parser.parse(token.tokens);
+		}
+		if (token.media) {
+			const src = sitePath(token.media.rel);
+			const alt = escapeAttr(token.label);
+			switch (token.media.kind) {
+				case 'image':
+					return `<img class="internal-media" src="${src}" alt="${alt}">\n`;
+				case 'pdf':
+					return `<div class="internal-embed pdf-embed-box">`
+						+ `<div class="embed-title"><a class="internal-link" href="#" data-href="${alt}">${alt}</a></div>`
+						+ `<embed class="pdf-embed" src="${src}" type="application/pdf"></div>\n`;
+				case 'audio':
+					return `<audio class="internal-media" controls src="${src}"></audio>\n`;
+				case 'video':
+					return `<video class="internal-media" controls src="${src}"></video>\n`;
+			}
 		}
 		const title = escapeHtml(token.label);
 		const target = escapeAttr(token.full);

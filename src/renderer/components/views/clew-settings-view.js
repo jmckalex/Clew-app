@@ -45,7 +45,8 @@ class ClewSettingsView extends ClewElement {
 				this.#textRow('Filename format', 'dailyNoteFormat', 'YYYY-MM-DD'),
 				this.#textRow('Template note (optional)', 'dailyNoteTemplate', ''),
 			]),
-			this.#section('Templates', [
+			this.#section('Files', [
+				this.#textRow('Attachment folder', 'attachmentFolder', 'Attachments'),
 				this.#textRow('Templates folder', 'templatesFolder', 'Templates'),
 			]),
 			this.#hotkeysSection(),

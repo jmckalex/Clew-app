@@ -99,19 +99,28 @@ export function openTab(state, groupId, tab, { activate = true } = {}) {
  * history); otherwise open a new tab. `newTab: true` always opens a tab.
  */
 export function openNote(state, path, { newTab = false } = {}) {
+	return openPath(state, path, 'note', { newTab });
+}
+
+/** Open a non-note file (image/PDF/media) in a viewer tab, same rules. */
+export function openFile(state, path, { newTab = false } = {}) {
+	return openPath(state, path, 'file', { newTab });
+}
+
+function openPath(state, path, kind, { newTab = false } = {}) {
 	const group = activeGroup(state);
-	const existing = group.tabs.find((t) => t.kind === 'note' && t.path === path);
+	const existing = group.tabs.find((t) => t.kind === kind && t.path === path);
 	if (existing) {
 		group.activeTabId = existing.id;
 		state.activeGroupId = group.id;
 		return existing;
 	}
 	const current = activeTab(state);
-	if (!newTab && current?.kind === 'note') {
-		navigateTab(state, current.id, path);
+	if (!newTab && (current?.kind === 'note' || current?.kind === 'file')) {
+		navigateTab(state, current.id, path, kind);
 		return current;
 	}
-	return openTab(state, group.id, createTab('note', path));
+	return openTab(state, group.id, createTab(kind, path));
 }
 
 export function closeTab(state, tabId) {
@@ -209,15 +218,16 @@ export function setSplitSizes(state, splitId, sizes) {
 // ---- per-tab navigation history ------------------------------------------
 
 function snapshot(tab) {
-	return { path: tab.path, view: { ...tab.view } };
+	return { path: tab.path, kind: tab.kind, view: { ...tab.view } };
 }
 
 function restore(tab, entry) {
 	tab.path = entry.path;
+	tab.kind = entry.kind ?? 'note';
 	tab.view = { ...entry.view };
 }
 
-export function navigateTab(state, tabId, path) {
+export function navigateTab(state, tabId, path, kind = 'note') {
 	const found = findTab(state.root, tabId);
 	if (!found) return;
 	const { tab } = found;
@@ -225,6 +235,7 @@ export function navigateTab(state, tabId, path) {
 	if (tab.history.back.length > HISTORY_LIMIT) tab.history.back.shift();
 	tab.history.forward = [];
 	tab.path = path;
+	tab.kind = kind;
 	tab.view = { mode: tab.view.mode };
 }
 
@@ -311,7 +322,7 @@ export function deserialize(json, { noteExists = () => true } = {}) {
 		if (node.type === 'tabs') {
 			node.tabs = node.tabs.filter((t) => {
 				scanId(t.id);
-				return t.kind !== 'note' || noteExists(t.path);
+				return t.path == null || noteExists(t.path);
 			});
 			if (!node.tabs.some((t) => t.id === node.activeTabId)) {
 				node.activeTabId = node.tabs[0]?.id ?? null;

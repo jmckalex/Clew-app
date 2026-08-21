@@ -3,6 +3,7 @@
 // inline. (Drag-to-move folders/files arrives with M3.)
 import { ClewElement } from '../base/clew-element.js';
 import { vaultStore, isNotePath } from '../../state/vault-store.js';
+import { isViewablePath } from '../../lib/file-types.js';
 import { workspaceStore } from '../../state/workspace-store.js';
 import { editorPool } from '../../editor/pool.js';
 import { ipc, CH } from '../../ipc.js';
@@ -99,6 +100,8 @@ class ClewFileExplorer extends ClewElement {
 					this.#toggleFolder(entry.path);
 				} else if (isNotePath(entry.path)) {
 					workspaceStore.openNote(entry.path, { newTab: e.metaKey || e.ctrlKey });
+				} else if (isViewablePath(entry.path)) {
+					workspaceStore.openFile(entry.path, { newTab: e.metaKey || e.ctrlKey });
 				}
 			});
 			row.addEventListener('pointerdown', (e) => this.#maybeStartDrag(e, entry, row));

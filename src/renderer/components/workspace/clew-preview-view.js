@@ -50,7 +50,10 @@ class ClewPreviewView extends ClewElement {
 		ipc.invoke(CH.RENDER_SUBSCRIBE, { path: this.path }).catch(() => {});
 		this.#iframe = document.createElement('iframe');
 		this.#iframe.className = 'preview-frame';
-		this.#iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+		// No sandbox attribute: it would block Chromium's PDF viewer plugin for
+		// ![[x.pdf]] embeds. Isolation still holds — previews load from the
+		// clew-preview:// origin (the app is file://), window.open is denied
+		// globally, and main blocks all main-frame navigation after load.
 		this.#iframe.src = previewUrl(this.path);
 		this.replaceChildren(this.#iframe);
 	}

@@ -35,12 +35,16 @@ class ClewEditorView extends ClewElement {
 
 		this.replaceChildren(entry.view.dom);
 		this.#restoreViewState(entry.view);
+		this.#syncConflictBanner();
 
 		entry.view.dom.addEventListener('focusin', this.#onFocusIn);
 		entry.view.dom.addEventListener('focusout', this.#onFocusOut);
 		this.addEventListener('scroll', this.#onAnyChange, true);
 		this.addEventListener('keyup', this.#onAnyChange);
 		this.addEventListener('pointerup', this.#onAnyChange);
+		this.listen(editorPool, 'conflict-changed', ({ tabId: changed }) => {
+			if (changed === this.tabId) this.#syncConflictBanner();
+		});
 
 		// Scroll sync with preview panes showing the same note.
 		this.#scrollDOM = entry.view.scrollDOM;
@@ -62,6 +66,26 @@ class ClewEditorView extends ClewElement {
 			entry.view.dom.removeEventListener('focusin', this.#onFocusIn);
 			entry.view.dom.removeEventListener('focusout', this.#onFocusOut);
 		}
+	}
+
+	/** Show/hide the "file changed on disk" banner for an unresolved conflict. */
+	#syncConflictBanner() {
+		const entry = editorPool.get(this.tabId);
+		this.querySelector(':scope > .conflict-banner')?.remove();
+		if (!entry?.conflict) return;
+
+		const banner = document.createElement('div');
+		banner.className = 'conflict-banner';
+		const text = document.createElement('span');
+		text.textContent = 'This file changed on disk while you have unsaved edits. Auto-save is paused.';
+		const keep = document.createElement('button');
+		keep.textContent = 'Keep my version';
+		keep.addEventListener('click', () => editorPool.resolveConflict(this.tabId, 'keep'));
+		const reload = document.createElement('button');
+		reload.textContent = 'Load disk version';
+		reload.addEventListener('click', () => editorPool.resolveConflict(this.tabId, 'reload'));
+		banner.append(text, keep, reload);
+		this.prepend(banner);
 	}
 
 	/** Topmost visible 1-based line of the editor. */

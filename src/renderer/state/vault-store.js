@@ -124,6 +124,32 @@ class VaultStore extends Emitter {
 		return null;
 	}
 
+	/** All file paths (notes and attachments alike). */
+	allPaths() {
+		const out = [];
+		const walk = (entries) => {
+			for (const e of entries ?? []) {
+				if (e.type === 'folder') walk(e.children);
+				else out.push(e.path);
+			}
+		};
+		walk(this.tree);
+		return out;
+	}
+
+	/** Resolve a non-note file reference (attachment) by basename or path. */
+	resolveFileName(name) {
+		const clean = name.trim().toLowerCase();
+		if (!clean) return null;
+		const paths = this.allPaths().filter((p) => !isNotePath(p));
+		if (clean.includes('/')) {
+			return paths.find((p) => p.toLowerCase() === clean) ?? null;
+		}
+		const matches = paths.filter((p) => p.split('/').pop().toLowerCase() === clean);
+		if (matches.length === 0) return null;
+		return matches.sort((a, b) => a.length - b.length || a.localeCompare(b))[0];
+	}
+
 	pathExists(path) {
 		let found = false;
 		const walk = (entries) => {
