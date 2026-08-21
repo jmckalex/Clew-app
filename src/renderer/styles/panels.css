@@ -57,6 +57,12 @@ clew-file-explorer {
 }
 .tree-item:hover { background: var(--clew-hover); }
 .tree-item.is-active { background: var(--clew-active-item); }
+.tree-item.drop-into {
+	background: var(--clew-selection);
+	outline: 1px solid var(--clew-accent);
+	outline-offset: -1px;
+}
+.file-tree.drop-into-root { background: var(--clew-selection); border-radius: 6px; }
 .tree-item.is-folder { color: var(--clew-text-muted); font-weight: 500; }
 .tree-chevron {
 	flex: none;
@@ -316,3 +322,92 @@ clew-search-panel .search-results { flex: 1; }
 	margin-left: auto;
 	white-space: nowrap;
 }
+
+/* ---- settings view ---- */
+.settings-view {
+	display: flex;
+	min-width: 0;
+	min-height: 0;
+	overflow: hidden;
+	background: var(--clew-bg-primary);
+}
+.settings-scroll {
+	flex: 1;
+	overflow-y: auto;
+	padding: 28px 40px 60px;
+	max-width: 46em;
+	margin: 0 auto;
+}
+.settings-section { margin-bottom: 28px; }
+.settings-section h2 {
+	font-size: 15px;
+	margin: 0 0 10px;
+	padding-bottom: 6px;
+	border-bottom: 1px solid var(--clew-border);
+	color: var(--clew-heading);
+}
+.settings-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	padding: 6px 0;
+	font-size: 13.5px;
+}
+.settings-row input[type='text'], .settings-row input[type='number'], .settings-row select {
+	font: inherit;
+	font-size: 13px;
+	background: var(--clew-bg-secondary);
+	color: var(--clew-text-normal);
+	border: 1px solid var(--clew-border);
+	border-radius: 6px;
+	padding: 4px 8px;
+	outline: none;
+	width: 220px;
+}
+.settings-row input:focus, .settings-row select:focus { border-color: var(--clew-accent); }
+.settings-row input[type='number'] { width: 90px; }
+
+.hotkey-filter {
+	font: inherit;
+	font-size: 13px;
+	width: 100%;
+	background: var(--clew-bg-secondary);
+	color: var(--clew-text-normal);
+	border: 1px solid var(--clew-border);
+	border-radius: 6px;
+	padding: 5px 8px;
+	outline: none;
+	margin-bottom: 8px;
+}
+.hotkey-row {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 4px 2px;
+	font-size: 13px;
+	border-radius: 5px;
+}
+.hotkey-row:hover { background: var(--clew-hover); }
+.hotkey-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.hotkey-chords { display: flex; gap: 4px; align-items: center; color: var(--clew-text-muted); }
+.hotkey-chords.is-recording { color: var(--clew-accent); font-size: 12px; }
+.hotkey-chords.is-custom kbd { border-color: var(--clew-accent); }
+.hotkey-chords kbd {
+	font-family: inherit;
+	font-size: 11.5px;
+	background: var(--clew-bg-tertiary);
+	border: 1px solid var(--clew-border);
+	border-radius: 5px;
+	padding: 1px 7px;
+}
+.hotkey-chords kbd.is-conflict { border-color: var(--clew-danger); color: var(--clew-danger); }
+.hotkey-button {
+	font-size: 11.5px;
+	color: var(--clew-text-muted);
+	border: 1px solid var(--clew-border);
+	border-radius: 5px;
+	padding: 2px 8px;
+}
+.hotkey-button:hover:not(:disabled) { background: var(--clew-hover); color: var(--clew-text-normal); }
+.hotkey-button:disabled { opacity: 0.4; cursor: default; }

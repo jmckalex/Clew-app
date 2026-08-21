@@ -8,6 +8,7 @@ import './clew-tab-bar.js';
 import './clew-editor-view.js';
 import './clew-preview-view.js';
 import '../views/clew-graph-view.js';
+import '../views/clew-settings-view.js';
 
 class ClewTabGroup extends ClewElement {
 	groupId = null;
@@ -77,6 +78,8 @@ class ClewTabGroup extends ClewElement {
 			body.replaceChildren(view);
 		} else if (active.kind === 'graph') {
 			body.replaceChildren(document.createElement('clew-graph-view'));
+		} else if (active.kind === 'settings') {
+			body.replaceChildren(document.createElement('clew-settings-view'));
 		} else {
 			body.replaceChildren(this.#emptyState());
 		}

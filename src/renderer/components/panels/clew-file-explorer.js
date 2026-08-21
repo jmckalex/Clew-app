@@ -94,12 +94,14 @@ class ClewFileExplorer extends ClewElement {
 			if (entry.type === 'file' && entry.path === activePath) row.classList.add('is-active');
 
 			row.addEventListener('click', (e) => {
+				if (this.#dragJustEnded) return;
 				if (entry.type === 'folder') {
 					this.#toggleFolder(entry.path);
 				} else if (isNotePath(entry.path)) {
 					workspaceStore.openNote(entry.path, { newTab: e.metaKey || e.ctrlKey });
 				}
 			});
+			row.addEventListener('pointerdown', (e) => this.#maybeStartDrag(e, entry, row));
 			row.addEventListener('contextmenu', (e) => {
 				e.preventDefault();
 				e.stopPropagation();
@@ -118,6 +120,102 @@ class ClewFileExplorer extends ClewElement {
 		if (this.#collapsed.has(path)) this.#collapsed.delete(path);
 		else this.#collapsed.add(path);
 		this.render();
+	}
+
+	// ---- drag to move -----------------------------------------------------
+
+	#dragJustEnded = false;
+
+	#maybeStartDrag(e, entry, row) {
+		if (e.button !== 0 || e.target.classList.contains('tree-rename-input')) return;
+		const startX = e.clientX;
+		const startY = e.clientY;
+		let ghost = null;
+		let highlighted = null;
+		let target = null; // '' for vault root, or a folder path, or null (invalid)
+
+		const parentOf = (p) => (p.includes('/') ? p.slice(0, p.lastIndexOf('/')) : '');
+
+		const clearHighlight = () => {
+			highlighted?.classList.remove('drop-into');
+			this.querySelector('.file-tree')?.classList.remove('drop-into-root');
+			highlighted = null;
+		};
+
+		const onMove = (ev) => {
+			if (!ghost) {
+				if (Math.hypot(ev.clientX - startX, ev.clientY - startY) < 5) return;
+				ghost = document.createElement('div');
+				ghost.className = 'tab-ghost';
+				ghost.textContent = entry.name.replace(/\.(md|jmd)$/i, '');
+				document.body.append(ghost);
+				try { row.setPointerCapture(e.pointerId); } catch { /* synthetic pointer */ }
+				document.body.classList.add('is-tab-dragging');
+			}
+			ghost.style.transform = `translate(${ev.clientX + 8}px, ${ev.clientY + 8}px)`;
+
+			const under = document.elementFromPoint(ev.clientX, ev.clientY);
+			const folderRow = under?.closest('.tree-item.is-folder');
+			const treeBg = under?.closest('.file-tree');
+			clearHighlight();
+			target = null;
+
+			let candidate = null;
+			if (folderRow) candidate = folderRow.dataset.path;
+			else if (treeBg) candidate = ''; // vault root
+			if (candidate === null) return;
+
+			// Guards: no-op moves and folders into their own subtree.
+			if (candidate === parentOf(entry.path)) return;
+			if (entry.type === 'folder'
+				&& (candidate === entry.path || candidate.startsWith(entry.path + '/'))) return;
+
+			target = candidate;
+			if (folderRow) {
+				highlighted = folderRow;
+				folderRow.classList.add('drop-into');
+			} else {
+				treeBg.classList.add('drop-into-root');
+			}
+		};
+
+		const finish = async (apply) => {
+			row.removeEventListener('pointermove', onMove);
+			row.removeEventListener('pointerup', onUp);
+			row.removeEventListener('pointercancel', onCancel);
+			clearHighlight();
+			const dragged = ghost !== null;
+			ghost?.remove();
+			ghost = null;
+			document.body.classList.remove('is-tab-dragging');
+			if (dragged) {
+				this.#dragJustEnded = true;
+				setTimeout(() => { this.#dragJustEnded = false; }, 0);
+			}
+			if (!apply || !dragged || target === null) return;
+			const name = entry.path.split('/').pop();
+			await this.#moveEntry(entry.path, target ? `${target}/${name}` : name);
+		};
+
+		const onUp = () => finish(true);
+		const onCancel = () => finish(false);
+		row.addEventListener('pointermove', onMove);
+		row.addEventListener('pointerup', onUp);
+		row.addEventListener('pointercancel', onCancel);
+	}
+
+	/** Rename/move + all the renderer-side path remaps. */
+	async #moveEntry(path, newPath) {
+		if (path === newPath) return;
+		try {
+			await ipc.invoke(CH.FS_RENAME, { path, newPath });
+			workspaceStore.remapPaths(path, newPath);
+			editorPool.remapPath(path, newPath);
+			bookmarkStore.remap(path, newPath);
+			if (this.#collapsed.delete(path)) this.#collapsed.add(newPath);
+		} catch (err) {
+			console.error('Move failed:', err);
+		}
 	}
 
 	// ---- actions ----------------------------------------------------------
@@ -220,16 +318,7 @@ class ClewFileExplorer extends ClewElement {
 				return;
 			}
 			const newPath = (dir ? dir + '/' : '') + newStem + ext;
-			try {
-				await ipc.invoke(CH.FS_RENAME, { path, newPath });
-				workspaceStore.remapPaths(path, newPath);
-				editorPool.remapPath(path, newPath);
-				bookmarkStore.remap(path, newPath);
-				if (!isFile && this.#collapsed.delete(path)) this.#collapsed.add(newPath);
-			} catch (err) {
-				console.error('Rename failed:', err);
-				this.render();
-			}
+			await this.#moveEntry(path, newPath);
 		};
 		input.addEventListener('blur', commit);
 		input.addEventListener('keydown', (e) => {

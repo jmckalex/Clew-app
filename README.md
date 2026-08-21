@@ -33,9 +33,14 @@ Early but broadly functional. Working today:
 - **Navigation**: quick switcher (Cmd+O), command palette (Cmd+P), backlinks
   with context, outgoing links, tag pane, outline, global + local graph views
   (d3-force), full-text search with `path:`/`file:`/`tag:`/`"phrase"` operators
+- **Linked editing**: source and reading panes of the same note scroll in
+  sync (both directions), reading mode opens at the editor's cursor, and
+  task checkboxes clicked in reading mode write back to the source
+- **Settings** (Cmd+,): appearance (theme, editor font/line width), daily
+  notes, templates, and a full hotkey editor (record, reset, conflicts)
 - **More**: daily notes, templates ({{date}}, {{time}}, {{title}}),
-  bookmarks, light/dark themes + user CSS snippets, word count,
-  **export to HTML / LaTeX / PDF** via the engine
+  bookmarks, drag-to-move in the explorer, light/dark themes + user CSS
+  snippets, word count, **export to HTML / LaTeX / PDF** via the engine
 
 Not yet: live-preview (WYSIWYG) editing, plugins, canvas, sync — see the
 project plan for what's deliberately deferred.

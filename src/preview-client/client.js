@@ -36,6 +36,7 @@ function applyRender(html) {
 			},
 		});
 		showError(null);
+		enableTaskCheckboxes();
 		retypeset();
 	} catch (err) {
 		console.error('morph failed', err);
@@ -52,6 +53,26 @@ function retypeset() {
 		window.mermaid.run({ querySelector: '.mermaid' }).catch?.(() => {});
 	}
 }
+
+// The engine renders task checkboxes disabled; make them live so clicks can
+// write back to the source. Re-run after every morph.
+function enableTaskCheckboxes() {
+	for (const box of document.querySelectorAll('li input[type="checkbox"][disabled]')) {
+		box.removeAttribute('disabled');
+	}
+}
+
+document.addEventListener('change', (e) => {
+	const box = e.target;
+	if (box?.type !== 'checkbox') return;
+	const stamped = box.closest('[data-source-line]');
+	if (!stamped) return;
+	post({
+		type: 'checkbox-toggle',
+		line: Number(stamped.dataset.sourceLine),
+		checked: box.checked,
+	});
+});
 
 function showError(message) {
 	let el = document.getElementById('__clew_err');
@@ -146,4 +167,5 @@ function scrollToLine(line, behavior) {
 	target.el.scrollIntoView({ behavior, block: 'start' });
 }
 
+enableTaskCheckboxes();
 post({ type: 'ready' });

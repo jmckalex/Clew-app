@@ -3,8 +3,10 @@
 // in place (morphdom in the preview client) on re-renders.
 import { ClewElement } from '../base/clew-element.js';
 import { workspaceStore } from '../../state/workspace-store.js';
+import { settingsStore } from '../../state/settings-store.js';
 import { ipc, CH } from '../../ipc.js';
 import * as actions from '../../commands/actions.js';
+import { scrollSyncBus, makeSuppressor } from '../../preview/scroll-sync.js';
 
 const HOST_SOURCE = 'clew-preview-host';
 
@@ -18,6 +20,7 @@ class ClewPreviewView extends ClewElement {
 	#iframe = null;
 	#clientReady = false;
 	#pending = [];
+	#suppressor = makeSuppressor();
 
 	subscribe() {
 		this.listen({ on: ipc.on }, CH.EV_RENDER_DONE, ({ path }) => {
@@ -25,6 +28,14 @@ class ClewPreviewView extends ClewElement {
 		});
 		this.listen({ on: ipc.on }, CH.EV_RENDER_ERROR, ({ path, message }) => {
 			if (path === this.path) this.#post({ type: 'error', message });
+		});
+		this.listen(scrollSyncBus, 'scroll', ({ path, line, from }) => {
+			if (from === 'preview' || path !== this.path) return;
+			this.#suppressor.suppress();
+			this.#post({ type: 'scroll-to-line', line, behavior: 'auto' });
+		});
+		this.listen(settingsStore, 'settings-changed', () => {
+			this.#post({ type: 'theme', theme: document.body.dataset.theme ?? 'dark' });
 		});
 		window.addEventListener('message', this.#onMessage);
 	}
@@ -71,6 +82,12 @@ class ClewPreviewView extends ClewElement {
 			case 'ready': {
 				this.#clientReady = true;
 				this.#post({ type: 'theme', theme: document.body.dataset.theme ?? 'dark' });
+				// Land where the editor's cursor was when reading mode opened.
+				const cursorLine = workspaceStore.findTab(this.tabId)?.tab.view.cursorLine;
+				if (cursorLine > 1) {
+					this.#suppressor.suppress();
+					this.#post({ type: 'scroll-to-line', line: cursorLine, behavior: 'auto' });
+				}
 				for (const queued of this.#pending.splice(0)) this.#post(queued);
 				break;
 			}
@@ -89,6 +106,9 @@ class ClewPreviewView extends ClewElement {
 				}
 				break;
 			}
+			case 'checkbox-toggle':
+				actions.toggleTaskLine(this.path, msg.line, msg.checked);
+				break;
 			case 'chord': {
 				const key = msg.key;
 				if (key === 'e') actions.toggleReadingMode();
@@ -102,7 +122,9 @@ class ClewPreviewView extends ClewElement {
 				if (this.#iframe) this.#iframe.src = previewUrl(this.path) + '?t=' + Date.now();
 				break;
 			case 'scrolled':
-				// Linked-split scroll sync consumes this later.
+				if (!this.#suppressor.active()) {
+					scrollSyncBus.emit('scroll', { path: this.path, line: msg.line, from: 'preview' });
+				}
 				break;
 		}
 	};

@@ -62,6 +62,9 @@ large changes.
 - The render pipeline (M2+) — engine patches, wikilink extension, preview
   protocol, sync contract — is documented in the plan file; the preview
   client lives in `src/preview-client/`, engine assets in `src/engine/`.
+- Editor↔preview scroll sync runs over `renderer/preview/scroll-sync.js`
+  (a bus + per-side suppressors that break feedback loops). Emit on user
+  scroll only; call `suppress()` before any programmatic scroll.
 - The vault watcher emits full-tree refreshes on structure changes and
   `EV_FILE_CHANGED` per content change; open clean editors reload themselves
   (dirty editors keep local edits — conflict UI is future work).

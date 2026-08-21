@@ -153,6 +153,8 @@ export function registerBuiltinCommands() {
 			when: (ctx) => needsNote(ctx), run: () => insertTemplate() },
 
 		// view
+		{ id: 'app:settings', name: 'Open settings', hotkeys: ['Mod-,'],
+			run: () => actions.openSettings() },
 		{ id: 'view:toggle-theme', name: 'Toggle light/dark theme',
 			run: () => settingsStore.set('theme', settingsStore.get('theme') === 'dark' ? 'light' : 'dark') },
 

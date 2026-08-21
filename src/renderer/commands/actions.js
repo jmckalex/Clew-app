@@ -29,16 +29,24 @@ export function toggleReadingMode() {
 	workspaceStore.setTabMode(tab.id, tab.view.mode === 'reading' ? 'source' : 'reading');
 }
 
-export function openGraph() {
-	// Reuse an existing graph tab anywhere in the workspace.
+function openSingletonTab(kind) {
+	// Reuse an existing tab of this kind anywhere in the workspace.
 	for (const group of workspaceStore.allGroups()) {
-		const existing = group.tabs.find((t) => t.kind === 'graph');
+		const existing = group.tabs.find((t) => t.kind === kind);
 		if (existing) {
 			workspaceStore.activateTab(existing.id);
 			return;
 		}
 	}
-	workspaceStore.openTab(workspaceStore.activeGroupId, createTab('graph'));
+	workspaceStore.openTab(workspaceStore.activeGroupId, createTab(kind));
+}
+
+export function openGraph() {
+	openSingletonTab('graph');
+}
+
+export function openSettings() {
+	openSingletonTab('settings');
 }
 
 export function historyBack() {
@@ -92,6 +100,52 @@ export function openNoteAtLine(path, line) {
 	const tab = workspaceStore.openNote(path);
 	workspaceStore.setTabMode(tab.id, 'source');
 	jumpToLine(tab.id, line);
+}
+
+const TASK_RE = /^(\s*(?:[-*+]|\d+[.)])\s+)\[( |x|X)\]/;
+
+/**
+ * Toggle the task checkbox on a 1-based source line of a note — through the
+ * live editor when one is open (undoable, autosave persists it), otherwise
+ * straight to disk. Tolerates ±1 line drift by searching neighbours.
+ */
+export async function toggleTaskLine(path, line, checked) {
+	const box = `[${checked ? 'x' : ' '}]`;
+
+	for (const group of workspaceStore.allGroups()) {
+		for (const tab of group.tabs) {
+			if (tab.kind !== 'note' || tab.path !== path) continue;
+			const entry = editorPool.get(tab.id);
+			if (!entry?.view) continue;
+			const doc = entry.view.state.doc;
+			for (const candidate of [line, line + 1, line - 1]) {
+				if (candidate < 1 || candidate > doc.lines) continue;
+				const docLine = doc.line(candidate);
+				const match = TASK_RE.exec(docLine.text);
+				if (!match) continue;
+				const from = docLine.from + match[1].length;
+				entry.view.dispatch({ changes: { from, to: from + 3, insert: box } });
+				editorPool.flush(tab.id);
+				return true;
+			}
+			return false; // an editor had the note but no task on that line
+		}
+	}
+
+	// No live editor: rewrite the file directly.
+	const text = await ipc.invoke(CH.NOTE_READ, { path }).catch(() => null);
+	if (text === null) return false;
+	const lines = text.split('\n');
+	for (const candidate of [line, line + 1, line - 1]) {
+		const index = candidate - 1;
+		if (index < 0 || index >= lines.length) continue;
+		const match = TASK_RE.exec(lines[index]);
+		if (!match) continue;
+		lines[index] = lines[index].slice(0, match[1].length) + box + lines[index].slice(match[1].length + 3);
+		await ipc.invoke(CH.NOTE_WRITE, { path, content: lines.join('\n') }).catch(() => {});
+		return true;
+	}
+	return false;
 }
 
 export function splitTarget(target) {

@@ -51,6 +51,10 @@ window.addEventListener('beforeunload', () => editorPool.flushAll());
 
 settingsStore.on('settings-changed', () => {
 	document.body.dataset.theme = settingsStore.get('theme') ?? 'dark';
+	const fontSize = settingsStore.get('editorFontSize');
+	const lineWidth = settingsStore.get('editorLineWidth');
+	document.body.style.setProperty('--clew-editor-font-size', fontSize ? `${fontSize}px` : '');
+	document.body.style.setProperty('--clew-editor-line-width', lineWidth ? `${lineWidth}em` : '');
 });
 
 // ---- commands & hotkeys ---------------------------------------------------

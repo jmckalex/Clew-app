@@ -5,16 +5,22 @@ import { editorPool } from '../../editor/pool.js';
 import { workspaceStore } from '../../state/workspace-store.js';
 import { uiStore } from '../../state/ui-store.js';
 import { debounce } from '../../lib/debounce.js';
+import { scrollSyncBus, makeSuppressor } from '../../preview/scroll-sync.js';
+import { EditorView } from '@codemirror/view';
 
 class ClewEditorView extends ClewElement {
 	tabId = null;
 	path = null;
+	#suppressor = makeSuppressor();
+	#scrollRaf = 0;
+	#scrollDOM = null;
 	#saveViewState = debounce(() => {
 		const entry = editorPool.get(this.tabId);
 		if (!entry?.view) return;
 		const { anchor, head } = entry.view.state.selection.main;
 		workspaceStore.updateTabView(this.tabId, {
 			cursor: { anchor, head },
+			cursorLine: entry.view.state.doc.lineAt(head).number,
 			scrollTop: entry.view.scrollDOM.scrollTop,
 		});
 	}, 1000);
@@ -36,6 +42,11 @@ class ClewEditorView extends ClewElement {
 		this.addEventListener('keyup', this.#onAnyChange);
 		this.addEventListener('pointerup', this.#onAnyChange);
 
+		// Scroll sync with preview panes showing the same note.
+		this.#scrollDOM = entry.view.scrollDOM;
+		this.#scrollDOM.addEventListener('scroll', this.#onScrollSync, { passive: true });
+		this.listen(scrollSyncBus, 'scroll', this.#onBusScroll);
+
 		if (workspaceStore.activeTab()?.id === tabId) {
 			entry.view.focus();
 		}
@@ -44,12 +55,48 @@ class ClewEditorView extends ClewElement {
 	cleanup() {
 		this.#saveViewState.flush();
 		editorPool.flush(this.tabId);
+		this.#scrollDOM?.removeEventListener('scroll', this.#onScrollSync);
+		this.#scrollDOM = null;
 		const entry = editorPool.get(this.tabId);
 		if (entry?.view) {
 			entry.view.dom.removeEventListener('focusin', this.#onFocusIn);
 			entry.view.dom.removeEventListener('focusout', this.#onFocusOut);
 		}
 	}
+
+	/** Topmost visible 1-based line of the editor. */
+	#topVisibleLine(view) {
+		const rect = view.scrollDOM.getBoundingClientRect();
+		const pos = view.posAtCoords({ x: rect.left + 8, y: rect.top + 4 }, false);
+		return view.state.doc.lineAt(pos).number;
+	}
+
+	#onScrollSync = () => {
+		if (this.#scrollRaf) return;
+		this.#scrollRaf = requestAnimationFrame(() => {
+			this.#scrollRaf = 0;
+			if (this.#suppressor.active()) return;
+			const entry = editorPool.get(this.tabId);
+			if (!entry?.view || !this.isConnected) return;
+			scrollSyncBus.emit('scroll', {
+				path: entry.path,
+				line: this.#topVisibleLine(entry.view),
+				from: 'editor',
+			});
+		});
+	};
+
+	#onBusScroll = ({ path, line, from }) => {
+		if (from === 'editor' || path !== this.path) return;
+		const entry = editorPool.get(this.tabId);
+		if (!entry?.view || !this.isConnected) return;
+		const doc = entry.view.state.doc;
+		const target = doc.line(Math.max(1, Math.min(line, doc.lines)));
+		this.#suppressor.suppress();
+		entry.view.dispatch({
+			effects: [EditorView.scrollIntoView(target.from, { y: 'start' })],
+		});
+	};
 
 	#onFocusIn = () => uiStore.setEditorFocused(true);
 	#onFocusOut = () => uiStore.setEditorFocused(false);
