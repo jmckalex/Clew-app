@@ -1,27 +1,35 @@
 # Welcome to Clew
 
-This demo vault shows Clew's features. Try **Cmd+E** to render this note with
-the jmarkdown engine, **Cmd+O** for the quick switcher, **Cmd+P** for the
-command palette, and **Cmd+Shift+F** to search.
+Clew is an Obsidian-style note app whose reading mode is the full
+**jmarkdown** engine. This vault is its documentation — and a working
+example of everything it documents. Press **⌘E** to read this note
+rendered; **⌘O** finds any note; **⌘P** lists every command.
 
-A wikilink: [[Clew Design]], an aliased link: [[Clew Design|the design note]],
-and an unresolved one you can click to create: [[Scratch Ideas]].
+## The guide
 
-Some inline math $e^{i\pi} + 1 = 0$ and display math:
+- [[Vaults and Files]] — vaults, the explorer, moving files, edits from
+  other apps
+- [[Editing]] — the editor, dialect highlighting, completions, undo
+- [[Reading Mode]] — rendering, inverse search, checkboxes, scroll sync
+- [[Links and Embeds]] — wikilinks, transclusion, media embeds
+- [[Attachments and Files]] — pasting images, PDF and media viewers
+- [[Navigation]] — switcher, palette, tabs and splits, history
+- [[Panels]] — backlinks, outgoing links, tags, outline, bookmarks
+- [[Search]] — full-text search and its operators
+- [[Graph View]] — the vault as a graph
+- [[Daily Notes and Templates]]
+- [[Settings and Hotkeys]] — including the hotkey editor
+- [[Export]] — HTML, LaTeX, and PDF from the same source
+- [[Theming]] — dark/light and CSS snippets
 
-$$
-\int_0^\infty e^{-x^2}\,dx = \frac{\sqrt{\pi}}{2}
-$$
+## The jmarkdown showcase
 
-## An embedded note
+The `Features/` folder stress-tests the engine: [[Citations]] (with a
+real bibliography), [[Math and Theorems]], [[Footnotes]], [[Diagrams]],
+and [[Dialect Demo]] for the syntax itself. [[Tasks]] has checkboxes
+that write back when clicked in reading mode.
+
+A taste, right here — math $e^{i\pi} + 1 = 0$, a /dialect italic/, a
+==highlight==, a #welcome tag, and an embedded note:
 
 ![[Clew Design]]
-
-## Everyday markdown
-
-> Quotes, lists, and code all work.
-
-- A list item with `inline code` and a #welcome tag
-- See [[Dialect Demo]] for the jmarkdown-specific syntax
-- Stress tests: [[Citations]], [[Math and Theorems]], [[Footnotes]],
-  [[Diagrams]], and a [[Tasks]] list with clickable checkboxes
