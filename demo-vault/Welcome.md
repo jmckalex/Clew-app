@@ -23,3 +23,5 @@ $$
 
 - A list item with `inline code` and a #welcome tag
 - See [[Dialect Demo]] for the jmarkdown-specific syntax
+- Stress tests: [[Citations]], [[Math and Theorems]], [[Footnotes]],
+  [[Diagrams]], and a [[Tasks]] list with clickable checkboxes
