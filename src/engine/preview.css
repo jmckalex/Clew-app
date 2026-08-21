@@ -1,0 +1,88 @@
+/* Base typography + Clew widget styles for rendered previews. Loaded by
+   clew-template.html inside the preview iframe. Theme variables are set on
+   <html> by the preview client (message from the app). */
+:root {
+	--preview-bg: #1e1e1e;
+	--preview-text: #dadada;
+	--preview-muted: #9a9a9a;
+	--preview-accent: #8b7ec8;
+	--preview-border: #3f3f3f;
+	--preview-code-bg: rgba(255, 255, 255, 0.06);
+	--preview-danger: #e06c75;
+}
+html[data-theme='light'] {
+	--preview-bg: #ffffff;
+	--preview-text: #222222;
+	--preview-muted: #6a6a6a;
+	--preview-accent: #6c5fb0;
+	--preview-border: #d4d5d9;
+	--preview-code-bg: rgba(0, 0, 0, 0.05);
+	--preview-danger: #c0392b;
+}
+
+body {
+	background: var(--preview-bg);
+	color: var(--preview-text);
+	font-family: 'iA Writer Quattro', 'Avenir Next', -apple-system, BlinkMacSystemFont, sans-serif;
+	font-size: 16px;
+	line-height: 1.6;
+	max-width: 44em;
+	margin: 0 auto;
+	padding: 24px 32px 40vh;
+}
+
+h1, h2, h3, h4, h5, h6 { line-height: 1.25; color: var(--preview-text); }
+a { color: var(--preview-accent); }
+hr { border: none; border-top: 1px solid var(--preview-border); }
+blockquote {
+	margin: 0;
+	padding: 0 1em;
+	border-left: 3px solid var(--preview-border);
+	color: var(--preview-muted);
+}
+code {
+	font-family: 'SF Mono', Menlo, Consolas, monospace;
+	font-size: 0.875em;
+	background: var(--preview-code-bg);
+	border-radius: 4px;
+	padding: 0.1em 0.3em;
+}
+pre { background: var(--preview-code-bg); border-radius: 8px; padding: 12px 14px; overflow-x: auto; }
+pre code { background: none; padding: 0; }
+img { max-width: 100%; }
+table { border-collapse: collapse; }
+th, td { border: 1px solid var(--preview-border); padding: 4px 10px; }
+
+/* Wikilinks */
+a.internal-link { text-decoration: none; border-bottom: 1px solid transparent; }
+a.internal-link:hover { border-bottom-color: var(--preview-accent); }
+a.internal-link.unresolved { color: var(--preview-muted); border-bottom: 1px dashed var(--preview-muted); }
+
+/* Embeds (transclusion) */
+.internal-embed {
+	border: 1px solid var(--preview-border);
+	border-left: 3px solid var(--preview-accent);
+	border-radius: 6px;
+	padding: 8px 14px;
+	margin: 0.6em 0;
+}
+.internal-embed .embed-title { font-size: 0.8em; color: var(--preview-muted); margin-bottom: 4px; }
+.internal-embed .embed-title a { color: var(--preview-muted); }
+.internal-embed.unresolved .embed-note { color: var(--preview-danger); font-size: 0.9em; }
+
+/* Build-error overlay (kept in sync with the app's error banner styling) */
+#__clew_err {
+	position: fixed;
+	left: 12px; right: 12px; bottom: 12px;
+	z-index: 999;
+	background: #47262a;
+	color: #f0c0c4;
+	border: 1px solid #7a3a42;
+	border-radius: 8px;
+	padding: 10px 14px;
+	font-family: 'SF Mono', Menlo, monospace;
+	font-size: 12px;
+	white-space: pre-wrap;
+	max-height: 40vh;
+	overflow-y: auto;
+}

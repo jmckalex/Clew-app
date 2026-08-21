@@ -1,0 +1,40 @@
+@import './themes/dark.css';
+@import './themes/light.css';
+@import './layout.css';
+@import './editor.css';
+@import './panels.css';
+
+* { box-sizing: border-box; }
+
+html, body {
+	margin: 0;
+	padding: 0;
+	height: 100%;
+	overflow: hidden;
+}
+
+body {
+	font-family: var(--clew-ui-font);
+	font-size: 14px;
+	background: var(--clew-bg-primary);
+	color: var(--clew-text-normal);
+	-webkit-font-smoothing: antialiased;
+}
+
+button {
+	font: inherit;
+	color: inherit;
+	background: none;
+	border: none;
+	cursor: pointer;
+	padding: 0;
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb {
+	background: var(--clew-scrollbar);
+	border-radius: 5px;
+	border: 2px solid transparent;
+	background-clip: content-box;
+}
+::-webkit-scrollbar-track { background: transparent; }

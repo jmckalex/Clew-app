@@ -1,0 +1,53 @@
+// App-level settings persisted in Electron's userData directory:
+// recent vaults, last vault, theme. Vault-level state lives in <vault>/.clew/.
+import { app } from 'electron';
+import fs from 'node:fs';
+import path from 'node:path';
+
+const DEFAULTS = {
+	recentVaults: [],
+	lastVault: null,
+	theme: 'dark',
+};
+
+class Settings {
+	#data = { ...DEFAULTS };
+	#file = null;
+
+	load() {
+		this.#file = path.join(app.getPath('userData'), 'clew-settings.json');
+		try {
+			this.#data = { ...DEFAULTS, ...JSON.parse(fs.readFileSync(this.#file, 'utf8')) };
+		} catch {
+			this.#data = { ...DEFAULTS };
+		}
+	}
+
+	get(key) {
+		return key === undefined ? { ...this.#data } : this.#data[key];
+	}
+
+	set(key, value) {
+		this.#data[key] = value;
+		this.#save();
+	}
+
+	rememberVault(vaultPath) {
+		const recent = this.#data.recentVaults.filter((p) => p !== vaultPath);
+		recent.unshift(vaultPath);
+		this.#data.recentVaults = recent.slice(0, 10);
+		this.#data.lastVault = vaultPath;
+		this.#save();
+	}
+
+	#save() {
+		try {
+			fs.mkdirSync(path.dirname(this.#file), { recursive: true });
+			fs.writeFileSync(this.#file, JSON.stringify(this.#data, null, 2));
+		} catch (err) {
+			console.error('Failed to save settings:', err);
+		}
+	}
+}
+
+export const settings = new Settings();
