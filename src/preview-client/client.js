@@ -14,10 +14,43 @@ window.addEventListener('message', (event) => {
 	if (!msg || msg.source !== HOST_SOURCE) return;
 	if (msg.type === 'render') applyRender(msg.html);
 	else if (msg.type === 'scroll-to-line') scrollToLine(msg.line, msg.behavior ?? 'auto');
-	else if (msg.type === 'theme') document.documentElement.dataset.theme = msg.theme;
+	else if (msg.type === 'theme') {
+		document.documentElement.dataset.theme = msg.theme;
+		configureMermaid(msg.theme);
+	}
 	else if (msg.type === 'error') showError(msg.message);
 	else if (msg.type === 'clear-error') showError(null);
 });
+
+// ---- mermaid theming -------------------------------------------------------
+// mermaid.min.js loads in <head>; we take over its startup so diagrams render
+// with a theme matching the app, and re-render (from snapshotted sources)
+// when the theme changes.
+let mermaidTheme = null;
+window.mermaid?.initialize({ startOnLoad: false });
+
+function runMermaid() {
+	if (!window.mermaid) return;
+	for (const div of document.querySelectorAll('.mermaid')) {
+		if (!div.dataset.mermaidSrc) div.dataset.mermaidSrc = div.textContent;
+	}
+	window.mermaid.run({ querySelector: '.mermaid' }).catch?.(() => {});
+}
+
+function configureMermaid(appTheme) {
+	if (!window.mermaid) return;
+	const theme = appTheme === 'light' ? 'default' : 'dark';
+	if (theme === mermaidTheme) return;
+	mermaidTheme = theme;
+	window.mermaid.initialize({ startOnLoad: false, theme });
+	for (const div of document.querySelectorAll('.mermaid')) {
+		if (div.dataset.mermaidSrc) {
+			div.removeAttribute('data-processed');
+			div.textContent = div.dataset.mermaidSrc;
+		}
+	}
+	runMermaid();
+}
 
 function applyRender(html) {
 	try {
@@ -49,9 +82,7 @@ function retypeset() {
 		window.MathJax.typesetClear?.();
 		window.MathJax.typesetPromise().catch(() => {});
 	}
-	if (window.mermaid?.run) {
-		window.mermaid.run({ querySelector: '.mermaid' }).catch?.(() => {});
-	}
+	runMermaid();
 }
 
 // The engine renders task checkboxes disabled; make them live so clicks can

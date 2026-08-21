@@ -19,8 +19,9 @@ untoward happens.
 Left as an exercise for the vault's reader. $\blacksquare$
 @end(proof)
 
-Some inline dialect syntax: H~2~O subscripts, x^2^ superscripts,
-__underlined__ text, and ==highlighted== passages.
+Some inline dialect syntax (TeX-style, like LaTeX): H_2O subscripts,
+x^2 and x^{10} superscripts, __underlined__ text, and ==highlighted==
+passages.
 
 > [!NOTE]
 > GFM alerts render as callout boxes in HTML and tcolorboxes in LaTeX.

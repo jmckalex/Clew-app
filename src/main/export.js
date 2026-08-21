@@ -12,6 +12,7 @@ import { fork } from 'node:child_process';
 import { createRequire } from 'node:module';
 import fs from 'node:fs';
 import path from 'node:path';
+import { toolchainPath } from './render-service.js';
 
 const require = createRequire(import.meta.url);
 const WORKER_PATH = require.resolve('jmarkdown/src/watch-worker.js');
@@ -21,7 +22,7 @@ function runWorker({ file, options, cwd }) {
 		const child = fork(WORKER_PATH, [], {
 			cwd,
 			stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
-			env: { ...process.env },
+			env: { ...process.env, PATH: toolchainPath() },
 		});
 		let stderr = '';
 		child.stdout.on('data', () => {});

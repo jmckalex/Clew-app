@@ -19,6 +19,14 @@ const WORKER_PATH = require.resolve('jmarkdown/src/watch-worker.js');
 
 const REBUILD_DEBOUNCE_MS = 300;
 
+// TikZ/MetaPost/mermaid-cli shell out to latex/dvisvgm/mpost by name; a
+// dock-launched app's PATH lacks the usual tool locations, so append them.
+export function toolchainPath() {
+	const extras = ['/Library/TeX/texbin', '/opt/homebrew/bin', '/usr/local/bin'];
+	const current = (process.env.PATH ?? '').split(':');
+	return [...current, ...extras.filter((dir) => !current.includes(dir))].join(':');
+}
+
 export class RenderService {
 	vaultRoot = null;
 	engineDir = null;
@@ -71,7 +79,10 @@ export class RenderService {
 			'File inclusion': false,
 			'Header style': 'fenced',
 			'Template': path.join(engineAssets, 'clew-template.html'),
-			'Extensions': [`wikiembed, wikilink from ${path.join(engineAssets, 'wikilinks.js')}`],
+			'Extensions': [
+				`wikiembed, wikilink from ${path.join(engineAssets, 'wikilinks.js')}`,
+				`mermaidFence from ${path.join(engineAssets, 'obsidian-fences.js')}`,
+			],
 			'MathJax': { 'src': '/__clew_assets__/mathjax/tex-svg.js' },
 			'Mermaid': '/__clew_assets__/mermaid/mermaid.min.js',
 			'Fontawesome': '/__clew_assets__/fontawesome/all.min.js',
@@ -90,6 +101,7 @@ export class RenderService {
 			stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
 			env: {
 				...process.env,
+				PATH: toolchainPath(),
 				CLEW_VAULT_ROOT: this.vaultRoot,
 				// Engine console chatter goes to the pipes; keep them from filling.
 			},

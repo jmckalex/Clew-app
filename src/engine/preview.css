@@ -92,3 +92,43 @@ a.internal-link.unresolved { color: var(--preview-muted); border-bottom: 1px das
 audio.internal-media { width: 100%; }
 .pdf-embed-box { padding: 8px; }
 .pdf-embed { width: 100%; height: 70vh; border: none; border-radius: 4px; }
+
+/* GFM alerts: the engine's inline CSS assumes a light page — override with
+   theme-aware colors (translucent tints, explicit text color). */
+.markdown-alert {
+	color: var(--preview-text);
+	border-radius: 0 6px 6px 0;
+	padding: 8px 14px;
+}
+.markdown-alert .markdown-alert-title { font-weight: 600; }
+.markdown-alert-note { background: rgba(68, 147, 248, 0.12); border-color: #4493f8; }
+.markdown-alert-note .markdown-alert-title { color: #4493f8; }
+.markdown-alert-tip { background: rgba(63, 185, 80, 0.12); border-color: #3fb950; }
+.markdown-alert-tip .markdown-alert-title { color: #3fb950; }
+.markdown-alert-warning { background: rgba(210, 153, 34, 0.12); border-color: #d29922; }
+.markdown-alert-warning .markdown-alert-title { color: #d29922; }
+.markdown-alert-important { background: rgba(248, 81, 73, 0.12); border-color: #f85149; }
+.markdown-alert-important .markdown-alert-title { color: #f85149; }
+.markdown-alert svg.octicon { fill: currentColor; }
+
+/* Diagram SVGs (TikZ/MetaPost use currentColor-free strokes; give them a
+   light plate in dark theme so black strokes stay visible). */
+img[src*="TiKZ/"], img[src*="MetaPost/"] {
+	background: #ffffff;
+	border-radius: 6px;
+	padding: 10px;
+}
+html[data-theme='light'] img[src*="TiKZ/"], html[data-theme='light'] img[src*="MetaPost/"] {
+	background: transparent;
+	padding: 0;
+}
+.mermaid { text-align: center; }
+
+/* ==highlight== emits span.highlight; the engine's yellow needs dark text
+   in both themes (and a softer yellow on dark). */
+.highlight, mark {
+	background: #e6be50;
+	color: #1e1e1e;
+	border-radius: 2px;
+	padding: 0 2px;
+}
