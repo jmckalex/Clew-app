@@ -9,11 +9,12 @@ components, CodeMirror 6 editor, and the **jmarkdown** engine
 (`~/Sites/jmckalex/software/jmarkdown`, branch `at-migration`, consumed as a
 `file:` dependency) for rendering. GPL-3.0-or-later.
 
-The full design plan (architecture rationale, milestones, engine embedding
-facts, risks) lives at `~/.claude/plans/groovy-forging-shell.md`. Milestones
-M1–M5 are complete except packaging. `demo-vault/` is both the documentation
-(a Welcome hub + `Guide/` notes) and the test corpus — every guide note
-exercises the features it documents.
+**Session state, recent work, and open items live in `HANDOVER.md`** —
+read it first. The full design plan (architecture rationale, milestones,
+engine embedding facts, risks) lives at
+`~/.claude/plans/groovy-forging-shell.md`. `demo-vault/` is both the
+documentation (a Welcome hub + `Guide/` notes) and the test corpus — every
+guide note exercises the features it documents.
 
 - **House style:** plain JavaScript ES modules + web components. No
   frameworks, no TypeScript. Tabs for indentation. Small hand-rolled
@@ -120,9 +121,3 @@ exercises the features it documents.
   config-gated, coordinated with its own conventions (read its CLAUDE.md +
   HANDOVER.md first; stage by explicit path — its working tree deliberately
   carries uncommitted files).
-
-## Open items
-
-Packaging (electron-builder; needs an answer for the `file:` engine
-dependency — bundle vs npm-publish jmarkdown), GitHub + CI, block references
-(`[[Note#^block]]`), canvas, live-preview editing, plugins.
