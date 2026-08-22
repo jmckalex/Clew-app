@@ -436,3 +436,68 @@
 	filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.35));
 }
 @keyframes clew-spin { to { transform: rotate(360deg); } }
+
+/* ---- engine-rendered card content (fragment builds) ------------------------
+   The instant .card-* pass above is replaced by real jmarkdown HTML once the
+   fragment render lands: actual p/hN/ul/blockquote/alert/equation elements.
+   pre-wrap is for the line-based fallback only — engine HTML carries
+   formatting newlines that must NOT become visible space. */
+.canvas-text.is-engine { white-space: normal; }
+.canvas-text p { margin: 0 0 0.55em; }
+.canvas-text p:last-child { margin-bottom: 0; }
+.canvas-text h1, .canvas-text h2, .canvas-text h3,
+.canvas-text h4, .canvas-text h5, .canvas-text h6 {
+	margin: 0.2em 0 0.35em;
+	line-height: 1.25;
+}
+.canvas-text h1 { font-size: 1.35em; }
+.canvas-text h2 { font-size: 1.2em; }
+.canvas-text h3 { font-size: 1.08em; }
+.canvas-text h4, .canvas-text h5, .canvas-text h6 { font-size: 1em; }
+.canvas-text ul, .canvas-text ol { margin: 0 0 0.55em; padding-left: 1.4em; }
+.canvas-text li { margin: 0.1em 0; }
+.canvas-text li:has(> input[type='checkbox']:first-child) { list-style: none; }
+.canvas-text li > input[type='checkbox']:first-child { margin: 0 0.4em 0.15em -1.4em; vertical-align: middle; }
+.canvas-text blockquote {
+	margin: 0 0 0.55em;
+	padding: 0 0.8em;
+	border-left: 3px solid var(--clew-border);
+	color: var(--clew-text-muted);
+}
+.canvas-text pre {
+	background: var(--clew-bg-primary);
+	border: 1px solid var(--clew-border);
+	border-radius: 6px;
+	padding: 8px 10px;
+	overflow-x: auto;
+	margin: 0 0 0.55em;
+}
+.canvas-text a.internal-link { color: var(--clew-link); cursor: pointer; text-decoration: none; }
+.canvas-text a[href^='http'] { color: var(--clew-link); cursor: pointer; }
+.canvas-text img.internal-media { max-width: 100%; border-radius: 4px; }
+.canvas-text .equation { text-align: center; margin: 0.4em 0; }
+.canvas-text mjx-container { color: var(--clew-text-primary); }
+.canvas-text table { border-collapse: collapse; margin: 0 0 0.55em; }
+.canvas-text th, .canvas-text td { border: 1px solid var(--clew-border); padding: 2px 8px; }
+
+/* GFM alerts (same palette as preview.css, compact) */
+.canvas-text .markdown-alert {
+	color: var(--clew-text-primary);
+	border-left: 3px solid;
+	border-radius: 0 6px 6px 0;
+	padding: 6px 10px;
+	margin: 0 0 0.55em;
+}
+.canvas-text .markdown-alert p { margin: 0; }
+.canvas-text .markdown-alert .markdown-alert-title { font-weight: 600; display: flex; gap: 6px; align-items: center; }
+.canvas-text .markdown-alert svg.octicon { fill: currentColor; }
+.canvas-text .markdown-alert-note { background: rgba(68, 147, 248, 0.12); border-color: #4493f8; }
+.canvas-text .markdown-alert-note .markdown-alert-title { color: #4493f8; }
+.canvas-text .markdown-alert-tip { background: rgba(63, 185, 80, 0.12); border-color: #3fb950; }
+.canvas-text .markdown-alert-tip .markdown-alert-title { color: #3fb950; }
+.canvas-text .markdown-alert-warning { background: rgba(210, 153, 34, 0.12); border-color: #d29922; }
+.canvas-text .markdown-alert-warning .markdown-alert-title { color: #d29922; }
+.canvas-text .markdown-alert-important { background: rgba(248, 81, 73, 0.12); border-color: #f85149; }
+.canvas-text .markdown-alert-important .markdown-alert-title { color: #f85149; }
+.canvas-text .markdown-alert-caution { background: rgba(248, 81, 73, 0.12); border-color: #f85149; }
+.canvas-text .markdown-alert-caution .markdown-alert-title { color: #f85149; }

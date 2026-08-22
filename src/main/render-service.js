@@ -48,6 +48,9 @@ export class RenderService {
 	/** per-path render bookkeeping: {mtimeMs, htmlFile, inflight: Promise|null, dirty} */
 	#notes = new Map();
 	#rebuildTimers = new Map();
+	/** fragment cache: hash(text) → html string (canvas cards; bounded) */
+	#fragments = new Map();
+	#fragmentInflight = new Map();
 
 	/** dist/ directory (engine assets: wikilinks.js, clew-template.html). */
 	constructor(distDir) {
@@ -83,6 +86,7 @@ export class RenderService {
 		this.#standby?.child.kill();
 		this.#spawnStandby();
 		this.#notes.clear();
+		this.#fragments.clear();
 		for (const relPath of this.#subscribed.keys()) {
 			this.render(relPath).catch(() => {});
 		}
@@ -94,6 +98,8 @@ export class RenderService {
 		this.vaultRoot = null;
 		this.#subscribed.clear();
 		this.#notes.clear();
+		this.#fragments.clear();
+		this.#fragmentInflight.clear();
 		for (const timer of this.#rebuildTimers.values()) clearTimeout(timer);
 		this.#rebuildTimers.clear();
 		this.#generation++;
@@ -239,6 +245,71 @@ export class RenderService {
 		}
 		this.send(CH.EV_RENDER_ERROR, { path: relPath, message: result.message, stack: result.stack });
 		throw new Error(result.message);
+	}
+
+	/**
+	 * Render a markdown snippet (a canvas card) through the engine in
+	 * fragment mode: body HTML only, no template. Same worker pipeline and
+	 * engine config as note renders (wikilinks, fences, normalSyntax), so a
+	 * card renders exactly like the same text would in a note. Cached by
+	 * content hash — a canvas reopening re-renders nothing.
+	 */
+	async renderFragment(text) {
+		if (!this.vaultRoot) throw new Error('no vault open');
+		const key = crypto.createHash('sha1').update(text).digest('hex').slice(0, 20);
+		const cached = this.#fragments.get(key);
+		if (cached !== undefined) return cached;
+		const inflight = this.#fragmentInflight.get(key);
+		if (inflight) return inflight;
+
+		const job = this.#buildFragment(key, text).finally(() => {
+			this.#fragmentInflight.delete(key);
+		});
+		this.#fragmentInflight.set(key, job);
+		return job;
+	}
+
+	async #buildFragment(key, text) {
+		const generation = this.#generation;
+		const dir = path.join(this.vaultRoot, '.clew', 'cache', 'fragments');
+		fs.mkdirSync(dir, { recursive: true });
+		const mdFile = path.join(dir, `${key}.md`);
+		const htmlFile = path.join(dir, `${key}.html`);
+		fs.writeFileSync(mdFile, text);
+
+		const standby = this.#takeStandby();
+		const child = await standby.ready;
+		const result = await new Promise((resolve) => {
+			child.on('message', (msg) => {
+				if (msg?.type === 'done' || msg?.type === 'error') resolve(msg);
+			});
+			child.once('exit', (code) => {
+				resolve({ type: 'error', message: `render worker exited (code ${code}) without a result` });
+			});
+			child.send({
+				type: 'build',
+				file: mdFile,
+				options: {
+					to: 'html',
+					output: htmlFile,
+					fragment: true,
+					normalSyntax: this.#vaultOptions.normalSyntax === true,
+				},
+			});
+		});
+		if (generation !== this.#generation) throw new Error('stale fragment (vault closed)');
+		if (result.type !== 'done') throw new Error(result.message);
+
+		const html = fs.readFileSync(htmlFile, 'utf8');
+		fs.rmSync(mdFile, { force: true });
+		fs.rmSync(htmlFile, { force: true });
+		// Bounded cache: drop the oldest half when it grows past 500 entries.
+		if (this.#fragments.size > 500) {
+			const keys = [...this.#fragments.keys()].slice(0, 250);
+			for (const k of keys) this.#fragments.delete(k);
+		}
+		this.#fragments.set(key, html);
+		return html;
 	}
 
 	// ---- subscriptions (open previews re-render on file change) -----------

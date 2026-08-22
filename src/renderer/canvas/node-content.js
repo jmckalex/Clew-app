@@ -5,15 +5,46 @@
 import { fileKind } from '../lib/file-types.js';
 import { vaultFileUrl } from '../lib/preview-url.js';
 import { isNotePath } from '../state/vault-store.js';
-import { previewUrl } from '../lib/preview-url.js';
+import { previewUrl, fragmentUrl, previewOrigin } from '../lib/preview-url.js';
 import { renderCardHtml } from './card-markdown.js';
+import { typesetMath } from '../lib/mathjax.js';
 import { openWikilink } from '../commands/actions.js';
 import { ipc, CH } from '../ipc.js';
 
-/** Fill a card's content element from its raw text (also used on updates). */
+/**
+ * Fill a card's content element from its raw text. Two passes: the tiny
+ * synchronous renderer paints instantly, then the real engine render (a
+ * fragment build — full jmarkdown: math, alerts, containers, footnotes)
+ * swaps in when it lands. dataset.cardText is the staleness guard.
+ */
 export function setCardText(el, text) {
 	el.dataset.cardText = text ?? '';
+	el.classList.remove('is-engine');
 	el.innerHTML = renderCardHtml(text ?? '');
+	upgradeCard(el, text ?? '');
+}
+
+async function upgradeCard(el, text) {
+	if (!text.trim()) return;
+	try {
+		const response = await fetch(fragmentUrl(), { method: 'POST', body: text });
+		if (!response.ok) return;
+		const html = await response.text();
+		if (el.dataset.cardText !== text || !el.isConnected) return; // stale
+		// Engine HTML manages its own block spacing; the pre-wrap that the
+		// line-based fallback needs would render its formatting newlines as
+		// literal blank space (huge gaps between blocks).
+		el.classList.add('is-engine');
+		el.innerHTML = html;
+		// The engine emits root-relative vault URLs (media embeds in cards);
+		// the app window is file://, so pin them to the preview origin.
+		for (const media of el.querySelectorAll('[src^="/"]')) {
+			media.setAttribute('src', previewOrigin() + media.getAttribute('src'));
+		}
+		typesetMath(el).catch(() => {});
+	} catch {
+		// Engine unavailable or build failed — the instant render stands.
+	}
 }
 
 export function nodeTitle(node) {
@@ -34,18 +65,20 @@ export function buildNodeContent(node, embedHooks) {
 		const el = document.createElement('div');
 		el.className = 'canvas-text';
 		setCardText(el, node.text);
-		// Links are clickable once the card is engaged (double-click).
+		// Links are clickable once the card is engaged (double-click). Both
+		// renderers' shapes: card-markdown emits card-wikilink/card-extlink,
+		// the engine emits internal-link[data-href] and plain external hrefs.
 		el.addEventListener('click', (e) => {
-			const wikilink = e.target.closest('a.card-wikilink');
-			if (wikilink) {
-				e.preventDefault();
-				openWikilink(wikilink.dataset.href, { newTab: true });
+			const link = e.target.closest('a');
+			if (!link) return;
+			e.preventDefault();
+			if (link.dataset.href) {
+				openWikilink(link.dataset.href, { newTab: true });
 				return;
 			}
-			const external = e.target.closest('a.card-extlink');
-			if (external) {
-				e.preventDefault();
-				ipc.invoke(CH.SHELL_OPEN_EXTERNAL, { url: external.dataset.url }).catch(() => {});
+			const url = link.dataset.url ?? link.getAttribute('href') ?? '';
+			if (/^https?:/i.test(url)) {
+				ipc.invoke(CH.SHELL_OPEN_EXTERNAL, { url }).catch(() => {});
 			}
 		});
 		return el;

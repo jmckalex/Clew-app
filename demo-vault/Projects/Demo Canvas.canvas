@@ -24,9 +24,9 @@
 			"x": 500,
 			"y": 0,
 			"width": 380,
-			"height": 190,
+			"height": 430,
 			"color": "6",
-			"text": "# Cards\nCards render *markdown*: **intense**, /italic/, ==highlight==, `code`, $E=mc^2$\n- [x] task lists\n- [ ] with checkboxes\nDouble-click to edit the raw text; [[Canvas]] links work when the card is engaged."
+			"text": "# Cards\nCards render *markdown*: **intense**, /italic/, ==highlight==, `code`,\nreal math $e^{i\\pi} + 1 = 0$,\n- [x] task lists\n- [ ] with checkboxes\n\n> [!NOTE]\n> Alerts work too \u2014 cards are rendered by the engine itself.\n\nDouble-click to edit the raw text; [[Canvas]] links work when the card is engaged."
 		},
 		{
 			"id": "8877665544332211",

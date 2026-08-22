@@ -210,6 +210,7 @@ function nodeEl(node) {
 	if (node.type === 'text') {
 		el.classList.add('is-card');
 		el.innerHTML = renderCardHtml(node.text ?? '');
+		upgradeCard(el, node.text ?? '');
 	} else if (node.type === 'link') {
 		// A real embedded page where the site allows framing (an <iframe>
 		// honors X-Frame-Options; the app's canvas uses <webview>, which is
@@ -249,6 +250,24 @@ function place(el, r) {
 	el.style.top = `${r.y}px`;
 	el.style.width = `${r.width}px`;
 	el.style.height = `${r.height}px`;
+}
+
+// Swap in the engine's fragment render (full jmarkdown — math, alerts,
+// containers) once it lands; the instant card-markdown pass stands until
+// then, and remains the fallback if the build fails. MathJax is already
+// loaded in preview documents, so cards typeset like note math.
+async function upgradeCard(el, text) {
+	if (!text.trim()) return;
+	try {
+		const response = await fetch(`/${SID}/__clew_fragment__`, { method: 'POST', body: text });
+		if (!response.ok) return;
+		const html = await response.text();
+		if (!el.isConnected) return;
+		el.innerHTML = html;
+		if (/\$|\\\(|\\\[/.test(el.textContent ?? '')) {
+			window.MathJax?.typesetPromise?.([el]).catch(() => {});
+		}
+	} catch { /* instant render stands */ }
 }
 
 /** The app theme changed — push it into nested note iframes too. */

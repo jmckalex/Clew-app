@@ -138,6 +138,23 @@ export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDi
 			}
 			const { vaults, renderService } = session;
 
+			// Canvas-card fragment rendering: POST markdown text, get body HTML.
+			// Origin-guarded: only the app (file:// sends "null") and preview
+			// documents (same scheme) may use it — a web page framed inside a
+			// canvas web node must NOT reach the engine (script blocks execute).
+			if (rel === '__clew_fragment__' && request.method === 'POST') {
+				const origin = request.headers.get('origin') ?? '';
+				if (/^https?:/i.test(origin)) {
+					return new Response('Forbidden', { status: 403, headers: headers('text/plain') });
+				}
+				const text = await request.text();
+				if (text.length > 100_000) {
+					return new Response('Too large', { status: 413, headers: headers('text/plain') });
+				}
+				const html = await renderService.renderFragment(text);
+				return new Response(html, { headers: headers('text/html') });
+			}
+
 			// Rendered note: "<note path>.html" → render on demand, inject client.
 			if (RENDERED_SUFFIX.test(rel)) {
 				const relPath = rel.replace(/\.html$/i, '');

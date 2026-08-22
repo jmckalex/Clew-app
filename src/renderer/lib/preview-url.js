@@ -19,3 +19,13 @@ export function previewUrl(path) {
 export function vaultFileUrl(path) {
 	return `clew-preview://vault/${sessionId}/${encode(path)}`;
 }
+
+/** Engine fragment-render endpoint (canvas cards; POST markdown → HTML). */
+export function fragmentUrl() {
+	return `clew-preview://vault/${sessionId}/__clew_fragment__`;
+}
+
+/** Base URL of the preview origin (rewrites root-relative asset paths). */
+export function previewOrigin() {
+	return 'clew-preview://vault';
+}

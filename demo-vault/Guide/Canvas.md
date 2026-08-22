@@ -23,7 +23,9 @@ open in Obsidian too — Clew's drawing and shape layers travel in a
 ## Things a canvas holds
 
 - **Cards** — double-click empty canvas (or press **C**). Double-click a
-  card to edit its text.
+  card to edit its text. Cards render through the engine itself: math
+  typesets, alerts (`> [!NOTE]`), the full dialect — the same text
+  renders identically in a card and in a note.
 - **Notes** — the add-file toolbar button embeds any note as a *live jmarkdown
   preview*: math, mermaid, citations, checkboxes all work. Double-click
   a note to interact with it (scroll it, click its links, tick its

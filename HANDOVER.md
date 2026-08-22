@@ -65,8 +65,15 @@ fix to discuss with the owner.
 
 ## 3. Known rough edges (current, all minor)
 
-1. Canvas cards render a markdown subset, not the engine — `$math$` is
-   styled, not typeset (documented in [[Canvas]] guide).
+1. ~~Canvas cards render a markdown subset~~ FIXED 2026-08-22: cards now
+   upgrade to real engine fragment renders (render-service.renderFragment
+   + POST __clew_fragment__ endpoint, origin-guarded; card-markdown.js
+   remains the instant first paint and the failure fallback). Math
+   typesets via lazy MathJax in the app window (CSP allows scripts from
+   the __clew_assets__ root only). Canvas embeds' cards upgrade the same
+   way. Gotcha found: .canvas-text is white-space:pre-wrap for the
+   fallback — engine HTML must get .is-engine (white-space normal) or
+   its formatting newlines render as huge gaps.
 2. Webview nodes need network; the failure overlay covers that now, but
    there's no loading spinner.
 3. The properties panel's list chips don't reorder by drag.
