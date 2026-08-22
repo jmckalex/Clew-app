@@ -100,6 +100,13 @@ served from /__clew_assets__/leaflet/ (protocol root + extraResources
 for packaged builds — packaging NOT yet re-verified since). OSM tiles
 need network; image: [[file]] maps are offline (CRS.Simple). Marker
 wikilinks post link-click. Maps guide note: Features/Maps.md.
+Photo maps: photos: [[folder]] scans for geotagged JPEGs (exif-gps.js —
+hand-rolled GPS/DateTimeOriginal reader, fixture-tested via
+scripts/geotag-jpeg.py), pins each with thumbnail popup + open-photo +
+open-or-create-note links, auto-fits. HEIC auto-converts to JPEG via
+macOS sips both in the folder scan (jpg written alongside, mtime-
+guarded) and at attachment paste/drop (vault.js saveAttachment — vault
+only ever receives .jpg); non-mac counts them as skipped.
 
 ## 3b. PACKAGING IS DONE (2026-08-22)
 

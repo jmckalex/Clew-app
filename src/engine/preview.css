@@ -307,3 +307,19 @@ html[data-theme='light'] img[src*="TiKZ/"], html[data-theme='light'] img[src*="M
 :root:not([data-theme='light']) .clew-leaflet:not(.is-light) .leaflet-tile {
 	filter: brightness(0.75) contrast(1.05) saturate(0.85);
 }
+.clew-leaflet-photo img {
+	max-width: 220px;
+	max-height: 160px;
+	display: block;
+	border-radius: 4px;
+	cursor: pointer;
+}
+.clew-leaflet-photo .photo-caption { margin-top: 4px; font-size: 12px; }
+.clew-leaflet-photo .photo-caption span { color: #888; }
+.clew-leaflet-note {
+	background: rgba(0, 0, 0, 0.55);
+	color: #eee;
+	font-size: 11px;
+	padding: 2px 8px;
+	border-radius: 4px;
+}

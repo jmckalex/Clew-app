@@ -45,3 +45,8 @@ test('unknown keys and junk lines are ignored', () => {
 	assert.deepEqual(c.markers, []);
 	assert.equal(c.lat, undefined);
 });
+
+test('photos folder key', () => {
+	assert.equal(parseLeafletConfig('photos: [[Holiday/Day 3]]').photos, 'Holiday/Day 3');
+	assert.equal(parseLeafletConfig('photos: Trips/Rome').photos, 'Trips/Rome');
+});

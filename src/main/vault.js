@@ -5,7 +5,9 @@
 import { shell } from 'electron';
 import chokidar from 'chokidar';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { settings } from './settings.js';
 import { direntKind, shouldRecurse, walkGuard } from './fs-utils.js';
 
@@ -128,17 +130,35 @@ export class VaultManager {
 
 	/**
 	 * Save pasted/dropped bytes into the attachment folder, deduplicating the
-	 * name ("x.png" → "x 1.png" …). Returns the vault-relative path.
+	 * name ("x.png" → "x 1.png" …). Returns the vault-relative path. HEIC
+	 * photos are transparently converted to JPEG on macOS (Chromium cannot
+	 * display HEIC, and EXIF GPS survives the conversion) — the vault only
+	 * ever receives the .jpg.
 	 */
 	saveAttachment(name, data, folder) {
 		const safe = path.basename(name).replace(/[/\\:]/g, '-');
 		const dir = this.resolve(folder || 'Attachments');
 		fs.mkdirSync(dir, { recursive: true });
-		const ext = path.extname(safe);
-		const stem = safe.slice(0, safe.length - ext.length) || 'attachment';
-		let candidate = path.join(dir, safe);
+		let ext = path.extname(safe);
+		let stem = safe.slice(0, safe.length - ext.length) || 'attachment';
+		const heic = /^\.(heic|heif)$/i.test(ext) && process.platform === 'darwin';
+		if (heic) ext = '.jpg';
+		let candidate = path.join(dir, `${stem}${ext}`);
 		for (let i = 1; fs.existsSync(candidate); i++) {
 			candidate = path.join(dir, `${stem} ${i}${ext}`);
+		}
+		if (heic) {
+			const tmp = path.join(os.tmpdir(), `clew-heic-${Date.now()}${path.extname(safe)}`);
+			try {
+				fs.writeFileSync(tmp, Buffer.from(data));
+				execFileSync('sips', ['-s', 'format', 'jpeg', tmp, '--out', candidate], { stdio: 'ignore' });
+				return path.relative(this.root, candidate);
+			} catch {
+				// Conversion failed — fall through and keep the original bytes.
+				candidate = candidate.replace(/\.jpg$/, path.extname(safe));
+			} finally {
+				fs.rmSync(tmp, { force: true });
+			}
 		}
 		fs.writeFileSync(candidate, Buffer.from(data));
 		return path.relative(this.root, candidate);

@@ -34,6 +34,10 @@ export async function initLeafletMaps() {
 	const pending = [...document.querySelectorAll('.clew-leaflet[data-leaflet]')]
 		.filter((el) => !el.dataset.leafletInit);
 	if (pending.length === 0) return;
+	// Claim BEFORE the async library load: init runs both at page load and
+	// after every morph, and an unclaimed div would be double-initialized
+	// ("Map container is already initialized") by the second caller.
+	for (const el of pending) el.dataset.leafletInit = '1';
 	try {
 		await loadLeaflet();
 	} catch {
@@ -41,7 +45,6 @@ export async function initLeafletMaps() {
 		return;
 	}
 	for (const el of pending) {
-		el.dataset.leafletInit = '1';
 		try {
 			buildMap(el, JSON.parse(el.dataset.leaflet));
 		} catch (err) {
@@ -77,6 +80,65 @@ function buildMap(el, config) {
 	tiles.addTo(map);
 	if (config.darkMode) el.classList.add('is-dark');
 	addMarkers(map, config);
+	const photoPins = addPhotoMarkers(map, config);
+
+	// Photo maps auto-fit unless the fence pinned an explicit view.
+	const fitAll = [
+		...photoPins,
+		...(config.markers ?? []).map((m) => [m.lat, m.long]),
+	];
+	if (config.lat === undefined && fitAll.length) {
+		map.fitBounds(fitAll, { padding: [40, 40], maxZoom: config.zoom ?? 15 });
+	}
+	if (config.photosSkipped || config.photosError) {
+		const note = L.control({ position: 'bottomleft' });
+		note.onAdd = () => {
+			const div = document.createElement('div');
+			div.className = 'clew-leaflet-note';
+			div.textContent = config.photosError
+				?? `${config.photosSkipped} photo${config.photosSkipped === 1 ? '' : 's'} without location`;
+			return div;
+		};
+		note.addTo(map);
+	}
+}
+
+/** Photo pins: thumbnail popup + open-the-photo + a note wikilink (which
+ *  Clew creates on first click — the "add notes to the day" workflow). */
+function addPhotoMarkers(map, config) {
+	const L = window.L;
+	const points = [];
+	for (const p of config.photoMarkers ?? []) {
+		points.push([p.lat, p.long]);
+		const marker = L.marker([p.lat, p.long]).addTo(map);
+		const popup = document.createElement('div');
+		popup.className = 'clew-leaflet-photo';
+		const img = document.createElement('img');
+		img.src = p.url;
+		img.alt = p.name;
+		img.title = 'Open the photo';
+		img.addEventListener('click', () => post({ type: 'link-click', target: p.file, newTab: true }));
+		const caption = document.createElement('div');
+		caption.className = 'photo-caption';
+		const note = document.createElement('a');
+		note.href = '#';
+		note.textContent = p.name;
+		note.title = `Open (or create) the note “${p.name}”`;
+		note.addEventListener('click', (e) => {
+			e.preventDefault();
+			post({ type: 'link-click', target: p.name, newTab: true });
+		});
+		caption.append(note);
+		if (p.time) {
+			const time = document.createElement('span');
+			const m = /^(\d{4}):(\d{2}):(\d{2}) (\d{2}:\d{2})/.exec(p.time);
+			time.textContent = m ? ` ${m[3]}/${m[2]} ${m[4]}` : '';
+			caption.append(time);
+		}
+		popup.append(img, caption);
+		marker.bindPopup(popup, { minWidth: 180 });
+	}
+	return points;
 }
 
 function addMarkers(map, config) {
