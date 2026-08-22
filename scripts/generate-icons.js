@@ -28,6 +28,8 @@ const ICONS = {
 	'thumbtack': 'solid/thumbtack',
 	'folder-plus': 'solid/folder-plus',
 	'chevron-right': 'solid/chevron-right',
+	'chevron-left': 'solid/chevron-left',
+	'calendar': 'solid/calendar-days',
 	'chevron-down': 'solid/chevron-down',
 	'xmark': 'solid/xmark',
 };

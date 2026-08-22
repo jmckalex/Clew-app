@@ -11,6 +11,7 @@ import '../workspace/clew-tab-group.js';
 import '../panels/clew-file-explorer.js';
 import '../panels/clew-search-panel.js';
 import '../panels/clew-bookmarks.js';
+import '../panels/clew-diary.js';
 import '../panels/clew-backlinks.js';
 import '../panels/clew-outgoing-links.js';
 import '../panels/clew-tag-pane.js';
@@ -24,6 +25,7 @@ const TOOLS = {
 		{ id: 'files', label: 'Files', element: 'clew-file-explorer' },
 		{ id: 'search', label: 'Search', element: 'clew-search-panel' },
 		{ id: 'bookmarks', label: 'Marks', element: 'clew-bookmarks' },
+		{ id: 'diary', label: 'Diary', element: 'clew-diary' },
 	],
 	right: [
 		{ id: 'backlinks', label: 'Links', element: 'clew-backlinks' },

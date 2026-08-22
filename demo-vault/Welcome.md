@@ -22,7 +22,8 @@ rendered; **⌘O** finds any note; **⌘P** lists every command.
   [[Habit Tracker]], and a tiny [[Adventure]]
 - [[Search]] — full-text search and its operators
 - [[Graph View]] — the vault as a graph
-- [[Daily Notes and Templates]]
+- [[Daily Notes and Templates]] — the diary calendar, per-day or
+  single-log mode, composed interval views
 - [[Settings and Hotkeys]] — including the hotkey editor
 - [[Export]] — HTML, LaTeX, and PDF from the same source
 - [[Theming]] — dark/light and CSS snippets

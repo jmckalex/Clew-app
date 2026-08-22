@@ -45,9 +45,12 @@ class ClewSettingsView extends ClewElement {
 				this.#numberRow('Editor font size (px)', 'editorFontSize', 16, 10, 28),
 				this.#numberRow('Editor line width (em)', 'editorLineWidth', 44, 20, 120),
 			]),
-			this.#section('Daily notes', [
-				this.#textRow('Folder', 'dailyNoteFolder', 'Daily'),
-				this.#textRow('Filename format', 'dailyNoteFormat', 'YYYY-MM-DD'),
+			this.#section('Diary', [
+				this.#selectRow('Mode', 'diaryMode',
+					[['files', 'One note per day'], ['log', 'Single log note']]),
+				this.#textRow('Log note (log mode)', 'diaryLogFile', 'Diary.md'),
+				this.#textRow('Folder (per-day mode)', 'dailyNoteFolder', 'Daily'),
+				this.#textRow('Date format', 'dailyNoteFormat', 'YYYY-MM-DD'),
 				this.#textRow('Template note (optional)', 'dailyNoteTemplate', ''),
 			]),
 			this.#section('Files', [

@@ -127,6 +127,19 @@ label/ref/:today/{{TOC}}). Edit menu slimmed to undo/clipboard/find.
 Labels show dialect syntax — under normalSyntax vaults they're
 slightly wrong (known caveat, same family as the editor overlay).
 
+## 3f. Diary mode (2026-08-22)
+
+Left-sidebar Diary tool: month calendar (entry dots, today highlight,
+month nav), click-to-open/create any day. Two storage modes (Settings →
+Diary): per-day files (the old daily notes) or a SINGLE LOG note with
+'# date' sections kept newest-first (open-day upserts the section at
+its chronological spot, through the live editor when open). Composed
+read-only views (today/week/month/everything/custom interval) work in
+BOTH modes: generated into .clew/Diary View.md (invisible to explorer/
+index, dropped from workspace on restart) and rendered by the engine.
+Core logic is pure + tested (shared/diary.js, 6 tests). ⌘⇧D is now
+mode-aware; Go menu has Diary Calendar; nav:diary command.
+
 ## 4. Feature plan (designed, not yet built — next sessions)
 
 Ordered by expected value; none started:

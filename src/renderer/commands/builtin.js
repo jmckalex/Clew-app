@@ -3,6 +3,8 @@
 import { registerCommand, buildContext, allCommands, isEnabled, effectiveKeymap } from './registry.js';
 import { openSearchPanel } from '@codemirror/search';
 import { registerFormatCommands, activeEditorView, needsEditor } from './format.js';
+import { openDiaryDay } from './diary.js';
+import { substituteTemplate } from '../../shared/diary.js';
 import * as actions from './actions.js';
 import { workspaceStore } from '../state/workspace-store.js';
 import { vaultStore, isNotePath } from '../state/vault-store.js';
@@ -15,54 +17,6 @@ import { ipc, CH } from '../ipc.js';
 
 const needsVault = (ctx) => ctx.vaultOpen;
 const needsNote = (ctx) => ctx.notePath !== null;
-
-// ---- date formatting for daily notes / templates --------------------------
-
-export function formatDate(date, format) {
-	const pad = (n) => String(n).padStart(2, '0');
-	return format
-		.replace(/YYYY/g, date.getFullYear())
-		.replace(/MM/g, pad(date.getMonth() + 1))
-		.replace(/DD/g, pad(date.getDate()))
-		.replace(/HH/g, pad(date.getHours()))
-		.replace(/mm/g, pad(date.getMinutes()));
-}
-
-function substituteTemplate(text, { title }) {
-	const now = new Date();
-	return text
-		.replace(/\{\{date(?::([^}]+))?\}\}/g, (_, fmt) => formatDate(now, fmt || 'YYYY-MM-DD'))
-		.replace(/\{\{time(?::([^}]+))?\}\}/g, (_, fmt) => formatDate(now, fmt || 'HH:mm'))
-		.replace(/\{\{title\}\}/g, title ?? '');
-}
-
-async function openDailyNote() {
-	const folder = settingsStore.get('dailyNoteFolder') ?? 'Daily';
-	const format = settingsStore.get('dailyNoteFormat') ?? 'YYYY-MM-DD';
-	const name = formatDate(new Date(), format);
-	const rel = folder ? `${folder}/${name}.md` : `${name}.md`;
-	if (vaultStore.pathExists(rel)) {
-		workspaceStore.openNote(rel);
-		return;
-	}
-	// Seed from the daily template when one exists.
-	let content = '';
-	const templateName = settingsStore.get('dailyNoteTemplate');
-	if (templateName) {
-		const templatePath = vaultStore.resolveNoteName(templateName);
-		if (templatePath) {
-			const raw = await ipc.invoke(CH.NOTE_READ, { path: templatePath }).catch(() => '');
-			content = substituteTemplate(raw, { title: name });
-		}
-	}
-	try {
-		const created = await ipc.invoke(CH.NOTE_CREATE, { path: rel });
-		if (content) await ipc.invoke(CH.NOTE_WRITE, { path: created, content });
-		workspaceStore.openNote(created);
-	} catch (err) {
-		console.error('Daily note failed:', err);
-	}
-}
 
 function templateFiles() {
 	const folder = (settingsStore.get('templatesFolder') ?? 'Templates').toLowerCase();
@@ -133,8 +87,10 @@ export function registerBuiltinCommands() {
 			run: () => actions.openGraph() },
 		{ id: 'nav:search', name: 'Search in all files', hotkeys: ['Mod-Shift-f'], when: needsVault,
 			run: () => document.querySelector('clew-app')?.openSearch?.() },
-		{ id: 'nav:daily-note', name: "Open today's daily note", hotkeys: ['Mod-Shift-d'], when: needsVault,
-			run: () => openDailyNote() },
+		{ id: 'nav:daily-note', name: "Open today's diary entry", hotkeys: ['Mod-Shift-d'], when: needsVault,
+			run: () => openDiaryDay(new Date()) },
+		{ id: 'nav:diary', name: 'Open diary calendar', when: needsVault,
+			run: () => workspaceStore.setSidebar('left', { open: true, activeTool: 'diary' }) },
 
 		// workspace
 		{ id: 'workspace:close-tab', name: 'Close tab', hotkeys: ['Mod-w'],
