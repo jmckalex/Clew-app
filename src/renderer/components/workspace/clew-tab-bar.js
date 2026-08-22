@@ -24,6 +24,7 @@ export function tabTitle(tab) {
 
 class ClewTabBar extends ClewElement {
 	groupId = null;
+	#signature = null;
 
 	subscribe() {
 		this.listen(workspaceStore, 'active-changed', () => this.#refreshActive());
@@ -40,6 +41,18 @@ class ClewTabBar extends ClewElement {
 	render() {
 		const group = this.group;
 		if (!group) return;
+
+		// Rebuild ONLY when the tab list itself changed. Activation must not
+		// replace the DOM: a click's pointerdown activates the tab, and
+		// rebuilding then would detach the very element (close ×, the tab
+		// being dragged) before its pointerup/click arrives.
+		const signature = this.groupId + '|'
+			+ group.tabs.map((t) => `${t.id}:${t.pinned ? 1 : 0}:${tabTitle(t)}`).join('|');
+		if (signature === this.#signature && this.querySelector('.tab-strip')) {
+			this.#refreshActive();
+			return;
+		}
+		this.#signature = signature;
 
 		const strip = document.createElement('div');
 		strip.className = 'tab-strip';
