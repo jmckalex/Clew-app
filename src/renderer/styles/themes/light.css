@@ -26,6 +26,20 @@ body[data-theme='light'] {
 	--clew-code: #9a6a2e;
 	--clew-quote: #4e7a4e;
 
+	/* canvas */
+	--clew-canvas-bg: #f4f2ef;
+	--clew-canvas-dot: #dfdcd7;
+	--clew-canvas-node-bg: #fdfcfa;
+	--clew-canvas-node-border: #c9c5be;
+	--clew-canvas-edge: #8a867f;
+	--clew-canvas-ink: #3b3935;
+	--clew-canvas-1: #e93147;
+	--clew-canvas-2: #ec7500;
+	--clew-canvas-3: #e0ac00;
+	--clew-canvas-4: #08b94e;
+	--clew-canvas-5: #00bfbc;
+	--clew-canvas-6: #7852ee;
+
 	--clew-ui-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
 	--clew-editor-font: 'iA Writer Quattro', 'Avenir Next', -apple-system, BlinkMacSystemFont, sans-serif;
 	--clew-mono-font: 'SF Mono', Menlo, Consolas, monospace;

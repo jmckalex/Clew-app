@@ -107,6 +107,11 @@ export function openFile(state, path, { newTab = false } = {}) {
 	return openPath(state, path, 'file', { newTab });
 }
 
+/** Open a .canvas file in a canvas tab, same rules. */
+export function openCanvasFile(state, path, { newTab = false } = {}) {
+	return openPath(state, path, 'canvas', { newTab });
+}
+
 function openPath(state, path, kind, { newTab = false } = {}) {
 	const group = activeGroup(state);
 	const existing = group.tabs.find((t) => t.kind === kind && t.path === path);

@@ -47,7 +47,10 @@ guide note exercises the features it documents.
 - `src/preload/preload.cjs` — the entire bridge: `window.clew.{invoke,on}`,
   restricted to `clew:*` channels.
 - `src/shared/` — `channels.js`, `note-metadata.js` (regex-level extraction;
-  NEVER the engine), `bib.js` (BibTeX fields for citation completion).
+  NEVER the engine), `bib.js` (BibTeX fields for citation completion),
+  `frontmatter.js` (properties parse/serialize — a deliberate YAML subset;
+  blocks it can't fully parse are flagged `clean: false` and MUST be
+  treated read-only).
 - `src/engine/` — assets the render worker loads: `wikilinks.js` (Obsidian
   links/embeds incl. media), `obsidian-fences.js` (```mermaid fences),
   `clew-template.html` (local assets, no CDN), `preview.css`.
@@ -55,13 +58,35 @@ guide note exercises the features it documents.
   morphdom patching, postMessage bridge, checkbox enabling, mermaid theming.
 - `src/renderer/` — `state/` (Emitter stores: vault/workspace/settings/ui/
   bookmarks), `workspace/tree.js` (pure layout model: n-ary splits,
-  kind-aware tabs — 'note' | 'file' | 'graph' | 'settings' | 'empty' — and
-  per-tab history), `editor/` (`pool.js` owns every EditorView; `jmd/` is the
-  dialect overlay ported from jmacs; `complete/` has wikilink/tag/citation
-  sources; `attachments.js` paste/drop), `commands/` (`registry.js` chord
-  dispatch + `builtin.js` every command), `preview/scroll-sync.js`,
+  kind-aware tabs — 'note' | 'file' | 'canvas' | 'graph' | 'settings' |
+  'empty' — and per-tab history), `editor/` (`pool.js` owns every
+  EditorView; `jmd/` is the dialect overlay ported from jmacs; `complete/`
+  has wikilink/tag/citation sources; `attachments.js` paste/drop),
+  `commands/` (`registry.js` chord dispatch + `builtin.js` every command),
+  `canvas/` (`canvas-model.js` pure doc+geometry, `rough.js` seeded sketchy
+  paths, `node-content.js`, `canvas-menu.js`), `preview/scroll-sync.js`,
   `components/` (light-DOM web components), `styles/` (all colors are custom
   properties in `styles/themes/{dark,light}.css` on `body[data-theme]`).
+
+### Canvas (.canvas tabs)
+
+- Format is JSON Canvas 1.0 (Obsidian-compatible: `nodes` + `edges` at top
+  level); Clew's ink strokes and shapes live under a top-level `clew` key
+  other apps ignore. Never move Clew data into spec fields or invent node
+  types — Obsidian must keep opening these files.
+- `clew-canvas-view.js` renders by targeted sync, reconciling node elements
+  by id so iframes/webviews never reload on unrelated changes. Content is
+  inert (pointer-events: none) until a node is "engaged" (double-click);
+  all affordances (handles, anchors, marquee) are drawn into an overlay SVG
+  and hit-tested in world space — never DOM event targets. Connection
+  anchor dots sit OUTSIDE the border (`anchorHandlePoint`) because the
+  midpoint resize handles own the border itself.
+- Note embeds are live previews: same clew-preview:// iframes, same
+  postMessage protocol as reading mode (subscribe/EV_RENDER_DONE/morph).
+- Web nodes use `<webview>` (webviewTag is on for this): guests get popups
+  denied and navigation pinned to http(s) in main.js — keep it that way.
+- Canvas file IO reuses NOTE_READ/NOTE_WRITE (they are extension-agnostic);
+  renames propagate into canvas `file` refs via rename-links.js.
 
 ### Rendering (the part that is easy to get wrong)
 
@@ -109,7 +134,11 @@ guide note exercises the features it documents.
   highlights, TikZ/MetaPost plates).
 - **Commands + keybindings** live in `commands/registry.js` + `builtin.js`
   (CM chord notation). Add shortcuts as commands — never ad-hoc keydown
-  listeners — so the palette and the settings hotkey editor see them.
+  listeners — so the palette, the settings hotkey editor, and the native
+  menu see them. The menu (`src/main/menu.js`) dispatches command ids over
+  `EV_MENU_COMMAND`; `commands/menu-bridge.js` pushes context + the
+  effective keymap back over `MENU_STATE` (accelerators are display-only —
+  `registerAccelerator: false` — the renderer dispatcher owns every chord).
 - **Cmd+W is the renderer's** (close tab): no `role: 'close'` in the menu.
 - Editor↔preview scroll sync runs over `preview/scroll-sync.js` (bus +
   per-side suppressors). Emit only on user scroll; `suppress()` before any

@@ -54,6 +54,12 @@ class WorkspaceStore extends Emitter {
 		return tab;
 	}
 
+	openCanvas(path, opts) {
+		const tab = tree.openCanvasFile(this.state, path, opts);
+		this.#commit();
+		return tab;
+	}
+
 	openTab(groupId, tab, opts) {
 		tree.openTab(this.state, groupId, tab, opts);
 		this.#commit();

@@ -3,6 +3,7 @@
 @import './layout.css';
 @import './editor.css';
 @import './panels.css';
+@import './canvas.css';
 
 * { box-sizing: border-box; }
 

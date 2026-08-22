@@ -3,7 +3,7 @@
 // inline. (Drag-to-move folders/files arrives with M3.)
 import { ClewElement } from '../base/clew-element.js';
 import { vaultStore, isNotePath } from '../../state/vault-store.js';
-import { isViewablePath } from '../../lib/file-types.js';
+import { isViewablePath, isCanvasPath } from '../../lib/file-types.js';
 import { workspaceStore } from '../../state/workspace-store.js';
 import { editorPool } from '../../editor/pool.js';
 import { ipc, CH } from '../../ipc.js';
@@ -38,7 +38,7 @@ class ClewFileExplorer extends ClewElement {
 		actions.className = 'panel-actions';
 		actions.append(
 			this.#actionButton('New note', '✚', () => this.createNote()),
-			this.#actionButton('New folder', '⊞', () => this.#createFolder('')),
+			this.#actionButton('New folder', '⊞', () => this.createFolder('')),
 		);
 		header.append(title, actions);
 
@@ -88,7 +88,7 @@ class ClewFileExplorer extends ClewElement {
 
 			const name = document.createElement('span');
 			name.className = 'tree-name';
-			name.textContent = entry.type === 'file' ? entry.name.replace(/\.(md|jmd)$/i, '') : entry.name;
+			name.textContent = entry.type === 'file' ? entry.name.replace(/\.(md|jmd|canvas)$/i, '') : entry.name;
 			row.append(name);
 
 			const activePath = workspaceStore.activeTab()?.path;
@@ -100,6 +100,8 @@ class ClewFileExplorer extends ClewElement {
 					this.#toggleFolder(entry.path);
 				} else if (isNotePath(entry.path)) {
 					workspaceStore.openNote(entry.path, { newTab: e.metaKey || e.ctrlKey });
+				} else if (isCanvasPath(entry.path)) {
+					workspaceStore.openCanvas(entry.path, { newTab: e.metaKey || e.ctrlKey });
 				} else if (isViewablePath(entry.path)) {
 					workspaceStore.openFile(entry.path, { newTab: e.metaKey || e.ctrlKey });
 				}
@@ -235,7 +237,19 @@ class ClewFileExplorer extends ClewElement {
 		}
 	}
 
-	async #createFolder(parent) {
+	async createCanvas(folder = '') {
+		if (!vaultStore.vault) return;
+		const rel = folder ? `${folder}/Untitled.canvas` : 'Untitled.canvas';
+		try {
+			const created = await ipc.invoke(CH.NOTE_CREATE, { path: rel });
+			this.#pendingRename = created;
+			workspaceStore.openCanvas(created);
+		} catch (err) {
+			console.error('Create canvas failed:', err);
+		}
+	}
+
+	async createFolder(parent = '') {
 		if (!vaultStore.vault) return;
 		let name = 'New folder';
 		let rel = parent ? `${parent}/${name}` : name;
@@ -256,7 +270,8 @@ class ClewFileExplorer extends ClewElement {
 		if (entry.type === 'folder') {
 			items.push(
 				{ label: 'New note', click: () => this.createNote(entry.path) },
-				{ label: 'New folder', click: () => this.#createFolder(entry.path) },
+				{ label: 'New canvas', click: () => this.createCanvas(entry.path) },
+				{ label: 'New folder', click: () => this.createFolder(entry.path) },
 				{ separator: true },
 			);
 		}
@@ -272,7 +287,8 @@ class ClewFileExplorer extends ClewElement {
 	#rootMenu(x, y) {
 		showMenu(x, y, [
 			{ label: 'New note', click: () => this.createNote() },
-			{ label: 'New folder', click: () => this.#createFolder('') },
+			{ label: 'New canvas', click: () => this.createCanvas() },
+			{ label: 'New folder', click: () => this.createFolder('') },
 		]);
 	}
 

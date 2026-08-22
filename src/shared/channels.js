@@ -33,12 +33,16 @@ export const CH = {
 	// invoke: index & search
 	INDEX_GET: 'clew:index-get',
 	SEARCH: 'clew:search',
+	UNLINKED_MENTIONS: 'clew:unlinked-mentions',
 	BIB_ENTRIES: 'clew:bib-entries',
 
 	// invoke: rendering (reading mode / preview)
 	RENDER_SUBSCRIBE: 'clew:render-subscribe',
 	RENDER_UNSUBSCRIBE: 'clew:render-unsubscribe',
 	SHELL_OPEN_EXTERNAL: 'clew:shell-open-external',
+
+	// invoke: native application menu (renderer pushes context + hotkeys)
+	MENU_STATE: 'clew:menu-state',
 
 	// events: main → renderer
 	EV_VAULT_OPENED: 'clew:ev-vault-opened',
@@ -48,6 +52,7 @@ export const CH = {
 	EV_RENDER_ERROR: 'clew:ev-render-error',
 	EV_INDEX_SNAPSHOT: 'clew:ev-index-snapshot',
 	EV_INDEX_PATCH: 'clew:ev-index-patch',
+	EV_MENU_COMMAND: 'clew:ev-menu-command',
 };
 
 // Notes are what Clew opens in an editor.

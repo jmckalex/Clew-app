@@ -12,6 +12,9 @@ export function tabTitle(tab) {
 		return base.replace(/\.(md|jmd)$/i, '');
 	}
 	if (tab.kind === 'file' && tab.path) return tab.path.split('/').pop();
+	if (tab.kind === 'canvas' && tab.path) {
+		return tab.path.split('/').pop().replace(/\.canvas$/i, '');
+	}
 	if (tab.kind === 'graph') return 'Graph view';
 	if (tab.kind === 'settings') return 'Settings';
 	return 'New tab';

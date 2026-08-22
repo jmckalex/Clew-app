@@ -23,6 +23,11 @@ export function isViewablePath(path) {
 	return fileKind(path) !== null;
 }
 
+/** JSON Canvas files (Obsidian-compatible), opened in a canvas tab. */
+export function isCanvasPath(path) {
+	return extOf(path) === '.canvas';
+}
+
 /** Files that embed with `![[...]]` (vs a plain `[[...]]` link). */
 export function isEmbeddablePath(path) {
 	return fileKind(path) !== null;

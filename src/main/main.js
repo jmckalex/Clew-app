@@ -1,9 +1,10 @@
 // Clew — Electron main process entry point.
-import { app, BrowserWindow, Menu, shell } from 'electron';
+import { app, BrowserWindow, shell } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { registerIpc } from './ipc.js';
+import { appMenu } from './menu.js';
 import { settings } from './settings.js';
 import { vaults } from './vault.js';
 import { RenderService } from './render-service.js';
@@ -48,6 +49,7 @@ function createWindow() {
 			contextIsolation: true,
 			nodeIntegration: false,
 			plugins: true, // Chromium's built-in PDF viewer
+			webviewTag: true, // canvas web-page nodes
 		},
 	});
 
@@ -57,6 +59,7 @@ function createWindow() {
 	vaults.send = send;
 	renderService.send = send;
 	indexer.send = send;
+	appMenu.send = send;
 
 	win.loadFile(path.join(distDir, 'renderer', 'index.html'));
 
@@ -98,29 +101,6 @@ function watchRendererDist() {
 	}
 }
 
-function buildMenu() {
-	const isMac = process.platform === 'darwin';
-	const template = [
-		...(isMac ? [{ role: 'appMenu' }] : []),
-		{
-			label: 'File',
-			submenu: [
-				{
-					label: 'Open Vault…',
-					accelerator: 'CmdOrCtrl+Shift+O',
-					click: () => vaults.openDialog(win),
-				},
-				// No { role: 'close' }: Cmd+W belongs to the renderer (close tab).
-				...(isMac ? [] : [{ type: 'separator' }, { role: 'quit' }]),
-			],
-		},
-		{ role: 'editMenu' },
-		{ role: 'viewMenu' },
-		{ role: 'windowMenu' },
-	];
-	Menu.setApplicationMenu(Menu.buildFromTemplate(template));
-}
-
 app.whenReady().then(() => {
 	settings.load();
 	registerIpc();
@@ -130,7 +110,9 @@ app.whenReady().then(() => {
 		distDir,
 		nodeModulesDir: path.join(rootDir, 'node_modules'),
 	});
-	buildMenu();
+	// No { role: 'close' } anywhere in the menu: Cmd+W belongs to the
+	// renderer (close tab). See src/main/menu.js.
+	appMenu.init({ getWindow: () => win, rootDir });
 	createWindow();
 
 	// Reopen the last vault automatically.
@@ -143,6 +125,20 @@ app.whenReady().then(() => {
 
 	app.on('activate', () => {
 		if (BrowserWindow.getAllWindows().length === 0) createWindow();
+	});
+});
+
+// Canvas web-page nodes run in <webview> guests: no popups (external links
+// go to the browser), and navigation stays on the open web — never into
+// file:// or clew-preview:// where vault content lives.
+app.on('web-contents-created', (_event, contents) => {
+	if (contents.getType() !== 'webview') return;
+	contents.setWindowOpenHandler(({ url }) => {
+		if (/^https?:/i.test(url)) shell.openExternal(url);
+		return { action: 'deny' };
+	});
+	contents.on('will-navigate', (event, url) => {
+		if (!/^https?:/i.test(url)) event.preventDefault();
 	});
 });
 

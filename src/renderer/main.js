@@ -8,6 +8,7 @@ import { bookmarkStore } from './state/bookmark-store.js';
 import { editorPool } from './editor/pool.js';
 import * as actions from './commands/actions.js';
 import { registerBuiltinCommands } from './commands/builtin.js';
+import { installMenuBridge } from './commands/menu-bridge.js';
 import { installHotkeys } from './commands/registry.js';
 import './components/chrome/clew-app.js';
 
@@ -61,6 +62,7 @@ settingsStore.on('settings-changed', () => {
 
 registerBuiltinCommands();
 installHotkeys();
+installMenuBridge();
 
 // ---- dev hook -------------------------------------------------------------
 

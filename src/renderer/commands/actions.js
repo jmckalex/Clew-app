@@ -4,6 +4,7 @@ import { workspaceStore } from '../state/workspace-store.js';
 import { vaultStore, isNotePath } from '../state/vault-store.js';
 import { editorPool } from '../editor/pool.js';
 import { createTab } from '../workspace/tree.js';
+import { isCanvasPath } from '../lib/file-types.js';
 import { ipc, CH } from '../ipc.js';
 
 export function closeActiveTab() {
@@ -69,10 +70,12 @@ export async function openWikilink(target, { newTab = false, mode } = {}) {
 	let path = vaultStore.resolveNoteName(name);
 	if (!path) {
 		// An attachment reference ([[img.png]], ![[paper.pdf]]) opens a viewer
-		// tab rather than creating a note by that name.
+		// tab — and [[x.canvas]] opens the canvas — rather than creating a
+		// note by that name.
 		const filePath = vaultStore.resolveFileName(name);
 		if (filePath) {
-			workspaceStore.openFile(filePath, { newTab });
+			if (isCanvasPath(filePath)) workspaceStore.openCanvas(filePath, { newTab });
+			else workspaceStore.openFile(filePath, { newTab });
 			return;
 		}
 	}
@@ -155,6 +158,51 @@ export async function toggleTaskLine(path, line, checked) {
 		return true;
 	}
 	return false;
+}
+
+/**
+ * Convert an unlinked mention into a wikilink: wrap the occurrence at
+ * {line, column, length} in `sourcePath` as [[mention]] — or, when the
+ * mention is an alias of the target, [[Target|mention]]. Goes through the
+ * live editor when the source note has one open (undoable), else disk.
+ * Returns false when the text at that position no longer matches.
+ */
+export async function linkMention({ sourcePath, line, column, length, targetPath, name }) {
+	const base = targetPath.split('/').pop().replace(/\.(md|jmd)$/i, '');
+	const wrap = (occurrence) =>
+		occurrence.toLowerCase() === base.toLowerCase()
+			? `[[${occurrence}]]`
+			: `[[${base}|${occurrence}]]`;
+
+	// Live editor first (mirrors toggleTaskLine).
+	for (const group of workspaceStore.allGroups()) {
+		for (const tab of group.tabs) {
+			if (tab.kind !== 'note' || tab.path !== sourcePath) continue;
+			const entry = editorPool.get(tab.id);
+			if (!entry?.view) continue;
+			const doc = entry.view.state.doc;
+			if (line < 1 || line > doc.lines) return false;
+			const docLine = doc.line(line);
+			const occurrence = doc.sliceString(docLine.from + column, docLine.from + column + length);
+			if (occurrence.toLowerCase() !== name.toLowerCase()) return false;
+			entry.view.dispatch({
+				changes: { from: docLine.from + column, to: docLine.from + column + length, insert: wrap(occurrence) },
+			});
+			editorPool.flush(tab.id);
+			return true;
+		}
+	}
+
+	const text = await ipc.invoke(CH.NOTE_READ, { path: sourcePath }).catch(() => null);
+	if (text === null) return false;
+	const lines = text.split('\n');
+	const lineText = lines[line - 1];
+	if (lineText === undefined) return false;
+	const occurrence = lineText.slice(column, column + length);
+	if (occurrence.toLowerCase() !== name.toLowerCase()) return false;
+	lines[line - 1] = lineText.slice(0, column) + wrap(occurrence) + lineText.slice(column + length);
+	await ipc.invoke(CH.NOTE_WRITE, { path: sourcePath, content: lines.join('\n') }).catch(() => {});
+	return true;
 }
 
 export function splitTarget(target) {

@@ -15,6 +15,7 @@ import '../panels/clew-backlinks.js';
 import '../panels/clew-outgoing-links.js';
 import '../panels/clew-tag-pane.js';
 import '../panels/clew-outline.js';
+import '../panels/clew-properties.js';
 import '../views/clew-graph-view.js';
 import './clew-status-bar.js';
 
@@ -29,6 +30,7 @@ const TOOLS = {
 		{ id: 'outgoing', label: 'Out', element: 'clew-outgoing-links' },
 		{ id: 'tags', label: 'Tags', element: 'clew-tag-pane' },
 		{ id: 'outline', label: 'Outline', element: 'clew-outline' },
+		{ id: 'props', label: 'Props', element: 'clew-properties' },
 		{
 			id: 'graph', label: 'Graph', element: 'clew-graph-view',
 			setup: (el) => { el.local = true; el.depth = 1; },

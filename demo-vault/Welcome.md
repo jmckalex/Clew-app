@@ -15,6 +15,9 @@ rendered; **⌘O** finds any note; **⌘P** lists every command.
 - [[Attachments and Files]] — pasting images, PDF and media viewers
 - [[Navigation]] — switcher, palette, tabs and splits, history
 - [[Panels]] — backlinks, outgoing links, tags, outline, bookmarks
+- [[Properties]] — frontmatter as typed, editable rows
+- [[Canvas]] — an infinite board of notes, web pages, PDFs, ink, and
+  shapes ([[Demo Canvas.canvas]])
 - [[Search]] — full-text search and its operators
 - [[Graph View]] — the vault as a graph
 - [[Daily Notes and Templates]]

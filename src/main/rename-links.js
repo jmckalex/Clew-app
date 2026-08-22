@@ -66,5 +66,51 @@ export function propagateRename({ oldRel, newRel, indexer, vaults }) {
 			rewrittenFiles++;
 		}
 	}
+
+	rewrittenFiles += rewriteCanvasRefs({ oldRel, newRel, vaults });
 	return { rewrittenFiles, rewrittenLinks };
+}
+
+/**
+ * Canvas file nodes reference vault paths verbatim (any file type, not just
+ * notes) — rewrite them across every .canvas in the vault after a rename.
+ */
+function rewriteCanvasRefs({ oldRel, newRel, vaults }) {
+	const remap = (p) => {
+		if (p === oldRel) return newRel;
+		if (p.startsWith(oldRel + '/')) return newRel + p.slice(oldRel.length);
+		return p;
+	};
+	let rewritten = 0;
+	const walk = (dir) => {
+		let entries;
+		try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+		for (const entry of entries) {
+			if (entry.name.startsWith('.') || ['node_modules', '.trash'].includes(entry.name)) continue;
+			const abs = path.join(dir, entry.name);
+			if (entry.isDirectory()) {
+				walk(abs);
+				continue;
+			}
+			if (!entry.name.toLowerCase().endsWith('.canvas')) continue;
+			let json;
+			try { json = JSON.parse(fs.readFileSync(abs, 'utf8')); } catch { continue; }
+			let changed = false;
+			for (const node of Array.isArray(json?.nodes) ? json.nodes : []) {
+				if (node?.type === 'file' && typeof node.file === 'string') {
+					const next = remap(node.file);
+					if (next !== node.file) {
+						node.file = next;
+						changed = true;
+					}
+				}
+			}
+			if (changed) {
+				fs.writeFileSync(abs, JSON.stringify(json, null, '\t'));
+				rewritten++;
+			}
+		}
+	};
+	walk(vaults.root);
+	return rewritten;
 }

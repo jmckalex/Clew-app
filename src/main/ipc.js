@@ -4,6 +4,7 @@ import { ipcMain, BrowserWindow, shell } from 'electron';
 import { CH } from '../shared/channels.js';
 import { vaults } from './vault.js';
 import { settings } from './settings.js';
+import { appMenu } from './menu.js';
 import { renderService } from './main.js';
 import { indexer } from './indexer.js';
 import { propagateRename } from './rename-links.js';
@@ -46,6 +47,7 @@ export function registerIpc() {
 
 	handle(CH.INDEX_GET, () => (vaults.isOpen ? indexer.snapshot() : null));
 	handle(CH.SEARCH, ({ query }) => searchService.search(query));
+	handle(CH.UNLINKED_MENTIONS, ({ path }) => searchService.unlinkedMentions(path));
 	handle(CH.FS_TRASH, ({ path }) => vaults.trash(path));
 	handle(CH.FS_REVEAL, ({ path }) => vaults.reveal(path));
 	handle(CH.ATTACH_SAVE, ({ name, data }) =>
@@ -78,6 +80,8 @@ export function registerIpc() {
 		walk(vaults.root);
 		return out;
 	});
+
+	handle(CH.MENU_STATE, (state) => appMenu.update(state));
 
 	handle(CH.RENDER_SUBSCRIBE, ({ path }) => renderService.subscribe(path));
 	handle(CH.RENDER_UNSUBSCRIBE, ({ path }) => renderService.unsubscribe(path));

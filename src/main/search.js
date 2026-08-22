@@ -84,6 +84,81 @@ export class SearchService {
 		}
 		return results;
 	}
+
+	/**
+	 * Unlinked mentions of `targetPath`: occurrences of the note's basename or
+	 * aliases in other notes, outside any wikilink. Grouped per source file.
+	 */
+	unlinkedMentions(targetPath) {
+		if (!this.#vaults.isOpen) return [];
+		const base = targetPath.split('/').pop().replace(/\.(md|jmd)$/i, '');
+		const aliases = this.#indexer.notes.get(targetPath)?.aliases ?? [];
+		const names = [base, ...aliases];
+		const results = [];
+		let total = 0;
+		for (const relPath of this.#indexer.notes.keys()) {
+			if (relPath === targetPath || total >= 100) continue;
+			const text = this.#textFor(relPath);
+			if (text === null) continue;
+			// Cheap pre-filter before the per-line scan.
+			const lower = text.toLowerCase();
+			if (!names.some((n) => lower.includes(n.toLowerCase()))) continue;
+			const matches = scanMentions(text, names, 10);
+			if (matches.length === 0) continue;
+			total += matches.length;
+			results.push({ path: relPath, base, matches });
+		}
+		return results;
+	}
+}
+
+// ---- unlinked mentions -----------------------------------------------------
+
+const WIKILINK_SPAN_RE = /!?\[\[[^\[\]\n]*\]\]/g;
+const isWordChar = (ch) => ch !== undefined && /[A-Za-z0-9_]/.test(ch);
+
+/**
+ * Scan one note's text for word-bounded, case-insensitive occurrences of any
+ * of `names` that are NOT already inside a [[wikilink]]. Pure — exported for
+ * tests. Returns [{ line, column, length, name, snippet }] with `column`
+ * 0-based into the raw line.
+ */
+export function scanMentions(text, names, maxMatches = 20) {
+	const lowered = names
+		.map((name) => ({ name, lower: name.toLowerCase() }))
+		.filter((n) => n.lower.length > 0);
+	if (lowered.length === 0) return [];
+	const matches = [];
+	const lines = text.split('\n');
+	for (let i = 0; i < lines.length && matches.length < maxMatches; i++) {
+		const line = lines[i];
+		const lineLower = line.toLowerCase();
+		// Spans already inside wikilinks don't count as mentions.
+		const spans = [];
+		WIKILINK_SPAN_RE.lastIndex = 0;
+		let span;
+		while ((span = WIKILINK_SPAN_RE.exec(line)) !== null) {
+			spans.push([span.index, span.index + span[0].length]);
+		}
+		for (const { name, lower } of lowered) {
+			let from = 0;
+			let at;
+			while ((at = lineLower.indexOf(lower, from)) !== -1 && matches.length < maxMatches) {
+				from = at + lower.length;
+				if (isWordChar(line[at - 1]) || isWordChar(line[at + lower.length])) continue;
+				if (line[at - 1] === '#') continue; // it's a tag
+				if (spans.some(([s, e]) => at >= s && at < e)) continue;
+				matches.push({
+					line: i + 1,
+					column: at,
+					length: lower.length,
+					name,
+					snippet: line.trim().slice(0, 240),
+				});
+			}
+		}
+	}
+	return matches;
 }
 
 export function parseQuery(query) {

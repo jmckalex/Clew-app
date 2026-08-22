@@ -4,6 +4,7 @@
 import { vaultStore } from '../../state/vault-store.js';
 import { workspaceStore } from '../../state/workspace-store.js';
 import { fuzzyFilter } from '../../lib/fuzzy.js';
+import { isCanvasPath } from '../../lib/file-types.js';
 import { ipc, CH } from '../../ipc.js';
 
 export function openQuickSwitcher() {
@@ -42,12 +43,17 @@ export function openQuickSwitcher() {
 			}
 			return;
 		}
-		workspaceStore.openNote(item.path, { newTab });
+		if (isCanvasPath(item.path)) workspaceStore.openCanvas(item.path, { newTab });
+		else workspaceStore.openNote(item.path, { newTab });
 	};
 
 	const renderResults = () => {
 		const query = input.value.trim();
-		const candidates = vaultStore.linkCandidates();
+		const canvases = vaultStore.allPaths().filter(isCanvasPath).map((path) => ({
+			label: path.split('/').pop().replace(/\.canvas$/i, ''),
+			path,
+		}));
+		const candidates = [...vaultStore.linkCandidates(), ...canvases];
 		items = query
 			? fuzzyFilter(query, candidates, (c) => `${c.label} ${c.path}`, 40)
 			: candidates.slice(0, 40);

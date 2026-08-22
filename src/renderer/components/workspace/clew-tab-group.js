@@ -10,6 +10,7 @@ import './clew-preview-view.js';
 import '../views/clew-graph-view.js';
 import '../views/clew-settings-view.js';
 import '../views/clew-file-view.js';
+import '../views/clew-canvas-view.js';
 
 class ClewTabGroup extends ClewElement {
 	groupId = null;
@@ -79,6 +80,11 @@ class ClewTabGroup extends ClewElement {
 			body.replaceChildren(view);
 		} else if (active.kind === 'file') {
 			const view = document.createElement('clew-file-view');
+			view.tabId = active.id;
+			view.path = active.path;
+			body.replaceChildren(view);
+		} else if (active.kind === 'canvas') {
+			const view = document.createElement('clew-canvas-view');
 			view.tabId = active.id;
 			view.path = active.path;
 			body.replaceChildren(view);
