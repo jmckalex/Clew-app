@@ -5,9 +5,17 @@ Guidance for Claude Code working in the **Clew** repository.
 ## Project at a glance
 
 Clew is an open-source Obsidian-style note app: Electron shell, plain-JS web
-components, CodeMirror 6 editor, and the **jmarkdown** engine
-(`~/Sites/jmckalex/software/jmarkdown`, branch `at-migration`, consumed as a
-`file:` dependency) for rendering. GPL-3.0-or-later.
+components, CodeMirror 6 editor, and the **jmarkdown** engine for
+rendering. GPL-3.0-or-later.
+
+**Engine vendoring:** the golden master lives at
+`~/Sites/jmckalex/software/jmarkdown` (branch `at-migration`) and is the
+ONLY place the engine is edited. `vendor/jmarkdown/` is a committed dumb
+mirror (src + package.json + lockfile), overwritten wholesale by
+`npm run sync-engine` (scripts/vendor-jmarkdown.js) — `npm run dev` and
+packaging re-sync automatically when the master exists; other machines
+build from the committed mirror. NEVER edit vendor/ by hand; engine
+changes go upstream to the master, then re-sync.
 
 **Session state, recent work, and open items live in `HANDOVER.md`** —
 read it first. The full design plan (architecture rationale, milestones,
@@ -19,11 +27,23 @@ guide note exercises the features it documents.
 - **House style:** plain JavaScript ES modules + web components. No
   frameworks, no TypeScript. Tabs for indentation. Small hand-rolled
   utilities over dependencies.
-- **Build:** esbuild via `scripts/build.js` — four bundles (main ESM, preload
-  CJS, renderer, preview-client) plus verbatim copies of `styles/`,
-  `index.html`, and `src/engine/`. `npm run dev` = esbuild watch + Electron;
-  renderer rebuilds hot-reload the window, main/preload rebuilds respawn
-  Electron.
+- **Build:** esbuild via `scripts/build.js` — five bundles (main ESM,
+  preload CJS, renderer, preview-client, preview api) plus verbatim copies
+  of `styles/`, `index.html`, and `src/engine/`. `npm run dev` = engine
+  sync + esbuild watch + Electron; renderer rebuilds hot-reload the window,
+  main/preload rebuilds respawn Electron.
+- **Packaging:** `npm run package` (dir) / `npm run package:dmg`
+  (scripts/package.js → electron-builder, config in package.json `build`).
+  Key facts: the asar carries ONLY dist/ + package.json (everything is
+  esbuild-bundled); the engine worker is a plain-node fork that cannot read
+  asar, so the vendored engine + its staged production node_modules
+  (build-engine/, installed with --legacy-peer-deps), the engine assets,
+  and the preview assets (mathjax etc.) ship unpacked under Resources/ via
+  extraResources — except the engine's node_modules, which electron-builder
+  refuses to copy and scripts/after-pack.cjs copies instead. Dev-vs-packaged
+  locations are decided ONCE in `src/main/paths.js`; new main-process file
+  dependencies must go through it. Icon: scripts/make-icon.js renders
+  build-resources/icon.svg → icns (committed).
 - **Tests:** `npm test` (`node --test`, files in `tests/`): workspace tree,
   note-metadata extractor, BibTeX parser, and the ported jmarkdown-scan
   suite — 90 tests. DOM/UI work is verified with the smoke harness instead.

@@ -9,3 +9,4 @@ out/
 demo-vault/.clew/*
 !demo-vault/.clew/vault-settings.json
 first-session-2026-08-21.pdf
+build-engine/

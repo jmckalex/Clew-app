@@ -11,6 +11,7 @@ import { RenderService } from './render-service.js';
 import { registerPreviewScheme, installPreviewProtocol } from './protocol.js';
 import { indexer } from './indexer.js';
 import { kvStore, KV_FILE } from './kv-store.js';
+import { paths } from './paths.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.dirname(__dirname); // dist/
@@ -113,7 +114,8 @@ app.whenReady().then(() => {
 		vaults,
 		renderService,
 		distDir,
-		nodeModulesDir: path.join(rootDir, 'node_modules'),
+		nodeModulesDir: paths.previewAssets,
+		engineAssetsDir: paths.engineAssets,
 	});
 	// No { role: 'close' } anywhere in the menu: Cmd+W belongs to the
 	// renderer (close tab). See src/main/menu.js.

@@ -8,14 +8,13 @@
 // reused verbatim), keep exactly one pre-warmed standby, consume it per build
 // while the replacement warms, and drop stale results via a generation guard.
 import { fork } from 'node:child_process';
-import { createRequire } from 'node:module';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { CH } from '../shared/channels.js';
+import { paths } from './paths.js';
 
-const require = createRequire(import.meta.url);
-const WORKER_PATH = require.resolve('jmarkdown/src/watch-worker.js');
+const WORKER_PATH = paths.engineWorker;
 
 const REBUILD_DEBOUNCE_MS = 300;
 
@@ -99,7 +98,7 @@ export class RenderService {
 	// Clew-owned directory (vault roots stay clean; a vault-level .jmarkdown/
 	// config for CLI use is untouched and simply not consulted here).
 	#writeEngineConfig() {
-		const engineAssets = path.join(this.distDir, 'engine');
+		const engineAssets = paths.engineAssets;
 		const config = {
 			// "jmarkdown project" vaults (the book manuscript case) re-enable
 			// the engine's own-line [[file.md]] inclusion in previews.

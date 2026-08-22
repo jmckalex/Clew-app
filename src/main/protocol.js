@@ -46,14 +46,14 @@ export function registerPreviewScheme() {
 const RENDERED_SUFFIX = new RegExp(`(${NOTE_EXTENSIONS.map((e) => e.replace('.', '\\.')).join('|')})\\.html$`, 'i');
 
 /** After app.whenReady(). */
-export function installPreviewProtocol({ vaults, renderService, distDir, nodeModulesDir }) {
+export function installPreviewProtocol({ vaults, renderService, distDir, nodeModulesDir, engineAssetsDir }) {
 	const assetRoots = {
 		mathjax: path.join(nodeModulesDir, 'mathjax', 'es5'),
 		mermaid: path.join(nodeModulesDir, 'mermaid', 'dist'),
 		highlight: path.join(nodeModulesDir, 'highlight.js', 'styles'),
 		fontawesome: path.join(nodeModulesDir, '@fortawesome', 'fontawesome-free', 'js'),
 		jquery: path.join(nodeModulesDir, 'jquery', 'dist'),
-		preview: path.join(distDir, 'engine'), // preview.css
+		preview: engineAssetsDir, // preview.css
 	};
 
 	const headers = (type) => ({

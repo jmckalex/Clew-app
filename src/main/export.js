@@ -9,13 +9,12 @@
 import { dialog } from 'electron';
 import { execFile } from 'node:child_process';
 import { fork } from 'node:child_process';
-import { createRequire } from 'node:module';
+import { paths } from './paths.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { toolchainPath } from './render-service.js';
 
-const require = createRequire(import.meta.url);
-const WORKER_PATH = require.resolve('jmarkdown/src/watch-worker.js');
+const WORKER_PATH = paths.engineWorker;
 
 function runWorker({ file, options, cwd }) {
 	return new Promise((resolve, reject) => {

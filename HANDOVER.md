@@ -74,13 +74,27 @@ fix to discuss with the owner.
    name at open time and doesn't live-update on vault switch while the
    settings tab stays open (refresh by reopening the tab).
 
+## 3b. PACKAGING IS DONE (2026-08-22)
+
+M1–M5 are now complete, full stop. `npm run package` →
+`out/mac-arm64/Clew.app`; `npm run package:dmg` → `Clew-0.7.0-arm64.dmg`
+(~137MB, unsigned — set a real identity before distributing). The owner
+chose vendor-not-publish for jmarkdown: `vendor/jmarkdown` is a committed
+dumb mirror of the golden master, auto-synced by dev/package runs
+(see CLAUDE.md "Engine vendoring" + "Packaging" for the full mechanics:
+paths.js, asar-free engine in Resources/, after-pack.cjs workaround,
+generated icon). The packaged app was smoke-verified end to end:
+MathJax/theorems rendered in reading mode through the unpacked engine.
+Publishing jmarkdown to npm remains open for later (the sync script and
+`file:vendor/jmarkdown` dep swap out trivially for a registry version).
+
 ## 4. Feature plan (designed, not yet built — next sessions)
 
 Ordered by expected value; none started:
 
-1. **Packaging** (still first for "make it an app"): electron-builder,
-   icon, preview assets out of node_modules, jmarkdown publish-vs-vendor.
-   Mind `webviewTag: true` + guards in main.js.
+1. ~~Packaging~~ — done, see §3b. Follow-ups when going public: code
+   signing + notarization, locale stripping (~50 lproj dirs ship today),
+   pruning the engine's dependency tree (73MB staged), CI release builds.
 2. **Multi-window**: main.js assumes one `win` (menu send, vault events,
    smoke hook). Needs a window registry + per-focused-window send; the
    single-vault-per-process model can stay.
