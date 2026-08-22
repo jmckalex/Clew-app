@@ -44,9 +44,12 @@ export function createWindow(vaultPath = null) {
 
 	win.loadFile(path.join(distDir, 'renderer', 'index.html'));
 
-	// External links open in the browser, never inside the app window.
+	// External links open in the browser, never inside the app window. This
+	// also catches target=_blank clicks inside canvas-embed web iframes
+	// (their sandbox has allow-popups so the request lands here) — http(s)
+	// only, matching the webview guard below.
 	win.webContents.setWindowOpenHandler(({ url }) => {
-		shell.openExternal(url);
+		if (/^https?:/i.test(url)) shell.openExternal(url);
 		return { action: 'deny' };
 	});
 

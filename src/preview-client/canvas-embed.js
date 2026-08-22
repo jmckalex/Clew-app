@@ -213,12 +213,14 @@ function nodeEl(node) {
 	} else if (node.type === 'link') {
 		// A real embedded page where the site allows framing (an <iframe>
 		// honors X-Frame-Options; the app's canvas uses <webview>, which is
-		// unavailable inside preview iframes). Sandboxed: no popups, no
-		// navigating our document. The title bar link opens externally.
+		// unavailable inside preview iframes). Sandboxed: allow-popups lets
+		// target=_blank links reach the window-open handler in main, which —
+		// exactly like canvas webviews — sends them to the system browser and
+		// denies the popup. Same-tab links navigate the iframe in place.
 		el.classList.add('is-web');
 		const url = escapeXml(node.url);
 		el.innerHTML = `<div class="canvas-embed-webbar"><a href="${url}">${url}</a></div>`
-			+ `<iframe src="${url}" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>`;
+			+ `<iframe src="${url}" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>`;
 	} else if (node.type === 'file' && node.file) {
 		const src = sitePath(node.file);
 		if (IMAGE_EXT.test(node.file)) {
