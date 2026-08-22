@@ -2,8 +2,7 @@
 // once at boot. Chord notation is CodeMirror's ('Mod-Shift-p').
 import { registerCommand, buildContext, allCommands, isEnabled, effectiveKeymap } from './registry.js';
 import { openSearchPanel } from '@codemirror/search';
-import { startCompletion } from '@codemirror/autocomplete';
-import { EditorSelection } from '@codemirror/state';
+import { registerFormatCommands, activeEditorView, needsEditor } from './format.js';
 import * as actions from './actions.js';
 import { workspaceStore } from '../state/workspace-store.js';
 import { vaultStore, isNotePath } from '../state/vault-store.js';
@@ -16,8 +15,6 @@ import { ipc, CH } from '../ipc.js';
 
 const needsVault = (ctx) => ctx.vaultOpen;
 const needsNote = (ctx) => ctx.notePath !== null;
-// Commands that type into the note need its editor, not its preview.
-const needsEditor = (ctx) => ctx.notePath !== null && ctx.activeTab?.view?.mode !== 'reading';
 
 // ---- date formatting for daily notes / templates --------------------------
 
@@ -105,78 +102,6 @@ async function exportActiveNote(format) {
 	}
 }
 
-// ---- inline editing helpers ------------------------------------------------
-
-function activeEditorView() {
-	const ctx = buildContext();
-	return editorPool.get(ctx.activeTab?.id)?.view ?? null;
-}
-
-/** Wrap each selection range in marker pairs, or unwrap when already wrapped
- *  (markers just outside the range, or included in it). */
-function toggleWrap(view, marker, markerEnd = marker) {
-	const { state } = view;
-	const changes = state.changeByRange((range) => {
-		const { from, to } = range;
-		const before = state.sliceDoc(Math.max(0, from - marker.length), from);
-		const after = state.sliceDoc(to, Math.min(state.doc.length, to + markerEnd.length));
-		const inner = state.sliceDoc(from, to);
-		if (before === marker && after === markerEnd) {
-			return {
-				changes: [
-					{ from: from - marker.length, to: from },
-					{ from: to, to: to + markerEnd.length },
-				],
-				range: EditorSelection.range(from - marker.length, to - marker.length),
-			};
-		}
-		if (inner.length >= marker.length + markerEnd.length
-			&& inner.startsWith(marker) && inner.endsWith(markerEnd)) {
-			return {
-				changes: [
-					{ from, to: from + marker.length },
-					{ from: to - markerEnd.length, to },
-				],
-				range: EditorSelection.range(from, to - marker.length - markerEnd.length),
-			};
-		}
-		return {
-			changes: [
-				{ from, insert: marker },
-				{ from: to, insert: markerEnd },
-			],
-			range: EditorSelection.range(from + marker.length, to + marker.length),
-		};
-	});
-	view.dispatch(changes);
-	view.focus();
-}
-
-/** Wrap the selection as [[selection]] (cursor before ]]), or insert empty
- *  brackets and pop the wikilink completion. */
-function insertWikilink(view) {
-	const range = view.state.selection.main;
-	const text = view.state.sliceDoc(range.from, range.to);
-	view.dispatch({
-		changes: { from: range.from, to: range.to, insert: `[[${text}]]` },
-		selection: { anchor: range.from + 2 + text.length },
-	});
-	view.focus();
-	if (!text) startCompletion(view);
-}
-
-// jmarkdown's inline forms: *strong*, **intense**, /italic/, ==highlight==,
-// ~strikethrough~ (TeX-style sub/sup means no ~~ ~~ or ^ ^ here).
-const FORMAT_WRAPS = [
-	['edit:format-strong', 'Format: strong (*text*)', '*'],
-	['edit:format-intense', 'Format: intense (**text**)', '**'],
-	['edit:format-italic', 'Format: italic (/text/)', '/'],
-	['edit:format-highlight', 'Format: highlight (==text==)', '=='],
-	['edit:format-strike', 'Format: strikethrough (~text~)', '~'],
-	['edit:format-code', 'Format: inline code', '`'],
-	['edit:format-math', 'Format: inline math ($x$)', '$'],
-];
-
 // ---- the commands ----------------------------------------------------------
 
 export function registerBuiltinCommands() {
@@ -237,14 +162,8 @@ export function registerBuiltinCommands() {
 		// editing
 		{ id: 'edit:insert-template', name: 'Insert template…', hotkeys: ['Mod-Alt-t'],
 			when: needsEditor, run: () => insertTemplate() },
-		{ id: 'edit:insert-wikilink', name: 'Insert wikilink', hotkeys: ['Mod-k'], when: needsEditor,
-			run: () => { const view = activeEditorView(); if (view) insertWikilink(view); } },
 		{ id: 'edit:find-in-note', name: 'Find in note', hotkeys: ['Mod-f'], when: needsEditor,
 			run: () => { const view = activeEditorView(); if (view) { openSearchPanel(view); } } },
-		...FORMAT_WRAPS.map(([id, name, marker]) => ({
-			id, name, when: needsEditor,
-			run: () => { const view = activeEditorView(); if (view) toggleWrap(view, marker); },
-		})),
 
 		// view
 		{ id: 'view:properties', name: 'Open properties panel', when: needsVault,
@@ -267,6 +186,7 @@ export function registerBuiltinCommands() {
 			run: () => exportActiveNote('pdf') },
 	];
 	for (const command of commands) registerCommand(command);
+	registerFormatCommands();
 
 	// The palette itself.
 	registerCommand({

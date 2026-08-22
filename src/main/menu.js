@@ -12,6 +12,7 @@ import { app, Menu } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import { CH } from '../shared/channels.js';
+import { FORMAT_MENU } from '../shared/format-spec.js';
 import { settings } from './settings.js';
 import { allSessions, focusedSession, sessionForVault } from './session.js';
 import { createWindow, openVaultAnywhere, openVaultDialog } from './main.js';
@@ -236,24 +237,19 @@ class AppMenu {
 				{ type: 'separator' },
 				c('edit:find-in-note', 'Find in Note', { chord: 'Mod-f', needs: 'editor' }),
 				c('nav:search', 'Search in All Files', { chord: 'Mod-Shift-f', needs: 'vault' }),
-				{ type: 'separator' },
-				c('edit:insert-wikilink', 'Insert Wikilink', { chord: 'Mod-k', needs: 'editor' }),
-				c('edit:insert-template', 'Insert Template…', { chord: 'Mod-Alt-t', needs: 'editor' }),
-				{ type: 'separator' },
-				{
-					label: 'Format',
-					submenu: [
-						c('edit:format-strong', 'Strong (*text*)', { needs: 'editor' }),
-						c('edit:format-intense', 'Intense (**text**)', { needs: 'editor' }),
-						c('edit:format-italic', 'Italic (/text/)', { needs: 'editor' }),
-						c('edit:format-highlight', 'Highlight (==text==)', { needs: 'editor' }),
-						c('edit:format-strike', 'Strikethrough (~text~)', { needs: 'editor' }),
-						{ type: 'separator' },
-						c('edit:format-code', 'Inline Code', { needs: 'editor' }),
-						c('edit:format-math', 'Inline Math ($x$)', { needs: 'editor' }),
-					],
-				},
 			],
+		};
+
+		// The whole jmarkdown dialect, one submenu per family — generated from
+		// the shared spec so it can never drift from the registered commands.
+		const formatMenu = {
+			label: 'Format',
+			submenu: FORMAT_MENU.map((group) => ({
+				label: group.label,
+				submenu: group.items.map((item) => (item.separator
+					? { type: 'separator' }
+					: c(item.id, item.label, { needs: 'editor', chord: item.chord }))),
+			})),
 		};
 
 		const viewMenu = {
@@ -331,6 +327,7 @@ class AppMenu {
 			...(isMac ? [appMenu] : []),
 			fileMenu,
 			editMenu,
+			formatMenu,
 			viewMenu,
 			goMenu,
 			windowMenu,

@@ -114,6 +114,19 @@ changes needed; renders + exports honor it). Caveats: the editor's
 dialect overlay and the Format menu still assume the dialect when
 normalSyntax is on; the canvas card renderer too. Follow-up if wanted.
 
+## 3e. The Format menu (2026-08-22)
+
+Top-level Format menu covering the whole dialect, generated from
+src/shared/format-spec.js — ONE spec consumed by both the native menu
+and the renderer command registrations (~45 commands, all in the
+palette/hotkey editor, all gated on an editable note). Implementations
+in commands/format.js: toggling wraps and line prefixes, heading
+levels, jmarkdown alignment, alert wrapping, table builder + row
+insertion, container wrapping, inline inserts (footnote/citation/
+label/ref/:today/{{TOC}}). Edit menu slimmed to undo/clipboard/find.
+Labels show dialect syntax — under normalSyntax vaults they're
+slightly wrong (known caveat, same family as the editor overlay).
+
 ## 4. Feature plan (designed, not yet built — next sessions)
 
 Ordered by expected value; none started:

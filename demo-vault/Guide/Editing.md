@@ -26,4 +26,17 @@ come back, and ⌘Z still works.
   to the attachment folder and embedded (see [[Attachments and Files]]).
 - ⌘F searches within the note.
 
+## The Format menu
+
+The **Format** menu is a map of the whole jmarkdown dialect — every
+label shows the syntax it produces, so it doubles as a discovery tool:
+inline styles (including sub/superscript and underline), headings,
+lists and quotes, the alignment forms (`>> text <<` centers, `>> text`
+right-aligns), GFM alerts, table insertion, footnotes/citations/labels,
+and every block container from mermaid and TiKZ to `:::TeX`,
+`:::game`, and `:::comment`. Styles and lists **toggle** (apply again
+to remove; a bullet list converts straight to a task list), containers
+**wrap the selection**, and every item is also a palette command you
+can give a hotkey in Settings.
+
 See also: [[Reading Mode]], [[Links and Embeds]].
