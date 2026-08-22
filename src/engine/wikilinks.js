@@ -110,6 +110,24 @@ const escapeAttr = (s) =>
 	s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const escapeHtml = escapeAttr;
 
+/**
+ * Obsidian media-embed alias: the segment after the last '|' may be a size —
+ * "300" (width) or "300x200" (width × height) — with any earlier segments
+ * forming the alt text: ![[img.png|300]], ![[img.png|A caption|300]].
+ * Returns { alt, width, height } (alt null when the alias was only a size).
+ */
+export function parseMediaAlias(alias) {
+	if (!alias) return { alt: null, width: null, height: null };
+	const parts = alias.split('|').map((s) => s.trim());
+	const m = /^(\d+)(?:x(\d+))?$/.exec(parts[parts.length - 1]);
+	if (!m) return { alt: alias, width: null, height: null };
+	return {
+		alt: parts.slice(0, -1).join('|') || null,
+		width: Number(m[1]),
+		height: m[2] ? Number(m[2]) : null,
+	};
+}
+
 // [[target]] / [[target#heading]] / [[target|alias]] — target may be empty
 // for same-file heading links ([[#Heading]]).
 const LINK_RE = /^\[\[([^\[\]|#\n]*)(?:#([^\[\]|\n]+))?(?:\|([^\[\]\n]+))?\]\]/;
@@ -188,7 +206,10 @@ export const wikiembed = {
 		// Media embeds: ![[img.png]], ![[paper.pdf]], ![[clip.mp3]] …
 		const fileRel = link.target ? resolveFileTarget(link.target) : null;
 		if (fileRel && mediaKind(fileRel)) {
-			token.media = { rel: fileRel, kind: mediaKind(fileRel) };
+			const { alt, width, height } = parseMediaAlias(link.alias);
+			token.media = { rel: fileRel, kind: mediaKind(fileRel), width, height };
+			// A pure-size alias ("300") is not a caption — fall back to the name.
+			if (link.alias) token.label = alt ?? link.target;
 			return token;
 		}
 
@@ -223,10 +244,12 @@ export const wikiembed = {
 		if (global.isLatex) {
 			if (token.media) {
 				// Images (and single-page PDFs) go through includegraphics; other
-				// media has no LaTeX rendering.
+				// media has no LaTeX rendering. A |width in CSS px → pt (×0.75).
 				if (token.media.kind === 'image' || token.media.kind === 'pdf') {
 					const abs = path.join(vaultRoot(), token.media.rel);
-					return `\\begin{center}\\includegraphics[max width=\\linewidth]{${abs}}\\end{center}\n`;
+					const w = token.media.width
+						? `width=${token.media.width * 0.75}pt` : 'max width=\\linewidth';
+					return `\\begin{center}\\includegraphics[${w}]{${abs}}\\end{center}\n`;
 				}
 				return '';
 			}
@@ -235,17 +258,19 @@ export const wikiembed = {
 		if (token.media) {
 			const src = sitePath(token.media.rel);
 			const alt = escapeAttr(token.label);
+			const dims = (token.media.width ? ` width="${token.media.width}"` : '')
+				+ (token.media.height ? ` height="${token.media.height}"` : '');
 			switch (token.media.kind) {
 				case 'image':
-					return `<img class="internal-media" src="${src}" alt="${alt}">\n`;
+					return `<img class="internal-media" src="${src}" alt="${alt}"${dims}>\n`;
 				case 'pdf':
 					return `<div class="internal-embed pdf-embed-box">`
-						+ `<div class="embed-title"><a class="internal-link" href="#" data-href="${alt}">${alt}</a></div>`
+						+ `<div class="embed-title"><a class="internal-link" href="#" data-href="${escapeAttr(token.full)}">${alt}</a></div>`
 						+ `<embed class="pdf-embed" src="${src}" type="application/pdf"></div>\n`;
 				case 'audio':
 					return `<audio class="internal-media" controls src="${src}"></audio>\n`;
 				case 'video':
-					return `<video class="internal-media" controls src="${src}"></video>\n`;
+					return `<video class="internal-media" controls src="${src}"${dims}></video>\n`;
 			}
 		}
 		const title = escapeHtml(token.label);
