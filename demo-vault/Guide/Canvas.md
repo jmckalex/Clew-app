@@ -35,6 +35,9 @@ open in Obsidian too — Clew's drawing and shape layers travel in a
   get Chromium's full viewer.
 - **Web pages** — the globe toolbar button embeds a live web page. Paste a URL anywhere on the
   canvas for the same effect.
+- **Portals** — add a `.canvas` file to a canvas and it renders as a
+  live miniature of that whole canvas. Double-click to jump into the
+  real thing.
 - **Connections** — hover a node and drag from a side dot to another
   node. Double-click a connection to label it; right-click to color it.
 - **Groups** — select several nodes, right-click, *Group selection*.
@@ -44,10 +47,17 @@ open in Obsidian too — Clew's drawing and shape layers travel in a
 
 The pen (**P**) draws freehand ink; the eraser (**E**) removes strokes.
 Rectangle (**R**), ellipse (**O**), diamond (**D**), arrow (**A**), and
-line (**L**) drag out clean shapes — right-click one to fill it, recolor
-it, or give it a label; a selected shape resizes by its handles. Colors
-and pen widths sit in the toolbar. Right-click empty canvas → *Clear
-drawing* wipes the ink layer.
+line (**L**) drag out shapes; **T** places standalone text (four font
+families, any size — double-click to edit). The style bar under the
+toolbar sets **stroke style** (solid/dashed/dotted), **sloppiness**
+(architect/artist/cartoonist), **fill** (solid or hachure), and
+**opacity** — for new shapes and for whatever is selected. Right-click
+a shape for color, label, and **z-order** (front/forward/backward/
+back); right-click a card for flowchart **node shapes** (pill, circle,
+diamond, parallelogram, predefined process), border styles, and fills;
+right-click a connection for **arrowheads** (→ ↔ —), dashed/dotted
+lines, and **path routing** (curved, straight, or square — flowcharts).
+Right-click empty canvas → *Clear drawing* wipes the ink layer.
 
 ## Canvases inside notes
 

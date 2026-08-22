@@ -603,3 +603,75 @@
 	overflow: hidden;
 	z-index: 5;
 }
+
+/* ---- portals (a canvas inside a canvas) ----------------------------------- */
+.canvas-portal {
+	position: relative;
+	flex: 1;
+	overflow: hidden;
+	background: var(--clew-canvas-bg);
+}
+.canvas-portal.is-empty {
+	display: grid;
+	place-items: center;
+	color: var(--clew-text-faint);
+	font-size: 12px;
+}
+.canvas-portal-world {
+	position: absolute;
+	left: 0; top: 0;
+	transform-origin: 0 0;
+}
+.portal-node, .portal-group {
+	position: absolute;
+	box-sizing: border-box;
+	border-radius: 8px;
+}
+.portal-node {
+	background: var(--clew-canvas-node-bg);
+	border: 2px solid var(--clew-canvas-node-border);
+	overflow: hidden;
+}
+.portal-node[data-color='1'] { border-color: var(--clew-canvas-1); }
+.portal-node[data-color='2'] { border-color: var(--clew-canvas-2); }
+.portal-node[data-color='3'] { border-color: var(--clew-canvas-3); }
+.portal-node[data-color='4'] { border-color: var(--clew-canvas-4); }
+.portal-node[data-color='5'] { border-color: var(--clew-canvas-5); }
+.portal-node[data-color='6'] { border-color: var(--clew-canvas-6); }
+.portal-node[data-nshape='pill'] { border-radius: 999px; }
+.portal-node[data-nshape='circle'] { border-radius: 50%; }
+.portal-node[data-nshape='diamond'] { border: none; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+.portal-node[data-nshape='parallelogram'] { border: none; clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%); }
+.portal-node[data-nborder='dashed'] { border-style: dashed; }
+.portal-node[data-nborder='dotted'] { border-style: dotted; }
+.portal-node.is-bg-transparent { background: transparent; }
+.portal-node.is-card { padding: 10px 12px; font-size: 13px; line-height: 1.45; }
+.portal-node[data-nshape] { display: flex; align-items: center; justify-content: center; text-align: center; }
+.portal-node.is-chip {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 8px;
+	font-size: 12px;
+	color: var(--clew-text-muted);
+	word-break: break-all;
+}
+.portal-node img, .portal-node video, .portal-node iframe {
+	width: 100%;
+	height: 100%;
+	border: none;
+	display: block;
+	object-fit: cover;
+	pointer-events: none;
+}
+.portal-group {
+	border: 2px dashed var(--clew-canvas-node-border);
+	background: color-mix(in srgb, var(--clew-canvas-node-border) 8%, transparent);
+	border-radius: 10px;
+}
+.portal-group span {
+	position: absolute;
+	top: -20px; left: 4px;
+	font-size: 11px;
+	color: var(--clew-text-muted);
+}

@@ -19,6 +19,7 @@ import * as actions from '../../commands/actions.js';
 import * as model from '../../canvas/canvas-model.js';
 import { buildNodeContent, contentKey, setCardText } from '../../canvas/node-content.js';
 import { showCanvasMenu } from '../../canvas/canvas-menu.js';
+import { buildPortal } from '../../canvas/portal.js';
 import { canvasSyncBus } from '../../canvas/canvas-sync.js';
 import { inkColor, edgeColor, shapeSvg, edgeSvg, strokeSvg, escapeXml, TEXT_FONT_STACKS } from '../../canvas/shape-svg.js';
 import { openListModal } from '../modals/list-modal.js';
@@ -90,10 +91,14 @@ class ClewCanvasView extends ClewElement {
 		});
 		this.listen({ on: ipc.on }, CH.EV_FILE_CHANGED, ({ path }) => {
 			if (path === this.path) this.#externalChange();
-			// Note embeds on this canvas may contain ![[X.canvas]] embeds.
+			// Note embeds on this canvas may contain ![[X.canvas]] embeds,
+			// and portal nodes show other canvases directly.
 			if (path.toLowerCase().endsWith('.canvas')) {
 				for (const embed of this.#embeds.values()) {
 					this.#postEmbed(embed, { type: 'canvas-changed', path });
+				}
+				for (const portal of this.querySelectorAll(`.canvas-portal[data-portal-path]`)) {
+					if (portal.dataset.portalPath === path) buildPortal(portal, path);
 				}
 			}
 		});
@@ -1293,7 +1298,8 @@ class ClewCanvasView extends ClewElement {
 		const walk = (entries) => {
 			for (const entry of entries ?? []) {
 				if (entry.type === 'folder') walk(entry.children);
-				else if (isNotePath(entry.path) || isViewablePath(entry.path)) files.push(entry.path);
+				else if (isNotePath(entry.path) || isViewablePath(entry.path)
+					|| entry.path.toLowerCase().endsWith('.canvas')) files.push(entry.path);
 			}
 		};
 		walk(vaultStore.tree);
@@ -1507,6 +1513,9 @@ class ClewCanvasView extends ClewElement {
 		if (node) {
 			if (node.type === 'text') this.#beginEdit(node);
 			else if (node.type === 'group') this.#renameGroup(node);
+			else if (node.type === 'file' && node.file?.toLowerCase().endsWith('.canvas')) {
+				workspaceStore.openCanvas(node.file, { newTab: true });
+			}
 			else this.#engage(node.id);
 			return;
 		}
@@ -1721,6 +1730,7 @@ class ClewCanvasView extends ClewElement {
 		if (node.type === 'file') {
 			items.push({ label: 'Open in tab', click: () => {
 				if (isNotePath(node.file)) workspaceStore.openNote(node.file, { newTab: true });
+				else if (node.file?.toLowerCase().endsWith('.canvas')) workspaceStore.openCanvas(node.file, { newTab: true });
 				else workspaceStore.openFile(node.file, { newTab: true });
 			} });
 		}

@@ -9,6 +9,7 @@ import { previewUrl, fragmentUrl, previewOrigin } from '../lib/preview-url.js';
 import { renderCardHtml } from './card-markdown.js';
 import { typesetMath } from '../lib/mathjax.js';
 import { openWikilink } from '../commands/actions.js';
+import { buildPortal } from './portal.js';
 import { ipc, CH } from '../ipc.js';
 
 /**
@@ -141,6 +142,16 @@ export function buildNodeContent(node, embedHooks) {
 	const path = node.file;
 	const wrap = document.createElement('div');
 	wrap.className = 'canvas-embed';
+	if (path?.toLowerCase().endsWith('.canvas')) {
+		// Portal: a live, read-only miniature of another canvas. Built async
+		// once attached (it needs the box size); the view rebuilds it on
+		// file change. Double-click opens the real canvas.
+		const portal = document.createElement('div');
+		portal.className = 'canvas-portal';
+		queueMicrotask(() => buildPortal(portal, path));
+		wrap.append(portal, titleBar(node));
+		return wrap;
+	}
 	if (isNotePath(path)) {
 		const iframe = document.createElement('iframe');
 		// Unsandboxed like every preview frame (PDF embeds inside notes);
