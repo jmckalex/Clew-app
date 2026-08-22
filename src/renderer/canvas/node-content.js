@@ -65,6 +65,15 @@ export function buildNodeContent(node, embedHooks) {
 		webview.setAttribute('partition', 'persist:clew-canvas');
 		webview.setAttribute('src', node.url);
 
+		// Loading spinner: shown from attach until the page settles, and again
+		// during in-page navigations.
+		const loading = document.createElement('div');
+		loading.className = 'canvas-web-loading';
+		const ring = document.createElement('div');
+		ring.className = 'canvas-web-spinner';
+		loading.append(ring);
+		webview.addEventListener('did-stop-loading', () => { loading.hidden = true; });
+
 		// Load-failure chrome (offline, bad host): overlay with a retry.
 		const error = document.createElement('div');
 		error.className = 'canvas-web-error';
@@ -83,10 +92,14 @@ export function buildNodeContent(node, embedHooks) {
 			if (e.errorCode === -3 || e.isMainFrame === false) return; // aborted / subframe
 			message.textContent = `Couldn’t load ${node.url}${e.errorDescription ? ` (${e.errorDescription})` : ''}`;
 			error.hidden = false;
+			loading.hidden = true;
 		});
-		webview.addEventListener('did-start-loading', () => { error.hidden = true; });
+		webview.addEventListener('did-start-loading', () => {
+			error.hidden = true;
+			loading.hidden = false;
+		});
 
-		wrap.append(webview, error, titleBar(node));
+		wrap.append(webview, loading, error, titleBar(node));
 		return wrap;
 	}
 

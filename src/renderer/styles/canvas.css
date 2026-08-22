@@ -414,3 +414,25 @@
 	justify-content: center;
 }
 .canvas-zoombar button .ui-icon { font-size: 11px; }
+
+/* ---- web-node loading spinner ---------------------------------------------- */
+
+.canvas-web-loading {
+	position: absolute;
+	inset: 0;
+	display: grid;
+	place-items: center;
+	pointer-events: none;
+}
+/* The class display rules would defeat the hidden attribute; be explicit. */
+.canvas-web-loading[hidden], .canvas-web-error[hidden] { display: none; }
+.canvas-web-spinner {
+	width: 28px;
+	height: 28px;
+	border-radius: 50%;
+	border: 3px solid color-mix(in srgb, var(--clew-accent) 25%, transparent);
+	border-top-color: var(--clew-accent);
+	animation: clew-spin 0.9s linear infinite;
+	filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.35));
+}
+@keyframes clew-spin { to { transform: rotate(360deg); } }
