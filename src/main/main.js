@@ -155,6 +155,13 @@ app.whenReady().then(() => {
 	appMenu.init({ rootDir });
 	if (process.env.CLEW_DEV) watchRendererDist();
 
+	// Smoke runs open EXACTLY the given vault — never the user's restored
+	// set, and without rewriting openVaults/recents (harness isolation).
+	if (process.env.CLEW_SMOKE && process.env.CLEW_SMOKE_VAULT) {
+		createWindow(process.env.CLEW_SMOKE_VAULT);
+		return;
+	}
+
 	// Reopen every vault that was open last time (one window each);
 	// migrate from the old single lastVault setting.
 	let toOpen = (settings.get('openVaults') ?? []).filter((p) => fs.existsSync(p));

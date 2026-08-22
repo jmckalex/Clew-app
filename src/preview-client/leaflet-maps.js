@@ -27,8 +27,33 @@ function loadLeaflet() {
 
 const post = (msg) => window.parent.postMessage({ source: 'clew-preview', ...msg }, '*');
 
-const OSM_TILES = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
-const OSM_ATTRIBUTION = '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+// Named tile styles (all ToS-clean, attribution required). Voyager — the
+// Google-Maps-like cartography from CARTO — is the default look.
+const OSM_ATTR = '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+const CARTO_ATTR = OSM_ATTR + ' © <a href="https://carto.com/attributions">CARTO</a>';
+const TILE_STYLES = {
+	voyager: {
+		url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+		attribution: CARTO_ATTR, subdomains: 'abcd', maxZoom: 20,
+	},
+	light: {
+		url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+		attribution: CARTO_ATTR, subdomains: 'abcd', maxZoom: 20,
+	},
+	dark: {
+		url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+		attribution: CARTO_ATTR, subdomains: 'abcd', maxZoom: 20, dark: true,
+	},
+	satellite: {
+		url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+		attribution: '© Esri, Maxar, Earthstar Geographics', maxZoom: 19, dark: true,
+	},
+	terrain: {
+		url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+		attribution: OSM_ATTR + ', SRTM | © <a href="https://opentopomap.org">OpenTopoMap</a>', maxZoom: 17,
+	},
+	osm: { url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: OSM_ATTR, maxZoom: 19 },
+};
 
 export async function initLeafletMaps() {
 	const pending = [...document.querySelectorAll('.clew-leaflet[data-leaflet]')]
@@ -70,14 +95,21 @@ function buildMap(el, config) {
 		img.src = config.imageUrl;
 		return;
 	}
+	const style = config.tileServer
+		? { url: config.tileServer, attribution: '' }
+		: TILE_STYLES[config.tiles] ?? TILE_STYLES.voyager;
 	map = L.map(el, {
 		minZoom: config.minZoom,
-		maxZoom: config.maxZoom,
+		maxZoom: config.maxZoom ?? style.maxZoom,
 	}).setView([config.lat ?? 0, config.long ?? 0], config.zoom ?? 5);
-	const tiles = L.tileLayer(config.tileServer ?? OSM_TILES, {
-		attribution: config.tileServer ? '' : OSM_ATTRIBUTION,
+	const tiles = L.tileLayer(style.url, {
+		attribution: style.attribution,
+		...(style.subdomains ? { subdomains: style.subdomains } : {}),
+		...(style.maxZoom ? { maxZoom: style.maxZoom } : {}),
 	});
 	tiles.addTo(map);
+	// Styles that are already dark (or photographic) skip the dark-theme dim.
+	if (style.dark) el.classList.add('is-light');
 	if (config.darkMode) el.classList.add('is-dark');
 	addMarkers(map, config);
 	const photoPins = addPhotoMarkers(map, config);

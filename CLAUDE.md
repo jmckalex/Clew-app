@@ -50,7 +50,9 @@ guide note exercises the features it documents.
   note-metadata extractor, BibTeX parser, and the ported jmarkdown-scan
   suite — 90 tests. DOM/UI work is verified with the smoke harness instead.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
-  [CLEW_SMOKE_FRAME_SCRIPT=frame.js] electron .` boots the app, runs the
+  [CLEW_SMOKE_FRAME_SCRIPT=frame.js] [CLEW_SMOKE_VAULT=/path/vault]
+  electron .` — SMOKE_VAULT opens exactly that vault, never touching the
+  user's restored vault set (always pass it). Boots the app, runs the
   scenario in the renderer (dev hook `window.__clew` exposes the stores,
   registry, ipc), optionally drives the preview iframe's document via
   webFrameMain, screenshots, and quits. Use it for every UI change.

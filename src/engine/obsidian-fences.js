@@ -54,6 +54,7 @@ export function parseLeafletConfig(body) {
 		else if (key === 'maxzoom') config.maxZoom = num(value);
 		else if (key === 'height') config.height = /^\d+$/.test(value) ? `${value}px` : value;
 		else if (key === 'tileserver') config.tileServer = value;
+		else if (key === 'tiles' || key === 'style') config.tiles = value.toLowerCase();
 		else if (key === 'darkmode') config.darkMode = value === 'true';
 		else if (key === 'image') {
 			const wiki = /\[\[([^\[\]|]+)\]\]/.exec(value);

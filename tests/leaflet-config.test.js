@@ -50,3 +50,8 @@ test('photos folder key', () => {
 	assert.equal(parseLeafletConfig('photos: [[Holiday/Day 3]]').photos, 'Holiday/Day 3');
 	assert.equal(parseLeafletConfig('photos: Trips/Rome').photos, 'Trips/Rome');
 });
+
+test('named tile styles', () => {
+	assert.equal(parseLeafletConfig('tiles: Satellite').tiles, 'satellite');
+	assert.equal(parseLeafletConfig('style: dark').tiles, 'dark');
+});

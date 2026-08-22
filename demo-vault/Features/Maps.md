@@ -13,14 +13,18 @@ long: -0.1278
 zoom: 13
 height: 380
 marker: 51.5007, -0.1246, Westminster
-marker: 51.5145, -0.1163, [[Welcome|The LSE, roughly]]
+marker: 51.5145, -0.1163, [[https:///www.lse.ac.uk/|The LSE, roughly]]
 marker: 51.5194, -0.1270, The British Museum
 ```
 
-Other config keys: `minZoom` / `maxZoom`, `tileServer:` (a custom
-`{z}/{x}/{y}` tile URL), and `image: [[file.png]]`, which replaces the
-world map with a vault image in its own pixel coordinates — a floor
-plan, a hand-drawn fantasy map — fully offline, with the same markers.
+The default cartography is CARTO **Voyager** — the clean, Google-Maps-
+like look. Pick another with `tiles:` — `satellite` (Esri imagery),
+`terrain` (OpenTopoMap), `light` / `dark` (CARTO), or `osm` (classic
+OpenStreetMap). Other config keys: `minZoom` / `maxZoom`, `tileServer:`
+(any custom `{z}/{x}/{y}` tile URL), and `image: [[file.png]]`, which
+replaces the world map with a vault image in its own pixel coordinates
+— a floor plan, a hand-drawn fantasy map — fully offline, with the
+same markers.
 
 ## Photo maps
 
