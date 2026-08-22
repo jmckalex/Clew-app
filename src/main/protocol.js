@@ -58,6 +58,7 @@ export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDi
 		highlight: path.join(nodeModulesDir, 'highlight.js', 'styles'),
 		fontawesome: path.join(nodeModulesDir, '@fortawesome', 'fontawesome-free', 'js'),
 		jquery: path.join(nodeModulesDir, 'jquery', 'dist'),
+		leaflet: path.join(nodeModulesDir, 'leaflet', 'dist'),
 		preview: engineAssetsDir, // preview.css
 	};
 

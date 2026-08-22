@@ -4,6 +4,7 @@
 // survive updates.
 import morphdom from 'morphdom';
 import { initCanvasEmbeds, refreshCanvasEmbeds, broadcastThemeToNested } from './canvas-embed.js';
+import { initLeafletMaps } from './leaflet-maps.js';
 
 const HOST_SOURCE = 'clew-preview-host';
 const post = (msg) => window.parent.postMessage({ source: 'clew-preview', ...msg }, '*');
@@ -65,6 +66,13 @@ function applyRender(html) {
 				if (fromEl.tagName === 'SCRIPT') return false;
 				if (fromEl.id === '__clew_err') return false;
 				if (fromEl.classList?.contains('canvas-embed-scene')) return false;
+				// Initialized maps hold live Leaflet state; replace only when
+				// the fence config actually changed.
+				if (fromEl.classList?.contains('clew-leaflet') && fromEl.dataset.leafletInit) {
+					if (fromEl.dataset.leaflet === toEl.dataset?.leaflet) return false;
+					fromEl.replaceChildren();
+					delete fromEl.dataset.leafletInit;
+				}
 				return !fromEl.isEqualNode(toEl);
 			},
 			onBeforeNodeDiscarded(node) {
@@ -76,6 +84,7 @@ function applyRender(html) {
 		showError(null);
 		enableTaskCheckboxes();
 		initCanvasEmbeds();
+		initLeafletMaps();
 		retypeset();
 		// Morphs never re-execute scripts; note-API controls re-bind on this.
 		document.dispatchEvent(new CustomEvent('clew:render'));
@@ -208,4 +217,5 @@ function scrollToLine(line, behavior) {
 
 enableTaskCheckboxes();
 initCanvasEmbeds();
+initLeafletMaps();
 post({ type: 'ready' });

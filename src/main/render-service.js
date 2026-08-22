@@ -119,7 +119,7 @@ export class RenderService {
 			'Template': path.join(engineAssets, 'clew-template.html'),
 			'Extensions': [
 				`wikiembed, wikilink from ${path.join(engineAssets, 'wikilinks.js')}`,
-				`mermaidFence from ${path.join(engineAssets, 'obsidian-fences.js')}`,
+				`mermaidFence, leafletFence from ${path.join(engineAssets, 'obsidian-fences.js')}`,
 			],
 			'MathJax': { 'src': '/__clew_assets__/mathjax/tex-svg.js' },
 			'Mermaid': '/__clew_assets__/mermaid/mermaid.min.js',

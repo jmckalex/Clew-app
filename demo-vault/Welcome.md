@@ -32,7 +32,8 @@ rendered; **⌘O** finds any note; **⌘P** lists every command.
 
 The `Features/` folder stress-tests the engine: [[Citations]] (with a
 real bibliography), [[Math and Theorems]], [[Footnotes]], [[Diagrams]],
-[[Media Gallery]] (public-domain paintings and an 1895 film), and
+[[Media Gallery]] (public-domain paintings and an 1895 film),
+[[Maps]] (interactive Leaflet maps), and
 [[Dialect Demo]] for the syntax itself. [[Tasks]] has checkboxes that
 write back when clicked in reading mode.
 

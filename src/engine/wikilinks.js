@@ -101,7 +101,7 @@ export function resolveFileTarget(target) {
  *  session id as their first segment (CLEW_SESSION_ID, set by the render
  *  service) — a bare "/rel/path" would resolve against the origin root and
  *  lose it. Without a session id (standalone CLI use), fall back to "/". */
-const sitePath = (rel) => {
+export const sitePath = (rel) => {
 	const sid = process.env.CLEW_SESSION_ID;
 	const encoded = rel.split('/').map(encodeURIComponent).join('/');
 	return sid ? `/${encodeURIComponent(sid)}/${encoded}` : `/${encoded}`;

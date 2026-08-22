@@ -290,3 +290,20 @@ html[data-theme='light'] img[src*="TiKZ/"], html[data-theme='light'] img[src*="M
 	justify-content: center;
 	text-align: center;
 }
+
+/* ---- Leaflet maps (```leaflet fences) ------------------------------------- */
+.clew-leaflet {
+	border-radius: 8px;
+	border: 1px solid var(--preview-border);
+	background: var(--preview-code-bg);
+	margin: 0.6em 0;
+	/* Leaflet positions panes absolutely inside; keep our box the context. */
+	position: relative;
+	z-index: 0;
+}
+.clew-leaflet .leaflet-popup-content a { cursor: pointer; }
+/* Dark theme: dim + invert-ish tile filter (the obsidian-leaflet trick),
+   keeping controls/popups (which sit above the tile pane) legible. */
+:root:not([data-theme='light']) .clew-leaflet:not(.is-light) .leaflet-tile {
+	filter: brightness(0.75) contrast(1.05) saturate(0.85);
+}

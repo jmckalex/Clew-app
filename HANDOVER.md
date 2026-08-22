@@ -81,6 +81,26 @@ fix to discuss with the owner.
    name at open time and doesn't live-update on vault switch while the
    settings tab stays open (refresh by reopening the tab).
 
+## 3a2. Canvas superpowers + Leaflet maps (2026-08-22, owner-requested)
+
+Excalidraw/Advanced-Canvas parity: shape stroke styles + 3 sloppiness
+levels + opacity + hachure fills; standalone text shapes (4 system font
+stacks, foreignObject-rendered so PNG export works); flowchart node
+shapes/borders/fills under clew.nodeStyles; edge fromEnd/toEnd (SPEC
+fields), dash + path routing (bezier/straight/square) under
+clew.edgeStyles; z-order via model.reorder (paint order = array order);
+style bar under the toolbar; menu 'choices' rows; portals (canvas file
+node → live miniature via canvas/portal.js, rebuilt on file change,
+no recursion). Everything mirrored in read-only note embeds.
+
+Leaflet maps: ```leaflet fences (obsidian-leaflet-compatible subset,
+parseLeafletConfig in obsidian-fences.js, unit-tested) → interactive
+maps in previews via preview-client/leaflet-maps.js; leaflet@1.9.4
+served from /__clew_assets__/leaflet/ (protocol root + extraResources
+for packaged builds — packaging NOT yet re-verified since). OSM tiles
+need network; image: [[file]] maps are offline (CRS.Simple). Marker
+wikilinks post link-click. Maps guide note: Features/Maps.md.
+
 ## 3b. PACKAGING IS DONE (2026-08-22)
 
 M1–M5 are now complete, full stop. `npm run package` →

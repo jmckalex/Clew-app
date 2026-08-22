@@ -42,6 +42,7 @@
     "highlight.js": "^11.12.0",
     "jmarkdown": "file:vendor/jmarkdown",
     "jquery": "^4.0.0",
+    "leaflet": "^1.9.4",
     "mathjax": "^3.2.2",
     "mermaid": "^11.17.0",
     "morphdom": "^2.7.8"
@@ -92,6 +93,10 @@
       {
         "from": "node_modules/jquery/dist",
         "to": "preview-assets/jquery/dist"
+      },
+      {
+        "from": "node_modules/leaflet/dist",
+        "to": "preview-assets/leaflet/dist"
       }
     ],
     "mac": {
