@@ -16,6 +16,7 @@
 import { protocol } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
+import { Readable } from 'node:stream';
 import { NOTE_EXTENSIONS } from '../shared/channels.js';
 import { sessionById } from './session.js';
 
@@ -66,12 +67,44 @@ export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDi
 		'Access-Control-Allow-Origin': '*',
 	});
 
-	const fileResponse = (absPath, extraHeaders = {}) => {
-		if (!fs.existsSync(absPath) || !fs.statSync(absPath).isFile()) {
+	const fileResponse = (absPath, extraHeaders = {}, rangeHeader = null) => {
+		let stat = null;
+		try { stat = fs.statSync(absPath); } catch { /* fall through to 404 */ }
+		if (!stat?.isFile()) {
 			return new Response('Not found', { status: 404, headers: headers('text/plain') });
 		}
 		const type = MIME[path.extname(absPath).toLowerCase()] ?? 'application/octet-stream';
-		return new Response(fs.readFileSync(absPath), { headers: { ...headers(type), ...extraHeaders } });
+		const base = { ...headers(type), 'Accept-Ranges': 'bytes', ...extraHeaders };
+
+		// Byte ranges: Chromium's media stack refuses to scrub audio/video
+		// (and moov-at-end MP4s can't even build a seek index) unless the
+		// server honors Range. Single ranges only — all Chromium ever sends.
+		const m = rangeHeader ? /^bytes=(\d*)-(\d*)$/.exec(rangeHeader.trim()) : null;
+		if (m && (m[1] !== '' || m[2] !== '')) {
+			const size = stat.size;
+			let start, end;
+			if (m[1] === '') { // suffix form "bytes=-N": the last N bytes
+				start = Math.max(0, size - Number(m[2]));
+				end = size - 1;
+			} else {
+				start = Number(m[1]);
+				end = m[2] === '' ? size - 1 : Math.min(Number(m[2]), size - 1);
+			}
+			if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end)
+				|| start > end || start >= size) {
+				return new Response(null,
+					{ status: 416, headers: { ...base, 'Content-Range': `bytes */${size}` } });
+			}
+			return new Response(Readable.toWeb(fs.createReadStream(absPath, { start, end })), {
+				status: 206,
+				headers: {
+					...base,
+					'Content-Range': `bytes ${start}-${end}/${size}`,
+					'Content-Length': String(end - start + 1),
+				},
+			});
+		}
+		return new Response(fs.readFileSync(absPath), { headers: base });
 	};
 
 	protocol.handle(PREVIEW_SCHEME, async (request) => {
@@ -89,7 +122,7 @@ export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDi
 				if (!abs.startsWith(base + path.sep)) {
 					return new Response('Forbidden', { status: 403, headers: headers('text/plain') });
 				}
-				return fileResponse(abs);
+				return fileResponse(abs, {}, request.headers.get('range'));
 			}
 			if (pathname.startsWith('__clew_preview__/')) {
 				const file = pathname.endsWith('/api.js') ? 'api.js' : 'client.js';
@@ -133,7 +166,7 @@ export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDi
 			}
 
 			// Anything else: the real file from the vault (relative images etc.).
-			return fileResponse(vaults.resolve(rel));
+			return fileResponse(vaults.resolve(rel), {}, request.headers.get('range'));
 		} catch (err) {
 			return new Response(`Preview error: ${String(err.message ?? err)}`,
 				{ status: 500, headers: { 'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*' } });
