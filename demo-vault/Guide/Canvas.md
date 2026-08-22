@@ -47,8 +47,18 @@ it, or give it a label; a selected shape resizes by its handles. Colors
 and pen widths sit in the toolbar. Right-click empty canvas → *Clear
 drawing* wipes the ink layer.
 
+## Canvases inside notes
+
+`![[Demo Canvas.canvas]]` embeds a live, read-only view of a canvas in
+any note — it re-renders whenever the canvas changes, and its title
+link opens the real thing:
+
+![[Demo Canvas.canvas]]
+
 ## Good to know
 
 - Nodes take one of six accent colors (right-click → swatches).
 - Renaming a note updates every canvas that embeds it.
 - The canvas auto-saves; ⌘Z history lives per open tab.
+- Right-click empty canvas → *Export drawing as PNG…* saves the ink and
+  shape layers as a transparent PNG (2× resolution).

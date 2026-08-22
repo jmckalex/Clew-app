@@ -23,6 +23,7 @@ const MEDIA_KIND = {
 	'.pdf': 'pdf',
 	'.mp3': 'audio', '.m4a': 'audio', '.wav': 'audio', '.ogg': 'audio', '.flac': 'audio',
 	'.mp4': 'video', '.webm': 'video', '.mov': 'video',
+	'.canvas': 'canvas',
 };
 const mediaKind = (p) => MEDIA_KIND[p.slice(p.lastIndexOf('.')).toLowerCase()] ?? null;
 
@@ -271,6 +272,13 @@ export const wikiembed = {
 					return `<audio class="internal-media" controls src="${src}"></audio>\n`;
 				case 'video':
 					return `<video class="internal-media" controls src="${src}"${dims}></video>\n`;
+				case 'canvas':
+					// A live, read-only canvas view — the preview client fetches
+					// the JSON at data-canvas-path and renders the scene into the
+					// shell (canvas-embed.js). LaTeX has no rendering for it.
+					return `<div class="internal-embed canvas-embed" data-canvas-path="${src}">`
+						+ `<div class="embed-title"><a class="internal-link" href="#" data-href="${escapeAttr(token.full)}">${alt}</a></div>`
+						+ `<div class="canvas-embed-scene"></div></div>\n`;
 			}
 		}
 		const title = escapeHtml(token.label);

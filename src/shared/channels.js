@@ -36,6 +36,7 @@ export const CH = {
 
 	// invoke: export via the engine
 	EXPORT_NOTE: 'clew:export-note',
+	CANVAS_EXPORT_PNG: 'clew:canvas-export-png',
 	SNIPPETS_GET: 'clew:snippets-get',
 
 	// invoke: index & search

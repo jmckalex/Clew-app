@@ -30,6 +30,10 @@ class ClewPreviewView extends ClewElement {
 		this.listen({ on: ipc.on }, CH.EV_RENDER_ERROR, ({ path, message }) => {
 			if (path === this.path) this.#post({ type: 'error', message });
 		});
+		// Canvas embeds (![[X.canvas]]) rebuild in place when the file changes.
+		this.listen({ on: ipc.on }, CH.EV_FILE_CHANGED, ({ path }) => {
+			if (path.toLowerCase().endsWith('.canvas')) this.#post({ type: 'canvas-changed', path });
+		});
 		this.listen(scrollSyncBus, 'scroll', ({ path, line, from }) => {
 			if (from === 'preview' || path !== this.path) return;
 			this.#suppressor.suppress();

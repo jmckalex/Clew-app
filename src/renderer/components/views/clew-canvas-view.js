@@ -20,7 +20,7 @@ import * as model from '../../canvas/canvas-model.js';
 import { buildNodeContent, contentKey, setCardText } from '../../canvas/node-content.js';
 import { showCanvasMenu } from '../../canvas/canvas-menu.js';
 import { canvasSyncBus } from '../../canvas/canvas-sync.js';
-import { seededRand, roughLine, roughRect, roughDiamond, roughEllipse } from '../../canvas/rough.js';
+import { inkColor, edgeColor, shapeSvg, edgeSvg, escapeXml } from '../../canvas/shape-svg.js';
 import { openListModal } from '../modals/list-modal.js';
 import { previewUrl } from '../../lib/preview-url.js';
 import { handleApiRequest } from '../../note-api.js';
@@ -81,6 +81,12 @@ class ClewCanvasView extends ClewElement {
 		});
 		this.listen({ on: ipc.on }, CH.EV_FILE_CHANGED, ({ path }) => {
 			if (path === this.path) this.#externalChange();
+			// Note embeds on this canvas may contain ![[X.canvas]] embeds.
+			if (path.toLowerCase().endsWith('.canvas')) {
+				for (const embed of this.#embeds.values()) {
+					this.#postEmbed(embed, { type: 'canvas-changed', path });
+				}
+			}
 		});
 		this.listen(settingsStore, 'settings-changed', () => this.#broadcastTheme());
 		// Sibling canvas views of the same file (splits) sync live.
@@ -493,14 +499,7 @@ class ClewCanvasView extends ClewElement {
 			const from = this.#nodeById(edge.fromNode);
 			const to = this.#nodeById(edge.toNode);
 			if (!from || !to) continue;
-			const geo = model.edgeGeometry(from, edge.fromSide, to, edge.toSide);
-			const selected = this.#sel.edges.has(edge.id);
-			const colorAttr = edgeColor(edge.color);
-			parts.push(`<g class="canvas-edge${selected ? ' is-selected' : ''}" data-id="${edge.id}">`
-				+ `<path class="canvas-edge-line" d="${geo.d}" style="stroke:${colorAttr}"/>`
-				+ `<path class="canvas-edge-head" style="fill:${colorAttr}" transform="translate(${geo.to.x},${geo.to.y}) rotate(${geo.angle * 180 / Math.PI})" d="M 2 0 L -10 5.5 L -10 -5.5 Z"/>`
-				+ (edge.label ? `<text class="canvas-edge-label" x="${geo.mid.x}" y="${geo.mid.y - 6}" text-anchor="middle">${escapeXml(edge.label)}</text>` : '')
-				+ `</g>`);
+			parts.push(edgeSvg(edge, from, to, this.#sel.edges.has(edge.id)));
 		}
 		svg.innerHTML = parts.join('');
 	}
@@ -1624,6 +1623,9 @@ class ClewCanvasView extends ClewElement {
 			} },
 			{ label: 'Zoom to fit', click: () => this.#zoomFit() },
 			{ separator: true },
+			...(this.#doc.strokes.length || this.#doc.shapes.length ? [
+				{ label: 'Export drawing as PNG…', click: () => this.exportDrawingPng() },
+			] : []),
 			{ label: 'Clear drawing', danger: true, click: () => {
 				if (this.#doc.strokes.length === 0) return;
 				this.#checkpoint();
@@ -1631,6 +1633,82 @@ class ClewCanvasView extends ClewElement {
 				this.#mutated();
 			} },
 		]);
+	}
+
+	// ---- drawing export -------------------------------------------------------
+
+	/**
+	 * The drawing layer (ink strokes + shapes) as a standalone SVG document.
+	 * shapeSvg/strokePath emit var(--clew-canvas-*) colors; the SVG carries the
+	 * current theme's values inline, so it rasterizes identically anywhere.
+	 */
+	drawingSvg() {
+		const items = [...this.#doc.strokes, ...this.#doc.shapes];
+		if (items.length === 0) return null;
+		let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+		const grow = (x, y, m) => {
+			minX = Math.min(minX, x - m); minY = Math.min(minY, y - m);
+			maxX = Math.max(maxX, x + m); maxY = Math.max(maxY, y + m);
+		};
+		for (const s of this.#doc.strokes) {
+			for (let i = 0; i < s.points.length; i += 2) grow(s.points[i], s.points[i + 1], s.width);
+		}
+		for (const s of this.#doc.shapes) {
+			const r = model.shapeRect(s);
+			grow(r.x, r.y, 6);
+			grow(r.x + r.width, r.y + r.height, 6);
+		}
+		const pad = 24;
+		const box = {
+			x: minX - pad, y: minY - pad,
+			width: maxX - minX + pad * 2, height: maxY - minY + pad * 2,
+		};
+		const style = getComputedStyle(this);
+		const vars = ['bg', 'edge', 'ink', '1', '2', '3', '4', '5', '6']
+			.map((k) => `--clew-canvas-${k}:${style.getPropertyValue(`--clew-canvas-${k}`).trim()};`)
+			.join('');
+		const strokes = this.#doc.strokes.map((stroke) =>
+			`<path class="canvas-stroke" d="${model.strokePath(stroke)}"`
+			+ ` style="stroke:${inkColor(stroke.color)};stroke-width:${stroke.width}"/>`).join('');
+		const shapes = this.#doc.shapes.map((shape) => shapeSvg(shape, false)).join('');
+		return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${box.x} ${box.y} ${box.width} ${box.height}"`
+			+ ` width="${Math.ceil(box.width)}" height="${Math.ceil(box.height)}">`
+			+ `<style>:root{${vars}--clew-text-muted:${style.getPropertyValue('--clew-text-muted').trim()};}`
+			+ `.canvas-stroke{fill:none;stroke-linecap:round;stroke-linejoin:round}`
+			+ `.canvas-shape line,.canvas-shape rect,.canvas-shape ellipse,.canvas-shape polygon{stroke-width:2.5}`
+			+ `.canvas-shape path{stroke-width:2.5}`
+			+ `.canvas-shape-label{fill:var(--clew-text-muted);font:13px ${style.fontFamily.replace(/"/g, "'")}}`
+			+ `</style>${strokes}${shapes}</svg>`;
+	}
+
+	/** Rasterize the drawing layer at 2x; resolves to a PNG data URL. */
+	async drawingPngDataUrl() {
+		const svg = this.drawingSvg();
+		if (!svg) return null;
+		const img = new Image();
+		await new Promise((resolve, reject) => {
+			img.onload = resolve;
+			img.onerror = () => reject(new Error('drawing SVG failed to rasterize'));
+			img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+		});
+		const canvas = document.createElement('canvas');
+		canvas.width = img.width * 2;
+		canvas.height = img.height * 2;
+		canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+		return canvas.toDataURL('image/png');
+	}
+
+	/** Menu action: rasterize and hand off to main for the save dialog.
+	 *  `filePath` (smoke tests) skips the dialog. */
+	async exportDrawingPng(filePath = null) {
+		const dataUrl = await this.drawingPngDataUrl();
+		if (!dataUrl) return null;
+		const base = this.path.split('/').pop().replace(/\.canvas$/i, '');
+		return ipc.invoke(CH.CANVAS_EXPORT_PNG, {
+			data: dataUrl.slice('data:image/png;base64,'.length),
+			name: `${base} drawing.png`,
+			filePath,
+		});
 	}
 
 	#onPaste = (e) => {
@@ -1724,63 +1802,8 @@ class ClewCanvasView extends ClewElement {
 }
 
 // ---- svg helpers -----------------------------------------------------------
-
-function inkColor(color) {
-	return color === 'ink' ? 'var(--clew-canvas-ink)' : `var(--clew-canvas-${color})`;
-}
-
-function edgeColor(color) {
-	return color ? inkColor(color) : 'var(--clew-canvas-edge)';
-}
-
-function shapeSvg(shape, selected, temp = false) {
-	const color = inkColor(shape.color);
-	const cls = `canvas-shape${selected ? ' is-selected' : ''}${temp ? ' is-temp' : ''}`;
-	const sketchy = shape.style !== 'clean';
-	const rand = seededRand(shape.id);
-	const fillColor = `color-mix(in srgb, ${color} 22%, transparent)`;
-	const r = model.shapeRect(shape);
-	const label = shape.label
-		? `<text class="canvas-shape-label" x="${r.x + r.width / 2}" y="${r.y + r.height / 2}" text-anchor="middle" dominant-baseline="middle">${escapeXml(shape.label)}</text>`
-		: '';
-	const boxy = !['line', 'arrow'].includes(shape.kind);
-
-	if (boxy) {
-		// Filled shapes paint a clean translucent underlay; the visible
-		// outline is either clean geometry or the hand-drawn rough path.
-		const cx = r.x + r.width / 2, cy = r.y + r.height / 2;
-		const underlay = !shape.fill ? ''
-			: shape.kind === 'rect' ? `<rect x="${r.x}" y="${r.y}" width="${r.width}" height="${r.height}" rx="6" style="fill:${fillColor};stroke:none"/>`
-			: shape.kind === 'ellipse' ? `<ellipse cx="${cx}" cy="${cy}" rx="${r.width / 2}" ry="${r.height / 2}" style="fill:${fillColor};stroke:none"/>`
-			: `<polygon points="${cx},${r.y} ${r.x + r.width},${cy} ${cx},${r.y + r.height} ${r.x},${cy}" style="fill:${fillColor};stroke:none"/>`;
-		let outline;
-		if (sketchy) {
-			const d = shape.kind === 'rect' ? roughRect(r.x, r.y, r.width, r.height, rand)
-				: shape.kind === 'ellipse' ? roughEllipse(cx, cy, r.width / 2, r.height / 2, rand)
-				: roughDiamond(r.x, r.y, r.width, r.height, rand);
-			outline = `<path d="${d}" style="stroke:${color};fill:none"/>`;
-		} else {
-			outline = shape.kind === 'rect' ? `<rect x="${r.x}" y="${r.y}" width="${r.width}" height="${r.height}" rx="8" style="stroke:${color};fill:none"/>`
-				: shape.kind === 'ellipse' ? `<ellipse cx="${cx}" cy="${cy}" rx="${r.width / 2}" ry="${r.height / 2}" style="stroke:${color};fill:none"/>`
-				: `<polygon points="${cx},${r.y} ${r.x + r.width},${cy} ${cx},${r.y + r.height} ${r.x},${cy}" style="stroke:${color};fill:none"/>`;
-		}
-		return `<g class="${cls}" data-id="${shape.id}">${underlay}${outline}${label}</g>`;
-	}
-
-	// line / arrow: endpoints are (x,y) → (x+width, y+height).
-	const x2 = shape.x + shape.width, y2 = shape.y + shape.height;
-	const angle = Math.atan2(y2 - shape.y, x2 - shape.x) * 180 / Math.PI;
-	const shaft = sketchy
-		? `<path d="${roughLine(shape.x, shape.y, x2, y2, rand)}" style="stroke:${color};fill:none"/>`
-		: `<line x1="${shape.x}" y1="${shape.y}" x2="${x2}" y2="${y2}" style="stroke:${color}"/>`;
-	const head = shape.kind === 'arrow'
-		? `<path style="fill:${color}" transform="translate(${x2},${y2}) rotate(${angle})" d="M 2 0 L -11 6 L -11 -6 Z"/>`
-		: '';
-	const labelMid = shape.label
-		? `<text class="canvas-shape-label" x="${(shape.x + x2) / 2}" y="${(shape.y + y2) / 2 - 8}" text-anchor="middle">${escapeXml(shape.label)}</text>`
-		: '';
-	return `<g class="${cls}" data-id="${shape.id}">${shaft}${head}${labelMid}</g>`;
-}
+// (inkColor/edgeColor/shapeSvg/edgeSvg/escapeXml live in canvas/shape-svg.js,
+// shared with the read-only canvas embeds in note previews.)
 
 function nearestSide(node, p) {
 	let best = 'left';
@@ -1809,10 +1832,6 @@ function snapshotSel(sel) {
 
 function round2(n) {
 	return Math.round(n * 100) / 100;
-}
-
-function escapeXml(text) {
-	return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 customElements.define('clew-canvas-view', ClewCanvasView);

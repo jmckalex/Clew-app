@@ -3,6 +3,7 @@
 // morphdom-patches re-renders in place so scroll position and rendered math
 // survive updates.
 import morphdom from 'morphdom';
+import { initCanvasEmbeds, refreshCanvasEmbeds, broadcastThemeToNested } from './canvas-embed.js';
 
 const HOST_SOURCE = 'clew-preview-host';
 const post = (msg) => window.parent.postMessage({ source: 'clew-preview', ...msg }, '*');
@@ -17,7 +18,9 @@ window.addEventListener('message', (event) => {
 	else if (msg.type === 'theme') {
 		document.documentElement.dataset.theme = msg.theme;
 		configureMermaid(msg.theme);
+		broadcastThemeToNested(msg.theme);
 	}
+	else if (msg.type === 'canvas-changed') refreshCanvasEmbeds(msg.path);
 	else if (msg.type === 'error') showError(msg.message);
 	else if (msg.type === 'clear-error') showError(null);
 });
@@ -56,10 +59,12 @@ function applyRender(html) {
 	try {
 		const next = new DOMParser().parseFromString(html, 'text/html');
 		morphdom(document.body, next.body, {
-			// Scripts must not be re-executed or replaced mid-flight.
+			// Scripts must not be re-executed or replaced mid-flight; canvas
+			// embed scenes are client-rendered (absent from incoming HTML).
 			onBeforeElUpdated(fromEl, toEl) {
 				if (fromEl.tagName === 'SCRIPT') return false;
 				if (fromEl.id === '__clew_err') return false;
+				if (fromEl.classList?.contains('canvas-embed-scene')) return false;
 				return !fromEl.isEqualNode(toEl);
 			},
 			onBeforeNodeDiscarded(node) {
@@ -70,6 +75,7 @@ function applyRender(html) {
 		});
 		showError(null);
 		enableTaskCheckboxes();
+		initCanvasEmbeds();
 		retypeset();
 		// Morphs never re-execute scripts; note-API controls re-bind on this.
 		document.dispatchEvent(new CustomEvent('clew:render'));
@@ -201,4 +207,5 @@ function scrollToLine(line, behavior) {
 }
 
 enableTaskCheckboxes();
+initCanvasEmbeds();
 post({ type: 'ready' });

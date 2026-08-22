@@ -18,7 +18,8 @@ Obsidian-style wikilinks, resolved by shortest path, aliases included:
 
 Media embeds render natively: `![[clew-gradient.png]]` shows the image,
 `![[sample.pdf]]` embeds Chromium's PDF viewer, and audio/video get
-players — see [[Attachments and Files]].
+players — see [[Attachments and Files]]. `![[Demo Canvas.canvas]]`
+embeds a live, read-only canvas view — see [[Canvas]].
 
 Images (and video) take Obsidian's size syntax after a `|` — a width, a
 width`x`height, or an alt text and then a size:

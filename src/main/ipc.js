@@ -2,7 +2,7 @@
 // sender's VaultSession, validate, delegate, return plain JSON-safe values.
 // App-global concerns (settings, the recents list, the menu) stay
 // session-free; everything vault-shaped routes through the session.
-import { ipcMain, shell } from 'electron';
+import { app, dialog, ipcMain, shell } from 'electron';
 import { CH } from '../shared/channels.js';
 import { settings } from './settings.js';
 import { appMenu } from './menu.js';
@@ -128,6 +128,23 @@ export function registerIpc() {
 
 	handle(CH.EXPORT_NOTE, (s, { path, format }) =>
 		exportNote({ win: s.win, vaults: s.vaults, relPath: path, format }));
+
+	// Canvas drawing → PNG. The renderer rasterizes (it owns the theme colors);
+	// main only picks the destination and writes. An explicit filePath skips
+	// the dialog (smoke tests).
+	handle(CH.CANVAS_EXPORT_PNG, async (s, { data, name, filePath }) => {
+		let target = filePath;
+		if (!target) {
+			const { canceled, filePath: chosen } = await dialog.showSaveDialog(s.win, {
+				defaultPath: nodePath.join(app.getPath('downloads'), name ?? 'drawing.png'),
+				filters: [{ name: 'PNG image', extensions: ['png'] }],
+			});
+			if (canceled || !chosen) return null;
+			target = chosen;
+		}
+		fs.writeFileSync(target, Buffer.from(data, 'base64'));
+		return target;
+	});
 
 	// User CSS snippets: <vault>/.clew/snippets/*.css, injected by the renderer.
 	handle(CH.SNIPPETS_GET, (s) => {
