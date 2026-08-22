@@ -8,7 +8,7 @@ Ariadne gave Theseus. This app was inevitable.)
 <style>
 .adv { border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
   border-radius: 8px; padding: 14px 16px; margin: 10px 0; }
-.adv button { font: inherit; padding: 3px 12px; border-radius: 6px; margin: 2px;
+.adv button { font: inherit; color: inherit; padding: 3px 12px; border-radius: 6px; margin: 2px;
   border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
   background: color-mix(in srgb, currentColor 8%, transparent); cursor: pointer; }
 .adv button:hover { background: color-mix(in srgb, currentColor 16%, transparent); }

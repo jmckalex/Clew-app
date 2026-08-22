@@ -10,7 +10,7 @@ const MATH_BLOCK_RE = /\$\$[\s\S]*?\$\$/g;
 const INLINE_MATH_RE = /\$[^$\n]+\$/g;
 
 /** Blank out masked spans (preserving offsets/line structure). */
-function maskSource(text) {
+export function maskSource(text) {
 	const blank = (match) => match.replace(/[^\n]/g, ' ');
 	return text
 		.replace(FENCE_RE, blank)

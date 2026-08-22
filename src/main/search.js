@@ -10,6 +10,7 @@
 //   tag:#demo / tag:demo   notes carrying the tag (via the indexer)
 import fs from 'node:fs';
 import path from 'node:path';
+import { maskSource } from '../shared/note-metadata.js';
 
 const MAX_RESULTS = 200;
 const MAX_MATCHES_PER_FILE = 20;
@@ -137,6 +138,7 @@ export class SearchService {
 // ---- unlinked mentions -----------------------------------------------------
 
 const WIKILINK_SPAN_RE = /!?\[\[[^\[\]\n]*\]\]/g;
+const HTML_BLOCK_RE = /<(script|style)\b[\s\S]*?<\/\1>/gi;
 const isWordChar = (ch) => ch !== undefined && /[A-Za-z0-9_]/.test(ch);
 
 /**
@@ -151,7 +153,13 @@ export function scanMentions(text, names, maxMatches = 20) {
 		.filter((n) => n.lower.length > 0);
 	if (lowered.length === 0) return [];
 	const matches = [];
-	const lines = text.split('\n');
+	// Code is not prose: mask fences/inline code/math (like the link
+	// extractor) plus script/style blocks, scanning the masked text while
+	// showing snippets from the raw lines.
+	const blank = (match) => match.replace(/[^\n]/g, ' ');
+	const masked = maskSource(text).replace(HTML_BLOCK_RE, blank);
+	const rawLines = text.split('\n');
+	const lines = masked.split('\n');
 	for (let i = 0; i < lines.length && matches.length < maxMatches; i++) {
 		const line = lines[i];
 		const lineLower = line.toLowerCase();
@@ -175,7 +183,7 @@ export function scanMentions(text, names, maxMatches = 20) {
 					column: at,
 					length: lower.length,
 					name,
-					snippet: line.trim().slice(0, 240),
+					snippet: (rawLines[i] ?? '').trim().slice(0, 240),
 				});
 			}
 		}

@@ -32,3 +32,20 @@ test('respects the match cap', () => {
 	const text = Array(30).fill('design').join('\n');
 	assert.equal(scanMentions(text, ['design'], 10).length, 10);
 });
+
+test('mentions inside code, fences, and script blocks are ignored', () => {
+	const text = [
+		'A real design mention.',
+		'Inline `design` code.',
+		'```',
+		'const design = 1;',
+		'```',
+		'<script>',
+		'openNote("design");',
+		'</script>',
+		'And design again.',
+	].join('\n');
+	const hits = scanMentions(text, ['design']);
+	assert.deepEqual(hits.map((h) => h.line), [1, 9]);
+	assert.equal(hits[1].snippet, 'And design again.');
+});

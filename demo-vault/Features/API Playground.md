@@ -8,7 +8,7 @@ read the code.
 <style>
 .api-demo { border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
   border-radius: 8px; padding: 12px 14px; margin: 10px 0; }
-.api-demo button { font: inherit; padding: 3px 12px; border-radius: 6px;
+.api-demo button { font: inherit; color: inherit; padding: 3px 12px; border-radius: 6px;
   border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
   background: color-mix(in srgb, currentColor 8%, transparent); cursor: pointer; }
 .api-demo button:hover { background: color-mix(in srgb, currentColor 16%, transparent); }

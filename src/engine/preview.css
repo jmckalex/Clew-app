@@ -2,6 +2,10 @@
    clew-template.html inside the preview iframe. Theme variables are set on
    <html> by the preview client (message from the app). */
 :root {
+	/* color-scheme keeps NATIVE form controls (buttons, inputs, checkboxes —
+	   including ones authored inside notes) legible: without it the UA paints
+	   ButtonText near-black even on our dark background. */
+	color-scheme: dark;
 	--preview-bg: #1e1e1e;
 	--preview-text: #dadada;
 	--preview-muted: #9a9a9a;
@@ -11,6 +15,7 @@
 	--preview-danger: #e06c75;
 }
 html[data-theme='light'] {
+	color-scheme: light;
 	--preview-bg: #ffffff;
 	--preview-text: #222222;
 	--preview-muted: #6a6a6a;
