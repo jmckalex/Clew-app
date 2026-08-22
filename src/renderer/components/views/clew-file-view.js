@@ -1,7 +1,8 @@
 // <clew-file-view>: viewer tab for non-note files — images, PDFs (Chromium's
 // built-in viewer), audio, video — served through clew-preview://.
 import { ClewElement } from '../base/clew-element.js';
-import { fileKind, vaultFileUrl } from '../../lib/file-types.js';
+import { fileKind } from '../../lib/file-types.js';
+import { vaultFileUrl } from '../../lib/preview-url.js';
 
 class ClewFileView extends ClewElement {
 	tabId = null;

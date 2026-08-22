@@ -2,9 +2,10 @@
 // none) so the canvas owns dragging; a double-clicked ("engaged") node turns
 // its content interactive. Note embeds are live jmarkdown previews — the
 // canvas view drives their render subscription and postMessage traffic.
-import { fileKind, vaultFileUrl } from '../lib/file-types.js';
+import { fileKind } from '../lib/file-types.js';
+import { vaultFileUrl } from '../lib/preview-url.js';
 import { isNotePath } from '../state/vault-store.js';
-import { previewUrl } from '../components/workspace/clew-preview-view.js';
+import { previewUrl } from '../lib/preview-url.js';
 import { renderCardHtml } from './card-markdown.js';
 import { openWikilink } from '../commands/actions.js';
 import { ipc, CH } from '../ipc.js';

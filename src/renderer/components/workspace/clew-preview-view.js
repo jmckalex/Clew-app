@@ -8,12 +8,9 @@ import { ipc, CH } from '../../ipc.js';
 import * as actions from '../../commands/actions.js';
 import { handleApiRequest } from '../../note-api.js';
 import { scrollSyncBus, makeSuppressor } from '../../preview/scroll-sync.js';
+import { previewUrl } from '../../lib/preview-url.js';
 
 const HOST_SOURCE = 'clew-preview-host';
-
-export function previewUrl(path) {
-	return 'clew-preview://vault/' + path.split('/').map(encodeURIComponent).join('/') + '.html';
-}
 
 class ClewPreviewView extends ClewElement {
 	tabId = null;

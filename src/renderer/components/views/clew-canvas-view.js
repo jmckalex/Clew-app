@@ -22,7 +22,7 @@ import { showCanvasMenu } from '../../canvas/canvas-menu.js';
 import { canvasSyncBus } from '../../canvas/canvas-sync.js';
 import { seededRand, roughLine, roughRect, roughDiamond, roughEllipse } from '../../canvas/rough.js';
 import { openListModal } from '../modals/list-modal.js';
-import { previewUrl } from '../workspace/clew-preview-view.js';
+import { previewUrl } from '../../lib/preview-url.js';
 import { handleApiRequest } from '../../note-api.js';
 import { icon } from '../../lib/icons.js';
 

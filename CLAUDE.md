@@ -55,15 +55,27 @@ guide note exercises the features it documents.
 
 ## Architecture (three processes + render workers)
 
-- `src/main/` — `main.js` (window, menus, navigation guards, smoke hook),
+**Multi-window: one window = one vault = one `VaultSession`**
+(`src/main/session.js`): each session owns its own VaultManager, Indexer,
+RenderService, KvStore, and SearchService and sends events only to its
+window. IPC handlers resolve the sender's session (`sessionFor`); never
+reintroduce vault singletons. Opening a vault (`main.js#openVaultAnywhere`)
+focuses the window that already has it, fills a vaultless window, else
+creates a new one — the same vault is never open twice. `settings.
+openVaults` restores every window at launch. The one macOS menu tracks the
+FOCUSED window (per-session state in menu.js; rebuilt on
+browser-window-focus).
+
+- `src/main/` — `main.js` (windows + vault orchestration, guards, smoke
+  hook — captures every window), `session.js` (per-window services),
   `vault.js` (vault manager, chokidar watcher, file ops, attachment saving,
   `.clew/` state), `indexer.js` (the metadata cache: extractor over every
   note, link resolution, incremental patches), `render-service.js` (one-shot
   warm jmarkdown workers — see below — plus `toolchainPath()`, which extends
   PATH with TeX/homebrew dirs), `protocol.js` (`clew-preview://`),
   `search.js`, `export.js` (HTML/LaTeX/PDF via the engine), `rename-links.js`
-  (vault-wide wikilink rewriting), `settings.js`, `ipc.js` (every handler;
-  channel names in `src/shared/channels.js`).
+  (vault-wide wikilink rewriting), `settings.js` (app-global), `ipc.js`
+  (every handler; channel names in `src/shared/channels.js`).
 - `src/preload/preload.cjs` — the entire bridge: `window.clew.{invoke,on}`,
   restricted to `clew:*` channels.
 - `src/shared/` — `channels.js`, `note-metadata.js` (regex-level extraction;
@@ -143,6 +155,10 @@ guide note exercises the features it documents.
 - Renders are file-mode full documents (`options.output` → `.clew/cache/`) —
   the ONLY mode that stamps `data-source-line` (1-based; engine commit
   `aaa0dab`). Auto-save makes disk the source of truth.
+- Preview URLs carry the window's session id
+  (`clew-preview://vault/<sid>/<path>`) because protocol handlers cannot
+  see which window asked; the renderer builds them via
+  `lib/preview-url.js` (`setPreviewSession` from the vault-opened event).
 - The preview iframe is **deliberately unsandboxed** (a sandbox blocks
   Chromium's PDF plugin for `![[x.pdf]]` embeds). Isolation instead:
   previews live on the `clew-preview://` origin (app is `file://`),

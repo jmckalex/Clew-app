@@ -7,6 +7,7 @@ import { settingsStore } from './state/settings-store.js';
 import { bookmarkStore } from './state/bookmark-store.js';
 import { editorPool } from './editor/pool.js';
 import * as actions from './commands/actions.js';
+import { setPreviewSession } from './lib/preview-url.js';
 import { registerBuiltinCommands } from './commands/builtin.js';
 import { installMenuBridge } from './commands/menu-bridge.js';
 import { installHotkeys } from './commands/registry.js';
@@ -16,6 +17,7 @@ import './components/chrome/clew-app.js';
 
 ipc.on(CH.EV_VAULT_OPENED, async ({ vault, tree }) => {
 	editorPool.flushAll();
+	setPreviewSession(vault?.sessionId);
 	vaultStore.setVault(vault);
 	vaultStore.setTree(tree);
 	await workspaceStore.restore((path) => vaultStore.pathExists(path));
@@ -77,6 +79,7 @@ import('./commands/registry.js').then((registry) => { window.__clew.registry = r
 	// After a window reload the vault may already be open in main.
 	const vault = await ipc.invoke(CH.VAULT_CURRENT).catch(() => null);
 	if (vault) {
+		setPreviewSession(vault.sessionId);
 		vaultStore.setVault(vault);
 		vaultStore.setTree(await ipc.invoke(CH.VAULT_TREE).catch(() => null));
 		const index = await ipc.invoke(CH.INDEX_GET).catch(() => null);

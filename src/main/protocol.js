@@ -2,18 +2,22 @@
 // cache), the note's own directory for relative assets (images, TikZ/
 // mermaid caches), Clew's vendored preview assets, and the preview client.
 //
-// URL space (host is always 'vault'):
-//   clew-preview://vault/<note path>.html      rendered note (renders on demand)
-//   clew-preview://vault/<any other path>      the real file from the vault
+// URL space (host is always 'vault'). A protocol handler cannot see which
+// window issued a request, so vault URLs carry the session id of the
+// window/vault they belong to:
 //   clew-preview://vault/__clew_assets__/…     vendored assets (mathjax, …)
-//   clew-preview://vault/__clew_preview__/client.js   the preview client bundle
+//   clew-preview://vault/__clew_preview__/…    preview client / note API
+//   clew-preview://vault/<sid>/<note path>.html   rendered note (on demand)
+//   clew-preview://vault/<sid>/<any other path>   the real file from the vault
 //
-// Because a rendered note's URL sits in its real directory, relative
-// references in the document resolve through this handler untouched.
+// Because a rendered note's URL sits in its real (sid-prefixed) directory,
+// relative references in the document resolve through this handler
+// untouched — and stay inside the right vault.
 import { protocol } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import { NOTE_EXTENSIONS } from '../shared/channels.js';
+import { sessionById } from './session.js';
 
 const MIME = {
 	'.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript',
@@ -46,7 +50,7 @@ export function registerPreviewScheme() {
 const RENDERED_SUFFIX = new RegExp(`(${NOTE_EXTENSIONS.map((e) => e.replace('.', '\\.')).join('|')})\\.html$`, 'i');
 
 /** After app.whenReady(). */
-export function installPreviewProtocol({ vaults, renderService, distDir, nodeModulesDir, engineAssetsDir }) {
+export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDir }) {
 	const assetRoots = {
 		mathjax: path.join(nodeModulesDir, 'mathjax', 'es5'),
 		mermaid: path.join(nodeModulesDir, 'mermaid', 'dist'),
@@ -92,13 +96,18 @@ export function installPreviewProtocol({ vaults, renderService, distDir, nodeMod
 				return fileResponse(path.join(distDir, 'preview-client', file));
 			}
 
-			if (!vaults.isOpen) {
-				return new Response('No vault open', { status: 503, headers: headers('text/plain') });
+			// Everything else is vault content: first segment is the session id.
+			const slash = pathname.indexOf('/');
+			const session = slash > 0 ? sessionById(pathname.slice(0, slash)) : null;
+			const rel = slash > 0 ? pathname.slice(slash + 1) : '';
+			if (!session || !session.vaults.isOpen || !rel) {
+				return new Response('No vault for this session', { status: 503, headers: headers('text/plain') });
 			}
+			const { vaults, renderService } = session;
 
 			// Rendered note: "<note path>.html" → render on demand, inject client.
-			if (RENDERED_SUFFIX.test(pathname)) {
-				const relPath = pathname.replace(/\.html$/i, '');
+			if (RENDERED_SUFFIX.test(rel)) {
+				const relPath = rel.replace(/\.html$/i, '');
 				vaults.resolve(relPath); // path-escape validation
 				let html;
 				try {
@@ -124,7 +133,7 @@ export function installPreviewProtocol({ vaults, renderService, distDir, nodeMod
 			}
 
 			// Anything else: the real file from the vault (relative images etc.).
-			return fileResponse(vaults.resolve(pathname));
+			return fileResponse(vaults.resolve(rel));
 		} catch (err) {
 			return new Response(`Preview error: ${String(err.message ?? err)}`,
 				{ status: 500, headers: { 'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*' } });

@@ -32,8 +32,3 @@ export function isCanvasPath(path) {
 export function isEmbeddablePath(path) {
 	return fileKind(path) !== null;
 }
-
-/** clew-preview:// URL for a raw vault file. */
-export function vaultFileUrl(path) {
-	return 'clew-preview://vault/' + path.split('/').map(encodeURIComponent).join('/');
-}

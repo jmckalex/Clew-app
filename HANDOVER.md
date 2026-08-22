@@ -88,6 +88,18 @@ MathJax/theorems rendered in reading mode through the unpacked engine.
 Publishing jmarkdown to npm remains open for later (the sync script and
 `file:vendor/jmarkdown` dep swap out trivially for a registry version).
 
+## 3c. MULTI-WINDOW IS DONE (2026-08-22)
+
+One window = one vault (owner's chosen model). `VaultSession` per window
+(session.js) owns all services; IPC routes by sender; preview URLs carry
+the session id; the menu follows focus; every open vault restores at
+launch (settings.openVaults); the same vault focuses rather than
+duplicates; File → New Window (⌘⇧N). Verified: two windows with
+independent vaults/screenshots, session-scoped rendering, no-duplicate
+focus, API-playground + canvas + packaged-app regression smokes all
+green. Two quit-hang bugs found and fixed (webContents access after
+window destruction in dispose; menu rebuild during quit).
+
 ## 4. Feature plan (designed, not yet built — next sessions)
 
 Ordered by expected value; none started:
@@ -95,9 +107,8 @@ Ordered by expected value; none started:
 1. ~~Packaging~~ — done, see §3b. Follow-ups when going public: code
    signing + notarization, locale stripping (~50 lproj dirs ship today),
    pruning the engine's dependency tree (73MB staged), CI release builds.
-2. **Multi-window**: main.js assumes one `win` (menu send, vault events,
-   smoke hook). Needs a window registry + per-focused-window send; the
-   single-vault-per-process model can stay.
+2. ~~Multi-window~~ — done, see §3c. Possible polish: per-window vault in
+   the Window menu's window list, drag a tab between windows.
 3. **Properties: bulk/type UX**: type picker per property, drag-reorder,
    vault-wide property name completion (indexer knows all keys).
 4. **Canvas next steps**: image paste/drop directly onto canvas (route

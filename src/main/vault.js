@@ -2,7 +2,7 @@
 // its tree, file operations, chokidar watching, and .clew/ state persistence.
 // All renderer-supplied paths are vault-relative and validated to stay inside
 // the vault root.
-import { dialog, shell } from 'electron';
+import { shell } from 'electron';
 import chokidar from 'chokidar';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -15,30 +15,25 @@ const IGNORED_DIRS = new Set(['.obsidian', '.clew', '.git', 'node_modules', '.tr
 export class VaultManager {
 	/** Absolute path of the open vault, or null. */
 	root = null;
+	/** Set by the owning VaultSession; rides in info/events so the renderer
+	 *  can build session-scoped clew-preview:// URLs. */
+	sessionId = null;
 	#watcher = null;
 	#treeDebounce = null;
 	/** @type {(channel: string, payload: any) => void} */
 	send = () => {};
-	/** Optional lifecycle hooks set by main.js (render service wiring). */
+	/** Optional lifecycle hooks set by the session (render service wiring). */
 	hooks = {};
 
 	get isOpen() { return this.root !== null; }
 
 	get info() {
-		return this.root ? { path: this.root, name: path.basename(this.root) } : null;
+		return this.root
+			? { path: this.root, name: path.basename(this.root), sessionId: this.sessionId }
+			: null;
 	}
 
 	// ---- opening ----------------------------------------------------------
-
-	async openDialog(win) {
-		const result = await dialog.showOpenDialog(win, {
-			title: 'Open vault folder',
-			buttonLabel: 'Open Vault',
-			properties: ['openDirectory', 'createDirectory'],
-		});
-		if (result.canceled || result.filePaths.length === 0) return null;
-		return this.open(result.filePaths[0]);
-	}
 
 	open(vaultPath) {
 		const abs = path.resolve(vaultPath);

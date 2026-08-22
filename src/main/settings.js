@@ -6,6 +6,7 @@ import path from 'node:path';
 
 const DEFAULTS = {
 	recentVaults: [],
+	openVaults: [], // one window each, restored at launch
 	lastVault: null,
 	theme: 'dark',
 };
@@ -29,6 +30,18 @@ class Settings {
 
 	set(key, value) {
 		this.#data[key] = value;
+		this.#save();
+	}
+
+	addOpenVault(vaultPath) {
+		const list = this.#data.openVaults.filter((p) => p !== vaultPath);
+		list.push(vaultPath);
+		this.#data.openVaults = list;
+		this.#save();
+	}
+
+	removeOpenVault(vaultPath) {
+		this.#data.openVaults = this.#data.openVaults.filter((p) => p !== vaultPath);
 		this.#save();
 	}
 

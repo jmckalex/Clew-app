@@ -2,18 +2,19 @@
 // over EV_MENU_COMMAND — the renderer's command registry stays the single
 // source of truth for behavior, and its keydown dispatcher owns every chord
 // (user rebindings, modal guards). Accelerators here are therefore
-// display-only on macOS (registerAccelerator: false); the renderer pushes
+// display-only on macOS (registerAccelerator: false); each renderer pushes
 // its effective keymap over MENU_STATE so the menu shows real bindings.
 //
-// The renderer also pushes context (vault open, active note, reading mode,
-// bookmark state, sidebars, theme); the menu rebuilds only when the derived
-// state actually changes, since a rebuild closes any open menu.
+// Multi-window: state pushes are stored per session, and the one macOS
+// menu always reflects — and dispatches into — the FOCUSED window. Focus
+// changes rebuild it (main.js wires browser-window-focus).
 import { app, Menu } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import { CH } from '../shared/channels.js';
-import { vaults } from './vault.js';
 import { settings } from './settings.js';
+import { allSessions, focusedSession, sessionForVault } from './session.js';
+import { createWindow, openVaultAnywhere, openVaultDialog } from './main.js';
 
 const isMac = process.platform === 'darwin';
 
@@ -39,42 +40,57 @@ export function chordToAccelerator(chord) {
 	return out.join('+');
 }
 
+const defaultState = () => ({
+	vaultOpen: false,
+	noteActive: false,
+	tabOpen: false,
+	readingMode: false,
+	pinned: false,
+	bookmarked: false,
+	leftSidebar: true,
+	rightSidebar: true,
+	theme: 'dark',
+	/** command id → CM chord or null, from the renderer's effective keymap */
+	hotkeys: {},
+});
+
 class AppMenu {
-	/** @type {(channel: string, payload: any) => void} set by main.js */
-	send = () => {};
-	#getWindow = () => null;
 	#rootDir = null;
 	#lastBuilt = null;
-	#state = {
-		vaultOpen: false,
-		noteActive: false,
-		tabOpen: false,
-		readingMode: false,
-		pinned: false,
-		bookmarked: false,
-		leftSidebar: true,
-		rightSidebar: true,
-		theme: 'dark',
-		/** command id → CM chord or null, from the renderer's effective keymap */
-		hotkeys: {},
-	};
+	#stateBySession = new WeakMap();
 
-	init({ getWindow, rootDir }) {
-		this.#getWindow = getWindow;
+	init({ rootDir }) {
 		this.#rootDir = rootDir;
-		this.#state.theme = settings.get('theme') ?? 'dark';
-		this.#state.vaultOpen = vaults.isOpen;
 		this.rebuild();
 	}
 
-	/** Renderer push over MENU_STATE. */
-	update(partial) {
-		Object.assign(this.#state, partial);
+	/** A renderer's push over MENU_STATE, stored against its session. */
+	update(session, partial) {
+		const state = this.#stateBySession.get(session) ?? defaultState();
+		Object.assign(state, partial);
+		this.#stateBySession.set(session, state);
 		this.rebuild();
+	}
+
+	/** The focused window's state (defaults before its first push). */
+	#currentState() {
+		const session = focusedSession();
+		const state = (session && this.#stateBySession.get(session)) ?? defaultState();
+		state.theme = settings.get('theme') ?? state.theme;
+		return state;
+	}
+
+	#send(channel, payload) {
+		focusedSession()?.send(channel, payload);
 	}
 
 	rebuild() {
-		const snapshot = JSON.stringify([this.#state, settings.get('recentVaults'), vaults.root]);
+		const snapshot = JSON.stringify([
+			focusedSession()?.id ?? null,
+			this.#currentState(),
+			settings.get('recentVaults'),
+			allSessions().map((s) => s.vaults.root),
+		]);
 		if (snapshot === this.#lastBuilt) return;
 		this.#lastBuilt = snapshot;
 		Menu.setApplicationMenu(Menu.buildFromTemplate(this.#template()));
@@ -83,17 +99,16 @@ class AppMenu {
 	// ---- item helpers ------------------------------------------------------
 
 	/** A menu item that dispatches a renderer command id. */
-	#cmd(id, label, { chord, needs, type, checked } = {}) {
-		const s = this.#state;
+	#cmd(state, id, label, { chord, needs, type, checked } = {}) {
 		const enabled =
-			needs === 'vault' ? s.vaultOpen
-			: needs === 'note' ? s.noteActive
-			: needs === 'editor' ? s.noteActive && !s.readingMode
-			: needs === 'tab' ? s.tabOpen
+			needs === 'vault' ? state.vaultOpen
+			: needs === 'note' ? state.noteActive
+			: needs === 'editor' ? state.noteActive && !state.readingMode
+			: needs === 'tab' ? state.tabOpen
 			: true;
-		const item = { label, enabled, click: () => this.send(CH.EV_MENU_COMMAND, { id }) };
+		const item = { label, enabled, click: () => this.#send(CH.EV_MENU_COMMAND, { id }) };
 		// The renderer's map wins even when it says "unbound" (null).
-		const effective = id in s.hotkeys ? s.hotkeys[id] : chord;
+		const effective = id in state.hotkeys ? state.hotkeys[id] : chord;
 		if (effective) {
 			item.accelerator = chordToAccelerator(effective);
 			item.registerAccelerator = false; // display-only; renderer dispatches
@@ -107,7 +122,7 @@ class AppMenu {
 
 	#openVault(vaultPath) {
 		try {
-			vaults.open(vaultPath);
+			openVaultAnywhere(vaultPath, { preferSession: focusedSession() });
 		} catch (err) {
 			console.error('Failed to open vault from menu:', err);
 			// Prune recent entries whose folder no longer exists.
@@ -124,7 +139,7 @@ class AppMenu {
 				label: path.basename(vaultPath),
 				toolTip: vaultPath,
 				type: 'checkbox',
-				checked: vaults.root === vaultPath,
+				checked: sessionForVault(vaultPath) !== null,
 				click: () => this.#openVault(vaultPath),
 			})),
 			{ type: 'separator' },
@@ -143,8 +158,8 @@ class AppMenu {
 	// ---- the template ------------------------------------------------------
 
 	#template() {
-		const s = this.#state;
-		const c = this.#cmd.bind(this);
+		const s = this.#currentState();
+		const c = (id, label, opts) => this.#cmd(s, id, label, opts);
 
 		const appMenu = {
 			label: app.name,
@@ -170,11 +185,16 @@ class AppMenu {
 				c('file:new-canvas', 'New Canvas', { needs: 'vault' }),
 				c('file:new-folder', 'New Folder', { needs: 'vault' }),
 				c('workspace:new-tab', 'New Tab', { chord: 'Mod-t' }),
+				{
+					label: 'New Window',
+					accelerator: 'CmdOrCtrl+Shift+N',
+					click: () => createWindow(null),
+				},
 				{ type: 'separator' },
 				{
 					label: 'Open Vault…',
 					accelerator: 'CmdOrCtrl+Shift+O',
-					click: () => vaults.openDialog(this.#getWindow()),
+					click: () => openVaultDialog(focusedSession()),
 				},
 				{ label: 'Open Recent Vault', submenu: this.#recentSubmenu() },
 				{ type: 'separator' },
