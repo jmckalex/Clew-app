@@ -46,7 +46,6 @@ overwritten wholesale by \`npm run sync-engine\`. Make every engine change
 in the master checkout (${source}) and re-sync.
 
 Synced from: ${describe}
-Synced at: ${new Date().toISOString()}
 `);
 
 console.log(`vendor-jmarkdown: mirrored ${describe} → vendor/jmarkdown`);
