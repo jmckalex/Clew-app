@@ -1,3 +1,4 @@
 {
-  "noteApi": true
+  "noteApi": true,
+  "plugins": ["header"]
 }

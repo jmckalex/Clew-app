@@ -11,6 +11,7 @@ import { setPreviewSession } from './lib/preview-url.js';
 import { registerBuiltinCommands } from './commands/builtin.js';
 import { installMenuBridge } from './commands/menu-bridge.js';
 import { installHotkeys } from './commands/registry.js';
+import { initPlugins } from './plugins.js';
 import './components/chrome/clew-app.js';
 
 // ---- IPC events → stores --------------------------------------------------
@@ -63,6 +64,7 @@ settingsStore.on('settings-changed', () => {
 // ---- commands & hotkeys ---------------------------------------------------
 
 registerBuiltinCommands();
+initPlugins();
 installHotkeys();
 installMenuBridge();
 

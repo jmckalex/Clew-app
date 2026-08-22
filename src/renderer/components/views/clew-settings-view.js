@@ -90,7 +90,44 @@ class ClewSettingsView extends ClewElement {
 				+ 'with this on — enable it only for vaults you trust. See the Note API '
 				+ 'guide note.'),
 		);
+		this.#pluginRows(section);
 		return section;
+	}
+
+	/** Discovered vault plugins (.clew/plugins/*) with per-plugin enables. */
+	#pluginRows(section) {
+		ipc.invoke(CH.PLUGINS_LIST).then(({ plugins, enabled }) => {
+			if (!plugins.length) return;
+			const heading = document.createElement('p');
+			heading.className = 'settings-hint';
+			heading.textContent = 'Plugins found in this vault (.clew/plugins/). '
+				+ 'A plugin is arbitrary code — enable only what you trust. '
+				+ 'Notes already open re-render; reopen them if a preview plugin '
+				+ 'doesn\'t appear.';
+			section.append(heading);
+			const enabledSet = new Set(enabled);
+			for (const plugin of plugins) {
+				const box = document.createElement('input');
+				box.type = 'checkbox';
+				box.checked = enabledSet.has(plugin.id);
+				const surfaces = Object.keys(plugin.surfaces).join(', ') || 'no surfaces';
+				const row = this.#row(`${plugin.name} (${plugin.version}) — ${surfaces}`, box);
+				box.addEventListener('change', () => {
+					if (box.checked) enabledSet.add(plugin.id);
+					else enabledSet.delete(plugin.id);
+					box.disabled = true;
+					ipc.invoke(CH.VAULT_SETTINGS_SET, { key: 'plugins', value: [...enabledSet] })
+						.finally(() => { box.disabled = false; });
+				});
+				section.append(row);
+				if (plugin.description) {
+					const hint = document.createElement('p');
+					hint.className = 'settings-hint';
+					hint.textContent = plugin.description;
+					section.append(hint);
+				}
+			}
+		}).catch(() => {});
 	}
 
 	#vaultToggle(key, label, hintText) {

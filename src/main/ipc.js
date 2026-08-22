@@ -12,6 +12,7 @@ import { propagateRename } from './rename-links.js';
 import { exportNote } from './export.js';
 import { parseBib } from '../shared/bib.js';
 import { direntKind, shouldRecurse, walkGuard } from './fs-utils.js';
+import { listPlugins } from './plugins.js';
 import fs from 'node:fs';
 import nodePath from 'node:path';
 
@@ -123,7 +124,19 @@ export function registerIpc() {
 		if (key === 'jmarkdownProject' || key === 'normalSyntax') {
 			s.renderService.reconfigure({ [key]: value === true });
 		}
+		// Plugin toggles change the engine config (engine surfaces) and the
+		// preview injection; re-render open previews with the new set.
+		if (key === 'plugins') s.renderService.reconfigure({ plugins: value });
 		return current;
+	});
+
+	handle(CH.PLUGINS_LIST, (s) => {
+		if (!s.vaults.isOpen) return { plugins: [], enabled: [] };
+		const vaultSettings = s.vaults.loadState('vault-settings.json') ?? {};
+		return {
+			plugins: listPlugins(s.vaults.root),
+			enabled: Array.isArray(vaultSettings.plugins) ? vaultSettings.plugins : [],
+		};
 	});
 
 	handle(CH.EXPORT_NOTE, (s, { path, format }) =>

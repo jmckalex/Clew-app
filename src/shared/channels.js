@@ -26,6 +26,7 @@ export const CH = {
 	VSTATE_LOAD: 'clew:vstate-load',
 	VSTATE_SAVE: 'clew:vstate-save',
 	VAULT_SETTINGS_GET: 'clew:vault-settings-get',
+	PLUGINS_LIST: 'clew:plugins-list',
 	VAULT_SETTINGS_SET: 'clew:vault-settings-set',
 
 	// invoke: vault key-value store (clewdata.json — the note API's state)

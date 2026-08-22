@@ -19,6 +19,7 @@ import path from 'node:path';
 import { Readable } from 'node:stream';
 import { NOTE_EXTENSIONS } from '../shared/channels.js';
 import { sessionById } from './session.js';
+import { previewPluginPaths, enabledPlugins } from './plugins.js';
 
 const MIME = {
 	'.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript',
@@ -130,6 +131,30 @@ export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDi
 				return fileResponse(path.join(distDir, 'preview-client', file));
 			}
 
+			// App-surface plugin scripts: /__clew_plugin_app__/<sid>/<id>.js.
+			// The app's CSP has no unsafe-eval, so plugin code loads as a real
+			// script from this namespace — served ONLY for plugins currently
+			// enabled in the session's vault, wrapped so the body receives its
+			// API object (window.__clewPluginApi, set by the loader) as `clew`.
+			if (pathname.startsWith('__clew_plugin_app__/')) {
+				const [, psid, pfile] = pathname.split('/');
+				const pluginSession = sessionById(psid);
+				const id = (pfile ?? '').replace(/\.js$/, '');
+				if (!pluginSession?.vaults.isOpen) {
+					return new Response('No session', { status: 503, headers: headers('text/plain') });
+				}
+				const vaultSettings = pluginSession.vaults.loadState('vault-settings.json') ?? {};
+				const plugin = enabledPlugins(pluginSession.vaults.root, vaultSettings)
+					.find((p) => p.id === id && p.surfaces.app);
+				if (!plugin) {
+					return new Response('Not an enabled plugin', { status: 403, headers: headers('text/plain') });
+				}
+				const abs = path.join(pluginSession.vaults.root, '.clew', 'plugins', id, plugin.surfaces.app.file);
+				const code = fs.readFileSync(abs, 'utf8');
+				const wrapped = `(function (clew) {\n'use strict';\n${code}\n})(window.__clewPluginApi?.[${JSON.stringify(id)}]);`;
+				return new Response(wrapped, { headers: headers('text/javascript') });
+			}
+
 			// Everything else is vault content: first segment is the session id.
 			const slash = pathname.indexOf('/');
 			const session = slash > 0 ? sessionById(pathname.slice(0, slash)) : null;
@@ -173,12 +198,19 @@ export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDi
 							.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</div></body></html>`;
 				}
 				// The note API loads in <head> so inline note scripts can use
-				// window.clew immediately; the client bridge loads at end of body.
+				// window.clew immediately; the client bridge loads at end of body,
+				// followed by any enabled preview-surface plugin scripts (served
+				// as ordinary vault files from .clew/plugins/).
+				const vaultSettings = session.vaults.loadState('vault-settings.json') ?? {};
+				const sid = pathname.slice(0, slash);
+				const pluginTags = previewPluginPaths(session.vaults.root, vaultSettings)
+					.map((p) => `<script src="/${sid}/${p.split('/').map(encodeURIComponent).join('/')}"></script>`)
+					.join('');
 				const injected = html
 					.replace(/<head([^>]*)>/i, `<head$1><script src="/__clew_preview__/api.js"></script>`)
 					.replace(
 						/<\/body>/i,
-						`<script src="/__clew_preview__/client.js"></script></body>`,
+						`<script src="/__clew_preview__/client.js"></script>${pluginTags}</body>`,
 					);
 				return new Response(injected, { headers: headers('text/html') });
 			}

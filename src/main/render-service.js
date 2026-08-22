@@ -13,6 +13,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { CH } from '../shared/channels.js';
 import { paths } from './paths.js';
+import { engineExtensionEntries, previewPluginPaths } from './plugins.js';
 
 const WORKER_PATH = paths.engineWorker;
 
@@ -120,6 +121,8 @@ export class RenderService {
 			'Extensions': [
 				`wikiembed, wikilink from ${path.join(engineAssets, 'wikilinks.js')}`,
 				`mermaidFence, leafletFence from ${path.join(engineAssets, 'obsidian-fences.js')}`,
+				// Enabled vault plugins' engine surfaces (custom syntax).
+				...engineExtensionEntries(this.vaultRoot, this.#vaultOptions),
 			],
 			'MathJax': { 'src': '/__clew_assets__/mathjax/tex-svg.js' },
 			'Mermaid': '/__clew_assets__/mermaid/mermaid.min.js',

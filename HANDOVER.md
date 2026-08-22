@@ -108,6 +108,24 @@ macOS sips both in the folder scan (jpg written alongside, mtime-
 guarded) and at attachment paste/drop (vault.js saveAttachment — vault
 only ever receives .jpg); non-mac counts them as skipped.
 
+## 3a3. PLUGIN SYSTEM (2026-08-22, owner-requested)
+
+Vault plugins: .clew/plugins/<id>/manifest.json + up to three surfaces
+(src/main/plugins.js discovery, unit-tested): engine (jmarkdown
+extension into the worker config via engineExtensionEntries), preview
+(script injected after client.js by protocol.js), app (renderer script
+against a SMALL frozen API v1 — commands/vault/workspace/events/ui.notice
+in src/renderer/plugins.js; loads via the __clew_plugin_app__ protocol
+namespace + CSP entry because the app CSP has no unsafe-eval — the
+protocol serves ONLY currently-enabled plugins, wrapped to receive the
+API object). Per-vault opt-in: vault-settings.json "plugins": [ids]
+(settings UI lists discovered plugins with toggles; toggling
+reconfigures the engine). Everything a plugin registers is unwound on
+vault change (registry gained unregisterCommand). Sample: demo-vault
+.clew/plugins/header (gitignore-negated) — frontmatter header-image/
+title/subtitle → banner; Welcome.md wears it. Docs: Guide/Plugins.md.
+All three surfaces smoke-verified end-to-end.
+
 ## 3b. PACKAGING IS DONE (2026-08-22)
 
 M1–M5 are now complete, full stop. `npm run package` →

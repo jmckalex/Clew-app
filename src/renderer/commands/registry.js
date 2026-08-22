@@ -16,6 +16,10 @@ export function registerCommand(command) {
 	commands.set(command.id, command);
 }
 
+export function unregisterCommand(id) {
+	commands.delete(id);
+}
+
 export function allCommands() {
 	return [...commands.values()];
 }

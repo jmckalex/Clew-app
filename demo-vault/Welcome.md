@@ -1,3 +1,8 @@
+---
+header-image: "[[clew-gradient.png]]"
+header-title: Welcome to Clew
+header-subtitle: A thread through your notes
+---
 # Welcome to Clew
 
 Clew is an Obsidian-style note app whose reading mode is the full
@@ -20,6 +25,8 @@ rendered; **⌘O** finds any note; **⌘P** lists every command.
   shapes ([[Demo Canvas.canvas]])
 - [[Note API]] — notes as programs: [[API Playground]],
   [[Habit Tracker]], and a tiny [[Adventure]]
+- [[Plugins]] — extend Clew from inside the vault (this page's banner
+  is one)
 - [[Search]] — full-text search and its operators
 - [[Graph View]] — the vault as a graph
 - [[Daily Notes and Templates]] — the diary calendar, per-day or
