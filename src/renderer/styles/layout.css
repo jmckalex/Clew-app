@@ -339,3 +339,17 @@ clew-status-bar {
 	opacity: 0.8;
 }
 .tab.is-pinned { padding-right: 8px; }
+
+/* ---- icon alignment (FA inline SVGs) ---- */
+.tab-close, .tab-add {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}
+.tab-close { font-size: 10px; }
+.tab-add { font-size: 12px; }
+.tab-pin {
+	display: inline-flex;
+	align-items: center;
+	font-size: 10px;
+}

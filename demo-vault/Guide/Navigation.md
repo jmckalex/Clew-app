@@ -20,7 +20,7 @@ tab bar to reorder or move between panes. The layout — panes, tabs,
 sidebar widths — is saved per vault and restored on reopen.
 
 **Pin a tab** (right-click it, or Window → Pin Tab) to keep it: pinned
-tabs sit first in the bar with a 📌, lose their close button, ignore
+tabs sit first in the bar with a pin icon, lose their close button, ignore
 ⌘W, and never navigate away — following a link from a pinned tab opens
 a new tab instead. The tab context menu also has *Close others* and
 *Close tabs to the right* (both leave pinned tabs alone).

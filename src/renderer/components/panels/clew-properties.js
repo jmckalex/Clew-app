@@ -10,6 +10,7 @@ import { ipc, CH } from '../../ipc.js';
 import { debounce } from '../../lib/debounce.js';
 import { parseProperties, serializeProperties, propertyType } from '../../../shared/frontmatter.js';
 import { emptyNote } from './clew-backlinks.js';
+import { icon } from '../../lib/icons.js';
 
 export class ClewProperties extends ClewElement {
 	#path = null;
@@ -129,7 +130,7 @@ export class ClewProperties extends ClewElement {
 			const del = document.createElement('button');
 			del.className = 'props-delete';
 			del.title = 'Remove property';
-			del.textContent = '×';
+			del.append(icon('xmark'));
 			del.addEventListener('click', () => {
 				this.#entries.splice(index, 1);
 				this.#commit();
@@ -190,7 +191,7 @@ export class ClewProperties extends ClewElement {
 			if (this.#clean) {
 				const x = document.createElement('button');
 				x.className = 'props-chip-x';
-				x.textContent = '×';
+				x.append(icon('xmark'));
 				x.addEventListener('click', () => {
 					entry.value.splice(i, 1);
 					this.#commit();

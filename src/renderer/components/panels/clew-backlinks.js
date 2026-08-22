@@ -8,6 +8,7 @@ import { workspaceStore } from '../../state/workspace-store.js';
 import { ipc, CH } from '../../ipc.js';
 import { debounce } from '../../lib/debounce.js';
 import { openNoteAtLine, linkMention } from '../../commands/actions.js';
+import { icon } from '../../lib/icons.js';
 
 const noteTitle = (path) => path.split('/').pop().replace(/\.(md|jmd)$/i, '');
 
@@ -128,8 +129,11 @@ function groupTitle(source) {
 function sectionTitle(text, collapsible = false, open = true) {
 	const el = document.createElement('div');
 	el.className = 'link-group-title is-static panel-section-title';
-	el.textContent = collapsible ? `${open ? '▾' : '▸'} ${text}` : text;
-	if (collapsible) el.classList.add('is-collapsible');
+	if (collapsible) {
+		el.classList.add('is-collapsible');
+		el.append(icon(open ? 'chevron-down' : 'chevron-right', 'section-chevron'));
+	}
+	el.append(document.createTextNode(text));
 	return el;
 }
 

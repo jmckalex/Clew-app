@@ -23,21 +23,22 @@ import { canvasSyncBus } from '../../canvas/canvas-sync.js';
 import { seededRand, roughLine, roughRect, roughDiamond, roughEllipse } from '../../canvas/rough.js';
 import { openListModal } from '../modals/list-modal.js';
 import { previewUrl } from '../workspace/clew-preview-view.js';
+import { icon } from '../../lib/icons.js';
 
 const HOST_SOURCE = 'clew-preview-host';
 const UNDO_LIMIT = 100;
 
 const TOOLS = [
-	{ id: 'select', key: 'v', icon: '⭡', title: 'Select (V)' },
-	{ id: 'pan', key: 'h', icon: '✋', title: 'Pan (H)' },
-	{ id: 'card', key: 'c', icon: '▭', title: 'Card (C) — or double-click the canvas' },
-	{ id: 'draw', key: 'p', icon: '✎', title: 'Draw (P)' },
-	{ id: 'erase', key: 'e', icon: '⌫', title: 'Erase (E)' },
-	{ id: 'rect', key: 'r', icon: '□', title: 'Rectangle (R)' },
-	{ id: 'ellipse', key: 'o', icon: '○', title: 'Ellipse (O)' },
-	{ id: 'diamond', key: 'd', icon: '◇', title: 'Diamond (D)' },
-	{ id: 'arrow', key: 'a', icon: '→', title: 'Arrow (A)' },
-	{ id: 'line', key: 'l', icon: '─', title: 'Line (L)' },
+	{ id: 'select', key: 'v', icon: 'select', title: 'Select (V)' },
+	{ id: 'pan', key: 'h', icon: 'hand', title: 'Pan (H)' },
+	{ id: 'card', key: 'c', icon: 'card', title: 'Card (C) — or double-click the canvas' },
+	{ id: 'draw', key: 'p', icon: 'pencil', title: 'Draw (P)' },
+	{ id: 'erase', key: 'e', icon: 'eraser', title: 'Erase (E)' },
+	{ id: 'rect', key: 'r', icon: 'square', title: 'Rectangle (R)' },
+	{ id: 'ellipse', key: 'o', icon: 'circle', title: 'Ellipse (O)' },
+	{ id: 'diamond', key: 'd', icon: 'diamond', title: 'Diamond (D)' },
+	{ id: 'arrow', key: 'a', icon: 'arrow-right', title: 'Arrow (A)' },
+	{ id: 'line', key: 'l', icon: 'slash', title: 'Line (L)' },
 ];
 
 class ClewCanvasView extends ClewElement {
@@ -114,10 +115,10 @@ class ClewCanvasView extends ClewElement {
 				</div>
 				<div class="canvas-toolbar"></div>
 				<div class="canvas-zoombar">
-					<button data-zoom="out" title="Zoom out">−</button>
+					<button data-zoom="out" title="Zoom out"></button>
 					<button data-zoom="reset" class="canvas-zoom-label" title="Reset zoom">100%</button>
-					<button data-zoom="in" title="Zoom in">+</button>
-					<button data-zoom="fit" title="Zoom to fit (⇧1)">⤢</button>
+					<button data-zoom="in" title="Zoom in"></button>
+					<button data-zoom="fit" title="Zoom to fit (⇧1)"></button>
 				</div>
 			</div>
 		`;
@@ -133,6 +134,9 @@ class ClewCanvasView extends ClewElement {
 			zoomLabel: this.querySelector('.canvas-zoom-label'),
 		};
 		this.#renderToolbar();
+		this.querySelector('[data-zoom="out"]').append(icon('minus'));
+		this.querySelector('[data-zoom="in"]').append(icon('plus'));
+		this.querySelector('[data-zoom="fit"]').append(icon('expand'));
 
 		const vp = this.#els.viewport;
 		vp.addEventListener('pointerdown', this.#onPointerDown);
@@ -336,7 +340,7 @@ class ClewCanvasView extends ClewElement {
 		for (const tool of TOOLS) {
 			const button = document.createElement('button');
 			button.className = 'canvas-tool' + (this.#tool === tool.id ? ' is-active' : '');
-			button.textContent = tool.icon;
+			button.append(icon(tool.icon));
 			button.title = tool.title;
 			button.addEventListener('click', () => this.#setTool(tool.id));
 			bar.append(button);
@@ -344,12 +348,12 @@ class ClewCanvasView extends ClewElement {
 		bar.append(sep());
 		const addNote = document.createElement('button');
 		addNote.className = 'canvas-tool';
-		addNote.textContent = '🗎';
+		addNote.append(icon('file-plus'));
 		addNote.title = 'Add note or file…';
 		addNote.addEventListener('click', () => this.#addFilePicker());
 		const addWeb = document.createElement('button');
 		addWeb.className = 'canvas-tool';
-		addWeb.textContent = '🌐';
+		addWeb.append(icon('globe'));
 		addWeb.title = 'Add web page…';
 		addWeb.addEventListener('click', () => this.#addWebPrompt());
 		bar.append(addNote, addWeb, sep());

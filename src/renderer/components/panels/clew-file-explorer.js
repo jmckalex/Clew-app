@@ -4,6 +4,7 @@
 import { ClewElement } from '../base/clew-element.js';
 import { vaultStore, isNotePath } from '../../state/vault-store.js';
 import { isViewablePath, isCanvasPath } from '../../lib/file-types.js';
+import { icon } from '../../lib/icons.js';
 import { workspaceStore } from '../../state/workspace-store.js';
 import { editorPool } from '../../editor/pool.js';
 import { ipc, CH } from '../../ipc.js';
@@ -37,8 +38,8 @@ class ClewFileExplorer extends ClewElement {
 		const actions = document.createElement('span');
 		actions.className = 'panel-actions';
 		actions.append(
-			this.#actionButton('New note', '✚', () => this.createNote()),
-			this.#actionButton('New folder', '⊞', () => this.createFolder('')),
+			this.#actionButton('New note', 'file-plus', () => this.createNote()),
+			this.#actionButton('New folder', 'folder-plus', () => this.createFolder('')),
 		);
 		header.append(title, actions);
 
@@ -63,11 +64,11 @@ class ClewFileExplorer extends ClewElement {
 		}
 	}
 
-	#actionButton(titleText, glyph, onClick) {
+	#actionButton(titleText, iconName, onClick) {
 		const button = document.createElement('button');
 		button.className = 'icon-button';
 		button.title = titleText;
-		button.textContent = glyph;
+		button.append(icon(iconName));
 		button.addEventListener('click', onClick);
 		return button;
 	}
@@ -82,7 +83,7 @@ class ClewFileExplorer extends ClewElement {
 			if (entry.type === 'folder') {
 				const chevron = document.createElement('span');
 				chevron.className = 'tree-chevron';
-				chevron.textContent = this.#collapsed.has(entry.path) ? '▸' : '▾';
+				chevron.append(icon(this.#collapsed.has(entry.path) ? 'chevron-right' : 'chevron-down'));
 				row.append(chevron);
 			}
 

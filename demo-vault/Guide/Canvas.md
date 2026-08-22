@@ -24,14 +24,14 @@ open in Obsidian too — Clew's drawing and shape layers travel in a
 
 - **Cards** — double-click empty canvas (or press **C**). Double-click a
   card to edit its text.
-- **Notes** — the 🗎 toolbar button embeds any note as a *live jmarkdown
+- **Notes** — the add-file toolbar button embeds any note as a *live jmarkdown
   preview*: math, mermaid, citations, checkboxes all work. Double-click
   a note to interact with it (scroll it, click its links, tick its
   checkboxes); Escape or a click outside returns to canvas mode.
   Right-click → *Open in tab* for full editing.
-- **Images, PDFs, media** — the same 🗎 picker adds any vault file; PDFs
+- **Images, PDFs, media** — the same add-file picker adds any vault file; PDFs
   get Chromium's full viewer.
-- **Web pages** — 🌐 embeds a live web page. Paste a URL anywhere on the
+- **Web pages** — the globe toolbar button embeds a live web page. Paste a URL anywhere on the
   canvas for the same effect.
 - **Connections** — hover a node and drag from a side dot to another
   node. Double-click a connection to label it; right-click to color it.

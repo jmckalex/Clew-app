@@ -400,3 +400,17 @@
 }
 .canvas-text a.card-wikilink { color: var(--clew-link); cursor: pointer; }
 .canvas-text a.card-extlink { color: var(--clew-link); cursor: pointer; text-decoration: underline; }
+
+/* ---- icon alignment (FA inline SVGs) ---- */
+.canvas-tool {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 13px;
+}
+.canvas-zoombar button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}
+.canvas-zoombar button .ui-icon { font-size: 11px; }

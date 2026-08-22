@@ -6,6 +6,7 @@ import { editorPool } from '../../editor/pool.js';
 import { createTab } from '../../workspace/tree.js';
 import { startTabDrag } from '../../workspace/tab-drag.js';
 import { showMenu } from '../chrome/menu.js';
+import { icon } from '../../lib/icons.js';
 
 export function tabTitle(tab) {
 	if (tab.kind === 'note' && tab.path) {
@@ -49,7 +50,7 @@ class ClewTabBar extends ClewElement {
 		const addButton = document.createElement('button');
 		addButton.className = 'tab-add';
 		addButton.title = 'New tab';
-		addButton.textContent = '+';
+		addButton.append(icon('plus'));
 		addButton.addEventListener('click', () => {
 			workspaceStore.openTab(this.groupId, createTab('empty'));
 		});
@@ -74,14 +75,14 @@ class ClewTabBar extends ClewElement {
 		if (tab.pinned) {
 			const pin = document.createElement('span');
 			pin.className = 'tab-pin';
-			pin.textContent = '📌';
+			pin.append(icon('thumbtack'));
 			pin.title = 'Pinned (right-click to unpin)';
 			el.append(pin);
 		} else {
 			const close = document.createElement('button');
 			close.className = 'tab-close';
 			close.setAttribute('aria-label', 'Close tab');
-			close.textContent = '×';
+			close.append(icon('xmark'));
 			close.addEventListener('click', (e) => {
 				e.stopPropagation();
 				this.#closeTab(tab.id);

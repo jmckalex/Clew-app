@@ -556,3 +556,19 @@ clew-search-panel .search-results { flex: 1; }
 .settings-row input[type='checkbox'] { accent-color: var(--clew-accent); }
 body[data-theme='dark'] .props-value[type='date'] { color-scheme: dark; }
 body[data-theme='light'] .props-value[type='date'] { color-scheme: light; }
+
+/* ---- icon alignment (FA inline SVGs) ---- */
+.icon-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}
+.tree-chevron { display: inline-flex; align-items: center; font-size: 9px; }
+.section-chevron { margin-right: 5px; font-size: 9px; }
+.props-delete, .props-chip-x {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}
+.props-delete { font-size: 10px; }
+.props-chip-x { font-size: 9px; }
