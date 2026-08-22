@@ -121,11 +121,29 @@ function openPath(state, path, kind, { newTab = false } = {}) {
 		return existing;
 	}
 	const current = activeTab(state);
-	if (!newTab && (current?.kind === 'note' || current?.kind === 'file')) {
+	// A pinned tab never navigates away from its path.
+	if (!newTab && (current?.kind === 'note' || current?.kind === 'file') && !current.pinned) {
 		navigateTab(state, current.id, path, kind);
 		return current;
 	}
 	return openTab(state, group.id, createTab(kind, path));
+}
+
+// ---- pinning ---------------------------------------------------------------
+
+/** Keep every group's pinned tabs at the front, in stable order. */
+function partitionPinned(group) {
+	const pinned = group.tabs.filter((t) => t.pinned);
+	if (pinned.length === 0) return;
+	group.tabs = [...pinned, ...group.tabs.filter((t) => !t.pinned)];
+}
+
+export function pinTab(state, tabId, pinned) {
+	const found = findTab(state.root, tabId);
+	if (!found) return;
+	if (pinned) found.tab.pinned = true;
+	else delete found.tab.pinned;
+	partitionPinned(found.group);
 }
 
 export function closeTab(state, tabId) {
@@ -161,6 +179,7 @@ export function moveTab(state, tabId, toGroupId, index = Infinity) {
 	}
 	const at = Math.max(0, Math.min(index, target.tabs.length));
 	target.tabs.splice(at, 0, tab);
+	partitionPinned(target);
 	target.activeTabId = tab.id;
 	state.activeGroupId = target.id;
 	normalize(state);
@@ -246,7 +265,7 @@ export function navigateTab(state, tabId, path, kind = 'note') {
 
 export function goBack(state, tabId) {
 	const found = findTab(state.root, tabId);
-	if (!found || found.tab.history.back.length === 0) return false;
+	if (!found || found.tab.pinned || found.tab.history.back.length === 0) return false;
 	const { tab } = found;
 	tab.history.forward.push(snapshot(tab));
 	restore(tab, tab.history.back.pop());
@@ -255,7 +274,7 @@ export function goBack(state, tabId) {
 
 export function goForward(state, tabId) {
 	const found = findTab(state.root, tabId);
-	if (!found || found.tab.history.forward.length === 0) return false;
+	if (!found || found.tab.pinned || found.tab.history.forward.length === 0) return false;
 	const { tab } = found;
 	tab.history.back.push(snapshot(tab));
 	restore(tab, tab.history.forward.pop());

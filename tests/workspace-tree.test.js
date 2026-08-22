@@ -113,3 +113,35 @@ test('deserialize rejects junk', () => {
 	assert.equal(tree.deserialize(null), null);
 	assert.equal(tree.deserialize({ version: 99 }), null);
 });
+
+test('pinned tabs sort first and never navigate away', () => {
+	const state = stateWithNotes('a.md', 'b.md', 'c.md');
+	const group = tree.activeGroup(state);
+	const tabC = group.tabs[2];
+	tree.pinTab(state, tabC.id, true);
+	assert.equal(group.tabs[0].id, tabC.id); // pinned moved to the front
+	assert.equal(tabC.pinned, true);
+
+	// Opening a note while the pinned tab is active opens a NEW tab.
+	tree.activateTab(state, tabC.id);
+	const before = group.tabs.length;
+	tree.openNote(state, 'd.md');
+	assert.equal(group.tabs.length, before + 1);
+	assert.equal(tabC.path, 'c.md');
+
+	// History is frozen while pinned.
+	assert.equal(tree.goBack(state, tabC.id), false);
+
+	// Unpinning restores normal behavior and clears the flag.
+	tree.pinTab(state, tabC.id, false);
+	assert.equal('pinned' in tabC, false);
+});
+
+test('moveTab keeps the pinned region at the front', () => {
+	const state = stateWithNotes('a.md', 'b.md', 'c.md');
+	const group = tree.activeGroup(state);
+	tree.pinTab(state, group.tabs[0].id, true); // pin a.md
+	const tabB = group.tabs.find((t) => t.path === 'b.md');
+	tree.moveTab(state, tabB.id, group.id, 0); // try to drop before the pin
+	assert.equal(group.tabs[0].path, 'a.md'); // pin stays first
+});

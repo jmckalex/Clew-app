@@ -330,3 +330,12 @@ clew-status-bar {
 	color: var(--clew-text-normal);
 }
 .conflict-banner button:hover { background: var(--clew-hover); }
+
+/* ---- pinned tabs ---- */
+.tab-pin {
+	font-size: 9px;
+	line-height: 1;
+	margin-left: 2px;
+	opacity: 0.8;
+}
+.tab.is-pinned { padding-right: 8px; }

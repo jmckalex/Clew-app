@@ -50,6 +50,7 @@ class AppMenu {
 		noteActive: false,
 		tabOpen: false,
 		readingMode: false,
+		pinned: false,
 		bookmarked: false,
 		leftSidebar: true,
 		rightSidebar: true,
@@ -286,6 +287,8 @@ class AppMenu {
 				{ type: 'separator' },
 				c('workspace:split-right', 'Split Right', { chord: 'Mod-\\', needs: 'tab' }),
 				c('workspace:split-down', 'Split Down', { chord: 'Mod-Shift-\\', needs: 'tab' }),
+				{ type: 'separator' },
+				c('workspace:pin-tab', 'Pin Tab', { needs: 'tab', type: 'checkbox', checked: s.pinned }),
 				...(isMac ? [{ type: 'separator' }, { role: 'front' }] : []),
 			],
 		};

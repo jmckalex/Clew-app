@@ -5,6 +5,7 @@ import { workspaceStore } from '../../state/workspace-store.js';
 import { editorPool } from '../../editor/pool.js';
 import { createTab } from '../../workspace/tree.js';
 import { startTabDrag } from '../../workspace/tab-drag.js';
+import { showMenu } from '../chrome/menu.js';
 
 export function tabTitle(tab) {
 	if (tab.kind === 'note' && tab.path) {
@@ -61,32 +62,67 @@ class ClewTabBar extends ClewElement {
 		el.className = 'tab';
 		el.dataset.tabId = tab.id;
 		el.classList.toggle('is-active', isActive);
+		el.classList.toggle('is-pinned', !!tab.pinned);
 		el.classList.toggle('is-dirty', editorPool.isDirty(tab.id));
 
 		const title = document.createElement('span');
 		title.className = 'tab-title';
 		title.textContent = tabTitle(tab);
 		title.title = tab.path ?? '';
+		el.append(title);
 
-		const close = document.createElement('button');
-		close.className = 'tab-close';
-		close.setAttribute('aria-label', 'Close tab');
-		close.textContent = '×';
-		close.addEventListener('click', (e) => {
-			e.stopPropagation();
-			this.#closeTab(tab.id);
-		});
+		if (tab.pinned) {
+			const pin = document.createElement('span');
+			pin.className = 'tab-pin';
+			pin.textContent = '📌';
+			pin.title = 'Pinned (right-click to unpin)';
+			el.append(pin);
+		} else {
+			const close = document.createElement('button');
+			close.className = 'tab-close';
+			close.setAttribute('aria-label', 'Close tab');
+			close.textContent = '×';
+			close.addEventListener('click', (e) => {
+				e.stopPropagation();
+				this.#closeTab(tab.id);
+			});
+			el.append(close);
+		}
 
-		el.append(title, close);
 		el.addEventListener('pointerdown', (e) => {
-			if (e.button === 1) return;
+			if (e.button === 1 || e.button === 2) return;
 			workspaceStore.activateTab(tab.id);
 			startTabDrag(e, { tabId: tab.id, groupId: this.groupId, tabEl: el });
 		});
 		el.addEventListener('auxclick', (e) => {
-			if (e.button === 1) this.#closeTab(tab.id);
+			if (e.button === 1 && !tab.pinned) this.#closeTab(tab.id);
+		});
+		el.addEventListener('contextmenu', (e) => {
+			e.preventDefault();
+			this.#tabMenu(tab, e.clientX, e.clientY);
 		});
 		return el;
+	}
+
+	#tabMenu(tab, x, y) {
+		const group = this.group;
+		if (!group) return;
+		const index = group.tabs.findIndex((t) => t.id === tab.id);
+		const closable = (t) => !t.pinned && t.id !== tab.id;
+		const others = group.tabs.filter(closable);
+		const toRight = group.tabs.slice(index + 1).filter((t) => !t.pinned);
+		const closeAll = (tabs) => {
+			for (const t of tabs) this.#closeTab(t.id);
+		};
+		showMenu(x, y, [
+			tab.pinned
+				? { label: 'Unpin', click: () => workspaceStore.pinTab(tab.id, false) }
+				: { label: 'Pin', click: () => workspaceStore.pinTab(tab.id, true) },
+			{ separator: true },
+			...(tab.pinned ? [] : [{ label: 'Close', click: () => this.#closeTab(tab.id) }]),
+			{ label: `Close others${others.length ? ` (${others.length})` : ''}`, click: () => closeAll(others) },
+			{ label: `Close tabs to the right${toRight.length ? ` (${toRight.length})` : ''}`, click: () => closeAll(toRight) },
+		]);
 	}
 
 	#closeTab(tabId) {

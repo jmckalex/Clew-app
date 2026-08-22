@@ -117,6 +117,11 @@ class WorkspaceStore extends Emitter {
 		if (tree.goForward(this.state, tabId)) this.#commit();
 	}
 
+	pinTab(tabId, pinned) {
+		tree.pinTab(this.state, tabId, pinned);
+		this.#commit();
+	}
+
 	setTabMode(tabId, mode) {
 		const found = this.findTab(tabId);
 		if (!found || found.tab.view.mode === mode) return;

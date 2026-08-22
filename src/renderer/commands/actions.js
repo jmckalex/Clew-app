@@ -5,11 +5,12 @@ import { vaultStore, isNotePath } from '../state/vault-store.js';
 import { editorPool } from '../editor/pool.js';
 import { createTab } from '../workspace/tree.js';
 import { isCanvasPath } from '../lib/file-types.js';
+import { scrollSyncBus } from '../preview/scroll-sync.js';
 import { ipc, CH } from '../ipc.js';
 
 export function closeActiveTab() {
 	const tab = workspaceStore.activeTab();
-	if (!tab) return;
+	if (!tab || tab.pinned) return; // unpin before closing
 	editorPool.close(tab.id);
 	workspaceStore.closeTab(tab.id);
 }
@@ -66,7 +67,12 @@ export function historyForward() {
  */
 export async function openWikilink(target, { newTab = false, mode } = {}) {
 	const { name, heading } = splitTarget(target);
-	if (!name) return; // same-file heading link — nothing to open
+	if (!name) {
+		// [[#Heading]]: jump within the active note.
+		const tab = workspaceStore.activeTab();
+		if (heading && tab?.kind === 'note') jumpToHeading(tab, tab.path, heading);
+		return;
+	}
 	let path = vaultStore.resolveNoteName(name);
 	if (!path) {
 		// An attachment reference ([[img.png]], ![[paper.pdf]]) opens a viewer
@@ -89,7 +95,32 @@ export async function openWikilink(target, { newTab = false, mode } = {}) {
 	}
 	const tab = workspaceStore.openNote(path, { newTab });
 	if (mode && tab.view.mode !== mode) workspaceStore.setTabMode(tab.id, mode);
-	void heading; // heading scroll targeting arrives with scroll-sync polish
+	if (heading) jumpToHeading(tab, path, heading);
+}
+
+/** The 1-based line of a heading in a note (case-insensitive), or null. */
+export function headingLine(path, heading) {
+	const clean = heading.trim().toLowerCase();
+	const headings = vaultStore.headingsFor?.(path) ?? [];
+	return headings.find((h) => h.text.trim().toLowerCase() === clean)?.line ?? null;
+}
+
+/**
+ * Land a note tab on a heading: cursor jump in source mode; in reading
+ * mode a still-loading preview picks up view.cursorLine when it becomes
+ * ready, and an already-live one follows the scroll bus.
+ */
+export function jumpToHeading(tab, path, heading) {
+	const line = headingLine(path, heading);
+	if (!line) return;
+	if (tab.view.mode === 'reading') {
+		workspaceStore.updateTabView(tab.id, { cursorLine: line });
+		setTimeout(() => {
+			scrollSyncBus.emit('scroll', { path, line, from: 'nav' });
+		}, 60);
+	} else {
+		jumpToLine(tab.id, line);
+	}
 }
 
 /** Move a tab's editor cursor to a 1-based line — live when the editor is

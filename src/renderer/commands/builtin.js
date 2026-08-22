@@ -214,6 +214,9 @@ export function registerBuiltinCommands() {
 		// workspace
 		{ id: 'workspace:close-tab', name: 'Close tab', hotkeys: ['Mod-w'],
 			run: () => actions.closeActiveTab() },
+		{ id: 'workspace:pin-tab', name: 'Pin / unpin tab',
+			when: (ctx) => ctx.activeTab != null,
+			run: (ctx) => workspaceStore.pinTab(ctx.activeTab.id, !ctx.activeTab.pinned) },
 		{ id: 'workspace:new-tab', name: 'New tab', hotkeys: ['Mod-t'],
 			run: () => actions.newTab() },
 		{ id: 'workspace:next-tab', name: 'Next tab', hotkeys: ['Mod-Tab'],
