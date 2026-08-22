@@ -4,4 +4,8 @@ out/
 .DS_Store
 *.log
 .clew/
+# The demo vault ships its vault settings (note API on, for the API demos).
+!demo-vault/.clew/
+demo-vault/.clew/*
+!demo-vault/.clew/vault-settings.json
 first-session-2026-08-21.pdf

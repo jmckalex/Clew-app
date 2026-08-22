@@ -5,6 +5,7 @@ import { settingsStore } from '../../state/settings-store.js';
 import { vaultStore } from '../../state/vault-store.js';
 import { allCommands, chordOf } from '../../commands/registry.js';
 import { debounce } from '../../lib/debounce.js';
+import { invalidateNoteApiGate } from '../../note-api.js';
 import { ipc, CH } from '../../ipc.js';
 
 const isMac = navigator.platform.startsWith('Mac');
@@ -60,27 +61,45 @@ class ClewSettingsView extends ClewElement {
 
 	#vaultSection() {
 		const section = this.#section(`This vault (${vaultStore.vault?.name ?? '…'})`, []);
+		section.append(
+			...this.#vaultToggle('jmarkdownProject',
+				'jmarkdown project: render own-line [[file.md]] links as inclusions',
+				'For vaults that are jmarkdown manuscripts (a book folder, say): '
+				+ 'reading mode transcludes [[chapter.md]] lines the way the CLI does. '
+				+ 'Own-line wikilinks stop being plain links while this is on. '
+				+ 'Open previews re-render when toggled.'),
+			...this.#vaultToggle('noteApi',
+				'Note API: scripts in rendered notes may control Clew',
+				'Gives <script> tags in reading mode a window.clew API: open notes, '
+				+ 'search, read and write notes and frontmatter, run commands, and share '
+				+ 'state in clewdata.json (which travels with the vault). Notes are code '
+				+ 'with this on — enable it only for vaults you trust. See the Note API '
+				+ 'guide note.'),
+		);
+		return section;
+	}
+
+	#vaultToggle(key, label, hintText) {
 		const box = document.createElement('input');
 		box.type = 'checkbox';
 		box.disabled = true;
-		const row = this.#row('jmarkdown project: render own-line [[file.md]] links as inclusions', box);
+		const row = this.#row(label, box);
 		const hint = document.createElement('p');
 		hint.className = 'settings-hint';
-		hint.textContent = 'For vaults that are jmarkdown manuscripts (a book folder, say): '
-			+ 'reading mode transcludes [[chapter.md]] lines the way the CLI does. '
-			+ 'Own-line wikilinks stop being plain links while this is on. '
-			+ 'Open previews re-render when toggled.';
-		section.append(row, hint);
+		hint.textContent = hintText;
 		ipc.invoke(CH.VAULT_SETTINGS_GET).then((vaultSettings) => {
-			box.checked = vaultSettings?.jmarkdownProject === true;
+			box.checked = vaultSettings?.[key] === true;
 			box.disabled = false;
 		}).catch(() => {});
 		box.addEventListener('change', () => {
 			box.disabled = true;
-			ipc.invoke(CH.VAULT_SETTINGS_SET, { key: 'jmarkdownProject', value: box.checked })
-				.finally(() => { box.disabled = false; });
+			ipc.invoke(CH.VAULT_SETTINGS_SET, { key, value: box.checked })
+				.finally(() => {
+					box.disabled = false;
+					invalidateNoteApiGate();
+				});
 		});
-		return section;
+		return [row, hint];
 	}
 
 	#section(title, rows) {

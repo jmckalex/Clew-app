@@ -51,6 +51,18 @@ AppleScript menu checks, preview frame scripts).
   session), v0.5.0, v0.6.0 — all annotated.
 - **jmarkdown**: untouched again (still `at-migration`, nothing pushed).
 
+## 2b. Post-overnight session (2026-08-22, owner awake)
+
+Font Awesome icon conversion (generated inline SVGs, `d43d9ad`), symlink
+support (`600f1ce`), web-node loading spinner (`b3fd44c`), and the **note
+API** (see CLAUDE.md "Note API"): `window.clew` in rendered notes +
+`clewdata.json` vault kv store, gated per vault (default off; demo vault
+ships it ON via a gitignore-negated `.clew/vault-settings.json`). Demo
+apps: `Features/API Playground.md`, `Habit Tracker.md`, and the
+three-note `Adventure`. Engine quirk found while building it: code
+spans/fences escape `&` but pass `<` raw — candidate upstream jmarkdown
+fix to discuss with the owner.
+
 ## 3. Known rough edges (current, all minor)
 
 1. Canvas cards render a markdown subset, not the engine — `$math$` is

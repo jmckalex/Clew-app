@@ -11,6 +11,7 @@ import { propagateRename } from './rename-links.js';
 import { SearchService } from './search.js';
 import { exportNote } from './export.js';
 import { parseBib } from '../shared/bib.js';
+import { kvStore } from './kv-store.js';
 import { direntKind, shouldRecurse, walkGuard } from './fs-utils.js';
 import fs from 'node:fs';
 import nodePath from 'node:path';
@@ -86,6 +87,12 @@ export function registerIpc() {
 	});
 
 	handle(CH.MENU_STATE, (state) => appMenu.update(state));
+
+	// Vault kv store (note API state).
+	handle(CH.KV_GET, ({ key }) => (vaults.isOpen ? kvStore.get(key) ?? null : null));
+	handle(CH.KV_SET, ({ key, value }) => (vaults.isOpen ? kvStore.set(key, value) : null));
+	handle(CH.KV_DELETE, ({ key }) => (vaults.isOpen ? kvStore.delete(key) : null));
+	handle(CH.KV_LIST, ({ prefix }) => (vaults.isOpen ? kvStore.list(prefix ?? '') : {}));
 
 	handle(CH.RENDER_SUBSCRIBE, ({ path }) => renderService.subscribe(path));
 	handle(CH.RENDER_UNSUBSCRIBE, ({ path }) => renderService.unsubscribe(path));

@@ -71,6 +71,8 @@ function applyRender(html) {
 		showError(null);
 		enableTaskCheckboxes();
 		retypeset();
+		// Morphs never re-execute scripts; note-API controls re-bind on this.
+		document.dispatchEvent(new CustomEvent('clew:render'));
 	} catch (err) {
 		console.error('morph failed', err);
 		post({ type: 'morph-failed' });

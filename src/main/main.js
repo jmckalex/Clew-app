@@ -10,6 +10,7 @@ import { vaults } from './vault.js';
 import { RenderService } from './render-service.js';
 import { registerPreviewScheme, installPreviewProtocol } from './protocol.js';
 import { indexer } from './indexer.js';
+import { kvStore, KV_FILE } from './kv-store.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.dirname(__dirname); // dist/
@@ -22,14 +23,17 @@ vaults.hooks = {
 	onOpen: (root) => {
 		renderService.openVault(root);
 		indexer.openVault(root);
+		kvStore.open(root);
 	},
 	onClose: () => {
 		renderService.closeVault();
 		indexer.closeVault();
+		kvStore.close();
 	},
 	onFileChanged: (rel) => {
 		renderService.onFileChanged(rel);
 		indexer.onFileChanged(rel);
+		if (rel === KV_FILE) kvStore.externalChange();
 	},
 	onStructureChanged: () => indexer.onStructureChanged(),
 };
@@ -60,6 +64,7 @@ function createWindow() {
 	renderService.send = send;
 	indexer.send = send;
 	appMenu.send = send;
+	kvStore.send = send;
 
 	win.loadFile(path.join(distDir, 'renderer', 'index.html'));
 

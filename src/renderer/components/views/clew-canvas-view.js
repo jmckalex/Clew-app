@@ -23,6 +23,7 @@ import { canvasSyncBus } from '../../canvas/canvas-sync.js';
 import { seededRand, roughLine, roughRect, roughDiamond, roughEllipse } from '../../canvas/rough.js';
 import { openListModal } from '../modals/list-modal.js';
 import { previewUrl } from '../workspace/clew-preview-view.js';
+import { handleApiRequest } from '../../note-api.js';
 import { icon } from '../../lib/icons.js';
 
 const HOST_SOURCE = 'clew-preview-host';
@@ -73,6 +74,11 @@ class ClewCanvasView extends ClewElement {
 
 	subscribe() {
 		this.listen({ on: ipc.on }, CH.EV_RENDER_DONE, ({ path }) => this.#refreshEmbeds(path));
+		this.listen({ on: ipc.on }, CH.EV_KV_CHANGED, (payload) => {
+			for (const embed of this.#embeds.values()) {
+				this.#postEmbed(embed, { type: 'event', name: 'kv', payload });
+			}
+		});
 		this.listen({ on: ipc.on }, CH.EV_FILE_CHANGED, ({ path }) => {
 			if (path === this.path) this.#externalChange();
 		});
@@ -1677,6 +1683,10 @@ class ClewCanvasView extends ClewElement {
 				break;
 			case 'checkbox-toggle':
 				actions.toggleTaskLine(embed.path, msg.line, msg.checked);
+				break;
+			case 'api-request':
+				handleApiRequest(msg, { sourcePath: embed.path })
+					.then((response) => this.#postEmbed(embed, response));
 				break;
 			case 'morph-failed':
 				embed.ready = false;

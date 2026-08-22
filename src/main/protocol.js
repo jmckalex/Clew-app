@@ -88,7 +88,8 @@ export function installPreviewProtocol({ vaults, renderService, distDir, nodeMod
 				return fileResponse(abs);
 			}
 			if (pathname.startsWith('__clew_preview__/')) {
-				return fileResponse(path.join(distDir, 'preview-client', 'client.js'));
+				const file = pathname.endsWith('/api.js') ? 'api.js' : 'client.js';
+				return fileResponse(path.join(distDir, 'preview-client', file));
 			}
 
 			if (!vaults.isOpen) {
@@ -111,10 +112,14 @@ export function installPreviewProtocol({ vaults, renderService, distDir, nodeMod
 						+ `<body><div id="__clew_err">${String(err.message ?? err)
 							.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</div></body></html>`;
 				}
-				const injected = html.replace(
-					/<\/body>/i,
-					`<script src="/__clew_preview__/client.js"></script></body>`,
-				);
+				// The note API loads in <head> so inline note scripts can use
+				// window.clew immediately; the client bridge loads at end of body.
+				const injected = html
+					.replace(/<head([^>]*)>/i, `<head$1><script src="/__clew_preview__/api.js"></script>`)
+					.replace(
+						/<\/body>/i,
+						`<script src="/__clew_preview__/client.js"></script></body>`,
+					);
 				return new Response(injected, { headers: headers('text/html') });
 			}
 

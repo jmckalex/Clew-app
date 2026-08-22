@@ -18,6 +18,8 @@ rendered; **⌘O** finds any note; **⌘P** lists every command.
 - [[Properties]] — frontmatter as typed, editable rows
 - [[Canvas]] — an infinite board of notes, web pages, PDFs, ink, and
   shapes ([[Demo Canvas.canvas]])
+- [[Note API]] — notes as programs: [[API Playground]],
+  [[Habit Tracker]], and a tiny [[Adventure]]
 - [[Search]] — full-text search and its operators
 - [[Graph View]] — the vault as a graph
 - [[Daily Notes and Templates]]

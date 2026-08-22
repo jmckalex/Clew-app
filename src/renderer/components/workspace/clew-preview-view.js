@@ -6,6 +6,7 @@ import { workspaceStore } from '../../state/workspace-store.js';
 import { settingsStore } from '../../state/settings-store.js';
 import { ipc, CH } from '../../ipc.js';
 import * as actions from '../../commands/actions.js';
+import { handleApiRequest } from '../../note-api.js';
 import { scrollSyncBus, makeSuppressor } from '../../preview/scroll-sync.js';
 
 const HOST_SOURCE = 'clew-preview-host';
@@ -25,6 +26,9 @@ class ClewPreviewView extends ClewElement {
 	subscribe() {
 		this.listen({ on: ipc.on }, CH.EV_RENDER_DONE, ({ path }) => {
 			if (path === this.path) this.#refresh();
+		});
+		this.listen({ on: ipc.on }, CH.EV_KV_CHANGED, (payload) => {
+			this.#post({ type: 'event', name: 'kv', payload });
 		});
 		this.listen({ on: ipc.on }, CH.EV_RENDER_ERROR, ({ path, message }) => {
 			if (path === this.path) this.#post({ type: 'error', message });
@@ -111,6 +115,10 @@ class ClewPreviewView extends ClewElement {
 			}
 			case 'checkbox-toggle':
 				actions.toggleTaskLine(this.path, msg.line, msg.checked);
+				break;
+			case 'api-request':
+				handleApiRequest(msg, { sourcePath: this.path })
+					.then((response) => this.#post(response));
 				break;
 			case 'chord': {
 				const key = msg.key;

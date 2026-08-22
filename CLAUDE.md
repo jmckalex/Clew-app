@@ -88,6 +88,25 @@ guide note exercises the features it documents.
 - Canvas file IO reuses NOTE_READ/NOTE_WRITE (they are extension-agnostic);
   renames propagate into canvas `file` refs via rename-links.js.
 
+### Note API (scripts in rendered notes)
+
+- `window.clew` in previews comes from `src/preview-client/api.js`
+  (injected into `<head>` by protocol.js): promise RPC over postMessage.
+  `src/renderer/note-api.js` is the ONLY dispatcher — an explicit method
+  whitelist, gated per vault (`vault-settings.json` `noteApi`, default
+  off; every request carries its sourcePath). Both clew-preview-view and
+  the canvas embed handler route `api-request` through it. Never give
+  previews a direct IPC path around this gate.
+- Shared state is `clewdata.json` in the VAULT ROOT (visible on purpose —
+  it travels with a shared vault). `src/main/kv-store.js` owns it: sorted
+  keys, debounced writes, watcher-driven external reloads,
+  `EV_KV_CHANGED` broadcast to every preview and canvas embed.
+- Morphdom never re-executes scripts: note scripts run once per load and
+  re-bind on the `clew:render` DOM event / `clew.on('render')`.
+- Engine quirk: code spans and fences pass `<` through unescaped (while
+  `&` is escaped) — a literal `<script>` inside code swallows the note.
+  Demo notes avoid markup inside code; possible upstream fix, ask owner.
+
 ### Rendering (the part that is easy to get wrong)
 
 - The engine must NEVER run in Clew's process: a build mutates the marked

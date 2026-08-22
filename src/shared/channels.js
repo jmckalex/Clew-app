@@ -28,6 +28,12 @@ export const CH = {
 	VAULT_SETTINGS_GET: 'clew:vault-settings-get',
 	VAULT_SETTINGS_SET: 'clew:vault-settings-set',
 
+	// invoke: vault key-value store (clewdata.json — the note API's state)
+	KV_GET: 'clew:kv-get',
+	KV_SET: 'clew:kv-set',
+	KV_DELETE: 'clew:kv-delete',
+	KV_LIST: 'clew:kv-list',
+
 	// invoke: export via the engine
 	EXPORT_NOTE: 'clew:export-note',
 	SNIPPETS_GET: 'clew:snippets-get',
@@ -55,6 +61,7 @@ export const CH = {
 	EV_INDEX_SNAPSHOT: 'clew:ev-index-snapshot',
 	EV_INDEX_PATCH: 'clew:ev-index-patch',
 	EV_MENU_COMMAND: 'clew:ev-menu-command',
+	EV_KV_CHANGED: 'clew:ev-kv-changed',
 };
 
 // Notes are what Clew opens in an editor.

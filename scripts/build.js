@@ -40,6 +40,13 @@ export const bundles = [
 		bundle: true,
 		format: 'iife',
 	},
+	{
+		// The note API (window.clew), injected into preview <head>s.
+		entryPoints: [path.join(root, 'src/preview-client/api.js')],
+		outfile: path.join(root, 'dist/preview-client/api.js'),
+		bundle: true,
+		format: 'iife',
+	},
 ];
 
 // Static files copied as-is; CSS is deliberately not compiled. The engine
