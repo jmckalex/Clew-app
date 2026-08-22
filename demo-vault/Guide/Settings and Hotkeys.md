@@ -35,6 +35,8 @@ on. Open previews re-render as soon as the box is toggled.
 | ⌘G | Graph view |
 | ⌘⇧D | Daily note |
 | ⌘⌥T | Insert template |
+| ⌘K | Insert wikilink |
+| ⌘S | Save note now |
 | ⌘, | Settings |
 
 User CSS lives in `.clew/snippets/*.css` — see [[Theming]].

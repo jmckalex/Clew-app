@@ -162,9 +162,14 @@ export class ClewProperties extends ClewElement {
 		input.spellcheck = false;
 		input.disabled = !this.#clean;
 		input.value = entry.value === null ? '' : String(entry.value);
+		// ISO dates get the native date picker.
+		if (typeof entry.value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(entry.value)) {
+			input.type = 'date';
+		}
 		input.addEventListener('change', () => {
 			const text = input.value.trim();
 			if (text === '') entry.value = null;
+			else if (input.type === 'date') entry.value = text;
 			else if (text === 'true') entry.value = true;
 			else if (text === 'false') entry.value = false;
 			else if (/^-?\d+(\.\d+)?$/.test(text)) entry.value = Number(text);

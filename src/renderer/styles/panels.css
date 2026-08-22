@@ -554,3 +554,5 @@ clew-search-panel .search-results { flex: 1; }
 	line-height: 1.5;
 }
 .settings-row input[type='checkbox'] { accent-color: var(--clew-accent); }
+body[data-theme='dark'] .props-value[type='date'] { color-scheme: dark; }
+body[data-theme='light'] .props-value[type='date'] { color-scheme: light; }
