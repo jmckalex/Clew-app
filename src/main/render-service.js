@@ -36,6 +36,8 @@ export class RenderService {
 
 	#standby = null; // {child, ready: Promise<child>}
 	#generation = 0;
+	/** Per-vault rendering options (.clew/vault-settings.json). */
+	#vaultOptions = {};
 	/** vault-relative note paths with an open preview (rendered eagerly on change) */
 	#subscribed = new Map(); // path -> subscriber count
 	/** per-path render bookkeeping: {mtimeMs, htmlFile, inflight: Promise|null, dirty} */
@@ -54,8 +56,31 @@ export class RenderService {
 		this.cacheDir = path.join(vaultRoot, '.clew', 'cache', 'html');
 		fs.mkdirSync(path.join(this.engineDir, '.jmarkdown'), { recursive: true });
 		fs.mkdirSync(this.cacheDir, { recursive: true });
+		try {
+			this.#vaultOptions = JSON.parse(
+				fs.readFileSync(path.join(vaultRoot, '.clew', 'vault-settings.json'), 'utf8'));
+		} catch {
+			this.#vaultOptions = {};
+		}
 		this.#writeEngineConfig();
 		this.#spawnStandby();
+	}
+
+	/**
+	 * Vault-level render options changed (e.g. the jmarkdown-project toggle):
+	 * rewrite the engine config, discard the standby worker (it imported the
+	 * old config), forget cached renders, and re-render open previews.
+	 */
+	reconfigure(options) {
+		Object.assign(this.#vaultOptions, options);
+		if (!this.vaultRoot) return;
+		this.#writeEngineConfig();
+		this.#standby?.child.kill();
+		this.#spawnStandby();
+		this.#notes.clear();
+		for (const relPath of this.#subscribed.keys()) {
+			this.render(relPath).catch(() => {});
+		}
 	}
 
 	closeVault() {
@@ -76,7 +101,9 @@ export class RenderService {
 	#writeEngineConfig() {
 		const engineAssets = path.join(this.distDir, 'engine');
 		const config = {
-			'File inclusion': false,
+			// "jmarkdown project" vaults (the book manuscript case) re-enable
+			// the engine's own-line [[file.md]] inclusion in previews.
+			'File inclusion': this.#vaultOptions.jmarkdownProject === true,
 			'Header style': 'fenced',
 			'Template': path.join(engineAssets, 'clew-template.html'),
 			'Extensions': [

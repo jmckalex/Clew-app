@@ -544,3 +544,13 @@ clew-search-panel .search-results { flex: 1; }
 	border-color: var(--clew-accent);
 	color: var(--clew-text-on-accent);
 }
+
+/* ---- per-vault settings ---- */
+.settings-hint {
+	font-size: 12px;
+	color: var(--clew-text-faint);
+	margin: 2px 0 0;
+	max-width: 560px;
+	line-height: 1.5;
+}
+.settings-row input[type='checkbox'] { accent-color: var(--clew-accent); }

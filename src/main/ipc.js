@@ -96,6 +96,18 @@ export function registerIpc() {
 	handle(CH.VSTATE_LOAD, ({ name }) => vaults.loadState(sanitizeStateName(name)));
 	handle(CH.VSTATE_SAVE, ({ name, data }) => vaults.saveState(sanitizeStateName(name), data));
 
+	// Vault-level settings; render-affecting keys reconfigure the engine.
+	handle(CH.VAULT_SETTINGS_GET, () => vaults.loadState('vault-settings.json') ?? {});
+	handle(CH.VAULT_SETTINGS_SET, ({ key, value }) => {
+		const current = vaults.loadState('vault-settings.json') ?? {};
+		current[key] = value;
+		vaults.saveState('vault-settings.json', current);
+		if (key === 'jmarkdownProject') {
+			renderService.reconfigure({ jmarkdownProject: value === true });
+		}
+		return current;
+	});
+
 	handle(CH.EXPORT_NOTE, ({ path, format }, event) =>
 		exportNote({
 			win: BrowserWindow.fromWebContents(event.sender),

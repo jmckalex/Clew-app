@@ -2,8 +2,10 @@
 // and the hotkey editor (records chords straight into settings overrides).
 import { ClewElement } from '../base/clew-element.js';
 import { settingsStore } from '../../state/settings-store.js';
+import { vaultStore } from '../../state/vault-store.js';
 import { allCommands, chordOf } from '../../commands/registry.js';
 import { debounce } from '../../lib/debounce.js';
+import { ipc, CH } from '../../ipc.js';
 
 const isMac = navigator.platform.startsWith('Mac');
 
@@ -49,8 +51,36 @@ class ClewSettingsView extends ClewElement {
 				this.#textRow('Attachment folder', 'attachmentFolder', 'Attachments'),
 				this.#textRow('Templates folder', 'templatesFolder', 'Templates'),
 			]),
+			this.#vaultSection(),
 			this.#hotkeysSection(),
 		);
+	}
+
+	// ---- per-vault settings (.clew/vault-settings.json) --------------------
+
+	#vaultSection() {
+		const section = this.#section(`This vault (${vaultStore.vault?.name ?? '…'})`, []);
+		const box = document.createElement('input');
+		box.type = 'checkbox';
+		box.disabled = true;
+		const row = this.#row('jmarkdown project: render own-line [[file.md]] links as inclusions', box);
+		const hint = document.createElement('p');
+		hint.className = 'settings-hint';
+		hint.textContent = 'For vaults that are jmarkdown manuscripts (a book folder, say): '
+			+ 'reading mode transcludes [[chapter.md]] lines the way the CLI does. '
+			+ 'Own-line wikilinks stop being plain links while this is on. '
+			+ 'Open previews re-render when toggled.';
+		section.append(row, hint);
+		ipc.invoke(CH.VAULT_SETTINGS_GET).then((vaultSettings) => {
+			box.checked = vaultSettings?.jmarkdownProject === true;
+			box.disabled = false;
+		}).catch(() => {});
+		box.addEventListener('change', () => {
+			box.disabled = true;
+			ipc.invoke(CH.VAULT_SETTINGS_SET, { key: 'jmarkdownProject', value: box.checked })
+				.finally(() => { box.disabled = false; });
+		});
+		return section;
 	}
 
 	#section(title, rows) {

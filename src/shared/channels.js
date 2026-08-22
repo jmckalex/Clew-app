@@ -25,6 +25,8 @@ export const CH = {
 	SETTINGS_SET: 'clew:settings-set',
 	VSTATE_LOAD: 'clew:vstate-load',
 	VSTATE_SAVE: 'clew:vstate-save',
+	VAULT_SETTINGS_GET: 'clew:vault-settings-get',
+	VAULT_SETTINGS_SET: 'clew:vault-settings-set',
 
 	// invoke: export via the engine
 	EXPORT_NOTE: 'clew:export-note',

@@ -112,6 +112,11 @@ guide note exercises the features it documents.
   PDF embeds another way.
 - Exports (`export.js`) use the note's own directory as cwd — the user's
   normal jmarkdown config cascade, NOT the Clew preview config.
+- Per-vault render options live in `<vault>/.clew/vault-settings.json`
+  (`jmarkdownProject: true` re-enables the engine's own-line `[[file.md]]`
+  inclusion). Changing them goes through `renderService.reconfigure()`,
+  which rewrites the engine config, discards the warm standby worker (it
+  imported the old config), and re-renders open previews.
 
 ## Conventions and gotchas
 

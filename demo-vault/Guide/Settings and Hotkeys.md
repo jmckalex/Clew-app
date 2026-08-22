@@ -10,6 +10,16 @@ type the new chord. Custom bindings are marked, conflicts show in red,
 and **Reset** restores the default. The command palette (⌘P) always
 shows current bindings.
 
+## This vault
+
+The **This vault** section holds per-vault settings (stored in
+`.clew/vault-settings.json`). The one that exists so far: **jmarkdown
+project** — for vaults that are jmarkdown manuscripts, it re-enables
+the engine's own-line `[[file.md]]` inclusion, so reading mode
+transcludes chapters exactly the way the CLI build does. The trade-off:
+a wikilink alone on its own line stops being a plain link while it's
+on. Open previews re-render as soon as the box is toggled.
+
 ## Default hotkeys
 
 | Chord | Command |
