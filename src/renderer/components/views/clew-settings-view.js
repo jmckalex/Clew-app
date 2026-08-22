@@ -70,6 +70,14 @@ class ClewSettingsView extends ClewElement {
 				+ 'reading mode transcludes [[chapter.md]] lines the way the CLI does. '
 				+ 'Own-line wikilinks stop being plain links while this is on. '
 				+ 'Open previews re-render when toggled.'),
+			...this.#vaultToggle('normalSyntax',
+				'Standard Markdown syntax: disable the jmarkdown inline dialect',
+				'By default the dialect means *strong*, **intense**, /italic/, '
+				+ '==highlight==, ~strikethrough~, and TeX-style sub/superscripts. '
+				+ 'With this on, the engine reverts those to normal Markdown '
+				+ '(*italic*, **bold**, etc.) while keeping everything else — math, '
+				+ 'citations, diagrams, theorems. Renders and exports both honor it. '
+				+ 'The editor highlighting still assumes the dialect for now.'),
 			...this.#vaultToggle('noteApi',
 				'Note API: scripts in rendered notes may control Clew',
 				'Gives <script> tags in reading mode a window.clew API: open notes, '

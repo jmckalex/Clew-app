@@ -100,6 +100,20 @@ focus, API-playground + canvas + packaged-app regression smokes all
 green. Two quit-hang bugs found and fixed (webContents access after
 window destruction in dispose; menu rebuild during quit).
 
+## 3d. Post-multi-window batch (2026-08-22, owner awake)
+
+Tab-close fix (bar rebuilt on activation, detaching the pressed x —
+now reconciles by signature), new-tab default mode setting + per-call
+override (clew.open opts; Adventure navigates in-place in reading
+mode), public-domain media in the demo vault (Waterhouse's Ariadne,
+Burne-Jones's labyrinth tile, Earthrise, the 1895 Lumiere train film —
+Features/Media Gallery.md, ~6.5MB total), preview color-scheme fix,
+code-masked mention scanning, and the **Standard Markdown syntax**
+per-vault toggle (engine's normalSyntax build option — no engine
+changes needed; renders + exports honor it). Caveats: the editor's
+dialect overlay and the Format menu still assume the dialect when
+normalSyntax is on; the canvas card renderer too. Follow-up if wanted.
+
 ## 4. Feature plan (designed, not yet built — next sessions)
 
 Ordered by expected value; none started:

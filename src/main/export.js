@@ -73,6 +73,8 @@ function compilePdf(texFile) {
  */
 export async function exportNote({ win, vaults, relPath, format }) {
 	const abs = vaults.resolve(relPath);
+	// Exports honor the vault's standard-syntax choice, like previews do.
+	const normalSyntax = vaults.loadState('vault-settings.json')?.normalSyntax === true;
 	const base = path.basename(abs).replace(/\.(md|jmd)$/i, '');
 	const ext = format === 'html' ? 'html' : format === 'latex' ? 'tex' : 'pdf';
 
@@ -84,14 +86,14 @@ export async function exportNote({ win, vaults, relPath, format }) {
 	if (canceled || !filePath) return { canceled: true };
 
 	if (format === 'html') {
-		await runWorker({ file: abs, options: { to: 'html', output: filePath }, cwd: path.dirname(abs) });
+		await runWorker({ file: abs, options: { to: 'html', output: filePath, normalSyntax }, cwd: path.dirname(abs) });
 		return { output: filePath };
 	}
 
 	// LaTeX (and PDF via LaTeX): build the .tex next to the requested output
 	// so relative graphics resolve, then compile if PDF was asked for.
 	const texFile = format === 'latex' ? filePath : filePath.replace(/\.pdf$/i, '.tex');
-	await runWorker({ file: abs, options: { to: 'latex', output: texFile }, cwd: path.dirname(abs) });
+	await runWorker({ file: abs, options: { to: 'latex', output: texFile, normalSyntax }, cwd: path.dirname(abs) });
 	if (format === 'latex') return { output: texFile };
 	const pdf = await compilePdf(texFile);
 	if (pdf !== filePath) fs.copyFileSync(pdf, filePath);

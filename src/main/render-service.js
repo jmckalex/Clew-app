@@ -213,7 +213,13 @@ export class RenderService {
 			child.send({
 				type: 'build',
 				file: abs,
-				options: { to: 'html', output: entry.htmlFile },
+				options: {
+					to: 'html',
+					output: entry.htmlFile,
+					// Standard-Markdown vaults: the engine keeps its extensions but
+					// reverts *em*/**strong** etc. to normal marked semantics.
+					normalSyntax: this.#vaultOptions.normalSyntax === true,
+				},
 			});
 		});
 

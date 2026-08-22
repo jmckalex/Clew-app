@@ -14,7 +14,11 @@ shows current bindings.
 ## This vault
 
 The **This vault** section holds per-vault settings (stored in
-`.clew/vault-settings.json`). The one that exists so far: **jmarkdown
+`.clew/vault-settings.json`). Current options: **Standard
+Markdown syntax** — disables the jmarkdown inline dialect so `*italic*`
+and `**bold**` behave like everywhere else, while keeping math,
+citations, diagrams, and theorems (renders *and* exports honor it; the
+editor's dialect highlighting doesn't adapt yet). And **jmarkdown
 project** — for vaults that are jmarkdown manuscripts, it re-enables
 the engine's own-line `[[file.md]]` inclusion, so reading mode
 transcludes chapters exactly the way the CLI build does. The trade-off:

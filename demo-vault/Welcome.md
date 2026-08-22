@@ -31,8 +31,9 @@ rendered; **⌘O** finds any note; **⌘P** lists every command.
 
 The `Features/` folder stress-tests the engine: [[Citations]] (with a
 real bibliography), [[Math and Theorems]], [[Footnotes]], [[Diagrams]],
-and [[Dialect Demo]] for the syntax itself. [[Tasks]] has checkboxes
-that write back when clicked in reading mode.
+[[Media Gallery]] (public-domain paintings and an 1895 film), and
+[[Dialect Demo]] for the syntax itself. [[Tasks]] has checkboxes that
+write back when clicked in reading mode.
 
 A taste, right here — math $e^{i\pi} + 1 = 0$, a /dialect italic/, a
 ==highlight==, a #welcome tag, and an embedded note:

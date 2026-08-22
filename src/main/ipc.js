@@ -120,8 +120,8 @@ export function registerIpc() {
 		const current = s.vaults.loadState('vault-settings.json') ?? {};
 		current[key] = value;
 		s.vaults.saveState('vault-settings.json', current);
-		if (key === 'jmarkdownProject') {
-			s.renderService.reconfigure({ jmarkdownProject: value === true });
+		if (key === 'jmarkdownProject' || key === 'normalSyntax') {
+			s.renderService.reconfigure({ [key]: value === true });
 		}
 		return current;
 	});
