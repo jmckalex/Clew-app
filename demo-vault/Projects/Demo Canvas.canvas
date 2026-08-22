@@ -24,9 +24,9 @@
 			"x": 500,
 			"y": 0,
 			"width": 380,
-			"height": 130,
+			"height": 190,
 			"color": "6",
-			"text": "Cards hold plain text. Double-click one to edit it; drag borders and corners to resize; right-click for colors."
+			"text": "# Cards\nCards render *markdown*: **intense**, /italic/, ==highlight==, `code`, $E=mc^2$\n- [x] task lists\n- [ ] with checkboxes\nDouble-click to edit the raw text; [[Canvas]] links work when the card is engaged."
 		},
 		{
 			"id": "8877665544332211",

@@ -231,6 +231,34 @@ export function bestSides(fromNode, toNode) {
 	return dy > 0 ? { fromSide: 'bottom', toSide: 'top' } : { fromSide: 'top', toSide: 'bottom' };
 }
 
+/**
+ * After nodes move or resize, re-pick sides for any touching edge whose
+ * stored sides no longer face the other endpoint (deliberate side choices
+ * that still make sense are preserved). Returns true when anything changed.
+ */
+export function repickEdgeSides(doc, movedIds) {
+	const byId = new Map(doc.nodes.map((n) => [n.id, n]));
+	let changed = false;
+	const facing = (side, p, q) =>
+		SIDE_DIR[side].x * (q.x - p.x) + SIDE_DIR[side].y * (q.y - p.y) > 0;
+	for (const edge of doc.edges) {
+		if (!movedIds.has(edge.fromNode) && !movedIds.has(edge.toNode)) continue;
+		const from = byId.get(edge.fromNode);
+		const to = byId.get(edge.toNode);
+		if (!from || !to) continue;
+		const a = anchorPoint(from, edge.fromSide);
+		const b = anchorPoint(to, edge.toSide);
+		if (facing(edge.fromSide, a, b) && facing(edge.toSide, b, a)) continue;
+		const best = bestSides(from, to);
+		if (best.fromSide !== edge.fromSide || best.toSide !== edge.toSide) {
+			edge.fromSide = best.fromSide;
+			edge.toSide = best.toSide;
+			changed = true;
+		}
+	}
+	return changed;
+}
+
 /** Distance from a point on an edge's bezier (sampled) — for edge hit tests. */
 export function edgeDistance(fromNode, fromSide, toNode, toSide, x, y) {
 	const { from, to } = { from: anchorPoint(fromNode, fromSide), to: anchorPoint(toNode, toSide) };

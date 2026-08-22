@@ -315,3 +315,88 @@
 	outline: none;
 	box-shadow: 0 3px 14px var(--clew-shadow);
 }
+
+/* ---- conflict banner & web-node error chrome ------------------------------- */
+
+.canvas-viewport > .conflict-banner {
+	position: absolute;
+	top: 0; left: 0; right: 0;
+	z-index: 5;
+}
+.canvas-web-error {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	padding: 16px;
+	text-align: center;
+	background: var(--clew-bg-secondary);
+	color: var(--clew-text-muted);
+	font-size: 12.5px;
+}
+.canvas-web-error-text { overflow-wrap: anywhere; }
+.canvas-web-retry {
+	font-size: 12px;
+	border: 1px solid var(--clew-border);
+	border-radius: 5px;
+	padding: 3px 12px;
+	background: none;
+	color: var(--clew-text-normal);
+	cursor: pointer;
+}
+.canvas-web-retry:hover { background: var(--clew-hover); }
+
+/* ---- card markdown --------------------------------------------------------- */
+
+.canvas-text .card-h { font-weight: 700; margin: 2px 0 4px; }
+.canvas-text .card-h1 { font-size: 1.35em; }
+.canvas-text .card-h2 { font-size: 1.2em; }
+.canvas-text .card-h3 { font-size: 1.08em; }
+.canvas-text .card-h4 { font-size: 1em; }
+.canvas-text .card-p { margin: 0; }
+.canvas-text .card-gap { height: 0.6em; }
+.canvas-text .card-li { display: flex; gap: 7px; }
+.canvas-text .card-bullet { flex: none; color: var(--clew-text-muted); }
+.canvas-text .card-box { flex: none; }
+.canvas-text .card-task.is-done > span:last-child {
+	color: var(--clew-text-muted);
+	text-decoration: line-through;
+}
+.canvas-text .card-quote {
+	border-left: 3px solid var(--clew-border);
+	padding-left: 9px;
+	color: var(--clew-quote);
+}
+.canvas-text .card-hr {
+	border-top: 1px solid var(--clew-border);
+	margin: 7px 0;
+}
+.canvas-text pre.card-code {
+	background: var(--clew-bg-tertiary);
+	border-radius: 5px;
+	padding: 6px 8px;
+	margin: 4px 0;
+	font-family: var(--clew-mono-font);
+	font-size: 0.85em;
+	overflow-x: auto;
+}
+.canvas-text code {
+	background: var(--clew-bg-tertiary);
+	border-radius: 4px;
+	padding: 0 4px;
+	font-family: var(--clew-mono-font);
+	font-size: 0.88em;
+	color: var(--clew-code);
+}
+.canvas-text code.card-math { font-style: italic; }
+.canvas-text mark {
+	background: color-mix(in srgb, var(--clew-canvas-3) 40%, transparent);
+	color: inherit;
+	border-radius: 3px;
+	padding: 0 2px;
+}
+.canvas-text a.card-wikilink { color: var(--clew-link); cursor: pointer; }
+.canvas-text a.card-extlink { color: var(--clew-link); cursor: pointer; text-decoration: underline; }

@@ -17,8 +17,9 @@ import { debounce } from '../../lib/debounce.js';
 import { isViewablePath } from '../../lib/file-types.js';
 import * as actions from '../../commands/actions.js';
 import * as model from '../../canvas/canvas-model.js';
-import { buildNodeContent, contentKey } from '../../canvas/node-content.js';
+import { buildNodeContent, contentKey, setCardText } from '../../canvas/node-content.js';
 import { showCanvasMenu } from '../../canvas/canvas-menu.js';
+import { canvasSyncBus } from '../../canvas/canvas-sync.js';
 import { seededRand, roughLine, roughRect, roughDiamond, roughEllipse } from '../../canvas/rough.js';
 import { openListModal } from '../modals/list-modal.js';
 import { previewUrl } from '../workspace/clew-preview-view.js';
@@ -56,6 +57,7 @@ class ClewCanvasView extends ClewElement {
 	#redoStack = [];
 	#lastWritten = null;
 	#loaded = false;
+	#conflict = null; // disk text during an unresolved external-change conflict
 	#ink = { color: 'ink', width: 3 };
 	#shapeStyle = { color: '2', fill: false };
 	#nodeEls = new Map(); // node id -> element
@@ -74,6 +76,14 @@ class ClewCanvasView extends ClewElement {
 			if (path === this.path) this.#externalChange();
 		});
 		this.listen(settingsStore, 'settings-changed', () => this.#broadcastTheme());
+		// Sibling canvas views of the same file (splits) sync live.
+		this.listen(canvasSyncBus, 'doc-changed', ({ path, text, source }) => {
+			if (source === this || path !== this.path || this.#drag || !this.#loaded) return;
+			this.#lastWritten = text; // the source's save covers the file
+			this.#doc = model.parseCanvas(text);
+			this.#pruneSelection();
+			this.#syncAll();
+		});
 		window.addEventListener('message', this.#onMessage);
 		window.addEventListener('blur', this.#onWindowBlur);
 	}
@@ -167,7 +177,7 @@ class ClewCanvasView extends ClewElement {
 	}
 
 	#write() {
-		if (!this.#loaded) return;
+		if (!this.#loaded || this.#conflict) return;
 		const text = model.serializeCanvas(this.#doc);
 		if (text === this.#lastWritten) return;
 		this.#lastWritten = text;
@@ -179,15 +189,48 @@ class ClewCanvasView extends ClewElement {
 	async #externalChange() {
 		const text = await ipc.invoke(CH.NOTE_READ, { path: this.path }).catch(() => null);
 		if (text === null || text === this.#lastWritten) return;
-		if (this.#save.pending()) {
-			// Local unsaved edits win; they overwrite on the next flush.
-			console.warn('Canvas changed on disk with local edits pending; keeping local state.');
+		if (this.#save.pending() || this.#conflict) {
+			// External change + unsaved local edits: pause saving, let the
+			// user pick a side (mirrors the editor's conflict banner).
+			this.#conflict = text;
+			this.#save.cancel();
+			this.#syncConflictBanner();
 			return;
 		}
 		this.#lastWritten = text;
 		this.#doc = model.parseCanvas(text);
 		this.#clearSelection();
 		this.#syncAll();
+	}
+
+	#syncConflictBanner() {
+		this.querySelector(':scope .conflict-banner')?.remove();
+		if (!this.#conflict) return;
+		const banner = document.createElement('div');
+		banner.className = 'conflict-banner';
+		const text = document.createElement('span');
+		text.textContent = 'This canvas changed on disk while you have unsaved edits. Auto-save is paused.';
+		const keep = document.createElement('button');
+		keep.textContent = 'Keep my version';
+		keep.addEventListener('click', () => {
+			this.#conflict = null;
+			this.#syncConflictBanner();
+			this.#write();
+		});
+		const load = document.createElement('button');
+		load.textContent = 'Load disk version';
+		load.addEventListener('click', () => {
+			const disk = this.#conflict;
+			this.#conflict = null;
+			this.#syncConflictBanner();
+			this.#checkpoint(); // ⌘Z can still restore the local version
+			this.#doc = model.parseCanvas(disk);
+			this.#lastWritten = disk;
+			this.#pruneSelection();
+			this.#syncAll();
+		});
+		banner.append(text, keep, load);
+		this.#els.viewport.append(banner);
 	}
 
 	// ---- undo / mutation ---------------------------------------------------
@@ -201,6 +244,11 @@ class ClewCanvasView extends ClewElement {
 	#mutated() {
 		this.#syncAll();
 		this.#save();
+		canvasSyncBus.emit('doc-changed', {
+			path: this.path,
+			text: model.serializeCanvas(this.#doc),
+			source: this,
+		});
 	}
 
 	#undo() {
@@ -396,8 +444,8 @@ class ClewCanvasView extends ClewElement {
 			el.classList.toggle('is-engaged', this.#engagedId === node.id);
 			if (node.type === 'text' && this.#editingId !== node.id) {
 				const content = el.querySelector('.canvas-text');
-				if (content && content.textContent !== (node.text ?? '')) {
-					content.textContent = node.text ?? '';
+				if (content && content.dataset.cardText !== (node.text ?? '')) {
+					setCardText(content, node.text);
 				}
 			}
 			if (node.type === 'group') {
@@ -836,10 +884,12 @@ class ClewCanvasView extends ClewElement {
 		try { this.#els.viewport.releasePointerCapture(e.pointerId); } catch { /* released */ }
 
 		if (drag.type === 'move' && drag.moved) {
+			model.repickEdgeSides(this.#doc, new Set(drag.targets.map((t) => t.obj.id)));
 			this.#mutated();
 			return;
 		}
 		if (drag.type === 'resize' && drag.checkpointed) {
+			model.repickEdgeSides(this.#doc, new Set([drag.target.obj.id]));
 			this.#mutated();
 			return;
 		}
@@ -868,7 +918,8 @@ class ClewCanvasView extends ClewElement {
 			return;
 		}
 		if (drag.type === 'erase') {
-			this.#syncOverlay();
+			if (drag.erased) this.#mutated();
+			else this.#syncOverlay();
 			return;
 		}
 		if (drag.type === 'shape') {
@@ -1163,14 +1214,16 @@ class ClewCanvasView extends ClewElement {
 		const el = this.#nodeEls.get(id);
 		const textarea = el?.querySelector('.canvas-text-input');
 		const node = this.#nodeById(id);
+		let changed = false;
 		if (textarea && node && textarea.value !== (node.text ?? '')) {
 			this.#checkpoint();
 			node.text = textarea.value;
-			this.#save();
+			changed = true;
 		}
 		textarea?.remove();
 		el?.classList.remove('is-editing');
-		this.#syncNodes();
+		if (changed) this.#mutated();
+		else this.#syncNodes();
 	}
 
 	/** Small floating input over the canvas (URLs, labels, group names). */

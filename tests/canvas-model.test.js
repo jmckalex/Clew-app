@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
 	createCanvas, parseCanvas, serializeCanvas, nodeAt, shapeAt, canvasBounds,
 	anchorPoint, edgeGeometry, bestSides, strokeHit, strokePath, resizeRect,
-	rectsIntersect, segmentDistance,
+	rectsIntersect, segmentDistance, repickEdgeSides,
 } from '../src/renderer/canvas/canvas-model.js';
 
 const node = (over = {}) => ({
@@ -100,6 +100,31 @@ test('resizeRect enforces minimums and anchors the opposite side', () => {
 	const clamped = resizeRect(r, 'w', 500, 0);
 	assert.equal(clamped.width, 60);
 	assert.equal(clamped.x + clamped.width, 300); // right edge anchored
+});
+
+test('repickEdgeSides fixes inverted sides, keeps sensible ones', () => {
+	const doc = createCanvas();
+	doc.nodes.push(node({ id: 'a' }), node({ id: 'b', x: 400 }));
+	doc.edges.push({ id: 'e', fromNode: 'a', fromSide: 'right', toNode: 'b', toSide: 'left' });
+
+	// b moves to the left of a: right→left now faces away on both ends.
+	doc.nodes[1].x = -400;
+	assert.equal(repickEdgeSides(doc, new Set(['b'])), true);
+	assert.equal(doc.edges[0].fromSide, 'left');
+	assert.equal(doc.edges[0].toSide, 'right');
+
+	// A deliberate-but-still-facing choice survives: top→top between
+	// horizontal neighbors both face... actually use bottom→top stacked.
+	doc.nodes[1].x = 0;
+	doc.nodes[1].y = 400;
+	doc.edges[0].fromSide = 'bottom';
+	doc.edges[0].toSide = 'top';
+	assert.equal(repickEdgeSides(doc, new Set(['b'])), false);
+
+	// An untouched edge is never re-picked.
+	doc.edges[0].fromSide = 'top';
+	assert.equal(repickEdgeSides(doc, new Set(['zzz'])), false);
+	assert.equal(doc.edges[0].fromSide, 'top');
 });
 
 test('misc geometry helpers', () => {

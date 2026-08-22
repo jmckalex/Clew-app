@@ -18,6 +18,9 @@ export class SearchService {
 	#vaults;
 	#indexer;
 	#textCache = new Map(); // relPath -> {mtimeMs, text}
+	// namesKey -> Map(relPath -> {mtimeMs, matches}); LRU over name sets so
+	// flipping between notes doesn't evict each other's scans.
+	#mentionMemo = new Map();
 
 	constructor({ vaults, indexer }) {
 		this.#vaults = vaults;
@@ -94,16 +97,35 @@ export class SearchService {
 		const base = targetPath.split('/').pop().replace(/\.(md|jmd)$/i, '');
 		const aliases = this.#indexer.notes.get(targetPath)?.aliases ?? [];
 		const names = [base, ...aliases];
+		const namesKey = names.join('\u0000').toLowerCase();
+		let memo = this.#mentionMemo.get(namesKey);
+		if (memo) this.#mentionMemo.delete(namesKey); // LRU: re-insert at back
+		else memo = new Map();
+		this.#mentionMemo.set(namesKey, memo);
+		while (this.#mentionMemo.size > 24) {
+			this.#mentionMemo.delete(this.#mentionMemo.keys().next().value);
+		}
+
 		const results = [];
 		let total = 0;
 		for (const relPath of this.#indexer.notes.keys()) {
 			if (relPath === targetPath || total >= 100) continue;
 			const text = this.#textFor(relPath);
 			if (text === null) continue;
-			// Cheap pre-filter before the per-line scan.
-			const lower = text.toLowerCase();
-			if (!names.some((n) => lower.includes(n.toLowerCase()))) continue;
-			const matches = scanMentions(text, names, 10);
+			// Per-note memo keyed by content mtime: repeat panel refreshes only
+			// re-scan notes that actually changed.
+			const mtimeMs = this.#textCache.get(relPath)?.mtimeMs;
+			const cached = memo.get(relPath);
+			let matches;
+			if (cached && cached.mtimeMs === mtimeMs) {
+				matches = cached.matches;
+			} else {
+				const lower = text.toLowerCase();
+				matches = names.some((n) => lower.includes(n.toLowerCase()))
+					? scanMentions(text, names, 10)
+					: [];
+				memo.set(relPath, { mtimeMs, matches });
+			}
 			if (matches.length === 0) continue;
 			total += matches.length;
 			results.push({ path: relPath, base, matches });
