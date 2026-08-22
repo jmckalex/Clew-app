@@ -33,10 +33,10 @@ export function chordToAccelerator(chord) {
 		? [...chord.slice(0, -2).split('-'), '-']
 		: chord.split('-');
 	const key = parts.pop();
-	// The renderer normalizes Ctrl to 'Mod', and Cmd-Tab belongs to macOS's
-	// app switcher — the tab-cycling chords really mean Ctrl-Tab.
-	const mod = key === 'Tab' ? 'Control' : 'CmdOrCtrl';
-	const out = parts.map((p) => (p === 'Mod' ? mod : p));
+	// 'Mod' is the platform command key; 'Ctrl' is a real, distinct modifier
+	// (mac emacs-style bindings live on it, and tab cycling uses Ctrl-Tab).
+	const MODS = { Mod: 'CmdOrCtrl', Ctrl: 'Control', Meta: 'Super' };
+	const out = parts.map((p) => MODS[p] ?? p);
 	out.push(KEY_NAMES[key] ?? (key.length === 1 ? key.toUpperCase() : key));
 	return out.join('+');
 }

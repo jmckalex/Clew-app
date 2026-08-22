@@ -47,10 +47,24 @@ export function runCommand(id, args) {
 
 // ---- hotkeys ---------------------------------------------------------------
 
-/** Normalize a KeyboardEvent to a CM-style chord string, or null. */
+const isMac = navigator.platform.startsWith('Mac');
+
+/**
+ * Normalize a KeyboardEvent to a CM-style chord string, or null. 'Mod' is
+ * the platform command key (⌘ on mac, Ctrl elsewhere). On mac, Ctrl is its
+ * OWN modifier ('Ctrl-') — collapsing it into Mod would shadow the system's
+ * emacs-style text bindings (Ctrl-E end-of-line, Ctrl-A, …), which
+ * CodeMirror handles when the chord falls through unclaimed.
+ */
 export function chordOf(event) {
 	const parts = [];
-	if (event.metaKey || event.ctrlKey) parts.push('Mod');
+	if (isMac) {
+		if (event.metaKey) parts.push('Mod');
+		if (event.ctrlKey) parts.push('Ctrl');
+	} else {
+		if (event.ctrlKey) parts.push('Mod');
+		if (event.metaKey) parts.push('Meta');
+	}
 	if (event.altKey) parts.push('Alt');
 	if (event.shiftKey) parts.push('Shift');
 	let key = event.key;
@@ -61,17 +75,24 @@ export function chordOf(event) {
 	return parts.join('-');
 }
 
+/** A registered chord, adjusted for this platform: away from mac, Ctrl IS
+ *  the Mod key, so 'Ctrl-Tab' (mac tab cycling) becomes 'Mod-Tab'. */
+export function normalizeChord(chord) {
+	if (isMac) return chord;
+	return chord.replace(/^(?:Mod-)?Ctrl-/, 'Mod-');
+}
+
 /** Effective chord → command-id map (defaults merged with user overrides). */
 export function effectiveKeymap() {
 	const map = new Map();
 	for (const command of commands.values()) {
-		for (const chord of command.hotkeys ?? []) map.set(chord, command.id);
+		for (const chord of command.hotkeys ?? []) map.set(normalizeChord(chord), command.id);
 	}
 	for (const [id, chords] of Object.entries(settingsStore.get('hotkeys') ?? {})) {
 		for (const [chord, mapped] of map) {
 			if (mapped === id) map.delete(chord);
 		}
-		for (const chord of chords) map.set(chord, id);
+		for (const chord of chords) map.set(normalizeChord(chord), id);
 	}
 	return map;
 }

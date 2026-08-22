@@ -12,6 +12,7 @@ const isMac = navigator.platform.startsWith('Mac');
 
 export function prettyChord(chord) {
 	return chord
+		.replace('Ctrl', isMac ? '⌃' : 'Ctrl') // before Mod→Ctrl on non-mac
 		.replace('Mod', isMac ? '⌘' : 'Ctrl')
 		.replace('Alt', isMac ? '⌥' : 'Alt')
 		.replace('Shift', '⇧')

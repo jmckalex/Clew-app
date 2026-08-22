@@ -100,9 +100,11 @@ export function registerBuiltinCommands() {
 			run: (ctx) => workspaceStore.pinTab(ctx.activeTab.id, !ctx.activeTab.pinned) },
 		{ id: 'workspace:new-tab', name: 'New tab', hotkeys: ['Mod-t'],
 			run: () => actions.newTab() },
-		{ id: 'workspace:next-tab', name: 'Next tab', hotkeys: ['Mod-Tab'],
+		// Ctrl-Tab everywhere: on mac Ctrl is a real modifier (Cmd-Tab belongs
+		// to the app switcher); away from mac normalizeChord folds it to Mod.
+		{ id: 'workspace:next-tab', name: 'Next tab', hotkeys: ['Ctrl-Tab'],
 			run: () => cycleTab(1) },
-		{ id: 'workspace:prev-tab', name: 'Previous tab', hotkeys: ['Mod-Shift-Tab'],
+		{ id: 'workspace:prev-tab', name: 'Previous tab', hotkeys: ['Ctrl-Shift-Tab'],
 			run: () => cycleTab(-1) },
 		{ id: 'workspace:split-right', name: 'Split right', hotkeys: ['Mod-\\'],
 			run: () => actions.splitActive('right') },
