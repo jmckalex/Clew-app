@@ -58,6 +58,17 @@ img { max-width: 100%; }
 table { border-collapse: collapse; }
 th, td { border: 1px solid var(--preview-border); padding: 4px 10px; }
 
+/* Task-list items: the checkbox replaces the bullet — suppress the marker
+   and pull the box back into the marker gutter so the item text lines up
+   with ordinary list items. (Loose items wrap the checkbox in a <p>.) */
+li:has(> input[type='checkbox']:first-child),
+li:has(> p:first-child > input[type='checkbox']:first-child) { list-style: none; }
+li > input[type='checkbox']:first-child,
+li > p:first-child > input[type='checkbox']:first-child {
+	margin: 0 0.45em 0.2em -1.5em;
+	vertical-align: middle;
+}
+
 /* Wikilinks */
 a.internal-link { text-decoration: none; border-bottom: 1px solid transparent; }
 a.internal-link:hover { border-bottom-color: var(--preview-accent); }
