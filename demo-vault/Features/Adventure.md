@@ -38,7 +38,7 @@ Ariadne gave Theseus. This app was inevitable.)
   document.addEventListener('click', async (e) => {
     const act = e.target.dataset.act;
     if (act === 'take') await clew.kv.set('adventure:thread', true);
-    if (act === 'go') await clew.open(e.target.dataset.to);
+    if (act === 'go') await clew.open(e.target.dataset.to, { newTab: false, mode: 'reading' });
     if (act === 'reset') {
       await clew.kv.delete('adventure:thread');
       await clew.kv.delete('adventure:won');

@@ -4,6 +4,7 @@ import { Emitter } from '../lib/emitter.js';
 import { debounce } from '../lib/debounce.js';
 import { ipc, CH } from '../ipc.js';
 import * as tree from '../workspace/tree.js';
+import { settingsStore } from './settings-store.js';
 
 class WorkspaceStore extends Emitter {
 	state = tree.createInitialState();
@@ -43,7 +44,8 @@ class WorkspaceStore extends Emitter {
 	}
 
 	openNote(path, opts) {
-		const tab = tree.openNote(this.state, path, opts);
+		const defaultMode = settingsStore.get('newTabMode') === 'reading' ? 'reading' : null;
+		const tab = tree.openNote(this.state, path, { defaultMode, ...opts });
 		this.#commit();
 		return tab;
 	}

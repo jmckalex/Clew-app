@@ -22,9 +22,12 @@ All methods return promises.
 - **Mutate** — `clew.notes.write / append / create` ·
   `clew.properties.set(path, key, value)` (`null` removes; refuses
   frontmatter beyond the editable subset).
-- **App control** — `clew.open(target)` with full wikilink semantics
-  (`'Note#Heading'` works) · `clew.command(id)` — any command-palette
-  command.
+- **App control** — `clew.open(target, opts)` with full wikilink
+  semantics (`'Note#Heading'` works); `opts` takes `newTab` (default
+  true) and `mode` (`'reading'` or `'source'`) to override the app's
+  new-tab default — the [[Adventure]] navigates with
+  `{ newTab: false, mode: 'reading' }` so play stays in one rendered
+  tab · `clew.command(id)` — any command-palette command.
 - **Shared state** — `clew.kv.get / set / delete / list(prefix)`, stored
   in **`clewdata.json` in the vault root** so app state travels with a
   shared or synced vault. Namespace your keys (`myapp:thing`). Keys are

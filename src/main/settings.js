@@ -7,6 +7,7 @@ import path from 'node:path';
 const DEFAULTS = {
 	recentVaults: [],
 	openVaults: [], // one window each, restored at launch
+	newTabMode: 'source', // how newly created note tabs open ('source'|'reading')
 	lastVault: null,
 	theme: 'dark',
 };

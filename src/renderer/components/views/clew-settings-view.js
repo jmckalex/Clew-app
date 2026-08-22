@@ -40,6 +40,8 @@ class ClewSettingsView extends ClewElement {
 		scroll.append(
 			this.#section('Appearance', [
 				this.#selectRow('Theme', 'theme', [['dark', 'Dark'], ['light', 'Light']]),
+				this.#selectRow('New note tabs open in', 'newTabMode',
+					[['source', 'Source (edit) mode'], ['reading', 'Reading mode']]),
 				this.#numberRow('Editor font size (px)', 'editorFontSize', 16, 10, 28),
 				this.#numberRow('Editor line width (em)', 'editorLineWidth', 44, 20, 120),
 			]),

@@ -145,3 +145,17 @@ test('moveTab keeps the pinned region at the front', () => {
 	tree.moveTab(state, tabB.id, group.id, 0); // try to drop before the pin
 	assert.equal(group.tabs[0].path, 'a.md'); // pin stays first
 });
+
+test('defaultMode applies to new note tabs only', () => {
+	const state = tree.createInitialState();
+	const created = tree.openNote(state, 'a.md', { defaultMode: 'reading' });
+	assert.equal(created.view.mode, 'reading');
+	// Navigation-in-place inherits the pane's current mode…
+	const same = tree.openNote(state, 'b.md', { defaultMode: 'source' });
+	assert.equal(same.id, created.id);
+	assert.equal(same.view.mode, 'reading');
+	// …and activating an existing tab never touches its mode.
+	tree.openNote(state, 'c.md', { newTab: true, defaultMode: 'source' });
+	const back = tree.openNote(state, 'b.md', { defaultMode: 'source' });
+	assert.equal(back.view.mode, 'reading');
+});

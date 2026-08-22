@@ -3,7 +3,8 @@ tags: [guide]
 ---
 # Settings and Hotkeys
 
-**⌘,** opens Settings: theme (dark/light), editor font size and line
+**⌘,** opens Settings: theme (dark/light), how new note tabs open
+(source or reading mode), editor font size and line
 width, daily-note folder/format/template, attachment and templates
 folders — and the **hotkey editor**: filter to a command, press **Set**,
 type the new chord. Custom bindings are marked, conflicts show in red,

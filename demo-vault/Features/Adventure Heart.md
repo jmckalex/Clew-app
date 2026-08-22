@@ -36,7 +36,7 @@
   }
   document.addEventListener('click', async (e) => {
     const act = e.target.dataset.act;
-    if (act === 'go') await clew.open(e.target.dataset.to);
+    if (act === 'go') await clew.open(e.target.dataset.to, { newTab: false, mode: 'reading' });
     if (act === 'win') {
       await clew.kv.set('adventure:won', true);
       await clew.kv.delete('adventure:thread');

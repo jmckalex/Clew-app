@@ -31,7 +31,7 @@
          <button data-act="go" data-to="Adventure">Stumble back to the gate</button>`;
   }
   document.addEventListener('click', async (e) => {
-    if (e.target.dataset.act === 'go') await clew.open(e.target.dataset.to);
+    if (e.target.dataset.act === 'go') await clew.open(e.target.dataset.to, { newTab: false, mode: 'reading' });
   });
   clew.on('kv', ({ key }) => { if (key.startsWith('adventure:')) build(); });
   build();

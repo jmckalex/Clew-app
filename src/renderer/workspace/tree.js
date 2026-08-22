@@ -98,21 +98,21 @@ export function openTab(state, groupId, tab, { activate = true } = {}) {
  * active group; otherwise navigate the active note tab in place (pushing
  * history); otherwise open a new tab. `newTab: true` always opens a tab.
  */
-export function openNote(state, path, { newTab = false } = {}) {
-	return openPath(state, path, 'note', { newTab });
+export function openNote(state, path, opts = {}) {
+	return openPath(state, path, 'note', opts);
 }
 
 /** Open a non-note file (image/PDF/media) in a viewer tab, same rules. */
-export function openFile(state, path, { newTab = false } = {}) {
-	return openPath(state, path, 'file', { newTab });
+export function openFile(state, path, opts = {}) {
+	return openPath(state, path, 'file', opts);
 }
 
 /** Open a .canvas file in a canvas tab, same rules. */
-export function openCanvasFile(state, path, { newTab = false } = {}) {
-	return openPath(state, path, 'canvas', { newTab });
+export function openCanvasFile(state, path, opts = {}) {
+	return openPath(state, path, 'canvas', opts);
 }
 
-function openPath(state, path, kind, { newTab = false } = {}) {
+function openPath(state, path, kind, { newTab = false, defaultMode = null } = {}) {
 	const group = activeGroup(state);
 	const existing = group.tabs.find((t) => t.kind === kind && t.path === path);
 	if (existing) {
@@ -126,7 +126,12 @@ function openPath(state, path, kind, { newTab = false } = {}) {
 		navigateTab(state, current.id, path, kind);
 		return current;
 	}
-	return openTab(state, group.id, createTab(kind, path));
+	const tab = createTab(kind, path);
+	// The new-tab default mode applies only to freshly created note tabs;
+	// navigation-in-place inherits the pane's mode, and explicit per-call
+	// modes are applied by the caller (openWikilink, the note API).
+	if (kind === 'note' && defaultMode) tab.view.mode = defaultMode;
+	return openTab(state, group.id, tab);
 }
 
 // ---- pinning ---------------------------------------------------------------
