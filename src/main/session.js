@@ -29,6 +29,9 @@ export class VaultSession {
 		this.vaults.sessionId = this.id;
 		this.indexer = new Indexer();
 		this.renderService = new RenderService(distDir);
+		// Engine-emitted media URLs must carry the session id (preview URLs
+		// are clew-preview://vault/<sid>/<path>; root-relative would lose it).
+		this.renderService.sessionId = this.id;
 		this.kvStore = new KvStore();
 		this.searchService = new SearchService({ vaults: this.vaults, indexer: this.indexer });
 

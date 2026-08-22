@@ -111,7 +111,13 @@ duplicates; File → New Window (⌘⇧N). Verified: two windows with
 independent vaults/screenshots, session-scoped rendering, no-duplicate
 focus, API-playground + canvas + packaged-app regression smokes all
 green. Two quit-hang bugs found and fixed (webContents access after
-window destruction in dispose; menu rebuild during quit).
+window destruction in dispose; menu rebuild during quit). A third fallout
+found by the owner on 2026-08-22: engine-emitted media URLs (wikilinks.js
+sitePath) were root-relative, which dropped the new <sid> URL segment —
+images/PDF/audio/video embeds all broke. Fixed by passing CLEW_SESSION_ID
+into the render worker (mirroring CLEW_VAULT_ROOT) and prefixing media
+URLs with it; stale-sid caches can't be served because ensureRendered
+only trusts disk HTML through per-launch in-memory bookkeeping.
 
 ## 3d. Post-multi-window batch (2026-08-22, owner awake)
 

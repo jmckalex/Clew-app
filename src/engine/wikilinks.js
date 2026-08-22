@@ -95,9 +95,16 @@ export function resolveFileTarget(target) {
 	return shortestOf(fileIndex.get(clean.toLowerCase()));
 }
 
-/** Site-absolute URL path for a vault file (the preview's document host
- *  serves the vault root, so "/rel/path" resolves through the protocol). */
-const sitePath = (rel) => '/' + rel.split('/').map(encodeURIComponent).join('/');
+/** Site-absolute URL path for a vault file. Preview documents live at
+ *  clew-preview://vault/<sid>/<note path>, so vault URLs must carry the
+ *  session id as their first segment (CLEW_SESSION_ID, set by the render
+ *  service) — a bare "/rel/path" would resolve against the origin root and
+ *  lose it. Without a session id (standalone CLI use), fall back to "/". */
+const sitePath = (rel) => {
+	const sid = process.env.CLEW_SESSION_ID;
+	const encoded = rel.split('/').map(encodeURIComponent).join('/');
+	return sid ? `/${encodeURIComponent(sid)}/${encoded}` : `/${encoded}`;
+};
 
 const escapeAttr = (s) =>
 	s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');

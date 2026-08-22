@@ -34,6 +34,8 @@ export class RenderService {
 	vaultRoot = null;
 	engineDir = null;
 	cacheDir = null;
+	/** Owning session's id — media URLs in rendered HTML embed it. */
+	sessionId = null;
 	/** @type {(channel: string, payload: any) => void} */
 	send = () => {};
 
@@ -133,6 +135,7 @@ export class RenderService {
 				...process.env,
 				PATH: toolchainPath(),
 				CLEW_VAULT_ROOT: this.vaultRoot,
+				CLEW_SESSION_ID: this.sessionId ?? '',
 				// Engine console chatter goes to the pipes; keep them from filling.
 			},
 		});
