@@ -32,26 +32,27 @@ export function roughLine(x1, y1, x2, y2, rand, amp = 2.2) {
 	return parts.join(' ');
 }
 
-export function roughRect(x, y, w, h, rand) {
+export function roughRect(x, y, w, h, rand, amp = 2.2) {
 	return [
-		roughLine(x, y, x + w, y, rand),
-		roughLine(x + w, y, x + w, y + h, rand),
-		roughLine(x + w, y + h, x, y + h, rand),
-		roughLine(x, y + h, x, y, rand),
+		roughLine(x, y, x + w, y, rand, amp),
+		roughLine(x + w, y, x + w, y + h, rand, amp),
+		roughLine(x + w, y + h, x, y + h, rand, amp),
+		roughLine(x, y + h, x, y, rand, amp),
 	].join(' ');
 }
 
-export function roughDiamond(x, y, w, h, rand) {
+export function roughDiamond(x, y, w, h, rand, amp = 2.2) {
 	const cx = x + w / 2, cy = y + h / 2;
 	return [
-		roughLine(cx, y, x + w, cy, rand),
-		roughLine(x + w, cy, cx, y + h, rand),
-		roughLine(cx, y + h, x, cy, rand),
-		roughLine(x, cy, cx, y, rand),
+		roughLine(cx, y, x + w, cy, rand, amp),
+		roughLine(x + w, cy, cx, y + h, rand, amp),
+		roughLine(cx, y + h, x, cy, rand, amp),
+		roughLine(x, cy, cx, y, rand, amp),
 	].join(' ');
 }
 
-export function roughEllipse(cx, cy, rx, ry, rand) {
+export function roughEllipse(cx, cy, rx, ry, rand, amp = 2.2) {
+	const wobble = amp / 2.2; // scale the default jitter proportionally
 	const parts = [];
 	for (let pass = 0; pass < 2; pass++) {
 		const steps = 16;
@@ -60,8 +61,8 @@ export function roughEllipse(cx, cy, rx, ry, rand) {
 		for (let i = 0; i <= steps; i++) {
 			const t = start + (i / steps) * Math.PI * 2;
 			pts.push([
-				cx + Math.cos(t) * (rx + jitter(rand, Math.max(1.5, rx * 0.035))),
-				cy + Math.sin(t) * (ry + jitter(rand, Math.max(1.5, ry * 0.035))),
+				cx + Math.cos(t) * (rx + jitter(rand, Math.max(1.5, rx * 0.035) * wobble)),
+				cy + Math.sin(t) * (ry + jitter(rand, Math.max(1.5, ry * 0.035) * wobble)),
 			]);
 		}
 		let d = `M ${r2(pts[0][0])} ${r2(pts[0][1])}`;

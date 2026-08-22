@@ -32,6 +32,8 @@ const ICONS = {
 	'calendar': 'solid/calendar-days',
 	'chevron-down': 'solid/chevron-down',
 	'xmark': 'solid/xmark',
+	'font': 'solid/font',
+	'map': 'solid/map-location-dot',
 };
 
 const version = JSON.parse(fs.readFileSync(path.join(faDir, 'package.json'), 'utf8')).version;

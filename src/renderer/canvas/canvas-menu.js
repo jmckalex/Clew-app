@@ -1,6 +1,8 @@
 // Canvas context menu: the shared .clew-menu look plus a color-swatch row.
-// Items: {label, click, danger?}, {separator: true}, or {swatches: true,
-// current, onPick(color)} where colors are 'ink' | '1'..'6'.
+// Items: {label, click, danger?}, {separator: true}, {swatches: true,
+// current, onPick(color)} where colors are 'ink' | '1'..'6', or
+// {choices: true, label, options: [{value, label, title?}], current,
+// onPick(value)} — a compact labeled row of pick-one buttons.
 
 export const CANVAS_COLORS = ['ink', '1', '2', '3', '4', '5', '6'];
 
@@ -14,6 +16,27 @@ export function showCanvasMenu(x, y, items) {
 			const hr = document.createElement('div');
 			hr.className = 'menu-separator';
 			menu.append(hr);
+		} else if (item.choices) {
+			const row = document.createElement('div');
+			row.className = 'menu-choices';
+			if (item.label) {
+				const label = document.createElement('span');
+				label.className = 'menu-choices-label';
+				label.textContent = item.label;
+				row.append(label);
+			}
+			for (const opt of item.options) {
+				const button = document.createElement('button');
+				button.className = 'menu-choice' + (item.current === opt.value ? ' is-current' : '');
+				button.textContent = opt.label;
+				if (opt.title) button.title = opt.title;
+				button.addEventListener('click', () => {
+					close();
+					item.onPick(opt.value);
+				});
+				row.append(button);
+			}
+			menu.append(row);
 		} else if (item.swatches) {
 			const row = document.createElement('div');
 			row.className = 'menu-swatches';

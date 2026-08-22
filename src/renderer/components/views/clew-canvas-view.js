@@ -20,7 +20,7 @@ import * as model from '../../canvas/canvas-model.js';
 import { buildNodeContent, contentKey, setCardText } from '../../canvas/node-content.js';
 import { showCanvasMenu } from '../../canvas/canvas-menu.js';
 import { canvasSyncBus } from '../../canvas/canvas-sync.js';
-import { inkColor, edgeColor, shapeSvg, edgeSvg, escapeXml } from '../../canvas/shape-svg.js';
+import { inkColor, edgeColor, shapeSvg, edgeSvg, strokeSvg, escapeXml, TEXT_FONT_STACKS } from '../../canvas/shape-svg.js';
 import { openListModal } from '../modals/list-modal.js';
 import { previewUrl } from '../../lib/preview-url.js';
 import { handleApiRequest } from '../../note-api.js';
@@ -40,7 +40,10 @@ const TOOLS = [
 	{ id: 'diamond', key: 'd', icon: 'diamond', title: 'Diamond (D)' },
 	{ id: 'arrow', key: 'a', icon: 'arrow-right', title: 'Arrow (A)' },
 	{ id: 'line', key: 'l', icon: 'slash', title: 'Line (L)' },
+	{ id: 'text', key: 't', icon: 'font', title: 'Text (T)' },
 ];
+
+const SHAPE_TOOLS = ['rect', 'ellipse', 'diamond', 'arrow', 'line'];
 
 class ClewCanvasView extends ClewElement {
 	tabId = null;
@@ -61,7 +64,13 @@ class ClewCanvasView extends ClewElement {
 	#loaded = false;
 	#conflict = null; // disk text during an unresolved external-change conflict
 	#ink = { color: 'ink', width: 3 };
-	#shapeStyle = { color: '2', fill: false };
+	/** Defaults for newly drawn shapes/strokes/text; the style bar edits
+	 *  these and applies changes to the current selection too. */
+	#shapeStyle = {
+		color: '2', fill: false, fillStyle: 'solid',
+		strokeStyle: null, rough: 1, opacity: 1,
+		font: 'hand', fontSize: 20,
+	};
 	#nodeEls = new Map(); // node id -> element
 	#embeds = new Map(); // node id -> {iframe, path, ready, pending}
 	#els = null;
@@ -126,6 +135,7 @@ class ClewCanvasView extends ClewElement {
 					<svg class="canvas-layer canvas-overlay"></svg>
 				</div>
 				<div class="canvas-toolbar"></div>
+				<div class="canvas-stylebar"></div>
 				<div class="canvas-zoombar">
 					<button data-zoom="out" title="Zoom out"></button>
 					<button data-zoom="reset" class="canvas-zoom-label" title="Reset zoom">100%</button>
@@ -143,9 +153,11 @@ class ClewCanvasView extends ClewElement {
 			strokes: this.querySelector('.canvas-strokes'),
 			overlay: this.querySelector('.canvas-overlay'),
 			toolbar: this.querySelector('.canvas-toolbar'),
+			stylebar: this.querySelector('.canvas-stylebar'),
 			zoomLabel: this.querySelector('.canvas-zoom-label'),
 		};
 		this.#renderToolbar();
+		this.#renderStylebar();
 		this.querySelector('[data-zoom="out"]').append(icon('minus'));
 		this.querySelector('[data-zoom="in"]').append(icon('plus'));
 		this.querySelector('[data-zoom="fit"]').append(icon('expand'));
@@ -407,9 +419,115 @@ class ClewCanvasView extends ClewElement {
 		this.#tool = tool;
 		this.#disengage();
 		this.#renderToolbar();
+		this.#renderStylebar();
 		this.#els.viewport.dataset.tool = tool;
 		this.#syncOverlay();
 		this.#els.viewport.focus({ preventScroll: true });
+	}
+
+	// ---- style bar (Excalidraw-style: stroke, sloppiness, fill, opacity) ---
+
+	/** Apply a style patch to the shape defaults AND every selected shape. */
+	#applyShapeStyle(patch) {
+		Object.assign(this.#shapeStyle, patch);
+		if (this.#sel.shapes.size) {
+			this.#checkpoint();
+			for (const id of this.#sel.shapes) {
+				const s = this.#shapeById(id);
+				if (!s) continue;
+				if ('strokeStyle' in patch) {
+					if (patch.strokeStyle) s.strokeStyle = patch.strokeStyle;
+					else delete s.strokeStyle;
+				}
+				if ('rough' in patch) {
+					if (patch.rough === 1) delete s.rough;
+					else s.rough = patch.rough;
+				}
+				if ('opacity' in patch) {
+					if (patch.opacity >= 1) delete s.opacity;
+					else s.opacity = patch.opacity;
+				}
+				if ('fill' in patch || 'fillStyle' in patch) {
+					const fill = patch.fill ?? this.#shapeStyle.fill;
+					const fillStyle = patch.fillStyle ?? this.#shapeStyle.fillStyle;
+					if (fill) s.fill = true; else delete s.fill;
+					if (fill && fillStyle === 'hachure') s.fillStyle = 'hachure';
+					else delete s.fillStyle;
+				}
+				if ('font' in patch && s.kind === 'text') s.font = patch.font;
+				if ('fontSize' in patch && s.kind === 'text') s.fontSize = patch.fontSize;
+			}
+			this.#mutated();
+		}
+		this.#renderStylebar();
+	}
+
+	#renderStylebar() {
+		const bar = this.#els.stylebar;
+		if (!bar) return;
+		const st = this.#shapeStyle;
+		const textish = this.#tool === 'text'
+			|| [...this.#sel.shapes].some((id) => this.#shapeById(id)?.kind === 'text');
+		bar.innerHTML = '';
+		const group = (title, options, current, onPick) => {
+			const wrap = document.createElement('span');
+			wrap.className = 'canvas-stylegroup';
+			wrap.title = title;
+			for (const opt of options) {
+				const button = document.createElement('button');
+				button.className = 'canvas-styleopt' + (current === opt.value ? ' is-active' : '');
+				button.textContent = opt.label;
+				button.title = `${title}: ${opt.title ?? opt.label}`;
+				button.addEventListener('click', () => onPick(opt.value));
+				wrap.append(button);
+			}
+			return wrap;
+		};
+		bar.append(
+			group('Stroke', [
+				{ value: null, label: '—', title: 'solid' },
+				{ value: 'dashed', label: '- -', title: 'dashed' },
+				{ value: 'dotted', label: '···', title: 'dotted' },
+			], st.strokeStyle, (v) => this.#applyShapeStyle({ strokeStyle: v })),
+			group('Sloppiness', [
+				{ value: 0, label: '▭', title: 'architect (clean)' },
+				{ value: 1, label: '≈', title: 'artist (sketchy)' },
+				{ value: 2, label: '〰', title: 'cartoonist (scrawl)' },
+			], st.rough, (v) => this.#applyShapeStyle({ rough: v })),
+			group('Fill', [
+				{ value: 'none', label: '□', title: 'none' },
+				{ value: 'solid', label: '■', title: 'solid' },
+				{ value: 'hachure', label: '▨', title: 'hachure' },
+			], st.fill ? st.fillStyle : 'none', (v) =>
+				this.#applyShapeStyle(v === 'none'
+					? { fill: false, fillStyle: 'solid' }
+					: { fill: true, fillStyle: v })),
+		);
+		const opacity = document.createElement('input');
+		opacity.type = 'range';
+		opacity.className = 'canvas-opacity';
+		opacity.min = '10';
+		opacity.max = '100';
+		opacity.value = String(Math.round(st.opacity * 100));
+		opacity.title = 'Opacity';
+		opacity.addEventListener('change', () => {
+			this.#applyShapeStyle({ opacity: Number(opacity.value) / 100 });
+		});
+		bar.append(opacity);
+		if (textish) {
+			bar.append(group('Font', [
+				{ value: 'hand', label: 'Hand' },
+				{ value: 'sans', label: 'Aa' , title: 'sans'},
+				{ value: 'serif', label: 'Se' , title: 'serif'},
+				{ value: 'mono', label: 'Mo', title: 'mono' },
+			], st.font, (v) => this.#applyShapeStyle({ font: v })));
+			bar.append(group('Text size', [
+				{ value: 14, label: 'S' },
+				{ value: 20, label: 'M' },
+				{ value: 32, label: 'L' },
+				{ value: 48, label: 'XL' },
+			], st.fontSize, (v) => this.#applyShapeStyle({ fontSize: v })));
+		}
 	}
 
 	// ---- sync (doc → DOM) --------------------------------------------------
@@ -456,6 +574,13 @@ class ClewCanvasView extends ClewElement {
 			el.style.height = `${node.height}px`;
 			if (node.color) el.dataset.color = node.color;
 			else delete el.dataset.color;
+			const nstyle = this.#doc.nodeStyles[node.id];
+			if (nstyle?.shape) el.dataset.nshape = nstyle.shape;
+			else delete el.dataset.nshape;
+			if (nstyle?.border) el.dataset.nborder = nstyle.border;
+			else delete el.dataset.nborder;
+			el.classList.toggle('is-bg-transparent', nstyle?.bg === 'transparent');
+			el.style.opacity = nstyle?.opacity ?? '';
 			el.classList.toggle('is-selected', this.#sel.nodes.has(node.id));
 			el.classList.toggle('is-engaged', this.#engagedId === node.id);
 			if (node.type === 'text' && this.#editingId !== node.id) {
@@ -499,16 +624,14 @@ class ClewCanvasView extends ClewElement {
 			const from = this.#nodeById(edge.fromNode);
 			const to = this.#nodeById(edge.toNode);
 			if (!from || !to) continue;
-			parts.push(edgeSvg(edge, from, to, this.#sel.edges.has(edge.id)));
+			parts.push(edgeSvg(edge, from, to, this.#sel.edges.has(edge.id), this.#doc.edgeStyles[edge.id]));
 		}
 		svg.innerHTML = parts.join('');
 	}
 
 	#syncStrokes() {
 		const svg = this.#els.strokes;
-		svg.innerHTML = this.#doc.strokes.map((stroke) =>
-			`<path class="canvas-stroke" d="${model.strokePath(stroke)}"`
-			+ ` style="stroke:${inkColor(stroke.color)};stroke-width:${stroke.width}"/>`).join('');
+		svg.innerHTML = this.#doc.strokes.map((stroke) => strokeSvg(stroke)).join('');
 	}
 
 	#syncShapes() {
@@ -699,7 +822,11 @@ class ClewCanvasView extends ClewElement {
 		if (this.#tool === 'draw') {
 			this.#startDrag(e, {
 				type: 'draw',
-				stroke: { id: model.newId(), color: this.#ink.color, width: this.#ink.width, points: [round2(p.x), round2(p.y)] },
+				stroke: {
+					id: model.newId(), color: this.#ink.color, width: this.#ink.width,
+					...(this.#shapeStyle.opacity < 1 ? { opacity: this.#shapeStyle.opacity } : {}),
+					points: [round2(p.x), round2(p.y)],
+				},
 			});
 			return;
 		}
@@ -710,16 +837,42 @@ class ClewCanvasView extends ClewElement {
 			return;
 		}
 
-		if (['rect', 'ellipse', 'diamond', 'arrow', 'line'].includes(this.#tool)) {
+		if (SHAPE_TOOLS.includes(this.#tool)) {
 			this.#startDrag(e, {
 				type: 'shape',
-				shape: {
-					id: model.newId(), kind: this.#tool, x: p.x, y: p.y, width: 0, height: 0,
-					color: this.#shapeStyle.color, ...(this.#shapeStyle.fill ? { fill: true } : {}),
-				},
+				shape: { id: model.newId(), kind: this.#tool, x: p.x, y: p.y, width: 0, height: 0, ...this.#shapeDefaults() },
 			});
+			return;
+		}
+
+		if (this.#tool === 'text') {
+			this.#checkpoint();
+			const st = this.#shapeStyle;
+			const shape = {
+				id: model.newId(), kind: 'text', x: p.x, y: p.y - st.fontSize * 0.8,
+				width: 260, height: Math.round(st.fontSize * 1.7), text: '',
+				...this.#shapeDefaults(), font: st.font, fontSize: st.fontSize,
+			};
+			this.#doc.shapes.push(shape);
+			this.#setTool('select');
+			this.#select('shapes', shape.id);
+			this.#mutated();
+			this.#beginTextEdit(shape);
 		}
 	};
+
+	/** The style-bar defaults, as optional shape fields. */
+	#shapeDefaults() {
+		const st = this.#shapeStyle;
+		return {
+			color: st.color,
+			...(st.fill ? { fill: true } : {}),
+			...(st.fill && st.fillStyle === 'hachure' ? { fillStyle: 'hachure' } : {}),
+			...(st.strokeStyle ? { strokeStyle: st.strokeStyle } : {}),
+			...(st.rough !== 1 ? { rough: st.rough } : {}),
+			...(st.opacity < 1 ? { opacity: st.opacity } : {}),
+		};
+	}
 
 	#startDrag(e, drag) {
 		this.#drag = drag;
@@ -867,8 +1020,7 @@ class ClewCanvasView extends ClewElement {
 			pts.push(round2(p.x), round2(p.y));
 			// Live preview: append to the strokes layer without a full sync.
 			this.#els.strokes.innerHTML = this.#doc.strokes.map((s) =>
-				`<path class="canvas-stroke" d="${model.strokePath(s)}" style="stroke:${inkColor(s.color)};stroke-width:${s.width}"/>`).join('')
-				+ `<path class="canvas-stroke" d="${model.strokePath(drag.stroke)}" style="stroke:${inkColor(drag.stroke.color)};stroke-width:${drag.stroke.width}"/>`;
+				strokeSvg(s)).join('') + strokeSvg(drag.stroke);
 			return;
 		}
 
@@ -1028,7 +1180,8 @@ class ClewCanvasView extends ClewElement {
 			const from = this.#nodeById(edge.fromNode);
 			const to = this.#nodeById(edge.toNode);
 			if (!from || !to) continue;
-			if (model.edgeDistance(from, edge.fromSide, to, edge.toSide, p.x, p.y) <= slop) return edge;
+			if (model.edgeDistance(from, edge.fromSide, to, edge.toSide, p.x, p.y,
+				this.#doc.edgeStyles[edge.id]?.path) <= slop) return edge;
 		}
 		return null;
 	}
@@ -1042,6 +1195,7 @@ class ClewCanvasView extends ClewElement {
 		this.#syncShapes();
 		this.#syncEdges();
 		this.#syncOverlay();
+		this.#renderStylebar();
 	}
 
 	#toggleSelect(kind, id) {
@@ -1110,6 +1264,13 @@ class ClewCanvasView extends ClewElement {
 		this.#doc.edges = this.#doc.edges.filter((e) =>
 			!gone.has(e.fromNode) && !gone.has(e.toNode) && !this.#sel.edges.has(e.id));
 		this.#doc.shapes = this.#doc.shapes.filter((s) => !this.#sel.shapes.has(s.id));
+		const liveEdges = new Set(this.#doc.edges.map((e) => e.id));
+		for (const id of Object.keys(this.#doc.nodeStyles)) {
+			if (gone.has(id)) delete this.#doc.nodeStyles[id];
+		}
+		for (const id of Object.keys(this.#doc.edgeStyles)) {
+			if (!liveEdges.has(id)) delete this.#doc.edgeStyles[id];
+		}
 		this.#clearSelection(false);
 		this.#mutated();
 	}
@@ -1235,6 +1396,60 @@ class ClewCanvasView extends ClewElement {
 		else this.#syncNodes();
 	}
 
+	/** Edit a text shape in place: a textarea overlaid in world space with
+	 *  the shape's font, committed on blur/Escape. An empty commit deletes a
+	 *  freshly created text shape. */
+	#beginTextEdit(shape) {
+		this.querySelector('.canvas-shape-text-input')?.remove();
+		const r = model.shapeRect(shape);
+		const textarea = document.createElement('textarea');
+		textarea.className = 'canvas-shape-text-input';
+		textarea.value = shape.text ?? '';
+		textarea.style.left = `${r.x}px`;
+		textarea.style.top = `${r.y}px`;
+		textarea.style.width = `${Math.max(80, r.width)}px`;
+		textarea.style.height = `${Math.max(28, r.height)}px`;
+		textarea.style.fontFamily = TEXT_FONT_STACKS[shape.font] ?? TEXT_FONT_STACKS.hand;
+		textarea.style.fontSize = `${shape.fontSize ?? 20}px`;
+		textarea.style.color = inkColor(shape.color);
+		// Hide the rendered shape while editing (the overlay replaces it).
+		this.#els.strokes.querySelector(`[data-id="${shape.id}"]`)?.setAttribute('visibility', 'hidden');
+		this.#els.shapes.querySelector(`[data-id="${shape.id}"]`)?.setAttribute('visibility', 'hidden');
+		let done = false;
+		const finish = (commit) => {
+			if (done) return;
+			done = true;
+			const value = textarea.value;
+			textarea.remove();
+			this.#els.viewport.focus({ preventScroll: true });
+			if (commit && value !== (shape.text ?? '')) {
+				this.#checkpoint();
+				if (value.trim() === '') {
+					this.#doc.shapes = this.#doc.shapes.filter((x) => x.id !== shape.id);
+					this.#sel.shapes.delete(shape.id);
+				} else {
+					shape.text = value;
+					// Grow the box to fit new lines at the shape's line height.
+					const lines = value.split('\n').length;
+					const wanted = Math.round(lines * (shape.fontSize ?? 20) * 1.4 + 8);
+					if (wanted > Math.abs(shape.height)) shape.height = wanted;
+				}
+				this.#mutated();
+			} else {
+				this.#syncShapes();
+			}
+		};
+		textarea.addEventListener('keydown', (e) => {
+			e.stopPropagation();
+			if (e.key === 'Escape') finish(true);
+		});
+		textarea.addEventListener('blur', () => finish(true));
+		textarea.addEventListener('pointerdown', (e) => e.stopPropagation());
+		this.#els.world.append(textarea);
+		textarea.focus();
+		textarea.select();
+	}
+
 	/** Small floating input over the canvas (URLs, labels, group names). */
 	#inlinePrompt({ placeholder, value, onCommit, at }) {
 		this.querySelector('.canvas-inline-input')?.remove();
@@ -1297,7 +1512,8 @@ class ClewCanvasView extends ClewElement {
 		}
 		const shape = model.shapeAt(this.#doc, p.x, p.y, 8 / this.#camera.zoom);
 		if (shape) {
-			this.#editShapeLabel(shape);
+			if (shape.kind === 'text') this.#beginTextEdit(shape);
+			else this.#editShapeLabel(shape);
 			return;
 		}
 		const edge = this.#edgeAt(p, 8 / this.#camera.zoom);
@@ -1520,13 +1736,62 @@ class ClewCanvasView extends ClewElement {
 		if (this.#sel.nodes.size > 1) {
 			items.push({ label: 'Group selection', click: () => this.#groupSelection() });
 		}
+		const nstyle = this.#doc.nodeStyles[node.id] ?? {};
+		if (node.type !== 'group') {
+			items.push(
+				{ separator: true },
+				{ choices: true, label: 'Shape', current: nstyle.shape ?? null, options: [
+					{ value: null, label: '▭', title: 'default' },
+					{ value: 'pill', label: '⬭', title: 'pill (terminal)' },
+					{ value: 'circle', label: '◯', title: 'circle' },
+					{ value: 'diamond', label: '◇', title: 'diamond (decision)' },
+					{ value: 'parallelogram', label: '▱', title: 'parallelogram (I/O)' },
+					{ value: 'predefined', label: '▯▯', title: 'predefined process' },
+				], onPick: (v) => this.#applyNodeStyle({ shape: v }) },
+				{ choices: true, label: 'Border', current: nstyle.border ?? null, options: [
+					{ value: null, label: '—', title: 'solid' },
+					{ value: 'dashed', label: '- -', title: 'dashed' },
+					{ value: 'dotted', label: '···', title: 'dotted' },
+				], onPick: (v) => this.#applyNodeStyle({ border: v }) },
+				{ choices: true, label: 'Fill', current: nstyle.bg ?? null, options: [
+					{ value: null, label: '■', title: 'filled' },
+					{ value: 'transparent', label: '□', title: 'transparent' },
+				], onPick: (v) => this.#applyNodeStyle({ bg: v }) },
+			);
+		}
 		items.push(
-			{ label: 'Bring to front', click: () => this.#reorderNode(node, 'front') },
-			{ label: 'Send to back', click: () => this.#reorderNode(node, 'back') },
+			{ separator: true },
+			{ choices: true, label: 'Order', current: null, options: [
+				{ value: 'front', label: '⤒', title: 'bring to front' },
+				{ value: 'forward', label: '↑', title: 'bring forward' },
+				{ value: 'backward', label: '↓', title: 'send backward' },
+				{ value: 'back', label: '⤓', title: 'send to back' },
+			], onPick: (dir) => {
+				this.#checkpoint();
+				const ids = this.#sel.nodes.size ? this.#sel.nodes : new Set([node.id]);
+				if (model.reorder(this.#doc.nodes, ids, dir)) this.#mutated();
+			} },
 			{ separator: true },
 			{ label: 'Delete', danger: true, click: () => this.#deleteSelection() },
 		);
 		showCanvasMenu(x, y, items);
+	}
+
+	/** Merge a style patch into every selected node's clew style entry. */
+	#applyNodeStyle(patch) {
+		this.#checkpoint();
+		const ids = this.#sel.nodes.size ? this.#sel.nodes : new Set();
+		for (const id of ids) {
+			if (!this.#nodeById(id)) continue;
+			const style = { ...(this.#doc.nodeStyles[id] ?? {}) };
+			for (const [k, v] of Object.entries(patch)) {
+				if (v == null) delete style[k];
+				else style[k] = v;
+			}
+			if (Object.keys(style).length) this.#doc.nodeStyles[id] = style;
+			else delete this.#doc.nodeStyles[id];
+		}
+		this.#mutated();
 	}
 
 	#editLinkUrl(node) {
@@ -1566,23 +1831,36 @@ class ClewCanvasView extends ClewElement {
 				this.#mutated();
 			} },
 			{ separator: true },
-			...(boxy ? [{ label: shape.fill ? 'Unfill' : 'Fill', click: () => {
+			...(boxy ? [{ choices: true, label: 'Fill', current: shape.fill ? (shape.fillStyle ?? 'solid') : 'none', options: [
+				{ value: 'none', label: '□' },
+				{ value: 'solid', label: '■' },
+				{ value: 'hachure', label: '▨' },
+			], onPick: (v) => this.#applyShapeStyle(v === 'none'
+				? { fill: false, fillStyle: 'solid' } : { fill: true, fillStyle: v }) }] : []),
+			{ choices: true, label: 'Line', current: shape.strokeStyle ?? null, options: [
+				{ value: null, label: '—' },
+				{ value: 'dashed', label: '- -' },
+				{ value: 'dotted', label: '···' },
+			], onPick: (v) => this.#applyShapeStyle({ strokeStyle: v }) },
+			{ choices: true, label: 'Slop', current: shape.rough ?? 1, options: [
+				{ value: 0, label: '▭', title: 'clean' },
+				{ value: 1, label: '≈', title: 'sketchy' },
+				{ value: 2, label: '〰', title: 'scrawl' },
+			], onPick: (v) => this.#applyShapeStyle({ rough: v }) },
+			{ choices: true, label: 'Order', current: null, options: [
+				{ value: 'front', label: '⤒', title: 'bring to front' },
+				{ value: 'forward', label: '↑', title: 'bring forward' },
+				{ value: 'backward', label: '↓', title: 'send backward' },
+				{ value: 'back', label: '⤓', title: 'send to back' },
+			], onPick: (dir) => {
 				this.#checkpoint();
-				if (shape.fill) delete shape.fill;
-				else shape.fill = true;
-				this.#mutated();
-			} }] : []),
-			{ label: shape.style === 'clean' ? 'Sketchy lines' : 'Clean lines', click: () => {
-				this.#checkpoint();
-				for (const id of this.#sel.shapes) {
-					const s = this.#shapeById(id);
-					if (!s) continue;
-					if (shape.style === 'clean') delete s.style;
-					else s.style = 'clean';
-				}
-				this.#mutated();
+				const ids = this.#sel.shapes.size ? this.#sel.shapes : new Set([shape.id]);
+				if (model.reorder(this.#doc.shapes, ids, dir)) this.#mutated();
 			} },
-			{ label: 'Edit label…', click: () => this.#editShapeLabel(shape) },
+			{ separator: true },
+			...(shape.kind === 'text'
+				? [{ label: 'Edit text', click: () => this.#beginTextEdit(shape) }]
+				: [{ label: 'Edit label…', click: () => this.#editShapeLabel(shape) }]),
 			{ separator: true },
 			{ label: 'Delete', danger: true, click: () => this.#deleteSelection() },
 		]);
@@ -1597,10 +1875,44 @@ class ClewCanvasView extends ClewElement {
 				this.#mutated();
 			} },
 			{ separator: true },
+			{ choices: true, label: 'Arrows', current: `${edge.fromEnd ?? 'none'}-${edge.toEnd ?? 'arrow'}`, options: [
+				{ value: 'none-arrow', label: '→' },
+				{ value: 'arrow-arrow', label: '↔' },
+				{ value: 'none-none', label: '—' },
+			], onPick: (v) => {
+				this.#checkpoint();
+				const [fromEnd, toEnd] = v.split('-');
+				if (fromEnd === 'arrow') edge.fromEnd = 'arrow'; else delete edge.fromEnd;
+				if (toEnd === 'none') edge.toEnd = 'none'; else delete edge.toEnd;
+				this.#mutated();
+			} },
+			{ choices: true, label: 'Line', current: this.#doc.edgeStyles[edge.id]?.dash ?? null, options: [
+				{ value: null, label: '—' },
+				{ value: 'dashed', label: '- -' },
+				{ value: 'dotted', label: '···' },
+			], onPick: (v) => this.#applyEdgeStyle(edge, { dash: v }) },
+			{ choices: true, label: 'Path', current: this.#doc.edgeStyles[edge.id]?.path ?? null, options: [
+				{ value: null, label: '↝', title: 'curved' },
+				{ value: 'straight', label: '⟋', title: 'straight' },
+				{ value: 'square', label: '⌐', title: 'square (flowchart)' },
+			], onPick: (v) => this.#applyEdgeStyle(edge, { path: v }) },
+			{ separator: true },
 			{ label: 'Edit label…', click: () => this.#editEdgeLabel(edge) },
 			{ separator: true },
 			{ label: 'Delete', danger: true, click: () => this.#deleteSelection() },
 		]);
+	}
+
+	#applyEdgeStyle(edge, patch) {
+		this.#checkpoint();
+		const style = { ...(this.#doc.edgeStyles[edge.id] ?? {}) };
+		for (const [k, v] of Object.entries(patch)) {
+			if (v == null) delete style[k];
+			else style[k] = v;
+		}
+		if (Object.keys(style).length) this.#doc.edgeStyles[edge.id] = style;
+		else delete this.#doc.edgeStyles[edge.id];
+		this.#mutated();
 	}
 
 	#emptyMenu(p, x, y) {
@@ -1667,9 +1979,7 @@ class ClewCanvasView extends ClewElement {
 		const vars = ['bg', 'edge', 'ink', '1', '2', '3', '4', '5', '6']
 			.map((k) => `--clew-canvas-${k}:${style.getPropertyValue(`--clew-canvas-${k}`).trim()};`)
 			.join('');
-		const strokes = this.#doc.strokes.map((stroke) =>
-			`<path class="canvas-stroke" d="${model.strokePath(stroke)}"`
-			+ ` style="stroke:${inkColor(stroke.color)};stroke-width:${stroke.width}"/>`).join('');
+		const strokes = this.#doc.strokes.map((stroke) => strokeSvg(stroke)).join('');
 		const shapes = this.#doc.shapes.map((shape) => shapeSvg(shape, false)).join('');
 		return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${box.x} ${box.y} ${box.width} ${box.height}"`
 			+ ` width="${Math.ceil(box.width)}" height="${Math.ceil(box.height)}">`

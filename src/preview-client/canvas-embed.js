@@ -4,8 +4,8 @@
 // note previews (nested iframes), web links, groups, edges, ink, and shapes —
 // scaled to fit the note column. The host posts {type:'canvas-changed'} when
 // a .canvas file changes and the scene rebuilds in place.
-import { parseCanvas, canvasBounds, nodeRect, strokePath } from '../renderer/canvas/canvas-model.js';
-import { inkColor, shapeSvg, edgeSvg, escapeXml } from '../renderer/canvas/shape-svg.js';
+import { parseCanvas, canvasBounds, nodeRect } from '../renderer/canvas/canvas-model.js';
+import { shapeSvg, edgeSvg, strokeSvg, escapeXml } from '../renderer/canvas/shape-svg.js';
 import { renderCardHtml } from '../renderer/canvas/card-markdown.js';
 
 // Nesting guard: a canvas embed renders note nodes as iframes (?cdepth=N+1);
@@ -99,17 +99,15 @@ async function buildScene(embed, scene) {
 		.map((edge) => {
 			const from = byId.get(edge.fromNode);
 			const to = byId.get(edge.toNode);
-			return from && to ? edgeSvg(edge, from, to) : '';
+			return from && to ? edgeSvg(edge, from, to, false, doc.edgeStyles?.[edge.id]) : '';
 		})
 		.join('');
 	world.append(edges);
 
-	for (const node of others) world.append(nodeEl(node));
+	for (const node of others) world.append(nodeEl(node, doc.nodeStyles?.[node.id]));
 
 	const ink = svgLayer('canvas-embed-ink');
-	ink.innerHTML = doc.strokes.map((stroke) =>
-		`<path class="canvas-stroke" d="${strokePath(stroke)}"`
-		+ ` style="stroke:${inkColor(stroke.color)};stroke-width:${stroke.width}"/>`).join('')
+	ink.innerHTML = doc.strokes.map((stroke) => strokeSvg(stroke)).join('')
 		+ doc.shapes.map((shape) => shapeSvg(shape, false)).join('');
 	world.append(ink);
 
@@ -201,10 +199,14 @@ function groupEl(node) {
 	return el;
 }
 
-function nodeEl(node) {
+function nodeEl(node, nstyle) {
 	const el = document.createElement('div');
 	el.className = 'canvas-embed-node';
 	if (node.color) el.dataset.color = node.color;
+	if (nstyle?.shape) el.dataset.nshape = nstyle.shape;
+	if (nstyle?.border) el.dataset.nborder = nstyle.border;
+	if (nstyle?.bg === 'transparent') el.classList.add('is-bg-transparent');
+	if (nstyle?.opacity) el.style.opacity = nstyle.opacity;
 	place(el, nodeRect(node));
 
 	if (node.type === 'text') {

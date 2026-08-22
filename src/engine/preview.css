@@ -275,3 +275,18 @@ html[data-theme='light'] img[src*="TiKZ/"], html[data-theme='light'] img[src*="M
 	stroke-width: 4px;
 	stroke-linejoin: round;
 }
+
+/* node style extras (flowchart shapes) in canvas embeds */
+.canvas-embed-node[data-nshape='pill'] { border-radius: 999px; }
+.canvas-embed-node[data-nshape='circle'] { border-radius: 50%; }
+.canvas-embed-node[data-nshape='diamond'] { border: none; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+.canvas-embed-node[data-nshape='parallelogram'] { border: none; clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%); }
+.canvas-embed-node[data-nborder='dashed'] { border-style: dashed; }
+.canvas-embed-node[data-nborder='dotted'] { border-style: dotted; }
+.canvas-embed-node.is-bg-transparent { background: transparent; }
+.canvas-embed-node[data-nshape] .is-card, .canvas-embed-node[data-nshape].is-card {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	text-align: center;
+}

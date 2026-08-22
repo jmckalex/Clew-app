@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
 	createCanvas, parseCanvas, serializeCanvas, nodeAt, shapeAt, canvasBounds,
 	anchorPoint, edgeGeometry, bestSides, strokeHit, strokePath, resizeRect,
-	rectsIntersect, segmentDistance, repickEdgeSides,
+	rectsIntersect, segmentDistance, repickEdgeSides, reorder,
 } from '../src/renderer/canvas/canvas-model.js';
 
 const node = (over = {}) => ({
@@ -131,4 +131,76 @@ test('misc geometry helpers', () => {
 	assert.ok(rectsIntersect({ x: 0, y: 0, width: 10, height: 10 }, { x: 5, y: 5, width: 10, height: 10 }));
 	assert.ok(!rectsIntersect({ x: 0, y: 0, width: 10, height: 10 }, { x: 20, y: 0, width: 5, height: 5 }));
 	assert.equal(segmentDistance(0, 5, 0, 0, 10, 0), 5);
+});
+
+// ---- style extras (Excalidraw/Advanced-Canvas parity) ----------------------
+
+test('shape style extras round-trip', () => {
+	const doc = createCanvas();
+	doc.shapes.push(
+		{ id: 'a'.repeat(16), kind: 'rect', x: 0, y: 0, width: 100, height: 80, color: '2', strokeStyle: 'dashed', rough: 2, opacity: 0.5, fill: true, fillStyle: 'hachure' },
+		{ id: 'b'.repeat(16), kind: 'text', x: 10, y: 10, width: 200, height: 40, color: 'ink', text: 'Hello', font: 'mono', fontSize: 32 },
+	);
+	const round = parseCanvas(serializeCanvas(doc));
+	const [rect, text] = round.shapes;
+	assert.equal(rect.strokeStyle, 'dashed');
+	assert.equal(rect.rough, 2);
+	assert.equal(rect.opacity, 0.5);
+	assert.equal(rect.fillStyle, 'hachure');
+	assert.equal(text.kind, 'text');
+	assert.equal(text.text, 'Hello');
+	assert.equal(text.font, 'mono');
+	assert.equal(text.fontSize, 32);
+});
+
+test('legacy clean style maps to rough 0', () => {
+	const doc = parseCanvas(JSON.stringify({
+		nodes: [], edges: [],
+		clew: { shapes: [{ id: 'c'.repeat(16), kind: 'rect', x: 0, y: 0, width: 10, height: 10, style: 'clean' }] },
+	}));
+	assert.equal(doc.shapes[0].rough, 0);
+});
+
+test('node and edge styles round-trip, orphans pruned', () => {
+	const doc = createCanvas();
+	doc.nodes.push({ id: 'n1', type: 'text', x: 0, y: 0, width: 100, height: 60, text: '' });
+	doc.nodes.push({ id: 'n2', type: 'text', x: 0, y: 0, width: 100, height: 60, text: '' });
+	doc.edges.push({ id: 'e1', fromNode: 'n1', fromSide: 'right', toNode: 'n2', toSide: 'left', fromEnd: 'arrow', toEnd: 'none' });
+	doc.nodeStyles.n1 = { shape: 'diamond', border: 'dashed', bg: 'transparent', opacity: 0.7 };
+	doc.nodeStyles.ghost = { shape: 'pill' };
+	doc.edgeStyles.e1 = { dash: 'dotted', path: 'square' };
+	const round = parseCanvas(serializeCanvas(doc));
+	assert.deepEqual(round.nodeStyles.n1, { shape: 'diamond', border: 'dashed', bg: 'transparent', opacity: 0.7 });
+	assert.equal(round.nodeStyles.ghost, undefined);
+	assert.deepEqual(round.edgeStyles.e1, { dash: 'dotted', path: 'square' });
+	assert.equal(round.edges[0].fromEnd, 'arrow');
+	assert.equal(round.edges[0].toEnd, 'none');
+});
+
+test('reorder moves items front/back/forward/backward', () => {
+	const mk = () => [{ id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }];
+	let list = mk();
+	assert.equal(reorder(list, new Set(['b']), 'front'), true);
+	assert.deepEqual(list.map((i) => i.id), ['a', 'c', 'd', 'b']);
+	list = mk();
+	reorder(list, new Set(['c']), 'back');
+	assert.deepEqual(list.map((i) => i.id), ['c', 'a', 'b', 'd']);
+	list = mk();
+	reorder(list, new Set(['b']), 'forward');
+	assert.deepEqual(list.map((i) => i.id), ['a', 'c', 'b', 'd']);
+	list = mk();
+	reorder(list, new Set(['b']), 'backward');
+	assert.deepEqual(list.map((i) => i.id), ['b', 'a', 'c', 'd']);
+	assert.equal(reorder(mk(), new Set(['a', 'b', 'c', 'd']), 'front'), false);
+});
+
+test('edge geometry supports straight and square paths', () => {
+	const a = { x: 0, y: 0, width: 100, height: 60 };
+	const b = { x: 300, y: 200, width: 100, height: 60 };
+	const straight = edgeGeometry(a, 'right', b, 'left', 'straight');
+	assert.match(straight.d, /^M 100 30 L 300 230$/);
+	const square = edgeGeometry(a, 'right', b, 'left', 'square');
+	assert.ok(square.d.includes('L'));
+	assert.ok(Number.isFinite(square.angle));
+	assert.ok(Number.isFinite(square.mid.x));
 });
