@@ -183,7 +183,10 @@ html[data-theme='light'] img[src*="TiKZ/"], html[data-theme='light'] img[src*="M
 	border-radius: 6px;
 	background: var(--clew-canvas-bg);
 	min-height: 40px;
+	cursor: grab;
+	touch-action: none;
 }
+.canvas-embed .canvas-embed-scene.is-panning { cursor: grabbing; }
 .canvas-embed .canvas-embed-scene.is-deep,
 .canvas-embed .canvas-embed-scene.is-empty {
 	display: flex;
@@ -226,7 +229,7 @@ html[data-theme='light'] img[src*="TiKZ/"], html[data-theme='light'] img[src*="M
 	background: var(--preview-bg);
 }
 .canvas-embed-node audio { width: 100%; margin-top: 4px; }
-.canvas-embed-node.is-web, .canvas-embed-node.is-chip {
+.canvas-embed-node.is-chip {
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -234,6 +237,17 @@ html[data-theme='light'] img[src*="TiKZ/"], html[data-theme='light'] img[src*="M
 	font-size: 12px;
 	word-break: break-all;
 }
+.canvas-embed-node.is-web { display: flex; flex-direction: column; }
+.canvas-embed-node.is-web .canvas-embed-webbar {
+	flex: none;
+	font-size: 11px;
+	padding: 4px 10px;
+	border-bottom: 1px solid var(--clew-canvas-node-border);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.canvas-embed-node.is-web iframe { flex: 1; background: #fff; }
 .canvas-embed-group {
 	border: 2px dashed var(--clew-canvas-node-border);
 	background: color-mix(in srgb, var(--clew-canvas-node-border) 10%, transparent);

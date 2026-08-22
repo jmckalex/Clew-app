@@ -51,7 +51,11 @@ drawing* wipes the ink layer.
 
 `![[Demo Canvas.canvas]]` embeds a live, read-only view of a canvas in
 any note — it re-renders whenever the canvas changes, and its title
-link opens the real thing:
+link opens the real thing. It works like the canvas proper: scroll to
+pan, pinch or ⌘-scroll to zoom, drag empty background to pan by hand,
+double-click background to re-fit. Note previews scroll and click,
+media plays, and web pages load live (when the site allows itself to
+be framed):
 
 ![[Demo Canvas.canvas]]
 

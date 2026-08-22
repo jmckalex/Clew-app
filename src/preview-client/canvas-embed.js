@@ -64,16 +64,22 @@ async function buildScene(embed, scene) {
 	scene.classList.remove('is-empty');
 
 	const pad = 30;
-	const bx = bounds.x - pad, by = bounds.y - pad;
-	const bw = bounds.width + pad * 2, bh = bounds.height + pad * 2;
+	const view = {
+		x: bounds.x - pad, y: bounds.y - pad,
+		width: bounds.width + pad * 2, height: bounds.height + pad * 2,
+	};
 	const width = scene.clientWidth || embed.clientWidth || 600;
-	const scale = Math.min(width / bw, MAX_SCENE_H / bh, 1);
-	scene.style.height = `${Math.round(bh * scale)}px`;
+	scene.style.height = `${Math.round(view.height * Math.min(width / view.width, MAX_SCENE_H / view.height, 1))}px`;
+	scene._view = view;
 
 	const world = document.createElement('div');
 	world.className = 'canvas-embed-world';
-	world.style.transform = `scale(${scale}) translate(${-bx}px, ${-by}px)`;
+	scene._world = world;
+	// A live rebuild keeps the camera the reader panned/zoomed to.
+	if (!scene._cam) scene._cam = fitCam(scene);
+	applyCam(scene);
 
+	const { x: bx, y: by, width: bw, height: bh } = view;
 	const svgLayer = (cls) => {
 		const el = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
 		el.setAttribute('class', cls);
@@ -108,6 +114,79 @@ async function buildScene(embed, scene) {
 	world.append(ink);
 
 	scene.append(world);
+	wireInteraction(scene);
+}
+
+// ---- read-only camera: scroll pans, pinch/⌘-scroll zooms at the cursor,
+// dragging empty background pans, double-click refits ----------------------
+
+function fitCam(scene) {
+	const view = scene._view;
+	const w = scene.clientWidth || 600;
+	const h = scene.clientHeight || Math.round(view.height);
+	const z = Math.min(w / view.width, h / view.height, 1);
+	return {
+		x: view.x - (w / z - view.width) / 2,
+		y: view.y - (h / z - view.height) / 2,
+		z,
+	};
+}
+
+function applyCam(scene) {
+	const { x, y, z } = scene._cam;
+	scene._world.style.transform = `scale(${z}) translate(${-x}px, ${-y}px)`;
+}
+
+function wireInteraction(scene) {
+	if (scene.dataset.wired) return;
+	scene.dataset.wired = '1';
+
+	scene.addEventListener('wheel', (e) => {
+		e.preventDefault();
+		const cam = scene._cam;
+		if (e.ctrlKey || e.metaKey) {
+			// Zoom at the cursor: the world point under it stays put.
+			const rect = scene.getBoundingClientRect();
+			const px = e.clientX - rect.left, py = e.clientY - rect.top;
+			const wx = cam.x + px / cam.z, wy = cam.y + py / cam.z;
+			cam.z = Math.min(4, Math.max(0.05, cam.z * Math.exp(-e.deltaY * 0.01)));
+			cam.x = wx - px / cam.z;
+			cam.y = wy - py / cam.z;
+		} else {
+			cam.x += e.deltaX / cam.z;
+			cam.y += e.deltaY / cam.z;
+		}
+		applyCam(scene);
+	}, { passive: false });
+
+	scene.addEventListener('pointerdown', (e) => {
+		// Node content stays interactive (scroll a note, click a link, play a
+		// video); only empty background drags the camera.
+		if (e.button !== 0 || e.target.closest('.canvas-embed-node')) return;
+		e.preventDefault();
+		const cam = scene._cam;
+		const start = { x: e.clientX, y: e.clientY, cx: cam.x, cy: cam.y };
+		scene.setPointerCapture(e.pointerId);
+		scene.classList.add('is-panning');
+		const move = (ev) => {
+			cam.x = start.cx - (ev.clientX - start.x) / cam.z;
+			cam.y = start.cy - (ev.clientY - start.y) / cam.z;
+			applyCam(scene);
+		};
+		const up = () => {
+			scene.classList.remove('is-panning');
+			scene.removeEventListener('pointermove', move);
+			scene.removeEventListener('pointerup', up);
+		};
+		scene.addEventListener('pointermove', move);
+		scene.addEventListener('pointerup', up);
+	});
+
+	scene.addEventListener('dblclick', (e) => {
+		if (e.target.closest('.canvas-embed-node')) return;
+		scene._cam = fitCam(scene);
+		applyCam(scene);
+	});
 }
 
 function groupEl(node) {
@@ -132,11 +211,14 @@ function nodeEl(node) {
 		el.classList.add('is-card');
 		el.innerHTML = renderCardHtml(node.text ?? '');
 	} else if (node.type === 'link') {
+		// A real embedded page where the site allows framing (an <iframe>
+		// honors X-Frame-Options; the app's canvas uses <webview>, which is
+		// unavailable inside preview iframes). Sandboxed: no popups, no
+		// navigating our document. The title bar link opens externally.
 		el.classList.add('is-web');
-		const a = document.createElement('a');
-		a.href = node.url;
-		a.textContent = node.url;
-		el.append(a);
+		const url = escapeXml(node.url);
+		el.innerHTML = `<div class="canvas-embed-webbar"><a href="${url}">${url}</a></div>`
+			+ `<iframe src="${url}" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>`;
 	} else if (node.type === 'file' && node.file) {
 		const src = sitePath(node.file);
 		if (IMAGE_EXT.test(node.file)) {
@@ -148,8 +230,10 @@ function nodeEl(node) {
 		} else if (AUDIO_EXT.test(node.file)) {
 			el.innerHTML = `<audio controls src="${src}"></audio>`;
 		} else if (NOTE_EXT.test(node.file)) {
-			// A live nested note preview; cdepth breaks embed cycles.
-			el.innerHTML = `<iframe src="${src}.html?cdepth=${DEPTH + 1}"></iframe>`;
+			// A live nested note preview; cdepth breaks embed cycles. The
+			// class marks it trusted for the message relay below — external
+			// web iframes never get it.
+			el.innerHTML = `<iframe class="canvas-embed-note-frame" src="${src}.html?cdepth=${DEPTH + 1}"></iframe>`;
 		} else {
 			el.classList.add('is-chip');
 			el.innerHTML = `<span>${escapeXml(node.file.split('/').pop())}</span>`;
@@ -167,7 +251,7 @@ function place(el, r) {
 
 /** The app theme changed — push it into nested note iframes too. */
 export function broadcastThemeToNested(theme) {
-	for (const frame of document.querySelectorAll('.canvas-embed-node iframe')) {
+	for (const frame of document.querySelectorAll('iframe.canvas-embed-note-frame')) {
 		frame.contentWindow?.postMessage(
 			{ source: 'clew-preview-host', type: 'theme', theme }, '*');
 	}
@@ -175,10 +259,12 @@ export function broadcastThemeToNested(theme) {
 
 // Nested note iframes talk clew-preview protocol at us (their parent): greet
 // them with the theme, and relay link clicks upward so they open app tabs.
+// ONLY note frames are trusted — an external site framed in a web node could
+// spoof these messages otherwise.
 window.addEventListener('message', (event) => {
 	const msg = event.data;
 	if (!msg || msg.source !== 'clew-preview') return;
-	const fromNested = [...document.querySelectorAll('.canvas-embed-node iframe')]
+	const fromNested = [...document.querySelectorAll('iframe.canvas-embed-note-frame')]
 		.some((f) => f.contentWindow === event.source);
 	if (!fromNested) return;
 	if (msg.type === 'ready') {
