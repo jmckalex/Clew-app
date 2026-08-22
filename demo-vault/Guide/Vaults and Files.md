@@ -18,6 +18,16 @@ layout, caches, bookmarks) in a `.clew/` folder.
   background for the vault root — to move it. Renames and moves rewrite
   every `[[wikilink]]` that points at the moved notes.
 
+## Symbolic links
+
+Symlinked notes and folders inside a vault are first-class citizens: they
+appear in the explorer, get indexed (links, backlinks, search, the quick
+switcher), render, and save through the link to the real file — even when
+the target lives outside the vault. The file watcher follows links too,
+so external edits to linked files reload like any other. Link cycles are
+detected and walked once; dangling links are skipped quietly. (This is a
+deliberate improvement over Obsidian, which largely ignores symlinks.)
+
 ## Editing alongside other apps
 
 Clew watches the vault. Files edited in another app reload in place when

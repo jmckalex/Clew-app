@@ -7,6 +7,7 @@ import chokidar from 'chokidar';
 import fs from 'node:fs';
 import path from 'node:path';
 import { settings } from './settings.js';
+import { direntKind, shouldRecurse, walkGuard } from './fs-utils.js';
 
 // Never shown in the explorer, never indexed.
 const IGNORED_DIRS = new Set(['.obsidian', '.clew', '.git', 'node_modules', '.trash']);
@@ -66,14 +67,18 @@ export class VaultManager {
 
 	tree() {
 		if (!this.root) return null;
+		const seen = walkGuard(this.root);
 		const walk = (dir, rel) => {
 			const entries = [];
 			for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
 				if (entry.name.startsWith('.') || IGNORED_DIRS.has(entry.name)) continue;
 				const childRel = rel ? `${rel}/${entry.name}` : entry.name;
-				if (entry.isDirectory()) {
-					entries.push({ type: 'folder', name: entry.name, path: childRel, children: walk(path.join(dir, entry.name), childRel) });
-				} else if (entry.isFile()) {
+				const kind = direntKind(dir, entry);
+				if (kind === 'dir') {
+					const abs = path.join(dir, entry.name);
+					if (!shouldRecurse(abs, seen)) continue;
+					entries.push({ type: 'folder', name: entry.name, path: childRel, children: walk(abs, childRel) });
+				} else if (kind === 'file') {
 					entries.push({ type: 'file', name: entry.name, path: childRel });
 				}
 			}

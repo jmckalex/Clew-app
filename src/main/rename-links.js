@@ -3,6 +3,7 @@
 // Runs after the filesystem rename, using the pre-rename index state.
 import fs from 'node:fs';
 import path from 'node:path';
+import { direntKind, shouldRecurse, walkGuard } from './fs-utils.js';
 
 const stripExt = (p) => p.replace(/\.(md|jmd)$/i, '');
 const baseName = (relPath) => stripExt(relPath.split('/').pop());
@@ -82,14 +83,15 @@ function rewriteCanvasRefs({ oldRel, newRel, vaults }) {
 		return p;
 	};
 	let rewritten = 0;
+	const seen = walkGuard(vaults.root);
 	const walk = (dir) => {
 		let entries;
 		try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
 		for (const entry of entries) {
 			if (entry.name.startsWith('.') || ['node_modules', '.trash'].includes(entry.name)) continue;
 			const abs = path.join(dir, entry.name);
-			if (entry.isDirectory()) {
-				walk(abs);
+			if (direntKind(dir, entry) === 'dir') {
+				if (shouldRecurse(abs, seen)) walk(abs);
 				continue;
 			}
 			if (!entry.name.toLowerCase().endsWith('.canvas')) continue;

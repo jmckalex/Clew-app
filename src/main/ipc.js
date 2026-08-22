@@ -11,6 +11,7 @@ import { propagateRename } from './rename-links.js';
 import { SearchService } from './search.js';
 import { exportNote } from './export.js';
 import { parseBib } from '../shared/bib.js';
+import { direntKind, shouldRecurse, walkGuard } from './fs-utils.js';
 import fs from 'node:fs';
 import nodePath from 'node:path';
 
@@ -58,14 +59,17 @@ export function registerIpc() {
 	handle(CH.BIB_ENTRIES, () => {
 		if (!vaults.isOpen) return [];
 		const out = [];
+		const seen = walkGuard(vaults.root);
 		const walk = (dir) => {
 			let entries;
 			try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
 			for (const entry of entries) {
 				if (entry.name.startsWith('.') || ['node_modules', '.trash'].includes(entry.name)) continue;
 				const abs = nodePath.join(dir, entry.name);
-				if (entry.isDirectory()) walk(abs);
-				else if (entry.name.toLowerCase().endsWith('.bib')) {
+				const kind = direntKind(dir, entry);
+				if (kind === 'dir') {
+					if (shouldRecurse(abs, seen)) walk(abs);
+				} else if (kind === 'file' && entry.name.toLowerCase().endsWith('.bib')) {
 					const mtimeMs = fs.statSync(abs).mtimeMs;
 					const cached = bibCache.get(abs);
 					const entries2 = cached?.mtimeMs === mtimeMs

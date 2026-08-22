@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { extractNoteMetadata } from '../shared/note-metadata.js';
 import { CH, NOTE_EXTENSIONS } from '../shared/channels.js';
+import { direntKind, shouldRecurse, walkGuard } from './fs-utils.js';
 
 const IGNORED_DIRS = new Set(['.obsidian', '.clew', '.git', 'node_modules', '.trash']);
 const CACHE_VERSION = 1;
@@ -47,14 +48,18 @@ export class Indexer {
 	// ---- scanning ---------------------------------------------------------
 
 	#scanAll(cache) {
+		const seen = walkGuard(this.root);
 		const walk = (dir, rel) => {
 			let entries;
 			try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
 			for (const entry of entries) {
 				if (entry.name.startsWith('.') || IGNORED_DIRS.has(entry.name)) continue;
 				const childRel = rel ? `${rel}/${entry.name}` : entry.name;
-				if (entry.isDirectory()) walk(path.join(dir, entry.name), childRel);
-				else if (entry.isFile() && isNote(entry.name)) {
+				const kind = direntKind(dir, entry);
+				if (kind === 'dir') {
+					const abs = path.join(dir, entry.name);
+					if (shouldRecurse(abs, seen)) walk(abs, childRel);
+				} else if (kind === 'file' && isNote(entry.name)) {
 					this.#scanOne(childRel, cache?.notes?.[childRel]);
 				}
 			}

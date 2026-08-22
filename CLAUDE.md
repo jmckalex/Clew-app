@@ -151,6 +151,13 @@ guide note exercises the features it documents.
 - Obsidian compatibility is a hard constraint: never write into
   `.obsidian/`, keep `[[wikilink]]` semantics Obsidian-shaped, `.md` files
   stay `.md`. Clew state lives in `.clew/` (gitignored).
+- **Symlinks are supported** (unlike Obsidian): every vault walk (tree,
+  indexer, canvas-rename, bib scan) goes through `src/main/fs-utils.js` —
+  `direntKind` follows links, `walkGuard`/`shouldRecurse` realpath-dedupe
+  against cycles. New walks MUST use these helpers, not bare
+  `entry.isFile()/isDirectory()` (dirents answer false for symlinks).
+  In-vault links may point outside the vault by design; chokidar follows
+  links by default, so watching just works.
 - Engine changes belong upstream in the jmarkdown repo, additive and
   config-gated, coordinated with its own conventions (read its CLAUDE.md +
   HANDOVER.md first; stage by explicit path — its working tree deliberately
