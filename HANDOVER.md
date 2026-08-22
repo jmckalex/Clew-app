@@ -88,6 +88,19 @@ MathJax/theorems rendered in reading mode through the unpacked engine.
 Publishing jmarkdown to npm remains open for later (the sync script and
 `file:vendor/jmarkdown` dep swap out trivially for a registry version).
 
+**Windows + Linux builds (2026-08-22):** `npm run package:win` → NSIS
+installer (x64, assisted mode); `npm run package:linux` → AppImage + deb
+(x64). All cross-built from macOS and verified to produce artifacts with
+the full resource layout (engine + 195 staged packages under resources/);
+after-pack.cjs is platform-aware (Contents/Resources vs resources/).
+make-icon.js now also packs build-resources/icon.ico (hand-rolled
+PNG-entry ICO, committed); Linux uses icon.png. toolchainPath() was
+Windows-hostile (':' PATH joins) — fixed with path.delimiter. The staged
+engine is pure JS so one staging serves every platform. CAVEAT: neither
+build has ever been *run* on a real Windows/Linux box — expect runtime
+polish there (menu roles, titlebar, chords are CmdOrCtrl-based but
+untested; TeX/mermaid toolchain discovery on Windows relies on PATH).
+
 ## 3c. MULTI-WINDOW IS DONE (2026-08-22)
 
 One window = one vault (owner's chosen model). `VaultSession` per window

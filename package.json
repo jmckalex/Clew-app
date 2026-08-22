@@ -6,6 +6,8 @@
   "type": "module",
   "license": "GPL-3.0-or-later",
   "author": "J. McKenzie Alexander",
+  "homepage": "https://jmckalex.org",
+  "desktopName": "clew.desktop",
   "main": "dist/main/main.js",
   "scripts": {
     "dev": "node scripts/vendor-jmarkdown.js && node scripts/dev.js",
@@ -14,7 +16,9 @@
     "test": "node --test",
     "sync-engine": "node scripts/vendor-jmarkdown.js",
     "package": "node scripts/package.js",
-    "package:dmg": "node scripts/package.js --dmg"
+    "package:dmg": "node scripts/package.js --dmg",
+    "package:win": "node scripts/package.js --win",
+    "package:linux": "node scripts/package.js --linux"
   },
   "devDependencies": {
     "electron": "^43.4.1",
@@ -105,6 +109,26 @@
     },
     "dmg": {
       "title": "Clew"
+    },
+    "win": {
+      "icon": "build-resources/icon.ico",
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "linux": {
+      "icon": "build-resources/icon.png",
+      "category": "Office",
+      "maintainer": "J. McKenzie Alexander <jmckalex@gmail.com>",
+      "syncDesktopName": true,
+      "target": [
+        "AppImage",
+        "deb"
+      ]
     },
     "afterPack": "scripts/after-pack.cjs"
   }

@@ -1,6 +1,8 @@
 // Generates the app icon: renders build-resources/icon source SVG with
 // Electron's own Chromium (offscreen, transparent), writes icon.png (1024²),
-// then downsamples with sips and packs an .icns with iconutil (macOS tools).
+// then downsamples with sips and packs an .icns with iconutil (macOS tools)
+// plus a Windows .ico (PNG-compressed entries, hand-packed — valid since
+// Vista). Linux builds use icon.png directly.
 // Run via: npx electron scripts/make-icon.js
 import { app, BrowserWindow } from 'electron';
 import { execSync } from 'node:child_process';
@@ -86,6 +88,37 @@ app.whenReady().then(async () => {
 	}
 	execSync(`iconutil -c icns "${iconset}" -o "${path.join(outDir, 'icon.icns')}"`);
 	fs.rmSync(iconset, { recursive: true, force: true });
-	console.log('icon: wrote build-resources/icon.{svg,png,icns}');
+
+	// PNG → .ico for Windows: an ICO is a 6-byte header, one 16-byte
+	// directory entry per image, then the image blobs — which may be whole
+	// PNG files (supported since Vista).
+	const icoSizes = [16, 24, 32, 48, 64, 128, 256];
+	const blobs = icoSizes.map((size) => {
+		const tmp = path.join(outDir, `ico-${size}.png`);
+		execSync(`sips -z ${size} ${size} "${png}" --out "${tmp}" >/dev/null`);
+		const data = fs.readFileSync(tmp);
+		fs.rmSync(tmp);
+		return { size, data };
+	});
+	const header = Buffer.alloc(6);
+	header.writeUInt16LE(1, 2); // type: icon
+	header.writeUInt16LE(blobs.length, 4);
+	const entries = [];
+	let offset = 6 + 16 * blobs.length;
+	for (const { size, data } of blobs) {
+		const entry = Buffer.alloc(16);
+		entry.writeUInt8(size === 256 ? 0 : size, 0); // width (0 = 256)
+		entry.writeUInt8(size === 256 ? 0 : size, 1); // height
+		entry.writeUInt16LE(1, 4); // color planes
+		entry.writeUInt16LE(32, 6); // bits per pixel
+		entry.writeUInt32LE(data.length, 8);
+		entry.writeUInt32LE(offset, 12);
+		entries.push(entry);
+		offset += data.length;
+	}
+	fs.writeFileSync(path.join(outDir, 'icon.ico'),
+		Buffer.concat([header, ...entries, ...blobs.map((b) => b.data)]));
+
+	console.log('icon: wrote build-resources/icon.{svg,png,icns,ico}');
 	app.quit();
 });

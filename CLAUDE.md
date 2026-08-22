@@ -32,8 +32,10 @@ guide note exercises the features it documents.
   of `styles/`, `index.html`, and `src/engine/`. `npm run dev` = engine
   sync + esbuild watch + Electron; renderer rebuilds hot-reload the window,
   main/preload rebuilds respawn Electron.
-- **Packaging:** `npm run package` (dir) / `npm run package:dmg`
-  (scripts/package.js → electron-builder, config in package.json `build`).
+- **Packaging:** `npm run package` (mac dir) / `npm run package:dmg` /
+  `npm run package:win` (NSIS x64) / `npm run package:linux` (AppImage +
+  deb x64) — scripts/package.js → electron-builder, config in package.json
+  `build`; win/linux cross-build from macOS but are untested at runtime.
   Key facts: the asar carries ONLY dist/ + package.json (everything is
   esbuild-bundled); the engine worker is a plain-node fork that cannot read
   asar, so the vendored engine + its staged production node_modules

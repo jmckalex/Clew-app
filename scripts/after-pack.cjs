@@ -8,11 +8,13 @@ const path = require('node:path');
 
 module.exports = async function afterPack(context) {
 	const from = path.join(__dirname, '..', 'build-engine', 'jmarkdown', 'node_modules');
-	const to = path.join(
-		context.appOutDir,
-		`${context.packager.appInfo.productFilename}.app`,
-		'Contents', 'Resources', 'engine', 'jmarkdown', 'node_modules',
-	);
+	// resourcesPath: inside the .app bundle on macOS, resources/ beside the
+	// binary on Windows and Linux (matches process.resourcesPath at runtime).
+	const resources = context.electronPlatformName === 'darwin'
+		? path.join(context.appOutDir,
+			`${context.packager.appInfo.productFilename}.app`, 'Contents', 'Resources')
+		: path.join(context.appOutDir, 'resources');
+	const to = path.join(resources, 'engine', 'jmarkdown', 'node_modules');
 	if (!fs.existsSync(from)) {
 		throw new Error(`after-pack: staged engine deps missing at ${from} — run scripts/package.js, not electron-builder directly`);
 	}

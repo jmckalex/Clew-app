@@ -1,10 +1,13 @@
-// Packages Clew into a macOS app: sync the engine mirror, build bundles,
-// stage the engine with its production dependencies (a plain-node child
-// can't read inside app.asar, so the engine ships unpacked in Resources/),
-// generate the icon if missing, then run electron-builder.
+// Packages Clew: sync the engine mirror, build bundles, stage the engine
+// with its production dependencies (a plain-node child can't read inside
+// app.asar, so the engine ships unpacked in the resources dir), generate
+// the icon if missing, then run electron-builder. The staged engine tree is
+// pure JS, so the same staging ships on every platform.
 //
-//   npm run package        → out/mac-arm64/Clew.app (fast, for testing)
-//   npm run package:dmg    → + a distributable .dmg
+//   npm run package          → out/mac-arm64/Clew.app (fast, for testing)
+//   npm run package:dmg      → + a distributable .dmg
+//   npm run package:win      → out/Clew Setup <version>.exe (NSIS, x64)
+//   npm run package:linux    → out/Clew-<version>.AppImage + .deb (x64)
 import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -38,6 +41,14 @@ if (!fs.existsSync(path.join(root, 'build-resources', 'icon.icns'))) {
 	run('npx electron scripts/make-icon.js');
 }
 
-const dmg = process.argv.includes('--dmg');
-run(`npx electron-builder --mac ${dmg ? 'dmg' : 'dir'} --arm64`);
-console.log('\nPackaged. App at out/mac-arm64/Clew.app');
+if (process.argv.includes('--win')) {
+	run('npx electron-builder --win nsis --x64');
+	console.log('\nPackaged. Installer in out/');
+} else if (process.argv.includes('--linux')) {
+	run('npx electron-builder --linux AppImage deb --x64');
+	console.log('\nPackaged. AppImage + deb in out/');
+} else {
+	const dmg = process.argv.includes('--dmg');
+	run(`npx electron-builder --mac ${dmg ? 'dmg' : 'dir'} --arm64`);
+	console.log('\nPackaged. App at out/mac-arm64/Clew.app');
+}

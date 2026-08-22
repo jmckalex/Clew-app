@@ -20,10 +20,14 @@ const REBUILD_DEBOUNCE_MS = 300;
 
 // TikZ/MetaPost/mermaid-cli shell out to latex/dvisvgm/mpost by name; a
 // dock-launched app's PATH lacks the usual tool locations, so append them.
+// (Windows installers put TeX on PATH themselves; the delimiter there is
+// ';' and the Unix directories don't apply.)
 export function toolchainPath() {
-	const extras = ['/Library/TeX/texbin', '/opt/homebrew/bin', '/usr/local/bin'];
-	const current = (process.env.PATH ?? '').split(':');
-	return [...current, ...extras.filter((dir) => !current.includes(dir))].join(':');
+	const extras = process.platform === 'win32'
+		? []
+		: ['/Library/TeX/texbin', '/opt/homebrew/bin', '/usr/local/bin'];
+	const current = (process.env.PATH ?? '').split(path.delimiter);
+	return [...current, ...extras.filter((dir) => !current.includes(dir))].join(path.delimiter);
 }
 
 export class RenderService {
