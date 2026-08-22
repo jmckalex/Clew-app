@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clew — a thread through your notes</title>
+<meta name="description" content="Clew is an open-source, Obsidian-style note app built on the jmarkdown engine: real LaTeX math, citations, diagrams, an Excalidraw-grade canvas, interactive maps, and a plugin system — in plain-text vaults Obsidian can still open.">
+<style>
+	:root {
+		--bg: #171321;
+		--bg-2: #211b30;
+		--bg-3: #2b2440;
+		--text: #e6e2f0;
+		--muted: #a89fc0;
+		--accent: #a882ff;
+		--accent-2: #7852ee;
+		--border: #3a3153;
+		--radius: 14px;
+	}
+	* { margin: 0; padding: 0; box-sizing: border-box; }
+	html { scroll-behavior: smooth; }
+	body {
+		background: var(--bg);
+		color: var(--text);
+		font-family: 'Avenir Next', -apple-system, 'Segoe UI', Roboto, sans-serif;
+		line-height: 1.65;
+	}
+	a { color: var(--accent); text-decoration: none; }
+	a:hover { text-decoration: underline; }
+	code, pre {
+		font-family: 'SF Mono', Menlo, Consolas, monospace;
+		font-size: 0.9em;
+	}
+	code { background: rgba(168, 130, 255, 0.12); border-radius: 5px; padding: 0.1em 0.35em; }
+	pre {
+		background: var(--bg-2);
+		border: 1px solid var(--border);
+		border-radius: 10px;
+		padding: 16px 20px;
+		overflow-x: auto;
+		line-height: 1.5;
+	}
+	pre code { background: none; padding: 0; }
+
+	.wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+	/* ---- hero ---- */
+	.hero {
+		background:
+			radial-gradient(ellipse 90% 70% at 70% -10%, rgba(120, 82, 238, 0.35), transparent),
+			radial-gradient(ellipse 60% 50% at 20% 0%, rgba(83, 223, 221, 0.12), transparent);
+		padding: 84px 0 40px;
+		text-align: center;
+	}
+	.hero h1 {
+		font-size: clamp(3rem, 8vw, 5rem);
+		font-weight: 800;
+		letter-spacing: -0.02em;
+		background: linear-gradient(120deg, #cdbdff, #a882ff 55%, #53dfdd);
+		-webkit-background-clip: text;
+		background-clip: text;
+		color: transparent;
+	}
+	.hero .tagline { font-size: 1.4rem; color: var(--muted); margin-top: 6px; }
+	.hero .pitch { max-width: 640px; margin: 22px auto 0; font-size: 1.08rem; }
+	.badges { margin-top: 26px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+	.badge {
+		border: 1px solid var(--border);
+		background: var(--bg-2);
+		color: var(--muted);
+		border-radius: 999px;
+		padding: 5px 15px;
+		font-size: 0.85rem;
+	}
+	.cta { margin-top: 30px; display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+	.button {
+		display: inline-block;
+		border-radius: 10px;
+		padding: 11px 26px;
+		font-weight: 600;
+		border: 1px solid var(--border);
+		color: var(--text);
+	}
+	.button.primary {
+		background: linear-gradient(120deg, var(--accent-2), var(--accent));
+		border: none;
+		color: #fff;
+	}
+	.button:hover { text-decoration: none; filter: brightness(1.12); }
+	.hero-shot { margin: 48px auto 0; max-width: 1080px; padding: 0 24px; }
+
+	.shot {
+		width: 100%;
+		border-radius: var(--radius);
+		border: 1px solid var(--border);
+		box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+		display: block;
+	}
+
+	/* ---- feature sections ---- */
+	section { padding: 72px 0 8px; }
+	section .wrap > p.lead { max-width: 720px; color: var(--muted); }
+	h2 {
+		font-size: 2rem;
+		letter-spacing: -0.01em;
+		margin-bottom: 10px;
+	}
+	h2 .k { color: var(--accent); }
+	.feature {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 44px;
+		align-items: center;
+		margin-top: 44px;
+	}
+	.feature.flip .text { order: 2; }
+	.feature .text h3 { font-size: 1.45rem; margin-bottom: 10px; }
+	.feature .text p { color: var(--muted); margin-bottom: 12px; }
+	.feature .text li { color: var(--muted); margin: 5px 0 5px 20px; }
+	.feature .text strong { color: var(--text); }
+	@media (max-width: 820px) {
+		.feature { grid-template-columns: 1fr; }
+		.feature.flip .text { order: 0; }
+	}
+
+	/* ---- syntax cards ---- */
+	.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; margin-top: 34px; }
+	.card {
+		background: var(--bg-2);
+		border: 1px solid var(--border);
+		border-radius: var(--radius);
+		padding: 22px 24px;
+	}
+	.card h4 { margin-bottom: 8px; font-size: 1.05rem; }
+	.card p { color: var(--muted); font-size: 0.95rem; }
+	.card pre { margin-top: 10px; font-size: 0.8rem; }
+
+	/* ---- getting started ---- */
+	.steps { max-width: 720px; }
+	.steps ol { margin: 18px 0 0 22px; }
+	.steps li { margin: 10px 0; color: var(--muted); }
+	.steps li strong { color: var(--text); }
+
+	footer {
+		margin-top: 90px;
+		border-top: 1px solid var(--border);
+		padding: 34px 0 50px;
+		color: var(--muted);
+		font-size: 0.9rem;
+		text-align: center;
+	}
+	footer p { margin: 4px 0; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+	<div class="wrap">
+		<h1>Clew</h1>
+		<p class="tagline">A thread through your notes.</p>
+		<p class="pitch">
+			An open-source, Obsidian-style note app whose reading mode is a real
+			typesetting engine. Plain-text vaults, wikilinks, and canvases that
+			Obsidian can still open — with LaTeX math, citations, diagrams,
+			interactive maps, and a programmable core that Obsidian can't match.
+		</p>
+		<div class="badges">
+			<span class="badge">GPL-3.0</span>
+			<span class="badge">macOS · Windows · Linux</span>
+			<span class="badge">Obsidian-compatible vaults</span>
+			<span class="badge">No accounts, no cloud, no lock-in</span>
+		</div>
+		<div class="cta">
+			<a class="button primary" href="#get-started">Get started</a>
+			<a class="button" href="#features">See what it does</a>
+		</div>
+	</div>
+	<div class="hero-shot">
+		<img class="shot" src="images/welcome.jpg" alt="Clew's Welcome note in reading mode, with a banner header rendered by a vault plugin">
+	</div>
+</div>
+
+<section id="features">
+	<div class="wrap">
+		<h2>Reading mode is a <span class="k">typesetting engine</span></h2>
+		<p class="lead">
+			Clew renders notes with <strong>jmarkdown</strong>, an engine built for
+			academic writing: the same source file compiles to HTML in the app and
+			to LaTeX/PDF for print. Not a preview approximation — the real thing.
+		</p>
+		<div class="feature">
+			<div class="text">
+				<h3>Math, theorems, citations, diagrams</h3>
+				<ul>
+					<li><strong>LaTeX math</strong> via MathJax — inline, display, AMS numbering and cross-references</li>
+					<li><strong>Theorem environments</strong> — theorem, lemma, proof, numbered and referenceable</li>
+					<li><strong>Citations from BibTeX</strong> — <code>\cite{lewis1969}</code> with real bibliography styles, and cite-key autocompletion in the editor</li>
+					<li><strong>Diagrams</strong> — mermaid fences, TikZ, MetaPost</li>
+					<li><strong>Footnotes, alerts, tables, tags,</strong> GitHub-style callouts</li>
+				</ul>
+				<p>Export any note to HTML, LaTeX, or PDF from the File menu — same source, print-grade output.</p>
+			</div>
+			<img class="shot" src="images/math.jpg" alt="A note with numbered display equations, theorem and lemma environments, and a callout box">
+		</div>
+
+		<div class="feature flip">
+			<div class="text">
+				<h3>A dialect worth learning — or turning off</h3>
+				<p>
+					The jmarkdown dialect gives dedicated syntax to the things academics
+					actually write: <code>/italics/</code>, <code>*strong*</code>,
+					<code>==highlights==</code>, TeX-style sub/superscripts, inline
+					footnotes, alignment blocks.
+				</p>
+				<p>
+					Prefer standard Markdown? One per-vault switch reverts the inline
+					syntax to ordinary <code>*em*</code>/<code>**strong**</code> — and
+					because jmarkdown is a <strong>superset of Markdown</strong>, any
+					existing vault renders as its author intended, plus everything above.
+				</p>
+			</div>
+			<img class="shot" src="images/split.jpg" alt="The dialect demo note rendered: italics, strong, highlights, math, a citation, and a theorem">
+		</div>
+	</div>
+</section>
+
+<section>
+	<div class="wrap">
+		<h2>A canvas that <span class="k">draws</span></h2>
+		<p class="lead">
+			An infinite board for notes, files, web pages, and thought — with the
+			drawing tools Obsidian's canvas never got.
+		</p>
+		<div class="feature">
+			<div class="text">
+				<h3>Excalidraw looks, flowchart brains</h3>
+				<ul>
+					<li><strong>Ink and shapes</strong> with three sloppiness levels, dashed/dotted strokes, hachure fills, opacity, and standalone text in four typefaces</li>
+					<li><strong>Flowchart node styles</strong> — pill, diamond, parallelogram, predefined process — plus edge routing (curved, straight, square), arrowheads both ways, z-order control</li>
+					<li><strong>Live note embeds</strong> — actual rendered notes on the canvas, math and all; web pages; PDFs; media</li>
+					<li><strong>Portals</strong> — drop a canvas onto a canvas and see a live miniature</li>
+					<li><strong>PNG export</strong> of the drawing layer, and live read-only canvas embeds inside notes</li>
+				</ul>
+				<p>Files are standard JSON Canvas — Obsidian opens them; Clew's extras ride in a key other apps ignore.</p>
+			</div>
+			<img class="shot" src="images/canvas.jpg" alt="The demo canvas: an embedded live note, cards, an image, a PDF, connections, and hand-drawn ink and shapes">
+		</div>
+	</div>
+</section>
+
+<section>
+	<div class="wrap">
+		<h2>Maps, <span class="k">memory</span>, and territory</h2>
+		<p class="lead">
+			A <code>```leaflet</code> fence renders an interactive map — most of the
+			beloved Obsidian Leaflet plugin's surface, built in.
+		</p>
+		<div class="feature">
+			<div class="text">
+				<h3>Pins, tracks, and a day of photos</h3>
+				<ul>
+					<li>Markers with popups and wikilinks; markers gathered from note frontmatter across files, folders, or tags</li>
+					<li>GeoJSON regions, GPX tracks, circle overlays, distance measuring</li>
+					<li>Six tile styles (the default is CARTO's Google-Maps-like Voyager) or any custom tile server; offline image-based maps for floor plans and fantasy worlds</li>
+					<li><strong>Photo maps</strong>: point <code>photos:</code> at a vault folder and every geotagged photo becomes a pin — thumbnail popup, capture time, and a link that opens <em>or creates</em> a note about it. iPhone HEIC converts to JPEG automatically.</li>
+				</ul>
+			</div>
+			<img class="shot" src="images/photomap.jpg" alt="A photo map of Rome with an open popup showing a photo thumbnail, its name, and capture time">
+		</div>
+	</div>
+</section>
+
+<section>
+	<div class="wrap">
+		<h2>A diary with <span class="k">views</span></h2>
+		<div class="feature flip">
+			<div class="text">
+				<h3>One log or many files — your choice</h3>
+				<ul>
+					<li>A calendar in the sidebar: dots mark days with entries, click any day to open or create it</li>
+					<li>Keep <strong>per-day files</strong> or one <strong>single log</strong> with dated sections</li>
+					<li>Composed views: today, this week, this month, any interval, or the whole diary — rendered as one continuous document</li>
+					<li>Daily-note templates with date substitution</li>
+				</ul>
+			</div>
+			<img class="shot" src="images/diary.jpg" alt="The diary calendar panel beside a rendered note">
+		</div>
+		<div class="feature">
+			<div class="text">
+				<h3>And the whole vault as a graph</h3>
+				<p>
+					Backlinks, outgoing links, unlinked mentions, tags, an outline
+					panel, full-text search — and a force-directed graph of the whole
+					vault or the local neighborhood of the current note.
+				</p>
+				<p>
+					Symlinks are fully supported (cycle-safe), so vaults can weave in
+					folders that live elsewhere — something Obsidian never allowed.
+				</p>
+			</div>
+			<img class="shot" src="images/graph.jpg" alt="The vault graph view">
+		</div>
+	</div>
+</section>
+
+<section>
+	<div class="wrap">
+		<h2>Programmable <span class="k">to the bone</span></h2>
+		<p class="lead">
+			Two scripting stories, both traveling with the vault — because Clew is
+			open source, extension isn't a business model, it's a folder.
+		</p>
+		<div class="cards">
+			<div class="card">
+				<h4>The Note API</h4>
+				<p>
+					A <code>&lt;script&gt;</code> in a rendered note gets a
+					<code>window.clew</code> API: open notes, search, read and write
+					files and frontmatter, run commands, and share state in a
+					<code>clewdata.json</code> that syncs with the vault. Notes become
+					small apps — habit trackers, dashboards, even games.
+				</p>
+			</div>
+			<div class="card">
+				<h4>Vault plugins</h4>
+				<p>
+					A folder under <code>.clew/plugins/</code> extends Clew at three
+					seams: <strong>engine</strong> (new syntax — fences, directives),
+					<strong>preview</strong> (decorate rendered notes), and
+					<strong>app</strong> (commands, vault IO, notices, against a small
+					versioned API). Off until enabled, per vault.
+				</p>
+				<pre><code>clew.commands.register({
+  id: 'count',
+  name: 'Word count',
+  run: async () =&gt; {
+    const p = clew.workspace.activePath();
+    const t = await clew.vault.read(p);
+    clew.ui.notice(t.split(/\s+/).length + ' words');
+  },
+});</code></pre>
+			</div>
+			<div class="card">
+				<h4>Everything else you'd expect</h4>
+				<p>
+					Command palette, editable hotkeys, native menus, tabs and splits
+					with per-tab history, pinned tabs, multiple windows (one vault
+					each), properties panel, bookmarks, attachment paste, vault-wide
+					rename with link rewriting, dark and light themes, CSS snippets.
+				</p>
+			</div>
+		</div>
+	</div>
+</section>
+
+<section>
+	<div class="wrap">
+		<h2>Your files stay <span class="k">yours</span></h2>
+		<p class="lead">
+			A vault is a folder of Markdown. Clew never touches
+			<code>.obsidian/</code>, keeps <code>[[wikilinks]]</code>
+			Obsidian-shaped, and stores its own state in a separate
+			<code>.clew/</code> folder — open the same vault in both apps, today.
+			No accounts, no telemetry, no sync service required: it's your disk,
+			your git, your call.
+		</p>
+	</div>
+</section>
+
+<section id="get-started">
+	<div class="wrap steps">
+		<h2>Getting <span class="k">started</span></h2>
+		<ol>
+			<li><strong>Build from source</strong> (Node 20+):
+				<pre><code>git clone &lt;repository-url&gt; clew && cd clew
+npm install
+npm run dev        # develop
+npm run package    # build the app for your platform</code></pre>
+			</li>
+			<li><strong>Open a vault</strong> — any folder of Markdown files, including an existing Obsidian vault.</li>
+			<li><strong>Read the guide</strong> — the bundled <code>demo-vault/</code> is Clew's documentation <em>written in Clew</em>: every guide note exercises the features it documents.</li>
+		</ol>
+	</div>
+</section>
+
+<footer>
+	<div class="wrap">
+		<p><strong>Clew</strong> — free software under GPL-3.0-or-later.</p>
+		<p>Rendering by the <em>jmarkdown</em> engine · maps by Leaflet, tiles © OpenStreetMap contributors / CARTO / Esri · icons from Font Awesome Free (CC BY 4.0).</p>
+	</div>
+</footer>
+
+</body>
+</html>

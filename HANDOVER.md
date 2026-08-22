@@ -126,6 +126,17 @@ vault change (registry gained unregisterCommand). Sample: demo-vault
 title/subtitle → banner; Welcome.md wears it. Docs: Guide/Plugins.md.
 All three surfaces smoke-verified end-to-end.
 
+## 3a4. Documentation website (2026-08-22)
+
+docs/site/index.html — a self-contained, hostable introduction +
+documentation page (hand-rolled CSS in Clew's own palette, no
+dependencies) with 8 real screenshots in docs/site/images/ (captured
+via the smoke harness from the demo vault, 1400px JPEG). Also published
+as a Claude artifact (images inlined) for preview/sharing:
+https://claude.ai/code/artifact/aadfcc91-acc1-4ddd-8b5b-a4cbc3710c50
+Screenshot capture scripts pattern: see this session's scratchpad
+cap-*.js (open note/canvas/graph, CLEW_SMOKE_VAULT=demo-vault).
+
 ## 3b. PACKAGING IS DONE (2026-08-22)
 
 M1–M5 are now complete, full stop. `npm run package` →
