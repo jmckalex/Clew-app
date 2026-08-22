@@ -80,17 +80,23 @@ export async function initLeafletMaps() {
 
 function buildMap(el, config) {
 	const L = window.L;
+	if (config.width) el.style.width = config.width;
+	const mapOptions = {
+		...(config.zoomDelta ? { zoomDelta: config.zoomDelta, zoomSnap: config.zoomDelta } : {}),
+		...(config.noScrollZoom ? { scrollWheelZoom: false } : {}),
+		...(config.noUI ? { zoomControl: false } : {}),
+	};
 	let map;
 	if (config.imageUrl) {
 		// Image-based map (a floor plan, a fantasy map): simple CRS over the
-		// image's own pixel space, fit to the image bounds once it loads.
-		map = L.map(el, { crs: L.CRS.Simple, minZoom: -4 });
+		// image's own pixel space (or explicit bounds), fit once loaded.
+		map = L.map(el, { crs: L.CRS.Simple, minZoom: -4, ...mapOptions });
 		const img = new Image();
 		img.onload = () => {
-			const bounds = [[0, 0], [img.naturalHeight, img.naturalWidth]];
+			const bounds = config.bounds ?? [[0, 0], [img.naturalHeight, img.naturalWidth]];
 			L.imageOverlay(config.imageUrl, bounds).addTo(map);
 			map.fitBounds(bounds);
-			addMarkers(map, config);
+			decorate(map, el, config, []);
 		};
 		img.src = config.imageUrl;
 		return;
@@ -101,27 +107,113 @@ function buildMap(el, config) {
 	map = L.map(el, {
 		minZoom: config.minZoom,
 		maxZoom: config.maxZoom ?? style.maxZoom,
+		...mapOptions,
 	}).setView([config.lat ?? 0, config.long ?? 0], config.zoom ?? 5);
 	const tiles = L.tileLayer(style.url, {
 		attribution: style.attribution,
-		...(style.subdomains ? { subdomains: style.subdomains } : {}),
+		...(config.tileSubdomains ? { subdomains: config.tileSubdomains }
+			: style.subdomains ? { subdomains: style.subdomains } : {}),
 		...(style.maxZoom ? { maxZoom: style.maxZoom } : {}),
 	});
 	tiles.addTo(map);
+	for (const overlay of config.tileOverlays ?? []) {
+		L.tileLayer(overlay, { opacity: 0.7 }).addTo(map);
+	}
+	if (config.bounds) map.fitBounds(config.bounds);
 	// Styles that are already dark (or photographic) skip the dark-theme dim.
 	if (style.dark) el.classList.add('is-light');
 	if (config.darkMode) el.classList.add('is-dark');
-	addMarkers(map, config);
-	const photoPins = addPhotoMarkers(map, config);
 
-	// Photo maps auto-fit unless the fence pinned an explicit view.
-	const fitAll = [
-		...photoPins,
-		...(config.markers ?? []).map((m) => [m.lat, m.long]),
-	];
-	if (config.lat === undefined && fitAll.length) {
-		map.fitBounds(fitAll, { padding: [40, 40], maxZoom: config.zoom ?? 15 });
+	const photoPins = addPhotoMarkers(map, config);
+	decorate(map, el, config, photoPins);
+}
+
+// Everything beyond the base layer: markers of all kinds, circle overlays,
+// GeoJSON, GPX tracks, image overlays, fitting, locking, distance tool.
+function decorate(map, el, config, photoPins) {
+	const L = window.L;
+	const fitPoints = [...photoPins];
+
+	addMarkers(map, config, fitPoints);
+	for (const o of config.overlays ?? []) {
+		const circle = L.circle([o.lat, o.long], {
+			radius: o.radius,
+			color: o.color ?? config.overlayColor ?? '#3388ff',
+			weight: 2, fillOpacity: 0.15,
+		}).addTo(map);
+		if (o.label) circle.bindTooltip(o.label);
+		fitPoints.push([o.lat, o.long]);
 	}
+	for (const overlay of config.imageOverlays ?? []) {
+		if (overlay.url) L.imageOverlay(overlay.url, overlay.bounds, { opacity: 0.85 }).addTo(map);
+	}
+
+	const featureLayers = [];
+	const featuresDone = Promise.all([
+		...(config.geojsonFiles ?? []).map(async (url) => {
+			try {
+				const data = await (await fetch(url)).json();
+				const layer = L.geoJSON(data, {
+					style: { color: config.geojsonColor ?? '#3388ff', weight: 2 },
+					onEachFeature: (feature, lyr) => {
+						const name = feature?.properties?.name ?? feature?.properties?.title;
+						if (name) lyr.bindTooltip(String(name));
+					},
+				}).addTo(map);
+				featureLayers.push(layer);
+			} catch { /* bad file — skipped */ }
+		}),
+		...(config.gpxFiles ?? []).map(async (url) => {
+			try {
+				const xml = new DOMParser().parseFromString(await (await fetch(url)).text(), 'text/xml');
+				const points = [...xml.querySelectorAll('trkpt, rtept')]
+					.map((pt) => [Number(pt.getAttribute('lat')), Number(pt.getAttribute('lon'))])
+					.filter((pair) => pair.every(Number.isFinite));
+				if (points.length < 2) return;
+				const track = L.polyline(points, { color: config.gpxColor ?? '#e9973f', weight: 3 }).addTo(map);
+				L.circleMarker(points[0], { radius: 5, color: '#44cf6e', fillOpacity: 1 }).addTo(map).bindTooltip('Start');
+				L.circleMarker(points[points.length - 1], { radius: 5, color: '#fb464c', fillOpacity: 1 }).addTo(map).bindTooltip('End');
+				for (const wpt of xml.querySelectorAll('wpt')) {
+					const lat = Number(wpt.getAttribute('lat'));
+					const lon = Number(wpt.getAttribute('lon'));
+					const name = wpt.querySelector('name')?.textContent;
+					if (Number.isFinite(lat) && Number.isFinite(lon)) {
+						const m = L.circleMarker([lat, lon], { radius: 4, color: '#a882ff', fillOpacity: 1 }).addTo(map);
+						if (name) m.bindTooltip(name);
+					}
+				}
+				featureLayers.push(track);
+			} catch { /* bad file — skipped */ }
+		}),
+	]);
+
+	featuresDone.then(() => {
+		if (config.zoomFeatures && featureLayers.length) {
+			const bounds = featureLayers[0].getBounds();
+			for (const layer of featureLayers.slice(1)) bounds.extend(layer.getBounds());
+			map.fitBounds(bounds, { padding: [30, 30] });
+		} else if ((config.lat === undefined || config.showAllMarkers) && fitPoints.length && !config.bounds) {
+			map.fitBounds(fitPoints, { padding: [40, 40], maxZoom: config.zoom ?? 15 });
+		}
+	});
+
+	if (config.lock) {
+		map.dragging.disable();
+		map.scrollWheelZoom.disable();
+		map.doubleClickZoom.disable();
+		map.boxZoom.disable();
+		map.keyboard.disable();
+	}
+	if (config.recenter && config.lat !== undefined) {
+		const home = { center: [config.lat, config.long ?? 0], zoom: config.zoom ?? 5 };
+		let timer = null;
+		map.on('dragend', () => {
+			clearTimeout(timer);
+			timer = setTimeout(() => map.flyTo(home.center, map.getZoom()), 900);
+		});
+	}
+	wireDistanceTool(map, config);
+
 	if (config.photosSkipped || config.photosError) {
 		const note = L.control({ position: 'bottomleft' });
 		note.onAdd = () => {
@@ -133,6 +225,47 @@ function buildMap(el, config) {
 		};
 		note.addTo(map);
 	}
+}
+
+// Shift-click two points to measure the distance between them (unit: /
+// scale: config keys); Escape or a third shift-click starts over.
+function wireDistanceTool(map, config) {
+	const L = window.L;
+	const UNITS = { m: [1, 'm'], km: [0.001, 'km'], mi: [0.000621371, 'mi'], ft: [3.28084, 'ft'] };
+	const [factor, suffix] = UNITS[config.unit] ?? UNITS.km;
+	const scale = config.scale ?? 1;
+	let first = null;
+	let line = null;
+	let control = null;
+	const clear = () => {
+		line?.remove();
+		control?.remove();
+		first = null; line = null; control = null;
+	};
+	map.on('click', (e) => {
+		if (!e.originalEvent.shiftKey) return;
+		if (first && line) clear();
+		if (!first) {
+			first = e.latlng;
+			line = L.polyline([first, first], { dashArray: '6 6', weight: 2, color: '#fb464c' }).addTo(map);
+			return;
+		}
+		line.setLatLngs([first, e.latlng]);
+		const meters = map.distance(first, e.latlng) * scale;
+		const display = `${(meters * factor).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${suffix}`;
+		control = L.control({ position: 'bottomleft' });
+		control.onAdd = () => {
+			const div = document.createElement('div');
+			div.className = 'clew-leaflet-note';
+			div.textContent = display;
+			return div;
+		};
+		control.addTo(map);
+		first = null;
+	});
+	map.getContainer().addEventListener('keydown', (e) => {
+		if (e.key === 'Escape') clear();
+	});
 }
 
 /** Photo pins: thumbnail popup + open-the-photo + a note wikilink (which
@@ -173,10 +306,22 @@ function addPhotoMarkers(map, config) {
 	return points;
 }
 
-function addMarkers(map, config) {
+const TYPE_COLORS = {
+	red: '#fb464c', orange: '#e9973f', yellow: '#e0de71', green: '#44cf6e',
+	teal: '#53dfdd', blue: '#3388ff', purple: '#a882ff',
+};
+
+function addMarkers(map, config, fitPoints = []) {
 	const L = window.L;
-	for (const m of config.markers ?? []) {
-		const marker = L.marker([m.lat, m.long]).addTo(map);
+	const place = (m) => {
+		fitPoints.push([m.lat, m.long]);
+		const color = TYPE_COLORS[m.type?.toLowerCase?.()];
+		return color
+			? L.circleMarker([m.lat, m.long], { radius: 8, color, fillColor: color, fillOpacity: 0.85, weight: 2 }).addTo(map)
+			: L.marker([m.lat, m.long]).addTo(map);
+	};
+	for (const m of [...(config.markers ?? []), ...(config.noteMarkers ?? [])]) {
+		const marker = place(m);
 		if (m.link) {
 			// A wikilink marker: popup with an internal link that opens in the app.
 			const a = document.createElement('a');

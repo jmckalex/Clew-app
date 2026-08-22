@@ -9,7 +9,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { resolveFileTarget, sitePath } from './wikilinks.js';
+import { resolveTarget, resolveFileTarget, sitePath } from './wikilinks.js';
 import { exifGps } from './exif-gps.js';
 
 const escapeHtml = (s) =>
@@ -42,8 +42,14 @@ export const mermaidFence = {
 export function parseLeafletConfig(body) {
 	const config = { markers: [] };
 	const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : undefined);
+	const bool = (v) => v === 'true' || v === '';
+	const wikiOrText = (v) => {
+		const wiki = /\[\[([^\[\]|]+)\]\]/.exec(v);
+		return (wiki ? wiki[1] : v).trim();
+	};
+	const push = (key, v) => { (config[key] ??= []).push(v); };
 	for (const line of body.split('\n')) {
-		const m = /^\s*([A-Za-z]+)\s*:\s*(.+?)\s*$/.exec(line);
+		const m = /^\s*([A-Za-z]+)\s*:\s*(.*?)\s*$/.exec(line);
 		if (!m) continue;
 		const key = m[1].toLowerCase();
 		const value = m[2];
@@ -54,7 +60,63 @@ export function parseLeafletConfig(body) {
 		else if (key === 'maxzoom') config.maxZoom = num(value);
 		else if (key === 'height') config.height = /^\d+$/.test(value) ? `${value}px` : value;
 		else if (key === 'tileserver') config.tileServer = value;
+		else if (key === 'tileoverlay') push('tileOverlays', value);
+		else if (key === 'tilesubdomains') config.tileSubdomains = value.replace(/[^a-z0-9]/gi, '');
 		else if (key === 'tiles' || key === 'style') config.tiles = value.toLowerCase();
+		else if (key === 'width') config.width = /^\d+$/.test(value) ? `${value}px` : value;
+		else if (key === 'zoomdelta') config.zoomDelta = num(value);
+		else if (key === 'unit') config.unit = value.toLowerCase();
+		else if (key === 'scale') config.scale = num(value);
+		else if (key === 'bounds') {
+			try {
+				const b = JSON.parse(value);
+				if (Array.isArray(b) && b.length === 2) config.bounds = b;
+			} catch { /* ignored */ }
+		}
+		else if (key === 'noscrollzoom') config.noScrollZoom = bool(value);
+		else if (key === 'noui') config.noUI = bool(value);
+		else if (key === 'lock') config.lock = bool(value);
+		else if (key === 'recenter') config.recenter = bool(value);
+		else if (key === 'zoomfeatures') config.zoomFeatures = bool(value);
+		else if (key === 'showallmarkers') config.showAllMarkers = bool(value);
+		else if (key === 'overlaycolor') config.overlayColor = value;
+		else if (key === 'geojsoncolor') config.geojsonColor = value;
+		else if (key === 'gpxcolor') config.gpxColor = value;
+		else if (key === 'geojson') push('geojsonFiles', wikiOrText(value));
+		else if (key === 'gpx') push('gpxFiles', wikiOrText(value));
+		else if (key === 'markerfile') push('markerFiles', wikiOrText(value));
+		else if (key === 'markerfolder') push('markerFolders', wikiOrText(value));
+		else if (key === 'markertag') push('markerTags', value.replace(/^#/, '').toLowerCase());
+		else if (key === 'imageoverlay') {
+			// imageOverlay: [[file.png]], [[lat,long],[lat,long]]
+			const file = wikiOrText(value.split(',')[0]);
+			const b = /\[\s*\[([^\]]+)\]\s*,\s*\[([^\]]+)\]\s*\]\s*$/.exec(value);
+			if (b) {
+				const p1 = b[1].split(',').map(Number);
+				const p2 = b[2].split(',').map(Number);
+				if (p1.every(Number.isFinite) && p2.every(Number.isFinite)) {
+					push('imageOverlays', { file, bounds: [p1, p2] });
+				}
+			}
+		}
+		else if (key === 'overlay') {
+			// overlay: [color,] lat, long, radius[unit] [, label]
+			const parts = value.split(',').map((v) => v.trim());
+			if (parts.length && !/^-?[\d.]+$/.test(parts[0])) {
+				var overlayColor = parts.shift();
+			}
+			const lat = num(parts[0]);
+			const long = num(parts[1]);
+			const r = /^([\d.]+)\s*(m|km|mi|ft)?$/.exec(parts[2] ?? '');
+			if (lat !== undefined && long !== undefined && r) {
+				const factor = { m: 1, km: 1000, mi: 1609.34, ft: 0.3048 }[r[2] ?? 'm'];
+				push('overlays', {
+					lat, long, radius: Number(r[1]) * factor,
+					...(overlayColor ? { color: overlayColor } : {}),
+					...(parts[3] ? { label: parts.slice(3).join(', ') } : {}),
+				});
+			}
+		}
 		else if (key === 'darkmode') config.darkMode = value === 'true';
 		else if (key === 'image') {
 			const wiki = /\[\[([^\[\]|]+)\]\]/.exec(value);
@@ -65,13 +127,15 @@ export function parseLeafletConfig(body) {
 		} else if (key === 'marker') {
 			// marker: [type,] lat, long [, [[link]] or label text]
 			const parts = value.split(',').map((s) => s.trim());
-			if (parts.length && !/^-?[\d.]+$/.test(parts[0])) parts.shift(); // optional type
+			let type = null;
+			if (parts.length && !/^-?[\d.]+$/.test(parts[0])) type = parts.shift(); // optional type
 			const lat = num(parts[0]);
 			const long = num(parts[1]);
 			if (lat === undefined || long === undefined) continue;
 			const rest = parts.slice(2).join(', ');
 			const wiki = /\[\[([^\[\]|]+)(?:\|([^\[\]]+))?\]\]/.exec(rest);
 			const marker = { lat, long };
+			if (type && type.toLowerCase() !== 'default') marker.type = type;
 			if (wiki) {
 				marker.link = wiki[1].trim();
 				marker.label = (wiki[2] ?? wiki[1]).trim();
@@ -100,6 +164,23 @@ export const leafletFence = {
 	renderer(token) {
 		if (global.isLatex) return '';
 		const config = parseLeafletConfig(token.text);
+		for (const key of ['geojsonFiles', 'gpxFiles']) {
+			if (!config[key]) continue;
+			config[key] = config[key]
+				.map((f) => { const rel = resolveFileTarget(f); return rel ? sitePath(rel) : null; })
+				.filter(Boolean);
+		}
+		for (const overlay of config.imageOverlays ?? []) {
+			const rel = resolveFileTarget(overlay.file);
+			overlay.url = rel ? sitePath(rel) : null;
+			delete overlay.file;
+		}
+		if (config.markerFiles || config.markerFolders || config.markerTags) {
+			config.noteMarkers = collectNoteMarkers(config);
+			delete config.markerFiles;
+			delete config.markerFolders;
+			delete config.markerTags;
+		}
 		if (config.photos) {
 			const scanned = scanPhotoFolder(config.photos);
 			config.photoMarkers = scanned.markers;
@@ -118,6 +199,91 @@ export const leafletFence = {
 		return `<div class="clew-leaflet" data-leaflet="${json}" style="height:${height}"></div>\n`;
 	},
 };
+
+// ---- note markers (markerFile / markerFolder / markerTag) ------------------
+
+/**
+ * Extract a map marker from a note's frontmatter: `location: [lat, long]`
+ * places it, `mapmarker: <type>` colors it, `map-label:` overrides the
+ * label. Pure; exported for tests.
+ */
+export function noteMarkerFrom(text, notePath) {
+	const fm = /^---\n([\s\S]*?)\n---/.exec(text);
+	if (!fm) return null;
+	const loc = /^location:\s*\[?\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*\]?\s*$/m.exec(fm[1]);
+	if (!loc) return null;
+	const lat = Number(loc[1]);
+	const long = Number(loc[2]);
+	if (!Number.isFinite(lat) || !Number.isFinite(long)) return null;
+	const type = /^mapmarker:\s*(\S+)\s*$/m.exec(fm[1])?.[1];
+	const label = /^map-label:\s*(.+?)\s*$/m.exec(fm[1])?.[1];
+	const name = notePath.split('/').pop().replace(/\.(md|jmd)$/i, '');
+	return {
+		lat, long, link: notePath,
+		label: label ?? name,
+		...(type ? { type } : {}),
+	};
+}
+
+/** Does a note's frontmatter carry the tag (tags: [..] or list form)? */
+export function noteHasTag(text, tag) {
+	const fm = /^---\n([\s\S]*?)\n---/.exec(text);
+	if (!fm) return false;
+	const inline = /^tags:\s*\[([^\]]*)\]\s*$/m.exec(fm[1]);
+	if (inline) {
+		return inline[1].split(',').some((t) => t.trim().replace(/^#/, '').toLowerCase() === tag);
+	}
+	const block = /^tags:\s*\n((?:\s*-\s*.+\n?)+)/m.exec(fm[1]);
+	if (block) {
+		return block[1].split('\n').some((line) =>
+			line.replace(/^\s*-\s*/, '').trim()
+				.replace(/^["']|["']$/g, '').replace(/^#/, '').toLowerCase() === tag);
+	}
+	return false;
+}
+
+const NOTE_FILE = /\.(md|jmd)$/i;
+
+function collectNoteMarkers(config) {
+	const root = process.env.CLEW_VAULT_ROOT;
+	if (!root) return [];
+	const markers = [];
+	const seen = new Set();
+	const add = (abs) => {
+		const rel = path.relative(root, abs).split(path.sep).join('/');
+		if (seen.has(rel)) return;
+		seen.add(rel);
+		try {
+			const marker = noteMarkerFrom(fs.readFileSync(abs, 'utf8'), rel);
+			if (marker) markers.push(marker);
+		} catch { /* unreadable — skipped */ }
+	};
+	for (const target of config.markerFiles ?? []) {
+		const rel = resolveTarget(target);
+		if (rel) add(path.join(root, rel));
+	}
+	const IGNORED = new Set(['.obsidian', '.clew', '.git', 'node_modules', '.trash']);
+	const walk = (dir, filter) => {
+		let entries;
+		try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+		for (const entry of entries) {
+			if (entry.name.startsWith('.') || IGNORED.has(entry.name)) continue;
+			const abs = path.join(dir, entry.name);
+			if (entry.isDirectory()) walk(abs, filter);
+			else if (NOTE_FILE.test(entry.name) && (!filter || filter(abs))) add(abs);
+		}
+	};
+	for (const folder of config.markerFolders ?? []) {
+		const dir = resolvePhotoFolder(folder);
+		if (dir) walk(dir, null);
+	}
+	for (const tag of config.markerTags ?? []) {
+		walk(root, (abs) => {
+			try { return noteHasTag(fs.readFileSync(abs, 'utf8'), tag); } catch { return false; }
+		});
+	}
+	return markers;
+}
 
 // ---- photo maps ------------------------------------------------------------
 
