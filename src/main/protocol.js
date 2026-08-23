@@ -206,11 +206,23 @@ export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDi
 				const pluginTags = previewPluginPaths(session.vaults.root, vaultSettings)
 					.map((p) => `<script src="/${sid}/${p.split('/').map(encodeURIComponent).join('/')}"></script>`)
 					.join('');
+				// Vault scripts: <vault>/.clew/scripts/*.js load into EVERY
+				// rendered note (alphabetical) — shared custom elements and
+				// helpers, the JS twin of the .clew/snippets CSS convention.
+				// Same trust surface as the inline <script>s notes can already
+				// carry; per-note "Script:" metadata still works alongside.
+				let vaultScriptTags = '';
+				try {
+					vaultScriptTags = fs.readdirSync(path.join(session.vaults.root, '.clew', 'scripts'))
+						.filter((f) => f.endsWith('.js')).sort()
+						.map((f) => `<script src="/${sid}/.clew/scripts/${encodeURIComponent(f)}"></script>`)
+						.join('');
+				} catch { /* no scripts folder */ }
 				const injected = html
 					.replace(/<head([^>]*)>/i, `<head$1><script src="/__clew_preview__/api.js"></script>`)
 					.replace(
 						/<\/body>/i,
-						`<script src="/__clew_preview__/client.js"></script>${pluginTags}</body>`,
+						`<script src="/__clew_preview__/client.js"></script>${vaultScriptTags}${pluginTags}</body>`,
 					);
 				return new Response(injected, { headers: headers('text/html') });
 			}

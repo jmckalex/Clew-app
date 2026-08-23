@@ -66,6 +66,21 @@ function applyRender(html) {
 				if (fromEl.tagName === 'SCRIPT') return false;
 				if (fromEl.id === '__clew_err') return false;
 				if (fromEl.classList?.contains('canvas-embed-scene')) return false;
+				// Custom elements (vault scripts / Script: metadata) render
+				// their own content, which the incoming HTML doesn't carry —
+				// morphing their subtree would wipe it. Keep the element and
+				// sync attributes instead, so attributeChangedCallback fires.
+				if (fromEl.tagName.includes('-') && fromEl.tagName === toEl.tagName) {
+					for (const attr of [...toEl.attributes]) {
+						if (fromEl.getAttribute(attr.name) !== attr.value) {
+							fromEl.setAttribute(attr.name, attr.value);
+						}
+					}
+					for (const attr of [...fromEl.attributes]) {
+						if (!toEl.hasAttribute(attr.name)) fromEl.removeAttribute(attr.name);
+					}
+					return false;
+				}
 				// Initialized maps hold live Leaflet state; replace only when
 				// the fence config actually changed.
 				if (fromEl.classList?.contains('clew-leaflet') && fromEl.dataset.leafletInit) {

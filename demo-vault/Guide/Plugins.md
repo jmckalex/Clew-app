@@ -104,6 +104,24 @@ Commands appear in the palette and the hotkey editor automatically,
 namespaced as `plugin:<id>:<command>`. Everything a plugin registers is
 unwound when the vault closes or the plugin is disabled.
 
+## Vault scripts (lighter than plugins)
+
+Just want shared JavaScript in your notes — custom elements, helper
+functions? Drop `.js` files into `.clew/scripts/` and every rendered
+note loads them (alphabetically), no manifest needed — the JS twin of
+the `.clew/snippets/` CSS convention. A single note can also pull in a
+script with jmarkdown's own metadata header:
+
+```
+---
+Script: ./my-element.js
+---
+```
+
+Custom elements render their own content, and Clew's live updates
+respect that: a re-render keeps your element and syncs its attributes
+(firing `attributeChangedCallback`) instead of wiping its DOM.
+
 ## Notes
 
 - Toggling a plugin re-renders open previews; if a preview surface
