@@ -272,6 +272,63 @@
 
 <section>
 	<div class="wrap">
+		<h2>The vault is a <span class="k">database</span> — a writable one</h2>
+		<p class="lead">
+			Notes carry state: a paper's status, a book's rating, an essay's
+			grade. Clew's queries surface it — and, unlike anything in the
+			Obsidian world, <strong>write it back</strong>.
+		</p>
+		<div class="feature">
+			<div class="text">
+				<h3>Queries you can type into</h3>
+				<ul>
+					<li>A <code>```query</code> fence filters notes by folder, tag, and frontmatter — with date arithmetic (<code>due &lt; today + 31d</code>), grouping, sorting</li>
+					<li><strong>Table cells are editable</strong>: click, retype, Enter — the value lands in that note's own frontmatter</li>
+					<li>Dataview-style inline fields (<code>Rating:: 8</code>) read and write the same way</li>
+					<li><code>```tasks</code> gathers every checkbox in the vault; ticking one writes back to its source note</li>
+					<li>Open dashboards <strong>re-render whenever any note changes</strong></li>
+				</ul>
+			</div>
+			<img class="shot" src="images/dashboard.jpg" alt="A live dashboard: a due-soon table with date arithmetic and papers grouped by status">
+		</div>
+		<div class="feature flip">
+			<div class="text">
+				<h3>Kanban that rewrites frontmatter</h3>
+				<p>
+					A <code>```kanban</code> fence projects notes as a board — columns
+					are the values of a frontmatter field. <strong>Drag a card to
+					another column and Clew rewrites that note's field</strong>; every
+					query view follows, because they all read the same files. Works
+					embedded on the canvas, too.
+				</p>
+				<p>
+					There is no database file. Every row and every card is a plain
+					Markdown note — greppable, git-able, yours. The repository ships a
+					second demo vault (<code>study-vault/</code>) staged as an academic
+					term run entirely on these features.
+				</p>
+			</div>
+			<img class="shot" src="images/kanban.jpg" alt="A kanban board of papers by status, with venue and due-date metadata on the cards">
+		</div>
+	</div>
+</section>
+
+<section>
+	<div class="wrap">
+		<h2>Publish the <span class="k">whole vault</span></h2>
+		<p class="lead">
+			<strong>File → Export → Vault as Website</strong> compiles every note
+			to a static page: wikilinks become real relative links, math and
+			diagrams render, maps keep their pins, dashboards bake to snapshots,
+			your custom elements ship along. The result is a folder any web host
+			can serve — Obsidian Publish without the subscription. (This very
+			page's demo vault exports to 37 pages with zero failures.)
+		</p>
+	</div>
+</section>
+
+<section>
+	<div class="wrap">
 		<h2>A diary with <span class="k">views</span></h2>
 		<div class="feature flip">
 			<div class="text">

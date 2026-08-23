@@ -22,7 +22,10 @@ read it first. The full design plan (architecture rationale, milestones,
 engine embedding facts, risks) lives at
 `~/.claude/plans/groovy-forging-shell.md`. `demo-vault/` is both the
 documentation (a Welcome hub + `Guide/` notes) and the test corpus — every
-guide note exercises the features it documents.
+guide note exercises the features it documents. `study-vault/` is a second
+demo vault staged as an academic term: the worked example of the writable
+database (queries/kanban/tasks) — keep it working. `docs/site/` is the
+hostable website.
 
 - **House style:** plain JavaScript ES modules + web components. No
   frameworks, no TypeScript. Tabs for indentation. Small hand-rolled
@@ -47,8 +50,9 @@ guide note exercises the features it documents.
   dependencies must go through it. Icon: scripts/make-icon.js renders
   build-resources/icon.svg → icns (committed).
 - **Tests:** `npm test` (`node --test`, files in `tests/`): workspace tree,
-  note-metadata extractor, BibTeX parser, and the ported jmarkdown-scan
-  suite — 90 tests. DOM/UI work is verified with the smoke harness instead.
+  note-metadata extractor, BibTeX parser, the ported jmarkdown-scan suite,
+  canvas model, diary, frontmatter, plugins discovery, query/leaflet/exif
+  parsers — 178 tests. DOM/UI work is verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js] [CLEW_SMOKE_VAULT=/path/vault]
   electron .` — SMOKE_VAULT opens exactly that vault, never touching the
@@ -88,10 +92,36 @@ browser-window-focus).
   blocks it can't fully parse are flagged `clean: false` and MUST be
   treated read-only).
 - `src/engine/` — assets the render worker loads: `wikilinks.js` (Obsidian
-  links/embeds incl. media), `obsidian-fences.js` (```mermaid fences),
-  `clew-template.html` (local assets, no CDN), `preview.css`.
+  links/embeds incl. media + image sizes; SITE_EXPORT branch emits real
+  hrefs), `obsidian-fences.js` (```mermaid + ```leaflet maps incl. photo
+  maps w/ HEIC conversion), `query-fences.js` (```query/```tasks/```kanban
+  + the `vault` global for script blocks), `exif-gps.js`,
+  `clew-template.html` (local assets, no CDN), `preview.css`. These may
+  import each other but never src/shared (dist/engine is a verbatim copy).
 - `src/preview-client/client.js` — injected into every rendered note:
-  morphdom patching, postMessage bridge, checkbox enabling, mermaid theming.
+  morphdom patching (guards: scripts, canvas-embed scenes, initialized
+  leaflet divs, custom elements — kept, attrs synced), postMessage bridge,
+  checkbox enabling, mermaid theming. Siblings: `canvas-embed.js` (live
+  read-only canvas scenes w/ pan/zoom), `leaflet-maps.js` (maps; asset
+  base parameterized for site export), `query-interact.js` (editable
+  cells + kanban drag → field-edit messages; payload key is fieldSource —
+  'source' would collide with the postMessage envelope), `api.js`,
+  `site-client.js` (static-site runtime bundle).
+- **Vault databases:** ```query/```tasks/```kanban scan the vault in the
+  worker at render time; notes holding them re-render on ANY file change
+  (render-service tracks hasQueries). Writes flow field-edit →
+  `actions.editNoteField` (frontmatter via shared/frontmatter — respects
+  the clean flag — or the inline `Key:: value` line). Both preview-view
+  and canvas-view route field-edit/task-toggle.
+- **Plugins** (`src/main/plugins.js`, `src/renderer/plugins.js`): vault
+  plugins in `.clew/plugins/<id>/` with engine/preview/app surfaces,
+  per-vault opt-in (`vault-settings.json` plugins array). App surfaces
+  load via the `__clew_plugin_app__` protocol namespace (CSP has no
+  unsafe-eval); everything registered unwinds on vault change. Vault
+  scripts: `.clew/scripts/*.js` inject into every preview, no manifest.
+- **Site export** (`src/main/export-site.js`, File → Export → Vault as
+  Website): one-shot workers with CLEW_SITE_EXPORT=1, marker-URL
+  relativization per page depth, assets/ copy, queries baked static.
 - `src/renderer/` — `state/` (Emitter stores: vault/workspace/settings/ui/
   bookmarks), `workspace/tree.js` (pure layout model: n-ary splits,
   kind-aware tabs — 'note' | 'file' | 'canvas' | 'graph' | 'settings' |
