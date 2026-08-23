@@ -7,6 +7,8 @@ import { createTab } from '../workspace/tree.js';
 import { isCanvasPath } from '../lib/file-types.js';
 import { scrollSyncBus } from '../preview/scroll-sync.js';
 import { ipc, CH } from '../ipc.js';
+import { parseProperties, applyProperties } from '../../shared/frontmatter.js';
+import { notice } from '../plugins.js';
 
 export function closeActiveTab() {
 	const tab = workspaceStore.activeTab();
@@ -152,6 +154,53 @@ const TASK_RE = /^(\s*(?:[-*+]|\d+[.)])\s+)\[( |x|X)\]/;
  * live editor when one is open (undoable, autosave persists it), otherwise
  * straight to disk. Tolerates ±1 line drift by searching neighbours.
  */
+/**
+ * Write one field of a note — the engine behind editable query tables and
+ * kanban drags. `source` says where the field lives: 'fm' (frontmatter,
+ * via the same parse/serialize machinery as the properties panel) or
+ * 'line:N' (a Dataview-style inline `Key:: value` on that 1-based line).
+ * The value is retyped to match what it replaces (number stays number,
+ * array stays array via comma-splitting).
+ */
+export async function editNoteField(path, field, value, source = 'fm') {
+	try {
+		const text = await ipc.invoke(CH.NOTE_READ, { path });
+		let next;
+		if (source.startsWith('line:')) {
+			const lineNo = Number(source.slice(5));
+			const lines = text.split('\n');
+			if (!(lineNo >= 1 && lineNo <= lines.length)) throw new Error('stale line');
+			const re = new RegExp(`(${field.replace(/[.*+?^$()|[\]\\]/g, '\\$&')}\\s*::\\s*)([^\\]\\n]*)`);
+			if (!re.test(lines[lineNo - 1])) throw new Error('field not on that line anymore');
+			lines[lineNo - 1] = lines[lineNo - 1].replace(re, (_, head) => head + value);
+			next = lines.join('\n');
+		} else {
+			const { entries, clean, present } = parseProperties(text);
+			if (present && !clean) throw new Error('frontmatter is outside the editable subset');
+			const entry = entries.find((e) => e.key === field);
+			const typed = retype(value, entry?.value);
+			if (entry) entry.value = typed;
+			else entries.push({ key: field, value: typed });
+			next = applyProperties(text, entries);
+		}
+		if (next !== text) await ipc.invoke(CH.NOTE_WRITE, { path, content: next });
+		return true;
+	} catch (err) {
+		notice(`Couldn't update ${field} in ${path.split('/').pop()}: ${err.message}`);
+		return false;
+	}
+}
+
+function retype(value, previous) {
+	if (Array.isArray(previous)) {
+		return value.split(',').map((v) => v.trim()).filter(Boolean).map((v) => retype(v, null));
+	}
+	if (/^-?\d+(\.\d+)?$/.test(value)) return Number(value);
+	if (value === 'true') return true;
+	if (value === 'false') return false;
+	return value;
+}
+
 export async function toggleTaskLine(path, line, checked) {
 	const box = `[${checked ? 'x' : ' '}]`;
 

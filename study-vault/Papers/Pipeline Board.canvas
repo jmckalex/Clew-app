@@ -1,0 +1,40 @@
+{
+	"nodes": [
+		{
+			"id": "pb1",
+			"type": "file",
+			"file": "Papers/Pipeline.md",
+			"x": 0,
+			"y": 0,
+			"width": 900,
+			"height": 520
+		},
+		{
+			"id": "pb2",
+			"type": "text",
+			"text": "The same kanban, ON the canvas.\nDouble-click the board to engage it, then drag cards \u2014 the frontmatter edits land in the same files.",
+			"x": 940,
+			"y": 40,
+			"width": 260,
+			"height": 170
+		},
+		{
+			"id": "pb3",
+			"type": "file",
+			"file": "Papers/The Craft of Notation.md",
+			"x": 940,
+			"y": 260,
+			"width": 260,
+			"height": 260
+		}
+	],
+	"edges": [
+		{
+			"id": "pbe1",
+			"fromNode": "pb2",
+			"fromSide": "left",
+			"toNode": "pb1",
+			"toSide": "right"
+		}
+	]
+}

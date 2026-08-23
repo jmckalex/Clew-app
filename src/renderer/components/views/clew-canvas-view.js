@@ -2082,6 +2082,13 @@ class ClewCanvasView extends ClewElement {
 			case 'checkbox-toggle':
 				actions.toggleTaskLine(embed.path, msg.line, msg.checked);
 				break;
+			case 'task-toggle':
+				actions.toggleTaskLine(msg.path, msg.line, msg.checked);
+				break;
+			case 'field-edit':
+				// Kanban boards and query tables work ON the canvas too.
+				actions.editNoteField(msg.path, msg.field, msg.value, msg.fieldSource);
+				break;
 			case 'api-request':
 				handleApiRequest(msg, { sourcePath: embed.path })
 					.then((response) => this.#postEmbed(embed, response));

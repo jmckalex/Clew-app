@@ -338,3 +338,70 @@ table.clew-query th {
 .clew-tasks-list { list-style: none; padding-left: 0.4em; margin: 0; }
 .clew-tasks-list li { margin: 0.15em 0; }
 .clew-tasks-list input[type='checkbox'] { margin-right: 0.45em; vertical-align: middle; }
+
+/* editable query cells */
+td.clew-q-cell { cursor: text; }
+td.clew-q-cell:hover { background: rgba(168, 130, 255, 0.08); }
+.clew-q-edit {
+	width: 100%;
+	box-sizing: border-box;
+	border: 1px solid var(--preview-accent);
+	border-radius: 4px;
+	background: var(--preview-bg);
+	color: var(--preview-text);
+	font: inherit;
+	padding: 1px 4px;
+	outline: none;
+}
+.clew-query-group {
+	font-weight: 600;
+	margin: 0.9em 0 0.3em;
+	color: var(--preview-muted);
+	text-transform: uppercase;
+	font-size: 0.8em;
+	letter-spacing: 0.05em;
+}
+
+/* ---- ```kanban ------------------------------------------------------------ */
+.clew-kanban {
+	display: flex;
+	gap: 12px;
+	align-items: flex-start;
+	overflow-x: auto;
+	margin: 0.8em 0;
+	padding-bottom: 6px;
+}
+.kanban-col {
+	flex: 1 0 190px;
+	max-width: 260px;
+	background: color-mix(in srgb, var(--preview-border) 22%, transparent);
+	border: 1px solid var(--preview-border);
+	border-radius: 10px;
+	padding: 8px;
+	min-height: 70px;
+}
+.kanban-col.is-target { border-color: var(--preview-accent); background: rgba(168, 130, 255, 0.1); }
+.kanban-col-title {
+	font-size: 0.8em;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: var(--preview-muted);
+	margin: 2px 4px 8px;
+	display: flex;
+	justify-content: space-between;
+}
+.kanban-count { font-weight: 400; }
+.kanban-card {
+	background: var(--preview-bg);
+	border: 1px solid var(--preview-border);
+	border-radius: 8px;
+	padding: 8px 10px;
+	margin-bottom: 8px;
+	cursor: grab;
+	user-select: none;
+}
+.kanban-card:hover { border-color: var(--preview-accent); }
+.kanban-card.is-dragging { opacity: 0.45; }
+.kanban-card-title { font-size: 0.95em; font-weight: 600; }
+.kanban-card-meta { font-size: 0.78em; color: var(--preview-muted); margin-top: 3px; }

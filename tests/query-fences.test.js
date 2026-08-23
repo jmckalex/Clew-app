@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFrontmatter, parseQueryConfig, runQuery, parseTasksConfig, extractTasks } from '../src/engine/query-fences.js';
+import { readFrontmatter, readInlineFields, resolveDateExpr, parseQueryConfig, parseKanbanConfig, runQuery, parseTasksConfig, extractTasks } from '../src/engine/query-fences.js';
 
 test('frontmatter reader: scalars, arrays, block lists', () => {
 	const fm = readFrontmatter('---\nstatus: active\npriority: 2\ndone: false\ntags: [a, b]\nlist:\n  - x\n  - y\n---\nbody');
@@ -37,4 +37,34 @@ test('tasks: extraction masks fences, config parses', () => {
 	assert.equal(parseTasksConfig('done\nfrom: X/').status, 'done');
 	assert.equal(parseTasksConfig('all\ngroup: none').group, 'none');
 	assert.equal(parseTasksConfig('').status, 'todo');
+});
+
+// ---- the writable-database layer ----
+
+test('inline fields: own-line and bracketed, with line numbers', () => {
+	const text = '# T\nRating:: 8\nSome prose with [chapter:: 5] inline.\n```\nMasked:: 1\n```\n';
+	const { fields, lines } = readInlineFields(text);
+	assert.deepEqual(fields, { Rating: 8, chapter: 5 });
+	assert.deepEqual(lines, { Rating: 2, chapter: 3 });
+});
+
+test('date expressions resolve', () => {
+	const now = new Date(2026, 7, 22); // 22 Aug 2026
+	assert.equal(resolveDateExpr('today', now), '2026-08-22');
+	assert.equal(resolveDateExpr('today + 7d', now), '2026-08-29');
+	assert.equal(resolveDateExpr('today - 2w', now), '2026-08-08');
+	assert.equal(resolveDateExpr('today + 1m', now), '2026-09-22');
+	assert.equal(resolveDateExpr('2026-01-01', now), null);
+});
+
+test('where clauses with date expressions filter ISO dates', () => {
+	const config = parseQueryConfig('where: due < today + 31d\nwhere: due');
+	assert.equal(config.where[0].op, '<');
+	assert.match(String(config.where[0].value), /^\d{4}-\d{2}-\d{2}$/);
+});
+
+test('group clause parses and kanban config parses', () => {
+	assert.equal(parseQueryConfig('group: status').group, 'status');
+	const k = parseKanbanConfig('group: status\nfrom: Papers/\ncolumns: a, b\nshow: due, venue');
+	assert.deepEqual(k, { group: 'status', from: 'Papers', tag: null, columns: ['a', 'b'], show: ['due', 'venue'] });
 });

@@ -15,9 +15,18 @@
 // rendered checkboxes write back to their source notes when clicked
 // (the preview client routes them by data-task-path/-line).
 //
+// Plus ```kanban — notes as drag-between-columns cards grouped by a
+// frontmatter field; dropping a card REWRITES that note's field.
+//
+// The data model reads three places: frontmatter, Dataview-style inline
+// fields (Key:: value on its own line, or [key:: value] in a sentence),
+// and built-ins (name, path, modified). Table cells over frontmatter or
+// inline fields are EDITABLE in the app — the preview client posts a
+// field-edit and the host writes the source note.
+//
 // Everything scans the live vault at render time (this file runs inside
-// the one-shot worker, which has fs); results refresh whenever the note
-// holding the fence re-renders. Pure helpers are exported for tests.
+// the one-shot worker, which has fs); open notes holding these fences
+// re-render whenever any note changes. Pure helpers exported for tests.
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -67,6 +76,53 @@ function clean(v) {
 	return s;
 }
 
+// ---- inline fields (Key:: value — Dataview's idiom) ------------------------
+
+const INLINE_LINE_RE = /^([A-Za-z][\w -]{0,40}?)::\s+(.+?)\s*$/;
+const INLINE_BRACKET_RE = /\[([A-Za-z][\w -]{0,40}?)::\s+([^\]\n]+)\]/g;
+
+/** Inline fields with their 1-based source lines (for write-back):
+ *  { fields: {key: value}, lines: {key: line} }. Fenced code is masked. */
+export function readInlineFields(text) {
+	const fields = {};
+	const lines = {};
+	let inFence = false;
+	const rows = text.split('\n');
+	for (let i = 0; i < rows.length; i++) {
+		if (/^\s*(```|~~~)/.test(rows[i])) { inFence = !inFence; continue; }
+		if (inFence) continue;
+		const own = INLINE_LINE_RE.exec(rows[i]);
+		if (own) {
+			if (!(own[1] in fields)) { fields[own[1]] = clean(own[2]); lines[own[1]] = i + 1; }
+			continue;
+		}
+		for (const m of rows[i].matchAll(INLINE_BRACKET_RE)) {
+			if (!(m[1] in fields)) { fields[m[1]] = clean(m[2]); lines[m[1]] = i + 1; }
+		}
+	}
+	return { fields, lines };
+}
+
+// ---- date arithmetic (where: due < today + 7d) -----------------------------
+
+const DATE_EXPR_RE = /^today(?:\s*([+-])\s*(\d+)\s*(d|w|m|y))?$/i;
+
+/** 'today', 'today + 7d', 'today - 2w' → ISO date string; null otherwise. */
+export function resolveDateExpr(value, now = new Date()) {
+	const m = DATE_EXPR_RE.exec(String(value).trim());
+	if (!m) return null;
+	const date = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+	if (m[1]) {
+		const n = Number(m[2]) * (m[1] === '-' ? -1 : 1);
+		if (m[3] === 'd') date.setDate(date.getDate() + n);
+		else if (m[3] === 'w') date.setDate(date.getDate() + n * 7);
+		else if (m[3] === 'm') date.setMonth(date.getMonth() + n);
+		else date.setFullYear(date.getFullYear() + n);
+	}
+	const pad = (x) => String(x).padStart(2, '0');
+	return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
 // ---- vault scan ------------------------------------------------------------
 
 function scanNotes() {
@@ -84,12 +140,19 @@ function scanNotes() {
 				try {
 					const abs = path.join(dir, entry.name);
 					const text = fs.readFileSync(abs, 'utf8');
+					const fm = readFrontmatter(text);
+					const inline = readInlineFields(text);
+					// Frontmatter wins on key collisions; sources drive edits.
+					const sources = {};
+					for (const key of Object.keys(inline.fields)) sources[key] = `line:${inline.lines[key]}`;
+					for (const key of Object.keys(fm)) sources[key] = 'fm';
 					notes.push({
 						path: childRel,
 						name: entry.name.replace(NOTE_FILE, ''),
 						modified: fs.statSync(abs).mtimeMs,
 						text,
-						fm: readFrontmatter(text),
+						fm: { ...inline.fields, ...fm },
+						sources,
 					});
 				} catch { /* unreadable — skipped */ }
 			}
@@ -108,7 +171,7 @@ const noteTags = (note) => {
 // ---- ```query --------------------------------------------------------------
 
 export function parseQueryConfig(body) {
-	const config = { mode: 'list', columns: [], where: [], from: null, tag: null, sort: null, limit: null };
+	const config = { mode: 'list', columns: [], where: [], from: null, tag: null, sort: null, limit: null, group: null };
 	for (const line of body.split('\n')) {
 		const m = /^\s*(\w+)\s*:\s*(.*?)\s*$/.exec(line);
 		if (!m) continue;
@@ -122,9 +185,11 @@ export function parseQueryConfig(body) {
 		else if (key === 'tag') config.tag = value.replace(/^#/, '').toLowerCase();
 		else if (key === 'where') {
 			const w = /^([\w -]+?)\s*(=|!=|>=|<=|>|<|contains)\s*(.*)$/.exec(value);
-			if (w) config.where.push({ field: w[1].trim(), op: w[2], value: clean(w[3]) });
-			else config.where.push({ field: value.trim(), op: 'exists' });
-		} else if (key === 'sort') {
+			if (w) {
+				const resolved = resolveDateExpr(w[3]);
+				config.where.push({ field: w[1].trim(), op: w[2], value: resolved ?? clean(w[3]) });
+			} else config.where.push({ field: value.trim(), op: 'exists' });
+		} else if (key === 'group') config.group = value.trim(); else if (key === 'sort') {
 			const s = /^([\w -]+?)(?:\s+(asc|desc))?$/.exec(value);
 			if (s) config.sort = { field: s[1].trim(), dir: s[2] ?? 'asc' };
 		} else if (key === 'limit') config.limit = Number(value) || null;
@@ -202,19 +267,43 @@ export const queryFence = {
 		const config = parseQueryConfig(token.text);
 		const rows = runQuery(config, scanNotes());
 		if (rows.length === 0) return `<div class="clew-query is-empty">No notes match this query.</div>\n`;
-		if (config.mode === 'table') {
-			const head = ['Note', ...config.columns].map((c) => `<th>${escapeHtml(c)}</th>`).join('');
-			const body = rows.map((note) => {
-				const cells = config.columns.map((c) => {
-					const v = fieldOf(note, c);
-					const shown = v === undefined ? '' : Array.isArray(v) ? v.join(', ') : String(v);
-					return `<td>${escapeHtml(shown)}</td>`;
-				}).join('');
-				return `<tr><td>${noteLink(note)}</td>${cells}</tr>`;
-			}).join('\n');
-			return `<table class="clew-query"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>\n`;
+		const render = (subset, label) => {
+			const caption = label != null
+				? `<div class="clew-query-group">${escapeHtml(label)}</div>` : '';
+			if (config.mode === 'table') {
+				const head = ['Note', ...config.columns].map((c) => `<th>${escapeHtml(c)}</th>`).join('');
+				const body = subset.map((note) => {
+					const cells = config.columns.map((c) => {
+						const v = fieldOf(note, c);
+						const shown = v === undefined ? '' : Array.isArray(v) ? v.join(', ') : String(v);
+						// Frontmatter / inline fields are editable in the app;
+						// built-ins (name, path, modified) are not.
+						const source = note.sources?.[c];
+						const editable = source
+							? ` class="clew-q-cell" data-edit-path="${escapeHtml(note.path)}"`
+								+ ` data-edit-field="${escapeHtml(c)}" data-edit-source="${escapeHtml(source)}"`
+							: ['name', 'path', 'modified'].includes(c) ? ''
+							: ` class="clew-q-cell" data-edit-path="${escapeHtml(note.path)}"`
+								+ ` data-edit-field="${escapeHtml(c)}" data-edit-source="fm"`;
+						return `<td${editable}>${escapeHtml(shown)}</td>`;
+					}).join('');
+					return `<tr><td>${noteLink(note)}</td>${cells}</tr>`;
+				}).join('\n');
+				return `${caption}<table class="clew-query"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+			}
+			return `${caption}<ul class="clew-query">\n${subset.map((note) => `<li>${noteLink(note)}</li>`).join('\n')}\n</ul>`;
+		};
+		if (config.group) {
+			const groups = new Map();
+			for (const note of rows) {
+				const raw = fieldOf(note, config.group);
+				const key = raw === undefined || raw === '' ? '—' : Array.isArray(raw) ? raw.join(', ') : String(raw);
+				if (!groups.has(key)) groups.set(key, []);
+				groups.get(key).push(note);
+			}
+			return [...groups.keys()].sort().map((k) => render(groups.get(k), k)).join('\n') + '\n';
 		}
-		return `<ul class="clew-query">\n${rows.map((note) => `<li>${noteLink(note)}</li>`).join('\n')}\n</ul>\n`;
+		return render(rows, null) + '\n';
 	},
 };
 
@@ -297,4 +386,103 @@ export const tasksFence = {
 	},
 };
 
-export default [queryFence, tasksFence];
+// ---- ```kanban -------------------------------------------------------------
+
+export function parseKanbanConfig(body) {
+	const config = { group: 'status', from: null, tag: null, columns: null, show: [] };
+	for (const line of body.split('\n')) {
+		const m = /^\s*(\w+)\s*:\s*(.*?)\s*$/.exec(line);
+		if (!m) continue;
+		const key = m[1].toLowerCase();
+		if (key === 'group') config.group = m[2].trim();
+		else if (key === 'from') config.from = m[2].replace(/\/$/, '');
+		else if (key === 'tag') config.tag = m[2].replace(/^#/, '').toLowerCase();
+		else if (key === 'columns') config.columns = m[2].split(',').map((c) => c.trim()).filter(Boolean);
+		else if (key === 'show') config.show = m[2].split(',').map((c) => c.trim()).filter(Boolean);
+	}
+	return config;
+}
+
+export const kanbanFence = {
+	name: 'kanbanFence',
+	level: 'block',
+	start(src) { return src.match(/^```kanban/m)?.index; },
+	tokenizer(src) {
+		const match = /^```kanban[ \t]*\n([\s\S]*?)\n```[ \t]*(?:\n+|$)/.exec(src);
+		if (!match) return;
+		return { type: 'kanbanFence', raw: match[0], text: match[1] };
+	},
+	renderer(token) {
+		if (global.isLatex) return '';
+		const config = parseKanbanConfig(token.text);
+		const notes = runQuery({ from: config.from, tag: config.tag, where: [], sort: null, limit: null }, scanNotes());
+		const byColumn = new Map();
+		for (const col of config.columns ?? []) byColumn.set(col, []);
+		for (const note of notes) {
+			const raw = note.fm[config.group];
+			const value = raw === undefined || raw === '' ? '—' : String(raw);
+			if (config.columns && !byColumn.has(value)) continue; // explicit board: off-board notes hidden
+			if (!byColumn.has(value)) byColumn.set(value, []);
+			byColumn.get(value).push(note);
+		}
+		const columns = config.columns ?? [...byColumn.keys()].sort();
+		const parts = [`<div class="clew-kanban" data-kanban-field="${escapeHtml(config.group)}">`];
+		for (const col of columns) {
+			const cards = byColumn.get(col) ?? [];
+			parts.push(`<div class="kanban-col" data-kanban-value="${escapeHtml(col)}">`);
+			parts.push(`<div class="kanban-col-title">${escapeHtml(col)} <span class="kanban-count">${cards.length}</span></div>`);
+			for (const note of cards) {
+				const meta = config.show
+					.map((f) => { const v = fieldOf(note, f); return v === undefined ? null : `${f}: ${Array.isArray(v) ? v.join(', ') : v}`; })
+					.filter(Boolean).join(' · ');
+				parts.push(`<div class="kanban-card" draggable="true"`
+					+ ` data-kanban-path="${escapeHtml(note.path)}"`
+					+ ` data-href="${escapeHtml(note.path.replace(NOTE_FILE, ''))}">`
+					+ `<div class="kanban-card-title">${escapeHtml(note.name)}</div>`
+					+ (meta ? `<div class="kanban-card-meta">${escapeHtml(meta)}</div>` : '')
+					+ `</div>`);
+			}
+			parts.push('</div>');
+		}
+		parts.push('</div>');
+		return parts.join('\n') + '\n';
+	},
+};
+
+// ---- the `vault` global for jmarkdown script blocks ------------------------
+// The programmable tier (Dataview's dataviewjs equivalent): script blocks in
+// notes run in this worker, so they can query the vault directly:
+//
+//   const active = vault.query({ from: 'Projects', where: 'status = active' });
+//
+// where strings use the same syntax as the fence; query() also takes
+// pre-parsed {from, tag, where: [...], sort, limit} objects.
+globalThis.vault = {
+	notes: () => scanNotes(),
+	query: (spec = {}) => {
+		const config = typeof spec === 'string' ? parseQueryConfig(spec) : {
+			mode: 'list', columns: [], group: null,
+			from: spec.from ?? null,
+			tag: spec.tag?.replace(/^#/, '').toLowerCase() ?? null,
+			sort: spec.sort ?? null,
+			limit: spec.limit ?? null,
+			where: (Array.isArray(spec.where) ? spec.where : spec.where ? [spec.where] : [])
+				.map((w) => typeof w === 'string' ? parseQueryConfig('where: ' + w).where[0] : w)
+				.filter(Boolean),
+		};
+		return runQuery(config, scanNotes());
+	},
+	tasks: (spec = '') => {
+		const config = parseTasksConfig(typeof spec === 'string' ? spec : '');
+		const out = [];
+		for (const note of runQuery({ from: config.from, tag: config.tag, where: [], sort: null, limit: null }, scanNotes())) {
+			for (const task of extractTasks(note.text)) {
+				if (config.status !== 'all' && (config.status === 'done') !== task.done) continue;
+				out.push({ ...task, path: note.path, note: note.name });
+			}
+		}
+		return out;
+	},
+};
+
+export default [queryFence, tasksFence, kanbanFence];

@@ -121,6 +121,10 @@ class ClewPreviewView extends ClewElement {
 				// A ```tasks fence item — the toggle belongs to its source note.
 				actions.toggleTaskLine(msg.path, msg.line, msg.checked);
 				break;
+			case 'field-edit':
+				// Editable query cell / kanban drag → write the source note.
+				actions.editNoteField(msg.path, msg.field, msg.value, msg.fieldSource);
+				break;
 			case 'api-request':
 				handleApiRequest(msg, { sourcePath: this.path })
 					.then((response) => this.#post(response));

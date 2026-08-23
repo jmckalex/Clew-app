@@ -5,6 +5,7 @@
 import morphdom from 'morphdom';
 import { initCanvasEmbeds, refreshCanvasEmbeds, broadcastThemeToNested } from './canvas-embed.js';
 import { initLeafletMaps } from './leaflet-maps.js';
+import { initQueryInteract } from './query-interact.js';
 
 const HOST_SOURCE = 'clew-preview-host';
 const post = (msg) => window.parent.postMessage({ source: 'clew-preview', ...msg }, '*');
@@ -244,4 +245,5 @@ function scrollToLine(line, behavior) {
 enableTaskCheckboxes();
 initCanvasEmbeds();
 initLeafletMaps();
+initQueryInteract();
 post({ type: 'ready' });

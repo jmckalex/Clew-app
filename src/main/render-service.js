@@ -121,7 +121,7 @@ export class RenderService {
 			'Extensions': [
 				`wikiembed, wikilink from ${path.join(engineAssets, 'wikilinks.js')}`,
 				`mermaidFence, leafletFence from ${path.join(engineAssets, 'obsidian-fences.js')}`,
-				`queryFence, tasksFence from ${path.join(engineAssets, 'query-fences.js')}`,
+				`queryFence, tasksFence, kanbanFence from ${path.join(engineAssets, 'query-fences.js')}`,
 				// Enabled vault plugins' engine surfaces (custom syntax).
 				...engineExtensionEntries(this.vaultRoot, this.#vaultOptions),
 			],
@@ -244,6 +244,10 @@ export class RenderService {
 
 		if (result.type === 'done') {
 			entry.mtimeMs = mtimeMs;
+			// Notes holding query fences re-render on ANY vault change.
+			try {
+				entry.hasQueries = /^```(query|tasks|kanban)/m.test(fs.readFileSync(abs, 'utf8'));
+			} catch { entry.hasQueries = false; }
 			this.send(CH.EV_RENDER_DONE, { path: relPath });
 			return entry.htmlFile;
 		}
@@ -330,11 +334,26 @@ export class RenderService {
 
 	/** Called by the vault watcher on every content change. */
 	onFileChanged(relPath) {
-		if (!this.#subscribed.has(relPath)) return;
-		clearTimeout(this.#rebuildTimers.get(relPath));
-		this.#rebuildTimers.set(relPath, setTimeout(() => {
-			this.#rebuildTimers.delete(relPath);
-			this.render(relPath).catch(() => {}); // errors already broadcast
-		}, REBUILD_DEBOUNCE_MS));
+		if (this.#subscribed.has(relPath)) {
+			clearTimeout(this.#rebuildTimers.get(relPath));
+			this.#rebuildTimers.set(relPath, setTimeout(() => {
+				this.#rebuildTimers.delete(relPath);
+				this.render(relPath).catch(() => {}); // errors already broadcast
+			}, REBUILD_DEBOUNCE_MS));
+		}
+		// Live queries: an open preview whose note holds ```query/tasks/kanban
+		// fences re-renders when ANY other note changes, so its results track
+		// the vault (this is what makes editable tables/boards feel live).
+		if (/\.(md|jmd)$/i.test(relPath)) {
+			for (const queryPath of this.#subscribed.keys()) {
+				if (queryPath === relPath) continue;
+				if (!this.#notes.get(queryPath)?.hasQueries) continue;
+				clearTimeout(this.#rebuildTimers.get(queryPath));
+				this.#rebuildTimers.set(queryPath, setTimeout(() => {
+					this.#rebuildTimers.delete(queryPath);
+					this.render(queryPath).catch(() => {});
+				}, REBUILD_DEBOUNCE_MS * 2));
+			}
+		}
 	}
 }
