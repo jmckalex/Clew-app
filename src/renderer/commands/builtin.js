@@ -4,6 +4,7 @@ import { registerCommand, buildContext, allCommands, isEnabled, effectiveKeymap 
 import { openSearchPanel } from '@codemirror/search';
 import { registerFormatCommands, activeEditorView, needsEditor } from './format.js';
 import { openDiaryDay } from './diary.js';
+import { notice } from '../plugins.js';
 import { substituteTemplate } from '../../shared/diary.js';
 import * as actions from './actions.js';
 import { workspaceStore } from '../state/workspace-store.js';
@@ -140,6 +141,18 @@ export function registerBuiltinCommands() {
 			run: () => exportActiveNote('html') },
 		{ id: 'export:latex', name: 'Export note as LaTeX (.tex)', when: needsNote,
 			run: () => exportActiveNote('latex') },
+		{ id: 'export:site', name: 'Export vault as website…', when: (ctx) => ctx.vaultOpen,
+			run: async () => {
+				notice('Exporting website…');
+				try {
+					const result = await ipc.invoke(CH.EXPORT_SITE, {});
+					if (!result) return; // dialog cancelled
+					const failed = result.failures.length ? ` (${result.failures.length} failed)` : '';
+					notice(`Website exported: ${result.notes} pages → ${result.outDir}${failed}`, 6000);
+				} catch (err) {
+					notice(`Website export failed: ${err.message}`, 6000);
+				}
+			} },
 		{ id: 'export:pdf', name: 'Export note as PDF (via LaTeX)', when: needsNote,
 			run: () => exportActiveNote('pdf') },
 	];

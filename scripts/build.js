@@ -41,6 +41,14 @@ export const bundles = [
 		format: 'iife',
 	},
 	{
+		// Static-site runtime for exported vaults (maps, mermaid) — shipped
+		// into <site>/assets/ by File → Export Vault as Website.
+		entryPoints: [path.join(root, 'src/preview-client/site-client.js')],
+		outfile: path.join(root, 'dist/preview-client/site-client.js'),
+		bundle: true,
+		format: 'iife',
+	},
+	{
 		// The note API (window.clew), injected into preview <head>s.
 		entryPoints: [path.join(root, 'src/preview-client/api.js')],
 		outfile: path.join(root, 'dist/preview-client/api.js'),

@@ -4,19 +4,23 @@
 // tile layers come from OpenStreetMap by default (network required), or an
 // `image:` map renders fully offline from a vault image.
 
+// Assets root: the preview protocol in the app, ./assets on exported sites
+// (the exporter sets window.__clewAssetBase before this bundle loads).
+const ASSETS = () => window.__clewAssetBase ?? '/__clew_assets__';
+
 let leafletLoading = null;
 
 function loadLeaflet() {
 	leafletLoading ??= new Promise((resolve, reject) => {
 		const css = document.createElement('link');
 		css.rel = 'stylesheet';
-		css.href = '/__clew_assets__/leaflet/leaflet.css';
+		css.href = `${ASSETS()}/leaflet/leaflet.css`;
 		document.head.append(css);
 		const script = document.createElement('script');
-		script.src = '/__clew_assets__/leaflet/leaflet.js';
+		script.src = `${ASSETS()}/leaflet/leaflet.js`;
 		script.onload = () => {
 			// Default marker icons resolve relative to the bundled assets.
-			window.L.Icon.Default.prototype.options.imagePath = '/__clew_assets__/leaflet/images/';
+			window.L.Icon.Default.prototype.options.imagePath = `${ASSETS()}/leaflet/images/`;
 			resolve();
 		};
 		script.onerror = () => reject(new Error('Leaflet failed to load'));

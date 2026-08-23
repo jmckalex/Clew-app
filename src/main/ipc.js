@@ -10,6 +10,7 @@ import { sessionFor } from './session.js';
 import { openVaultAnywhere, openVaultDialog } from './main.js';
 import { propagateRename } from './rename-links.js';
 import { exportNote } from './export.js';
+import { exportSite } from './export-site.js';
 import { parseBib } from '../shared/bib.js';
 import { direntKind, shouldRecurse, walkGuard } from './fs-utils.js';
 import { listPlugins } from './plugins.js';
@@ -141,6 +142,32 @@ export function registerIpc() {
 
 	handle(CH.EXPORT_NOTE, (s, { path, format }) =>
 		exportNote({ win: s.win, vaults: s.vaults, relPath: path, format }));
+
+	// The whole vault as a static website. `outDir` (smoke tests) skips the
+	// dialog; otherwise the user picks a folder and the site lands in a
+	// <vault-name>-site subfolder of it.
+	handle(CH.EXPORT_SITE, async (s, { outDir } = {}) => {
+		if (!s.vaults.isOpen) throw new Error('No vault open');
+		let target = outDir;
+		if (!target) {
+			const { canceled, filePaths } = await dialog.showOpenDialog(s.win, {
+				title: 'Export vault as website',
+				buttonLabel: 'Export Here',
+				properties: ['openDirectory', 'createDirectory'],
+			});
+			if (canceled || filePaths.length === 0) return null;
+			target = nodePath.join(filePaths[0], `${nodePath.basename(s.vaults.root)}-site`);
+		}
+		const vaultOptions = s.vaults.loadState('vault-settings.json') ?? {};
+		const result = await exportSite({
+			vaultRoot: s.vaults.root,
+			engineDir: nodePath.join(s.vaults.root, '.clew', 'engine'),
+			distDir: nodePath.join(app.getAppPath(), 'dist'),
+			outDir: target,
+			vaultOptions,
+		});
+		return { outDir: target, ...result };
+	});
 
 	// Canvas drawing → PNG. The renderer rasterizes (it owns the theme colors);
 	// main only picks the destination and writes. An explicit filePath skips

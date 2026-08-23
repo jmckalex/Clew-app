@@ -34,6 +34,11 @@ function vaultRoot() {
 	return process.env.CLEW_VAULT_ROOT || null;
 }
 
+// Static-site exports (File → Export Vault as Website) render with this set:
+// wikilinks become REAL relative hrefs to the exported .html pages instead of
+// data-href anchors the app's click handler would resolve.
+const SITE_EXPORT = process.env.CLEW_SITE_EXPORT === '1';
+
 function buildIndexes(root) {
 	noteIndex = new Map();
 	fileIndex = new Map();
@@ -155,6 +160,13 @@ export const wikilink = {
 	},
 	renderer(token) {
 		if (global.isLatex) return token.label;
+		if (SITE_EXPORT) {
+			const rel = token.target ? resolveTarget(token.target) : null;
+			if (!rel) return `<span class="internal-link unresolved">${escapeHtml(token.label)}</span>`;
+			const page = sitePath(rel.replace(NOTE_EXT, '')) + '.html'
+				+ (token.heading ? `#${encodeURIComponent(token.heading)}` : '');
+			return `<a class="internal-link" href="${escapeAttr(page)}">${escapeHtml(token.label)}</a>`;
+		}
 		const resolved = token.target
 			? resolveTarget(token.target) !== null || resolveFileTarget(token.target) !== null
 			: true;
@@ -275,7 +287,11 @@ export const wikiembed = {
 				case 'canvas':
 					// A live, read-only canvas view — the preview client fetches
 					// the JSON at data-canvas-path and renders the scene into the
-					// shell (canvas-embed.js). LaTeX has no rendering for it.
+					// shell (canvas-embed.js). Static sites have no scene builder,
+					// so exports show a labeled box instead.
+					if (SITE_EXPORT) {
+						return `<div class="internal-embed canvas-embed"><div class="embed-title">${alt} (canvas)</div></div>\n`;
+					}
 					return `<div class="internal-embed canvas-embed" data-canvas-path="${src}">`
 						+ `<div class="embed-title"><a class="internal-link" href="#" data-href="${escapeAttr(token.full)}">${alt}</a></div>`
 						+ `<div class="canvas-embed-scene"></div></div>\n`;

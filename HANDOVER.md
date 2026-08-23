@@ -149,6 +149,22 @@ Triage of remaining Obsidian-plugin territory (not built, by choice or
 later): kanban board view, spaced repetition, templater-grade
 templates, breadcrumbs/hierarchy, natural-language dates, git UI.
 
+## 3a6. Vault → website publishing (2026-08-22)
+
+File → Export → Vault as Website (export:site command, EXPORT_SITE
+channel, src/main/export-site.js): every note renders via one-shot
+workers (CLEW_SITE_EXPORT=1 + CLEW_SESSION_ID=@@SITE@@; next worker
+warms during each build) → <out>/<path>.html with wikilinks as REAL
+relative hrefs (wikilinks.js SITE_EXPORT branch; canvas embeds → label
+box), the /@@SITE@@/ marker (raw AND percent-encoded) + /__clew_assets__/
+relativized per page depth, attachments copied, assets/ (mathjax
+tex-svg, mermaid, leaflet+images, highlight, fontawesome, jquery,
+preview.css, site-client.js — new esbuild bundle) + .clew/scripts as
+vault-scripts. index.html = Welcome/Start Here/Home/index. Queries/
+tasks/kanban bake to snapshots; write paths are app-only by design.
+Verified: study-vault (19 pages) and demo-vault (37 pages, maps+photos)
+export with zero failures, correct relative links at all depths.
+
 ## 3b. PACKAGING IS DONE (2026-08-22)
 
 M1–M5 are now complete, full stop. `npm run package` →

@@ -33,6 +33,7 @@ rendered; **⌘O** finds any note; **⌘P** lists every command.
   single-log mode, composed interval views
 - [[Settings and Hotkeys]] — including the hotkey editor
 - [[Export]] — HTML, LaTeX, and PDF from the same source
+- [[Publishing]] — the whole vault as a static website
 - [[Theming]] — dark/light and CSS snippets
 
 ## The jmarkdown showcase
