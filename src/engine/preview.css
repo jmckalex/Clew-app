@@ -323,3 +323,18 @@ html[data-theme='light'] img[src*="TiKZ/"], html[data-theme='light'] img[src*="M
 	padding: 2px 8px;
 	border-radius: 4px;
 }
+
+/* ---- ```query and ```tasks (vault queries) -------------------------------- */
+table.clew-query { width: 100%; }
+table.clew-query th {
+	text-align: left;
+	color: var(--preview-muted);
+	font-size: 0.85em;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+.clew-query.is-empty, .clew-tasks.is-empty { color: var(--preview-muted); font-size: 0.95em; }
+.clew-tasks-note { font-weight: 600; margin: 0.7em 0 0.2em; }
+.clew-tasks-list { list-style: none; padding-left: 0.4em; margin: 0; }
+.clew-tasks-list li { margin: 0.15em 0; }
+.clew-tasks-list input[type='checkbox'] { margin-right: 0.45em; vertical-align: middle; }

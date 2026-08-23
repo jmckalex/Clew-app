@@ -1,4 +1,6 @@
 ---
+status: done
+priority: 3
 tags: [demo, project/clew]
 aliases: [Syntax Showcase]
 ---

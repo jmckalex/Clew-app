@@ -128,6 +128,17 @@ function enableTaskCheckboxes() {
 document.addEventListener('change', (e) => {
 	const box = e.target;
 	if (box?.type !== 'checkbox') return;
+	// A ```tasks item carries its SOURCE note; route the toggle there.
+	const remote = box.closest('[data-task-path]');
+	if (remote) {
+		post({
+			type: 'task-toggle',
+			path: remote.dataset.taskPath,
+			line: Number(remote.dataset.taskLine),
+			checked: box.checked,
+		});
+		return;
+	}
 	const stamped = box.closest('[data-source-line]');
 	if (!stamped) return;
 	post({

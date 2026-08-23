@@ -121,6 +121,7 @@ export class RenderService {
 			'Extensions': [
 				`wikiembed, wikilink from ${path.join(engineAssets, 'wikilinks.js')}`,
 				`mermaidFence, leafletFence from ${path.join(engineAssets, 'obsidian-fences.js')}`,
+				`queryFence, tasksFence from ${path.join(engineAssets, 'query-fences.js')}`,
 				// Enabled vault plugins' engine surfaces (custom syntax).
 				...engineExtensionEntries(this.vaultRoot, this.#vaultOptions),
 			],

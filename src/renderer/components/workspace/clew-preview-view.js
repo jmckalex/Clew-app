@@ -117,6 +117,10 @@ class ClewPreviewView extends ClewElement {
 			case 'checkbox-toggle':
 				actions.toggleTaskLine(this.path, msg.line, msg.checked);
 				break;
+			case 'task-toggle':
+				// A ```tasks fence item — the toggle belongs to its source note.
+				actions.toggleTaskLine(msg.path, msg.line, msg.checked);
+				break;
 			case 'api-request':
 				handleApiRequest(msg, { sourcePath: this.path })
 					.then((response) => this.#post(response));
