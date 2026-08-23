@@ -341,13 +341,16 @@ export class RenderService {
 				this.render(relPath).catch(() => {}); // errors already broadcast
 			}, REBUILD_DEBOUNCE_MS));
 		}
-		// Live queries: an open preview whose note holds ```query/tasks/kanban
-		// fences re-renders when ANY other note changes, so its results track
-		// the vault (this is what makes editable tables/boards feel live).
+		// Live queries: notes holding ```query/tasks/kanban fences depend on
+		// the WHOLE vault, not just their own file — so any note change makes
+		// their cached renders stale. Invalidate every known query note (the
+		// next ensureRendered re-renders even though the note's own mtime is
+		// unchanged), and push re-renders to the ones with open previews.
 		if (/\.(md|jmd)$/i.test(relPath)) {
-			for (const queryPath of this.#subscribed.keys()) {
-				if (queryPath === relPath) continue;
-				if (!this.#notes.get(queryPath)?.hasQueries) continue;
+			for (const [queryPath, entry] of this.#notes) {
+				if (queryPath === relPath || !entry.hasQueries) continue;
+				entry.mtimeMs = 0; // stale: results may have changed
+				if (!this.#subscribed.has(queryPath)) continue;
 				clearTimeout(this.#rebuildTimers.get(queryPath));
 				this.#rebuildTimers.set(queryPath, setTimeout(() => {
 					this.#rebuildTimers.delete(queryPath);
