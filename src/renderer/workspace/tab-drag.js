@@ -27,7 +27,6 @@ export function startTabDrag(e, { tabId, groupId, tabEl }) {
 		if (!ghost) {
 			if (Math.hypot(ev.clientX - startX, ev.clientY - startY) < THRESHOLD) return;
 			ghost = makeGhost(tabEl);
-			tabEl.setPointerCapture(e.pointerId);
 			uiStore.startDrag({ tabId, fromGroupId: groupId });
 			document.body.classList.add('is-tab-dragging');
 		}
@@ -51,10 +50,13 @@ export function startTabDrag(e, { tabId, groupId, tabEl }) {
 	};
 
 	const finish = (apply) => {
-		tabEl.removeEventListener('pointermove', onMove);
-		tabEl.removeEventListener('pointerup', onUp);
-		tabEl.removeEventListener('pointercancel', onCancel);
+		window.removeEventListener('pointermove', onMove);
+		window.removeEventListener('pointerup', onUp);
+		window.removeEventListener('pointercancel', onCancel);
 		window.removeEventListener('keydown', onKey, true);
+		// Belt and braces: no drag artifact may outlive the drag, even if a
+		// re-render replaced elements mid-flight.
+		document.querySelectorAll('.tab-ghost, .tab-drop-marker').forEach((el) => el.remove());
 		clearIndicators();
 		ghost?.remove();
 		document.body.classList.remove('is-tab-dragging');
@@ -78,9 +80,12 @@ export function startTabDrag(e, { tabId, groupId, tabEl }) {
 		if (ev.key === 'Escape') { ev.stopPropagation(); finish(false); }
 	};
 
-	tabEl.addEventListener('pointermove', onMove);
-	tabEl.addEventListener('pointerup', onUp);
-	tabEl.addEventListener('pointercancel', onCancel);
+	// Window-level listeners: a mid-drag tab-bar rebuild can replace tabEl,
+	// and element-bound listeners (with pointer capture) would then never
+	// see pointerup — orphaning the ghost and drop marker on screen.
+	window.addEventListener('pointermove', onMove);
+	window.addEventListener('pointerup', onUp);
+	window.addEventListener('pointercancel', onCancel);
 	window.addEventListener('keydown', onKey, true);
 }
 

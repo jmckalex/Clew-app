@@ -151,6 +151,7 @@ class ClewTabBar extends ClewElement {
 	#refreshActive() {
 		const group = this.group;
 		if (!group) return;
+		this.querySelectorAll('.tab-drop-marker').forEach((el) => el.remove());
 		for (const el of this.querySelectorAll('.tab')) {
 			el.classList.toggle('is-active', el.dataset.tabId === group.activeTabId);
 		}

@@ -1,7 +1,7 @@
 ---
 status: revise
 venue: BJPS
-due: 2027-01-05
+due: 2026-09-05
 ---
 # The Craft of Notation
 
