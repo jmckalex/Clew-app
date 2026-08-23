@@ -1,4 +1,7 @@
 {
   "noteApi": true,
-  "plugins": ["header"]
+  "plugins": [
+    "header",
+    "word-count"
+  ]
 }

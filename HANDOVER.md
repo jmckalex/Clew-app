@@ -137,6 +137,18 @@ https://claude.ai/code/artifact/aadfcc91-acc1-4ddd-8b5b-a4cbc3710c50
 Screenshot capture scripts pattern: see this session's scratchpad
 cap-*.js (open note/canvas/graph, CLEW_SMOKE_VAULT=demo-vault).
 
+## 3a5. Obsidian-universe batch (2026-08-22, evening)
+
+Vault scripts (.clew/scripts/*.js → every preview; morphdom now
+preserves custom elements + syncs attrs). ```query (Dataview-lite) +
+```tasks fences in src/engine/query-fences.js — vault scans in the
+worker, LIVE cross-note task checkboxes (task-toggle message → host
+toggleTaskLine(msg.path…)); demo Features/Queries.md; pure helpers
+tested. Second sample plugin: word-count (app surface, demo vault).
+Triage of remaining Obsidian-plugin territory (not built, by choice or
+later): kanban board view, spaced repetition, templater-grade
+templates, breadcrumbs/hierarchy, natural-language dates, git UI.
+
 ## 3b. PACKAGING IS DONE (2026-08-22)
 
 M1–M5 are now complete, full stop. `npm run package` →
