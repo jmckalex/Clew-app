@@ -7,7 +7,8 @@ import path from 'node:path';
 const DEFAULTS = {
 	recentVaults: [],
 	openVaults: [], // one window each, restored at launch
-	newTabMode: 'source', // how newly created note tabs open ('source'|'reading')
+	newTabMode: 'source',
+	explorerOpenMode: 'new-tab', // how newly created note tabs open ('source'|'reading')
 	diaryMode: 'files', // 'files' = one note per day, 'log' = single log note
 	diaryLogFile: 'Diary.md',
 	lastVault: null,

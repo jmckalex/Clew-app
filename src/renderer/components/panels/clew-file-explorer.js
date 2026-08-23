@@ -10,6 +10,8 @@ import { editorPool } from '../../editor/pool.js';
 import { ipc, CH } from '../../ipc.js';
 import { showMenu } from '../chrome/menu.js';
 import { bookmarkStore } from '../../state/bookmark-store.js';
+import { settingsStore } from '../../state/settings-store.js';
+import * as actions from '../../commands/actions.js';
 
 class ClewFileExplorer extends ClewElement {
 	#collapsed = new Set();
@@ -99,13 +101,14 @@ class ClewFileExplorer extends ClewElement {
 				if (this.#dragJustEnded) return;
 				if (entry.type === 'folder') {
 					this.#toggleFolder(entry.path);
-				} else if (isNotePath(entry.path)) {
-					workspaceStore.openNote(entry.path, { newTab: e.metaKey || e.ctrlKey });
-				} else if (isCanvasPath(entry.path)) {
-					workspaceStore.openCanvas(entry.path, { newTab: e.metaKey || e.ctrlKey });
-				} else if (isViewablePath(entry.path)) {
-					workspaceStore.openFile(entry.path, { newTab: e.metaKey || e.ctrlKey });
+					return;
 				}
+				// Default per the explorer setting (new tab, Obsidian-style
+				// replace available); ⌘/Ctrl-click inverts it. A file already
+				// open in the group focuses its existing tab either way.
+				const newTabDefault = settingsStore.get('explorerOpenMode') !== 'replace';
+				const newTab = (e.metaKey || e.ctrlKey) ? !newTabDefault : newTabDefault;
+				this.#openEntry(entry, { newTab });
 			});
 			row.addEventListener('pointerdown', (e) => this.#maybeStartDrag(e, entry, row));
 			row.addEventListener('contextmenu', (e) => {
@@ -120,6 +123,12 @@ class ClewFileExplorer extends ClewElement {
 				this.#renderEntries(entry.children, container, depth + 1);
 			}
 		}
+	}
+
+	#openEntry(entry, opts = {}) {
+		if (isNotePath(entry.path)) workspaceStore.openNote(entry.path, opts);
+		else if (isCanvasPath(entry.path)) workspaceStore.openCanvas(entry.path, opts);
+		else if (isViewablePath(entry.path)) workspaceStore.openFile(entry.path, opts);
 	}
 
 	#toggleFolder(path) {
@@ -268,6 +277,17 @@ class ClewFileExplorer extends ClewElement {
 
 	#itemMenu(entry, x, y) {
 		const items = [];
+		if (entry.type === 'file') {
+			items.push(
+				{ label: 'Open in new tab', click: () => this.#openEntry(entry, { newTab: true }) },
+				{ label: 'Open in current tab', click: () => this.#openEntry(entry, { newTab: false }) },
+				{ label: 'Open to the right (split)', click: () => {
+					actions.splitActive('right');
+					this.#openEntry(entry, { newTab: false });
+				} },
+				{ separator: true },
+			);
+		}
 		if (entry.type === 'folder') {
 			items.push(
 				{ label: 'New note', click: () => this.createNote(entry.path) },

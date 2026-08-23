@@ -43,6 +43,8 @@ class ClewSettingsView extends ClewElement {
 				this.#selectRow('Theme', 'theme', [['dark', 'Dark'], ['light', 'Light']]),
 				this.#selectRow('New note tabs open in', 'newTabMode',
 					[['source', 'Source (edit) mode'], ['reading', 'Reading mode']]),
+				this.#selectRow('Explorer click opens files', 'explorerOpenMode',
+					[['new-tab', 'In a new tab'], ['replace', 'In the current tab (Obsidian-style)']]),
 				this.#numberRow('Editor font size (px)', 'editorFontSize', 16, 10, 28),
 				this.#numberRow('Editor line width (em)', 'editorLineWidth', 44, 20, 120),
 			]),

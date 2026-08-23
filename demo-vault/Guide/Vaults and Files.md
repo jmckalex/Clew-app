@@ -10,10 +10,14 @@ layout, caches, bookmarks) in a `.clew/` folder.
 
 ## The file explorer
 
-- Click a note to open it; ⌘-click opens a new tab.
+- Click a note to open it — **in a new tab** by default (a file already
+  open just gets focused, so tabs don't multiply); ⌘-click opens in the
+  current tab instead. Settings → Appearance flips the default if you
+  prefer Obsidian's replace-in-place.
 - Click an image, PDF, audio, or video file to open a viewer tab.
-- Right-click for **new note/folder, rename, reveal in Finder, delete**
-  (deletes go to the system Trash).
+- Right-click a file for **open in new tab / current tab / to the right
+  (split)**; right-click anything for **new note/folder, rename, reveal
+  in Finder, delete** (deletes go to the system Trash).
 - **Drag** a note or folder onto another folder — or the empty tree
   background for the vault root — to move it. Renames and moves rewrite
   every `[[wikilink]]` that points at the moved notes.
