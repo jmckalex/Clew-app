@@ -4,9 +4,10 @@
 //
 //   ---
 //   header-image: "[[banner.jpg]]"     (wikilink or vault path)
-//   header-title: A Grand Title        (optional; falls back to none)
+//   header-title: A Grand Title        (optional; math welcome: $e^{i\pi}$)
 //   header-subtitle: with a subtitle   (optional)
-//   header-height: 240                 (optional, px)
+//   header-height: 240                 (optional, px; headers without an
+//                                       image hug their text instead)
 //   ---
 //
 // Runs after the preview client; re-applies itself after every morph via
@@ -49,12 +50,18 @@
 			if (!spec) return;
 			header = document.createElement('div');
 			header.className = 'clew-note-header';
+			// With an image the banner has a fixed height and the text sits at
+			// the bottom of it; without one it simply hugs its text.
+			const height = spec.image ? `height:${Number(spec.height) || 170}px;` : '';
 			header.style.cssText = 'position:relative;margin:-24px -32px 1.2em;'
-				+ `height:${Number(spec.height) || 220}px;border-radius:0 0 10px 10px;`
+				+ `${height}border-radius:0 0 10px 10px;`
 				+ 'overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;'
-				+ 'padding:20px 32px;box-sizing:border-box;';
+				+ 'padding:18px 32px;box-sizing:border-box;';
 			if (spec.image) {
 				header.style.background = `url("${imageUrl(spec.image)}") center/cover no-repeat`;
+			} else {
+				// No image: a brand-gradient plate so the white text always reads.
+				header.style.background = 'linear-gradient(120deg, #2b2440, #7852ee)';
 			}
 			const scrim = document.createElement('div');
 			scrim.style.cssText = 'position:absolute;inset:0;'
@@ -80,6 +87,8 @@
 				header.append(sub);
 			}
 			document.body.prepend(header);
+			// Titles may carry $math$ — MathJax is already in the document.
+			window.MathJax?.typesetPromise?.([header]).catch(() => {});
 		} catch { /* headerless is fine */ }
 	};
 
