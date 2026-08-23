@@ -223,6 +223,34 @@ export function splitGroup(state, groupId, edge, tab) {
 	return newGroup;
 }
 
+/**
+ * Split with a CLONE of `tabId` (Obsidian semantics): the original stays
+ * where it is, the new pane opens a fresh tab on the same path with the
+ * same view mode. This is what the split commands use — moving the only
+ * tab out of a pane would just collapse the split it came from.
+ */
+export function splitWithClone(state, targetGroupId, edge, tabId) {
+	const found = findTab(state.root, tabId);
+	if (!found) return null;
+	const source = found.tab;
+	const clone = createTab(source.kind, source.path);
+	clone.view = { ...clone.view, mode: source.view?.mode ?? clone.view.mode };
+	const newGroup = splitGroup(state, targetGroupId, edge, clone);
+	normalize(state);
+	return newGroup;
+}
+
+/** Close a whole tab group (split pane); normalize collapses the split. */
+export function closeGroup(state, groupId) {
+	const group = findGroup(state.root, groupId);
+	if (!group) return [];
+	const closed = group.tabs.map((t) => t.id);
+	group.tabs = [];
+	group.activeTabId = null;
+	normalize(state);
+	return closed;
+}
+
 /** Move an existing tab into a fresh split on `edge` of `targetGroupId`. */
 export function splitWithTab(state, targetGroupId, edge, tabId) {
 	const found = findTab(state.root, tabId);

@@ -23,7 +23,14 @@ export function newTab() {
 
 export function splitActive(edge) {
 	const tab = workspaceStore.activeTab();
-	if (tab) workspaceStore.splitWithTab(workspaceStore.activeGroupId, edge, tab.id);
+	if (tab) workspaceStore.splitWithClone(workspaceStore.activeGroupId, edge, tab.id);
+}
+
+/** Close the active split pane (all its tabs); the layout collapses. */
+export function closeSplit() {
+	if (workspaceStore.allGroups().length < 2) return; // nothing to unsplit
+	const closed = workspaceStore.closeGroup(workspaceStore.activeGroupId);
+	for (const id of closed) editorPool.close(id);
 }
 
 export function toggleReadingMode() {

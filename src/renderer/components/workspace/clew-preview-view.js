@@ -132,6 +132,7 @@ class ClewPreviewView extends ClewElement {
 			case 'chord': {
 				const key = msg.key;
 				if (key === 'e') actions.toggleReadingMode();
+				else if (key === 'w' && msg.shift) actions.closeSplit();
 				else if (key === 'w') actions.closeActiveTab();
 				else if (key === 't') actions.newTab();
 				else if (key === '\\') actions.splitActive(msg.shift ? 'bottom' : 'right');

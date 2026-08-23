@@ -101,6 +101,19 @@ class WorkspaceStore extends Emitter {
 		return group;
 	}
 
+	splitWithClone(targetGroupId, edge, tabId) {
+		const group = tree.splitWithClone(this.state, targetGroupId, edge, tabId);
+		this.#commit();
+		return group;
+	}
+
+	/** Close a whole split pane; returns the closed tab ids. */
+	closeGroup(groupId) {
+		const closed = tree.closeGroup(this.state, groupId);
+		this.#commit();
+		return closed;
+	}
+
 	setSplitSizes(splitId, sizes) {
 		tree.setSplitSizes(this.state, splitId, sizes);
 		this.#commit('sizes-changed', { splitId, sizes });

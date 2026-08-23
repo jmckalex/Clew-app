@@ -1,5 +1,5 @@
 ---
-status: drafting
+status: submitted
 venue: Philosophy of Science
 due: 2026-09-30
 ---

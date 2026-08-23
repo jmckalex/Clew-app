@@ -305,6 +305,7 @@ class AppMenu {
 				{ role: 'zoom' },
 				{ type: 'separator' },
 				c('workspace:split-right', 'Split Right', { chord: 'Mod-\\', needs: 'tab' }),
+				c('workspace:close-split', 'Close Split Pane', { chord: 'Mod-Shift-w' }),
 				c('workspace:split-down', 'Split Down', { chord: 'Mod-Shift-\\', needs: 'tab' }),
 				{ type: 'separator' },
 				c('workspace:pin-tab', 'Pin Tab', { needs: 'tab', type: 'checkbox', checked: s.pinned }),
