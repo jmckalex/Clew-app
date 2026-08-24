@@ -2,6 +2,7 @@
 header-image: "[[clew-gradient.png]]"
 header-title: Welcome to Clew
 header-subtitle: A thread through your notes
+header-height: 120
 ---
 # Welcome to Clew
 

@@ -8,6 +8,10 @@
 //   header-subtitle: with a subtitle   (optional)
 //   header-height: 240                 (optional, px; headers without an
 //                                       image hug their text instead)
+//   header-position: center 30%        (optional; which part of the image
+//                                       shows — any CSS background-position)
+//   header-align: bottom               (optional; where the text sits:
+//                                       top, center, or bottom)
 //   ---
 //
 // Runs after the preview client; re-applies itself after every morph via
@@ -29,7 +33,10 @@
 		const image = get('image');
 		const title = get('title');
 		if (!image && !title) return null;
-		return { image, title, subtitle: get('subtitle'), height: get('height') };
+		return {
+			image, title, subtitle: get('subtitle'), height: get('height'),
+			position: get('position'), align: get('align'),
+		};
 	};
 
 	const imageUrl = (ref) => {
@@ -53,12 +60,14 @@
 			// With an image the banner has a fixed height and the text sits at
 			// the bottom of it; without one it simply hugs its text.
 			const height = spec.image ? `height:${Number(spec.height) || 170}px;` : '';
+			const justify = { top: 'flex-start', center: 'center' }[spec.align] ?? 'flex-end';
 			header.style.cssText = 'position:relative;margin:-24px -32px 1.2em;'
 				+ `${height}border-radius:0 0 10px 10px;`
-				+ 'overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;'
+				+ `overflow:hidden;display:flex;flex-direction:column;justify-content:${justify};`
 				+ 'padding:18px 32px;box-sizing:border-box;';
 			if (spec.image) {
-				header.style.background = `url("${imageUrl(spec.image)}") center/cover no-repeat`;
+				const position = spec.position || 'center';
+				header.style.background = `url("${imageUrl(spec.image)}") ${position}/cover no-repeat`;
 			} else {
 				// No image: a brand-gradient plate so the white text always reads.
 				header.style.background = 'linear-gradient(120deg, #2b2440, #7852ee)';
