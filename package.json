@@ -1,7 +1,7 @@
 {
   "name": "clew",
   "productName": "Clew",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "An open-source, Obsidian-style note-taking app built on the jmarkdown engine.",
   "type": "module",
   "license": "GPL-3.0-or-later",
