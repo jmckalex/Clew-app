@@ -29,6 +29,26 @@ module.exports = async function afterPack(context) {
 		throw new Error(`after-pack: staged engine deps missing at ${from} — run scripts/package.js, not electron-builder directly`);
 	}
 	fs.rmSync(to, { recursive: true, force: true });
-	fs.cpSync(from, to, { recursive: true });
-	console.log(`  • after-pack: engine node_modules → Resources/engine/jmarkdown (${fs.readdirSync(to).length} packages)`);
+	// verbatimSymlinks: without it cpSync rewrites every relative symlink to an
+	// ABSOLUTE build-machine path — the .bin shims then dangle outside the
+	// bundle on the user's disk, which also breaks notarization (Apple rejects
+	// bundles whose symlinks escape them) and leaks the build machine's layout.
+	fs.cpSync(from, to, { recursive: true, verbatimSymlinks: true });
+	// .bin holds only CLI shims; the forked worker resolves modules by path and
+	// never execs them. Dropping it removes the last symlinks from the bundle.
+	fs.rmSync(path.join(to, '.bin'), { recursive: true, force: true });
+	const escaping = [];
+	(function scan(dir) {
+		for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+			const full = path.join(dir, entry.name);
+			if (entry.isSymbolicLink()) {
+				const target = path.resolve(dir, fs.readlinkSync(full));
+				if (!target.startsWith(resources + path.sep)) escaping.push(full);
+			} else if (entry.isDirectory()) scan(full);
+		}
+	})(to);
+	if (escaping.length) {
+		throw new Error(`after-pack: ${escaping.length} symlink(s) point outside the bundle and would fail notarization:\n  ${escaping.slice(0, 5).join('\n  ')}`);
+	}
+	console.log(`  • after-pack: engine node_modules → Resources/engine/jmarkdown (${fs.readdirSync(to).length} packages, no escaping symlinks)`);
 };

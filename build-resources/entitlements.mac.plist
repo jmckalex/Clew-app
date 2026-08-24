@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- V8 compiles JavaScript at runtime. Without allow-jit the renderer
+	     crashes immediately under the hardened runtime. -->
+	<key>com.apple.security.cs.allow-jit</key>
+	<true/>
+
+	<!-- Some V8/Node code paths still map W+X pages that allow-jit alone does
+	     not cover; the engine's vm.runInThisContext (indirect eval) is one. -->
+	<key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+	<true/>
+
+	<!-- Electron's child_process.fork spawns our own binary with
+	     ELECTRON_RUN_AS_NODE set — that is how the jmarkdown render worker
+	     starts. The hardened runtime filters the inherited environment unless
+	     this is granted. -->
+	<key>com.apple.security.cs.allow-dyld-environment-variables</key>
+	<true/>
+
+	<!-- Electron Framework and the unpacked engine tree under Resources/ are
+	     loaded from paths outside the main executable's signature. -->
+	<key>com.apple.security.cs.disable-library-validation</key>
+	<true/>
+</dict>
+</plist>

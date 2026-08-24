@@ -17,6 +17,7 @@
     "sync-engine": "node scripts/vendor-jmarkdown.js",
     "package": "node scripts/package.js",
     "package:dmg": "node scripts/package.js --dmg",
+    "package:dist": "node scripts/package.js --dmg --sign --notarize",
     "package:win": "node scripts/package.js --win",
     "package:linux": "node scripts/package.js --linux"
   },
@@ -102,7 +103,18 @@
     "mac": {
       "category": "public.app-category.productivity",
       "icon": "build-resources/icon.icns",
-      "identity": null,
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build-resources/entitlements.mac.plist",
+      "entitlementsInherit": "build-resources/entitlements.mac.inherit.plist",
+      "extendInfo": {
+        "NSDocumentsFolderUsageDescription": "Clew needs access to your Documents folder to open vaults stored there.",
+        "NSDesktopFolderUsageDescription": "Clew needs access to your Desktop to open vaults stored there.",
+        "NSDownloadsFolderUsageDescription": "Clew needs access to your Downloads folder to open vaults stored there.",
+        "NSRemovableVolumesUsageDescription": "Clew needs access to removable volumes to open vaults stored on them.",
+        "NSNetworkVolumesUsageDescription": "Clew needs access to network volumes to open vaults stored on them.",
+        "NSHumanReadableCopyright": "Copyright © J. McKenzie Alexander. GPL-3.0-or-later."
+      },
       "target": [
         {
           "target": "dir",
