@@ -139,7 +139,15 @@ class ClewPreviewView extends ClewElement {
 				handleApiRequest(msg, { sourcePath: this.path })
 					.then((response) => this.#post(response));
 				break;
+			case 'focused':
+				// A click inside the iframe never reaches the app's pane
+				// focus tracking — treat it like clicking into an editor.
+				workspaceStore.activateTab(this.tabId);
+				break;
 			case 'chord': {
+				// Chords forwarded from this iframe must act on THIS pane,
+				// not whichever group the app last saw a pointerdown in.
+				workspaceStore.activateTab(this.tabId);
 				const key = msg.key;
 				if (key === 'e') actions.toggleReadingMode();
 				else if (key === 'w' && msg.shift) actions.closeSplit();

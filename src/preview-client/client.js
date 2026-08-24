@@ -216,6 +216,10 @@ window.addEventListener('keydown', (e) => {
 	}
 });
 
+// Clicking into the preview must focus its pane, exactly as clicking into an
+// editor does — the app's pointerdown tracking cannot see inside this iframe.
+window.addEventListener('pointerdown', () => post({ type: 'focused' }), true);
+
 // Report scroll position (topmost stamped block + fraction) for scroll-sync.
 let scrollTicking = false;
 window.addEventListener('scroll', () => {
