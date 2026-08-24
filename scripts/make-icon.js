@@ -25,6 +25,79 @@ const outDir = path.join(root, 'build-resources');
 fs.mkdirSync(outDir, { recursive: true });
 
 // A clew: a ball of thread on a dark squircle, in the app's accent purples.
+//
+// Drawn as a detailed cartoon rather than a photograph. Two things do most of
+// the work:
+//
+//   1. Real winding structure. Yarn wound about one axis lies along a family
+//      of great circles sharing two antipodal poles, which project to ellipses
+//      sharing their major axis. So a "band" here is a fan of ellipses at one
+//      rotation with growing minor axes — geometrically what a wound ball is,
+//      instead of arcs scattered by hand. Four bands at different axes overdraw
+//      each other the way successive layers of winding do.
+//   2. Every strand is stroked three times — a dark spread underneath for the
+//      shadow in the groove, the cord itself, then a thin off-centre sheen —
+//      so each one reads as a round cord and not a flat ribbon. No blur filter
+//      is needed for it, which keeps the small sizes crisp.
+//
+// Cartoon, not render: flat saturated palette, one specular, a firm outline.
+const CX = 512, CY = 474, R = 238;
+
+// Deterministic jitter, so the icon is reproducible byte-for-byte.
+const wobble = (i) => {
+	const v = Math.sin((i + 1) * 12.9898) * 43758.5453;
+	return (v - Math.floor(v)) * 2 - 1; // -1..1
+};
+
+/**
+ * One winding band: `n` strands at rotation `angle`, minor axes sweeping
+ * `ryMin`→`ryMax` so they fan out from the band's centre line the way real
+ * wraps do. `w` is the cord width.
+ */
+function band(angle, n, ryMin, ryMax, w) {
+	const arcs = [];
+	for (let i = 0; i < n; i++) {
+		const t = n === 1 ? 0 : i / (n - 1);
+		// rx and the centre are jittered per strand so the ellipses do NOT all
+		// meet at the same two points: coincident poles produce a hard starburst
+		// where every wrap converges, which is the one thing that gives the
+		// construction away. Scattering them reads as wraps crossing instead.
+		arcs.push({
+			ry: ryMin + (ryMax - ryMin) * t,
+			rx: R * (0.99 + wobble(i * 3 + angle) * 0.055),
+			ox: wobble(i * 5 + angle) * 13,
+			oy: wobble(i * 7 + angle) * 13,
+			rot: angle + wobble(i + angle) * 3.5,
+		});
+	}
+	const pass = (dx, dy, grow) => arcs.map(({ ry, rx, ox, oy, rot }) =>
+		`<ellipse cx="${(CX + dx + ox).toFixed(1)}" cy="${(CY + dy + oy).toFixed(1)}"`
+		+ ` rx="${rx.toFixed(1)}" ry="${Math.max(3, ry + grow).toFixed(1)}"`
+		+ ` transform="rotate(${rot.toFixed(2)} ${CX} ${CY})"/>`).join('\n      ');
+	return `
+    <g stroke="#33215f" stroke-width="${w + 8}" opacity="0.42">
+      ${pass(0, 0, 0)}
+    </g>
+    <g stroke="url(#yarn)" stroke-width="${w}">
+      ${pass(0, 0, 0)}
+    </g>
+    <g stroke="#efe7ff" stroke-width="${(w * 0.22).toFixed(1)}" opacity="0.26">
+      ${pass(-2.5, -3.5, -1.5)}
+    </g>`;
+}
+
+// The free end: same three-pass cord treatment, so it is visibly the same yarn.
+function cord(d, w) {
+	return `
+    <path d="${d}" stroke="#2a1a4e" stroke-width="${w + 9}" opacity="0.45"/>
+    <path d="${d}" stroke="url(#yarn)" stroke-width="${w}"/>
+    <path d="${d}" stroke="#efe7ff" stroke-width="${(w * 0.24).toFixed(1)}"
+          opacity="0.38" transform="translate(-2.5 -3.5)"/>`;
+}
+
+const TAIL = 'M 690 646 C 806 716 852 766 812 818 C 774 866 686 856 666 806'
+	+ ' C 648 762 692 736 730 754 C 774 774 800 812 856 822';
+
 const svg = `
 <svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
   <defs>
@@ -32,39 +105,64 @@ const svg = `
       <stop offset="0" stop-color="#2b2440"/>
       <stop offset="1" stop-color="#171321"/>
     </linearGradient>
-    <radialGradient id="ball" cx="0.38" cy="0.34" r="0.9">
-      <stop offset="0" stop-color="#c0a7ff"/>
-      <stop offset="0.55" stop-color="#a882ff"/>
-      <stop offset="1" stop-color="#7852ee"/>
+    <!-- The cord colour, lit from the upper left across the whole ball. -->
+    <linearGradient id="yarn" x1="0.12" y1="0.05" x2="0.88" y2="0.95">
+      <stop offset="0" stop-color="#d7c6ff"/>
+      <stop offset="0.42" stop-color="#a684f7"/>
+      <stop offset="1" stop-color="#6a44cf"/>
+    </linearGradient>
+    <!-- Under-colour in the gaps between wraps. Kept close to the cord colour
+         rather than near-black: too dark and the gaps read as holes punched in
+         the ball instead of more yarn lying deeper. -->
+    <radialGradient id="core" cx="0.36" cy="0.30" r="0.92">
+      <stop offset="0" stop-color="#8468d4"/>
+      <stop offset="1" stop-color="#432c7e"/>
     </radialGradient>
-    <clipPath id="ballclip"><circle cx="512" cy="486" r="238"/></clipPath>
+    <!-- Turns the flat disc of strands into a sphere: clear in the lit
+         quarter, deepening to shadow at the rim. -->
+    <radialGradient id="volume" cx="0.34" cy="0.28" r="0.95">
+      <stop offset="0.30" stop-color="#1a0f38" stop-opacity="0"/>
+      <stop offset="0.68" stop-color="#1a0f38" stop-opacity="0.30"/>
+      <stop offset="0.88" stop-color="#150b2e" stop-opacity="0.56"/>
+      <stop offset="1" stop-color="#0d0620" stop-opacity="0.85"/>
+    </radialGradient>
+    <radialGradient id="spec" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.62"/>
+      <stop offset="0.6" stop-color="#ffffff" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="contact" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#000000" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="ballclip"><circle cx="${CX}" cy="${CY}" r="${R}"/></clipPath>
   </defs>
 
   <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bg)"/>
 
-  <!-- the ball: yarn wraps at irregular diagonal angles -->
-  <circle cx="512" cy="486" r="238" fill="url(#ball)"/>
+  <!-- contact shadow, so the ball sits on the tile rather than floating -->
+  <ellipse cx="${CX + 14}" cy="${CY + R + 24}" rx="${R * 0.86}" ry="34" fill="url(#contact)"/>
+
+  <circle cx="${CX}" cy="${CY}" r="${R}" fill="url(#core)"/>
+
   <g clip-path="url(#ballclip)" fill="none" stroke-linecap="round">
-    <g stroke="#5b449e" stroke-width="30">
-      <path d="M 240 380 Q 512 560 784 400" transform="rotate(-38 512 486)" opacity="0.9"/>
-      <path d="M 240 560 Q 512 400 784 580" transform="rotate(-16 512 486)" opacity="0.8"/>
-      <path d="M 250 430 Q 512 620 774 420" transform="rotate(24 512 486)" opacity="0.9"/>
-      <path d="M 250 600 Q 512 470 774 610" transform="rotate(47 512 486)" opacity="0.75"/>
-      <path d="M 260 420 Q 512 580 764 430" transform="rotate(76 512 486)" opacity="0.85"/>
-      <path d="M 260 580 Q 512 440 764 600" transform="rotate(100 512 486)" opacity="0.7"/>
-    </g>
-    <!-- the strand on top, catching the light -->
-    <path d="M 245 470 Q 512 640 779 450" transform="rotate(-64 512 486)"
-          stroke="#8b6ad6" stroke-width="30" opacity="0.9"/>
+    ${band(-24, 5, 40, 176, 22)}
+    ${band(96, 5, 34, 166, 22)}
+    ${band(40, 4, 30, 132, 21)}
+    ${band(-68, 3, 26, 96, 20)}
   </g>
-  <circle cx="512" cy="486" r="238" fill="none" stroke="#4a3a75" stroke-width="10" opacity="0.55"/>
+
+  <!-- sphere volume + specular, over the winding -->
+  <circle cx="${CX}" cy="${CY}" r="${R}" fill="url(#volume)"/>
+  <ellipse cx="${CX - 96}" cy="${CY - 112}" rx="104" ry="74"
+           transform="rotate(-28 ${CX - 96} ${CY - 112})" fill="url(#spec)"/>
+
+  <!-- the firm outline that keeps it cartoon, and legible at 16px -->
+  <circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="#1c1036"
+          stroke-width="11" opacity="0.85"/>
 
   <!-- the trailing thread, paying out to a loose loop -->
-  <path d="M 700 640 C 810 720 840 760 800 806 C 764 846 690 842 668 800 C 650 764 686 738 726 752 C 770 767 800 800 850 812"
-        fill="none" stroke="#cdbdff" stroke-width="26" stroke-linecap="round"/>
-
-  <!-- soft highlight -->
-  <ellipse cx="430" cy="380" rx="120" ry="86" fill="#ffffff" opacity="0.14"/>
+  <g fill="none" stroke-linecap="round">${cord(TAIL, 21)}</g>
 </svg>`;
 
 const html = `<!doctype html><html><body style="margin:0;background:transparent">${svg}</body></html>`;
