@@ -1,3 +1,13 @@
+// Clew — an Obsidian-style note app built on the jmarkdown engine.
+// Copyright © 2026 J. McKenzie Alexander <jmckalex@gmail.com> · https://jmckalex.org
+//
+// This file is part of Clew, free software released under the GNU General
+// Public License, version 3 or later. Clew is distributed in the hope that it
+// will be useful, but WITHOUT ANY WARRANTY. See LICENSE at the repository
+// root, or <https://www.gnu.org/licenses/>.
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 // The canvas document model: pure data + geometry, no DOM. Files are JSON
 // Canvas 1.0 (Obsidian-compatible .canvas: nodes + edges); Clew's drawing
 // layer (freehand strokes) and shape layer (Excalidraw-style rect/ellipse/
