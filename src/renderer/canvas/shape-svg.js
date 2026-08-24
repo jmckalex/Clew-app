@@ -146,8 +146,9 @@ export function shapeSvg(shape, selected, temp = false) {
 }
 
 /** One ink stroke as an SVG fragment (color, width, optional opacity). */
-export function strokeSvg(stroke) {
-	return `<path class="canvas-stroke" d="${model.strokePath(stroke)}"`
+export function strokeSvg(stroke, selected = false) {
+	return `<path class="canvas-stroke${selected ? ' is-selected' : ''}" data-id="${stroke.id}"`
+		+ ` d="${model.strokePath(stroke)}"`
 		+ ` style="stroke:${inkColor(stroke.color)};stroke-width:${stroke.width}`
 		+ (stroke.opacity ? `;opacity:${stroke.opacity}` : '') + `"/>`;
 }

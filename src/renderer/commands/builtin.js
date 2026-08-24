@@ -94,7 +94,13 @@ export function registerBuiltinCommands() {
 			run: () => actions.historyBack() },
 		{ id: 'nav:forward', name: 'Navigate forward', hotkeys: ['Mod-Alt-ArrowRight'], when: needsVault,
 			run: () => actions.historyForward() },
-		{ id: 'nav:graph', name: 'Open graph view', hotkeys: ['Mod-g'], when: needsVault,
+		// Disabled on a canvas so Mod-g reaches the canvas view, where it means
+		// Group — the binding every drawing app uses, and the one users reach
+		// for first. The global dispatcher runs in the capture phase and stops
+		// propagation, so without this guard the canvas would never see the
+		// chord at all. The graph stays reachable from the palette and menu.
+		{ id: 'nav:graph', name: 'Open graph view', hotkeys: ['Mod-g'],
+			when: (ctx) => needsVault(ctx) && ctx.activeTabKind !== 'canvas',
 			run: () => actions.openGraph() },
 		{ id: 'nav:search', name: 'Search in all files', hotkeys: ['Mod-Shift-f'], when: needsVault,
 			run: () => document.querySelector('clew-app')?.openSearch?.() },
