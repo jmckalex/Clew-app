@@ -104,6 +104,12 @@ function applyRender(html) {
 			onBeforeNodeDiscarded(node) {
 				if (node.tagName === 'SCRIPT') return false;
 				if (node.id === '__clew_err') return false;
+				// Chrome a plugin or vault script added to the document — a
+				// banner, an overlay — is absent from the incoming HTML and
+				// would be discarded on every morph, taking any running
+				// animation or media playback down with it. Opt in to
+				// surviving by setting data-clew-keep on the element.
+				if (node.nodeType === 1 && node.hasAttribute?.('data-clew-keep')) return false;
 				return true;
 			},
 		});
