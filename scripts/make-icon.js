@@ -227,6 +227,31 @@ app.whenReady().then(async () => {
 	fs.writeFileSync(path.join(outDir, 'icon.ico'),
 		Buffer.concat([header, ...entries, ...blobs.map((b) => b.data)]));
 
-	console.log('icon: wrote build-resources/icon.{svg,png,icns,ico}');
+	// The website carries the same mark. Written from the same source here so
+	// it cannot drift from the app icon — the site had no icon at all before,
+	// and a hand-copied one would go stale the next time this script runs.
+	//
+	// The site lives in the sibling Clew-docs repository (it documents Clew,
+	// not this app in particular, so it sits beside Clew-app and Clew-iOS
+	// rather than inside either). Writing across a repo boundary is only
+	// acceptable because the existsSync guard makes it optional: clone
+	// Clew-app alone and this step simply does not happen.
+	const siteDir = path.join(root, '..', 'Clew-docs', 'site', 'images');
+	let site = '';
+	if (fs.existsSync(siteDir)) {
+		fs.writeFileSync(path.join(siteDir, 'icon.svg'), svg.trim());
+		// A browser tab renders the favicon at 16–32px, where the icon's own
+		// 100px of transparent margin — correct for a macOS tile, which the OS
+		// expects to sit inside a grid — would throw away a fifth of the width.
+		// The favicon variant keeps the same artwork and just tightens the
+		// viewBox onto the squircle.
+		fs.writeFileSync(path.join(siteDir, 'favicon.svg'),
+			svg.trim().replace('viewBox="0 0 1024 1024"', 'viewBox="76 76 872 872"'));
+		// PNG fallback, also used as the apple-touch-icon.
+		execSync(`sips -z 256 256 "${png}" --out "${path.join(siteDir, 'icon-256.png')}" >/dev/null`);
+		site = ' + ../Clew-docs/site/images/{icon.svg,favicon.svg,icon-256.png}';
+	}
+
+	console.log(`icon: wrote build-resources/icon.{svg,png,icns,ico}${site}`);
 	app.quit();
 });

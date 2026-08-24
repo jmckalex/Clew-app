@@ -24,8 +24,18 @@ engine embedding facts, risks) lives at
 documentation (a Welcome hub + `Guide/` notes) and the test corpus — every
 guide note exercises the features it documents. `study-vault/` is a second
 demo vault staged as an academic term: the worked example of the writable
-database (queries/kanban/tasks) — keep it working. `docs/site/` is the
-hostable website.
+database (queries/kanban/tasks) — keep it working.
+
+**The website and the manual are NOT in this repo.** They live in the
+sibling `../Clew-docs` (its own git repo, deployed to a DigitalOcean
+droplet by its Makefile) because they document Clew rather than this
+particular implementation — `../Clew-iOS` has equal claim on them. Two
+consequences: `scripts/make-icon.js` writes the site's icon files across
+that boundary, guarded by `existsSync` so a lone Clew-app clone still
+builds; and **a feature change here is not finished until the manual
+there matches it** — nothing in this repo's `git status` will remind you
+any more. The manual documents split behaviour, citations, panels, the
+note API, plugins, and every settings key.
 
 - **House style:** plain JavaScript ES modules + web components. No
   frameworks, no TypeScript. Tabs for indentation. Small hand-rolled
