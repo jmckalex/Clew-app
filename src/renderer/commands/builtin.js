@@ -78,6 +78,8 @@ export function registerBuiltinCommands() {
 			run: () => document.querySelector('clew-file-explorer')?.createFolder?.('') },
 		{ id: 'file:new-canvas', name: 'Create new canvas', when: needsVault,
 			run: () => document.querySelector('clew-file-explorer')?.createCanvas?.('') },
+		{ id: 'file:new-drawing', name: 'Create new drawing (Excalidraw)', when: needsVault,
+			run: () => document.querySelector('clew-file-explorer')?.createDrawing?.('') },
 		{ id: 'file:save', name: 'Save note', hotkeys: ['Mod-s'], when: needsNote,
 			run: (ctx) => editorPool.flush(ctx.activeTab.id) },
 		{ id: 'file:open-vault', name: 'Open another vault…',

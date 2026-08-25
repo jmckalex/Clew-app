@@ -19,6 +19,7 @@ import { workspaceStore } from '../../state/workspace-store.js';
 import { editorPool } from '../../editor/pool.js';
 import { ipc, CH } from '../../ipc.js';
 import { showMenu } from '../chrome/menu.js';
+import { newMarkdownFile } from '../../../shared/excalidraw-file.js';
 import { bookmarkStore } from '../../state/bookmark-store.js';
 import { settingsStore } from '../../state/settings-store.js';
 import * as actions from '../../commands/actions.js';
@@ -269,6 +270,25 @@ class ClewFileExplorer extends ClewElement {
 		}
 	}
 
+	/**
+	 * A new Excalidraw drawing. Unlike a canvas, the file cannot start empty:
+	 * Obsidian's plugin only claims a file that carries its frontmatter key and
+	 * a Drawing section, so we write the scaffold before opening it — otherwise
+	 * the same file would open here as a drawing and there as a blank note.
+	 */
+	async createDrawing(folder = '') {
+		if (!vaultStore.vault) return;
+		const rel = folder ? `${folder}/Untitled.excalidraw.md` : 'Untitled.excalidraw.md';
+		try {
+			const created = await ipc.invoke(CH.NOTE_CREATE, { path: rel });
+			await ipc.invoke(CH.NOTE_WRITE, { path: created, content: newMarkdownFile() });
+			this.#pendingRename = created;
+			workspaceStore.openFile(created);
+		} catch (err) {
+			console.error('Create drawing failed:', err);
+		}
+	}
+
 	async createFolder(parent = '') {
 		if (!vaultStore.vault) return;
 		let name = 'New folder';
@@ -302,6 +322,7 @@ class ClewFileExplorer extends ClewElement {
 			items.push(
 				{ label: 'New note', click: () => this.createNote(entry.path) },
 				{ label: 'New canvas', click: () => this.createCanvas(entry.path) },
+				{ label: 'New drawing (Excalidraw)', click: () => this.createDrawing(entry.path) },
 				{ label: 'New folder', click: () => this.createFolder(entry.path) },
 				{ separator: true },
 			);
