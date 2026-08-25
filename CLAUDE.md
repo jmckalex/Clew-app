@@ -62,7 +62,7 @@ note API, plugins, and every settings key.
 - **Tests:** `npm test` (`node --test`, files in `tests/`): workspace tree,
   note-metadata extractor, BibTeX parser, the ported jmarkdown-scan suite,
   canvas model, diary, frontmatter, plugins discovery, query/leaflet/exif
-  parsers — 190 tests. DOM/UI work is verified with the smoke harness.
+  parsers, Excalidraw round-trip, markdown tables — 217 tests. DOM/UI work is verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js] [CLEW_SMOKE_VAULT=/path/vault]
   electron .` — SMOKE_VAULT opens exactly that vault, never touching the
