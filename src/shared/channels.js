@@ -62,6 +62,8 @@ export const CH = {
 	RENDER_UNSUBSCRIBE: 'clew:render-unsubscribe',
 	RENDER_HTML: 'clew:render-html',
 	PDF_WRITE: 'clew:pdf-write',
+	EXCALIDRAW_LIB_GET: 'clew:excalidraw-lib-get',
+	EXCALIDRAW_LIB_SET: 'clew:excalidraw-lib-set',
 	PDF_FONTS_STATUS: 'clew:pdf-fonts-status',
 	PDF_FONTS_DOWNLOAD: 'clew:pdf-fonts-download',
 	PDF_FONTS_REMOVE: 'clew:pdf-fonts-remove',

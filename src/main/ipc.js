@@ -118,6 +118,13 @@ export function registerIpc() {
 	handle(CH.RENDER_UNSUBSCRIBE, (s, { path }) => s.renderService.unsubscribe(path));
 	handle(CH.RENDER_HTML, (s, { path }) => s.renderService.renderedHtml(path));
 	handle(CH.PDF_WRITE, (s, { path, bytes }) => s.vaults.writePdf(path, bytes));
+	// The Excalidraw shape library, per vault: it is a working set that belongs
+	// with the notes it illustrates, so a vault carries its own.
+	handle(CH.EXCALIDRAW_LIB_GET, (s) => s.vaults.loadState('excalidraw-library.json') ?? []);
+	handle(CH.EXCALIDRAW_LIB_SET, (s, { items }) => {
+		s.vaults.saveState('excalidraw-library.json', items ?? []);
+		return true;
+	});
 	handleGlobal(CH.PDF_FONTS_STATUS, () => pdfFonts.status());
 	handleGlobal(CH.PDF_FONTS_DOWNLOAD, () => pdfFonts.download());
 	handleGlobal(CH.PDF_FONTS_REMOVE, () => pdfFonts.remove());

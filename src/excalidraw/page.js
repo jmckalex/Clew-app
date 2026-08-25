@@ -56,23 +56,29 @@ const pending = new Map();
 
 window.addEventListener('message', (event) => {
 	const msg = event.data;
-	if (!msg || msg.source !== 'clew-excalidraw-host' || msg.type !== 'excalidraw-save-result') return;
+	if (!msg || msg.source !== 'clew-excalidraw-host') return;
 	const entry = pending.get(msg.id);
 	if (!entry) return;
 	pending.delete(msg.id);
 	clearTimeout(entry.timer);
-	msg.ok ? entry.resolve() : entry.reject(new Error(msg.error || 'save failed'));
+	if (msg.type === 'excalidraw-library-result') entry.resolve(msg.items ?? []);
+	else if (msg.ok) entry.resolve();
+	else entry.reject(new Error(msg.error || 'save failed'));
 });
 
-const saveText = (text) => new Promise((resolve, reject) => {
-	const id = ++saveSeq;
-	pending.set(id, {
-		resolve, reject,
-		timer: setTimeout(() => { pending.delete(id); reject(new Error('save timed out')); }, 30_000),
+/** Ask the app page something and wait for its reply. */
+function ask(payload) {
+	return new Promise((resolve, reject) => {
+		const id = ++saveSeq;
+		pending.set(id, {
+			resolve, reject,
+			timer: setTimeout(() => { pending.delete(id); reject(new Error('timed out')); }, 30_000),
+		});
+		window.parent.postMessage({ source: 'clew-excalidraw', id, ...payload }, '*');
 	});
-	window.parent.postMessage(
-		{ source: 'clew-excalidraw', type: 'excalidraw-save', id, path: vaultPath, text }, '*');
-});
+}
+
+const saveText = (text) => ask({ type: 'excalidraw-save', path: vaultPath, text });
 
 // ---- boot ------------------------------------------------------------------
 
@@ -86,6 +92,12 @@ async function boot() {
 		return;
 	}
 	setStatus('');
+
+	// The shape library is per vault, so a .excalidrawlib dropped onto the
+	// canvas is still there tomorrow — Excalidraw itself keeps libraries in
+	// browser storage, which for a note app means "until something clears it".
+	const libraryItems = await ask({ type: 'excalidraw-library-load' }).catch(() => []);
+	window.__clewExcalidrawLibraryCount = libraryItems.length;   // smoke hook
 
 	// Excalidraw owns the scene from here; we keep only what saving needs.
 	//
@@ -148,9 +160,13 @@ async function boot() {
 				elements: parsed.scene.elements ?? [],
 				appState: { ...parsed.scene.appState, collaborators: new Map() },
 				files: parsed.scene.files ?? {},
+				libraryItems,
 				scrollToContent: true,
 			},
 			onChange,
+			onLibraryChange: (items) => {
+				ask({ type: 'excalidraw-library-save', items }).catch(() => {});
+			},
 			// Excalidraw's imperative handle. Kept on window so the smoke
 			// harness can drive a real edit, and so a future host integration
 			// (insert an image, react to a vault event) has the seam it needs

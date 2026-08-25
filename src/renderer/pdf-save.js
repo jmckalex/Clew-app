@@ -54,6 +54,31 @@ export function installExcalidrawSaveBridge() {
 	});
 }
 
+/**
+ * The Excalidraw library, app-page side. Dropping a .excalidrawlib onto the
+ * canvas is Excalidraw's own gesture; all we do is remember what it produced,
+ * so the shapes are still there tomorrow.
+ */
+export function installExcalidrawLibraryBridge() {
+	window.addEventListener('message', async (event) => {
+		const msg = event.data;
+		if (!msg || msg.source !== 'clew-excalidraw') return;
+		const reply = (payload) => event.source?.postMessage(
+			{ source: 'clew-excalidraw-host', id: msg.id, ...payload }, '*');
+		try {
+			if (msg.type === 'excalidraw-library-load') {
+				reply({ type: 'excalidraw-library-result', items: await ipc.invoke(CH.EXCALIDRAW_LIB_GET) });
+			} else if (msg.type === 'excalidraw-library-save') {
+				await ipc.invoke(CH.EXCALIDRAW_LIB_SET, { items: msg.items });
+				reply({ type: 'excalidraw-library-result', ok: true });
+			}
+		} catch (err) {
+			console.warn('[clew] excalidraw library:', err);
+			reply({ type: 'excalidraw-library-result', items: [], ok: false });
+		}
+	});
+}
+
 export function installPdfSaveBridge() {
 	window.addEventListener('message', async (event) => {
 		const msg = event.data;
