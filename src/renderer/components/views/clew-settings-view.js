@@ -66,6 +66,7 @@ class ClewSettingsView extends ClewElement {
 				this.#textRow('Date format', 'dailyNoteFormat', 'YYYY-MM-DD'),
 				this.#textRow('Template note (optional)', 'dailyNoteTemplate', ''),
 			]),
+			this.#section('PDF viewer', [...this.#cjkFontRow()]),
 			this.#section('Files', [
 				this.#textRow('Attachment folder', 'attachmentFolder', 'Attachments'),
 				this.#textRow('Templates folder', 'templatesFolder', 'Templates'),
@@ -233,6 +234,71 @@ class ClewSettingsView extends ClewElement {
 		heading.textContent = title;
 		section.append(heading, ...rows);
 		return section;
+	}
+
+	/**
+	 * The optional CJK font download. A PDF that uses Chinese, Japanese or
+	 * Korean text without embedding its fonts needs the reader to supply them,
+	 * and the four Noto packs are 139 MB — too much to put in every installer
+	 * for the minority who need them, and not something to fetch from a CDN
+	 * mid-render. So: an explicit, one-time, app-global download.
+	 */
+	#cjkFontRow() {
+		const button = document.createElement('button');
+		const hint = document.createElement('p');
+		hint.className = 'settings-hint';
+
+		const EXPLAIN = 'Downloaded once from the EmbedPDF font packages and kept locally — '
+			+ 'nothing is fetched while you read. Only needed for PDFs that use CJK text '
+			+ 'without embedding their own fonts.';
+		const mb = (bytes) => `${Math.round(bytes / 1048576)} MB`;
+		let polling = null;
+
+		const paint = (status) => {
+			const on = settingsStore.get('pdfCjkFonts') === true;
+			if (status.downloading) {
+				const p = status.progress ?? { done: 0, total: 0 };
+				button.textContent = 'Downloading…';
+				button.disabled = true;
+				hint.textContent = `Downloading ${p.pack ?? ''} — file ${p.done} of ${p.total}. `
+					+ 'You can leave this screen; it continues in the background.';
+			} else if (status.installed) {
+				button.textContent = on ? 'Remove' : 'Switch on';
+				button.disabled = false;
+				hint.textContent = (on
+					? `Installed (${mb(status.bytesOnDisk)}). CJK PDFs can use them now. `
+					: `Downloaded (${mb(status.bytesOnDisk)}) but switched off. `) + EXPLAIN;
+			} else {
+				button.textContent = `Download (${mb(status.totalBytes)})`;
+				button.disabled = false;
+				hint.textContent = 'Not downloaded — a CJK PDF that does not embed its fonts '
+					+ 'may render blank. ' + EXPLAIN;
+			}
+			if (status.downloading && !polling) polling = setInterval(refresh, 700);
+			if (!status.downloading && polling) { clearInterval(polling); polling = null; }
+		};
+
+		const refresh = () => ipc.invoke(CH.PDF_FONTS_STATUS).then(paint).catch(() => {});
+
+		button.addEventListener('click', async () => {
+			const status = await ipc.invoke(CH.PDF_FONTS_STATUS);
+			if (status.installed && settingsStore.get('pdfCjkFonts') === true) {
+				settingsStore.set('pdfCjkFonts', false);
+				paint(await ipc.invoke(CH.PDF_FONTS_REMOVE));
+				return;
+			}
+			settingsStore.set('pdfCjkFonts', true);
+			if (status.installed) { refresh(); return; }
+			button.disabled = true;
+			button.textContent = 'Downloading…';
+			polling ??= setInterval(refresh, 700);
+			paint(await ipc.invoke(CH.PDF_FONTS_DOWNLOAD));
+		});
+
+		refresh();
+		// Row + hint as siblings, the way the vault rows do it: .settings-row is
+		// a two-column flex and a third child would squeeze the label to shreds.
+		return [this.#row('Chinese, Japanese and Korean fonts', button), hint];
 	}
 
 	#row(label, control) {

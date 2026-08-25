@@ -72,11 +72,20 @@ export async function createViewer({ target, src, onStatus = () => {} }) {
 	]);
 	if (!target.isConnected) return handle;   // re-rendered away while loading
 
+	// CJK fallback fonts, if the user has downloaded them (Settings → PDF
+	// viewer). null — EmbedPDF's "no fallback, and no CDN either" — otherwise.
+	// The endpoint answers null when the setting is off, so the app setting is
+	// the only switch and nothing here needs to know about it.
+	let fontFallback = null;
+	try {
+		fontFallback = await fetch('/__clew_assets__/pdffonts/fallback.json').then((r) => r.json());
+	} catch { /* no fonts: stay null */ }
+
 	const container = EmbedPDF.init({
 		type: 'container',
 		target,
 		wasmUrl: new URL(`${EMBEDPDF_ASSETS}/pdfium.wasm`, location.href).href,
-		fontFallback: null,                    // airgapped: no jsDelivr
+		fontFallback,                          // local files only, never a CDN
 		fonts: { ui: null, signature: null },  // airgapped: no Google Fonts
 		theme: { preference: document.documentElement.dataset.theme === 'light' ? 'light' : 'dark' },
 		tabBar: 'never',
