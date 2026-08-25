@@ -234,7 +234,16 @@ export const wikiembed = {
 		const token = { type: 'wikiembed', raw: match[0], ...link, tokens: [], failed: null };
 
 		// Media embeds: ![[img.png]], ![[paper.pdf]], ![[clip.mp3]] …
-		const fileRel = link.target ? resolveFileTarget(link.target) : null;
+		let fileRel = link.target ? resolveFileTarget(link.target) : null;
+		// An Obsidian drawing is `name.excalidraw.md`, so it lives in the NOTE
+		// index and resolveFileTarget never finds it. Without this it falls
+		// through to note transclusion and the embed renders the wrapper's
+		// prose and its base64 payload — the exact failure this feature exists
+		// to prevent.
+		if (!fileRel && link.target) {
+			const noteRel = resolveTarget(link.target);
+			if (noteRel && /\.excalidraw\.md$/i.test(noteRel)) fileRel = noteRel;
+		}
 		if (fileRel && mediaKind(fileRel)) {
 			const { alt, width, height } = parseMediaAlias(link.alias);
 			token.media = { rel: fileRel, kind: mediaKind(fileRel), width, height };
