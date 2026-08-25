@@ -20,7 +20,8 @@
     "package:dist": "node scripts/package.js --dmg --sign --notarize",
     "package:win": "node scripts/package.js --win",
     "package:linux": "node scripts/package.js --linux",
-    "vault-report": "node scripts/vault-report.js"
+    "vault-report": "node scripts/vault-report.js",
+    "notices": "node scripts/gen-notices.js"
   },
   "devDependencies": {
     "electron": "^43.4.1",
@@ -72,6 +73,14 @@
       "buildResources": "build-resources"
     },
     "extraResources": [
+      {
+        "from": "THIRD-PARTY-NOTICES.md",
+        "to": "THIRD-PARTY-NOTICES.md"
+      },
+      {
+        "from": "LICENSE",
+        "to": "LICENSE"
+      },
       {
         "from": "build-engine/jmarkdown",
         "to": "engine/jmarkdown"

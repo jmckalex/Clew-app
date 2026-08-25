@@ -18,7 +18,7 @@
 // Multi-window: state pushes are stored per session, and the one macOS
 // menu always reflects — and dispatches into — the FOCUSED window. Focus
 // changes rebuild it (main.js wires browser-window-focus).
-import { app, Menu } from 'electron';
+import { app, Menu, shell } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import { CH } from '../shared/channels.js';
@@ -334,6 +334,20 @@ class AppMenu {
 					label: 'Clew Documentation',
 					enabled: !!demoVault && fs.existsSync(demoVault),
 					click: () => this.#openVault(demoVault),
+				},
+				{
+					// Licences have to REACH the reader to mean anything. The
+					// file ships in Resources/ (extraResources) and sits at the
+					// repo root in development.
+					label: 'Third-Party Notices',
+					click: () => {
+						const candidates = [
+							path.join(process.resourcesPath ?? '', 'THIRD-PARTY-NOTICES.md'),
+							this.#rootDir ? path.join(this.#rootDir, 'THIRD-PARTY-NOTICES.md') : null,
+						].filter(Boolean);
+						const found = candidates.find((file) => fs.existsSync(file));
+						if (found) shell.openPath(found);
+					},
 				},
 				...(isMac ? [] : [{ type: 'separator' }, { role: 'about' }]),
 			],
