@@ -34,6 +34,9 @@
     "@codemirror/search": "^6.7.1",
     "@codemirror/state": "^6.7.1",
     "@codemirror/view": "^6.43.9",
+    "@embedpdf/models": "^2.15.0",
+    "@embedpdf/pdfium": "^2.15.0",
+    "@embedpdf/snippet": "^2.15.0",
     "@fortawesome/fontawesome-free": "^7.3.1",
     "@lezer/common": "^1.5.2",
     "@lezer/highlight": "^1.2.3",
@@ -98,6 +101,14 @@
       {
         "from": "node_modules/leaflet/dist",
         "to": "preview-assets/leaflet/dist"
+      },
+      {
+        "from": "node_modules/@embedpdf/snippet/dist",
+        "to": "preview-assets/@embedpdf/snippet/dist",
+        "filter": [
+          "**/*",
+          "!*.pdf"
+        ]
       }
     ],
     "mac": {
@@ -113,7 +124,7 @@
         "NSDownloadsFolderUsageDescription": "Clew needs access to your Downloads folder to open vaults stored there.",
         "NSRemovableVolumesUsageDescription": "Clew needs access to removable volumes to open vaults stored on them.",
         "NSNetworkVolumesUsageDescription": "Clew needs access to network volumes to open vaults stored on them.",
-        "NSHumanReadableCopyright": "Copyright © J. McKenzie Alexander. GPL-3.0-or-later."
+        "NSHumanReadableCopyright": "Copyright \u00a9 J. McKenzie Alexander. GPL-3.0-or-later."
       },
       "target": [
         {

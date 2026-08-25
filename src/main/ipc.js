@@ -13,6 +13,7 @@
 // App-global concerns (settings, the recents list, the menu) stay
 // session-free; everything vault-shaped routes through the session.
 import { app, dialog, ipcMain, shell } from 'electron';
+import * as pdfFonts from './pdf-fonts.js';
 import { CH } from '../shared/channels.js';
 import { settings } from './settings.js';
 import { appMenu } from './menu.js';
@@ -116,6 +117,10 @@ export function registerIpc() {
 	handle(CH.RENDER_SUBSCRIBE, (s, { path }) => s.renderService.subscribe(path));
 	handle(CH.RENDER_UNSUBSCRIBE, (s, { path }) => s.renderService.unsubscribe(path));
 	handle(CH.RENDER_HTML, (s, { path }) => s.renderService.renderedHtml(path));
+	handle(CH.PDF_WRITE, (s, { path, bytes }) => s.vaults.writePdf(path, bytes));
+	handleGlobal(CH.PDF_FONTS_STATUS, () => pdfFonts.status());
+	handleGlobal(CH.PDF_FONTS_DOWNLOAD, () => pdfFonts.download());
+	handleGlobal(CH.PDF_FONTS_REMOVE, () => pdfFonts.remove());
 	handleGlobal(CH.SHELL_OPEN_EXTERNAL, ({ url }) => {
 		if (/^https?:|^mailto:/i.test(url)) shell.openExternal(url);
 	});

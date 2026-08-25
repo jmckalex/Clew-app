@@ -16,6 +16,7 @@ import morphdom from 'morphdom';
 import { initCanvasEmbeds, refreshCanvasEmbeds, broadcastThemeToNested } from './canvas-embed.js';
 import { initLeafletMaps } from './leaflet-maps.js';
 import { initQueryInteract } from './query-interact.js';
+import { initPdfEmbeds } from './pdf-embed.js';   // SPIKE: spike/embedpdf
 
 const HOST_SOURCE = 'clew-preview-host';
 const post = (msg) => window.parent.postMessage({ source: 'clew-preview', ...msg }, '*');
@@ -117,6 +118,7 @@ function applyRender(html) {
 		enableTaskCheckboxes();
 		initCanvasEmbeds();
 		initLeafletMaps();
+		initPdfEmbeds();
 		retypeset();
 		// Morphs never re-execute scripts; note-API controls re-bind on this.
 		document.dispatchEvent(new CustomEvent('clew:render'));
@@ -265,5 +267,6 @@ function scrollToLine(line, behavior) {
 enableTaskCheckboxes();
 initCanvasEmbeds();
 initLeafletMaps();
+initPdfEmbeds();
 initQueryInteract();
 post({ type: 'ready' });

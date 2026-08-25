@@ -12,7 +12,7 @@
 // built-in viewer), audio, video — served through clew-preview://.
 import { ClewElement } from '../base/clew-element.js';
 import { fileKind } from '../../lib/file-types.js';
-import { vaultFileUrl } from '../../lib/preview-url.js';
+import { vaultFileUrl, pdfViewerUrl } from '../../lib/preview-url.js';
 
 class ClewFileView extends ClewElement {
 	tabId = null;
@@ -29,11 +29,14 @@ class ClewFileView extends ClewElement {
 			el.src = url;
 			el.alt = this.path;
 		} else if (kind === 'pdf') {
-			// Unsandboxed (unlike note previews) so the PDF viewer plugin runs;
-			// the document is Chromium's own viewer, not vault-authored content.
+			// SPIKE (spike/embedpdf): our own EmbedPDF page rather than
+			// Chromium's plugin, so the tab gains annotation and matches both
+			// the note-embed surface and Clew-iOS. Still unsandboxed — the
+			// viewer fetches the PDF from its own origin.
 			el = document.createElement('iframe');
 			el.className = 'pdf-frame';
-			el.src = url;
+			el.allow = 'fullscreen';
+			el.src = pdfViewerUrl(url);
 		} else if (kind === 'audio') {
 			el = document.createElement('audio');
 			el.controls = true;

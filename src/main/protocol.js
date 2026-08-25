@@ -30,6 +30,8 @@ import { Readable } from 'node:stream';
 import { NOTE_EXTENSIONS } from '../shared/channels.js';
 import { sessionById } from './session.js';
 import { previewPluginPaths, enabledPlugins } from './plugins.js';
+import { settings } from './settings.js';
+import { fontsDir, fallbackConfig } from './pdf-fonts.js';
 
 const MIME = {
 	'.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript',
@@ -70,6 +72,12 @@ export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDi
 		fontawesome: path.join(nodeModulesDir, '@fortawesome', 'fontawesome-free', 'js'),
 		jquery: path.join(nodeModulesDir, 'jquery', 'dist'),
 		leaflet: path.join(nodeModulesDir, 'leaflet', 'dist'),
+		// SPIKE (spike/embedpdf): the EmbedPDF bundle + pdfium.wasm.
+		embedpdf: path.join(nodeModulesDir, '@embedpdf', 'snippet', 'dist'),
+		// Our own PDF viewer page + its bundle (pdf-page.html/.js).
+		clewpdf: path.join(distDir, 'preview-client'),
+		// Optional CJK fonts, downloaded on demand into userData.
+		pdffonts: fontsDir(),
 		preview: engineAssetsDir, // preview.css
 	};
 
@@ -127,6 +135,15 @@ export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDi
 			// Vendored assets and the preview client bundle.
 			if (pathname.startsWith('__clew_assets__/')) {
 				const rest = pathname.slice('__clew_assets__/'.length);
+				// The PDF viewer asks for this on every open. Answering it here
+				// (rather than writing a file) means the app setting is the only
+				// switch: turn CJK fonts off and the viewer simply stops being
+				// offered them, with no state to clean up.
+				if (rest === 'pdffonts/fallback.json') {
+					const config = fallbackConfig(settings.get('pdfCjkFonts') === true);
+					if (!config) return new Response('null', { headers: headers('application/json') });
+					return new Response(JSON.stringify(config), { headers: headers('application/json') });
+				}
 				const [root, ...restParts] = rest.split('/');
 				const base = assetRoots[root];
 				if (!base) return new Response('Unknown asset root', { status: 404, headers: headers('text/plain') });
