@@ -62,7 +62,8 @@ note API, plugins, and every settings key.
 - **Tests:** `npm test` (`node --test`, files in `tests/`): workspace tree,
   note-metadata extractor, BibTeX parser, the ported jmarkdown-scan suite,
   canvas model, diary, frontmatter, plugins discovery, query/leaflet/exif
-  parsers, Excalidraw round-trip, markdown tables — 217 tests. DOM/UI work is verified with the smoke harness.
+  parsers, Excalidraw round-trip, markdown tables, callouts, block
+  references — 253 tests. DOM/UI work is verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js] [CLEW_SMOKE_VAULT=/path/vault]
   electron .` — SMOKE_VAULT opens exactly that vault, never touching the
@@ -105,9 +106,23 @@ browser-window-focus).
   links/embeds incl. media + image sizes; SITE_EXPORT branch emits real
   hrefs), `obsidian-fences.js` (```mermaid + ```leaflet maps incl. photo
   maps w/ HEIC conversion), `query-fences.js` (```query/```tasks/```kanban
-  + the `vault` global for script blocks), `exif-gps.js`,
-  `clew-template.html` (local assets, no CDN), `preview.css`. These may
-  import each other but never src/shared (dist/engine is a verbatim copy).
+  + the `vault` global for script blocks), `callouts.js` (every Obsidian
+  `> [!type]`, case-insensitively, incl. foldables — registered LAST so it
+  is offered before the engine's own GFM-alert rule), `block-refs.js`
+  (`^block-id` markers), `exif-gps.js`, `clew-template.html` (local
+  assets, no CDN), `preview.css`. These may import each other but never
+  src/shared (dist/engine is a verbatim copy).
+- **Block references** (`[[Note#^id]]`, `![[Note#^id]]`): the marker rule
+  claims the WHITESPACE before the caret, because `^` is TeX superscript
+  in this dialect (`x^2`) and both rules would otherwise be offered the
+  same offset. Tables are the one block that swallows a marker line
+  anyway — `start()` clips paragraphs only — so `tableBeforeAnchor` takes
+  the rows first and re-lexes them, which works because marked UNSHIFTS
+  extension tokenizers and a host's load after the engine's. Ids are
+  indexed by `shared/note-metadata.js` (the line to scroll to is the top
+  of the block, not the marker) and written by the "Copy Link to Block"
+  command (`renderer/editor/block-ids.js`), which imports its idea of a
+  legal id from block-refs.js so writer and reader cannot drift.
 - `src/preview-client/client.js` — injected into every rendered note:
   morphdom patching (guards: scripts, canvas-embed scenes, initialized
   leaflet divs, custom elements — kept, attrs synced), postMessage bridge,

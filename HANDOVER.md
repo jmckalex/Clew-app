@@ -1,4 +1,4 @@
-# Handover — 2026-08-25 (PDF viewer, Excalidraw, engine syncs, table editing)
+# Handover — 2026-08-25 (PDF viewer, Excalidraw, callouts, block references)
 
 Session-rollover state. Durable architecture, conventions, and gotchas live
 in **CLAUDE.md** (trust it); the original design plan is at
@@ -8,11 +8,12 @@ session; keep it short and current.
 ## 0. Where things stand
 
 - Everything is on **`main`** and merged. Working tree clean,
-  `npm test` → **217 green**. Demo/study vaults clean.
+  `npm test` → **253 green**. Demo/study vaults clean.
 - This session: the three-session backlog committed (11 commits), the PDF
   viewer replaced by EmbedPDF, two engine syncs, Excalidraw (merged from
   `feat/excalidraw`, which can be deleted), table editing, the vault
-  report, and third-party notices.
+  report, third-party notices, and then the two gaps §5 had measured —
+  **callouts** and **block references** (§6).
 - `../Clew-docs` is clean, 5 commits this session. Read **its** HANDOVER
   for the website; the DNS blocker there is unchanged.
 
@@ -138,11 +139,9 @@ What that says:
    fall back to plain blockquotes. The engine already renders GFM's five,
    so this is mapping the rest onto that machinery, plus foldable
    `[!note]-` and custom titles. **Do this first.**
-2. **Block references** `[[note#^id]]` — now the largest remaining gap in
-   the help vault (13), and core Obsidian. Clew resolves headings but not
-   block ids.
+2. ~~**Block references**~~ — **done**, see §6.
 3. `%%comments%%` (2 in the help vault) — hidden in Obsidian's preview,
-   rendered as text by Clew.
+   rendered as text by Clew. **Now the largest measured gap.**
 4. **Dataview** is confirmed as the plugin that matters, though 253/130 in
    a vault *about* Dataview is a biased sample. Translate the safe DQL
    subset; refuse `dataviewjs` honestly rather than half-supporting it.
@@ -153,7 +152,46 @@ Both vaults are cloned under the session scratchpad; re-clone with
 `git clone --depth 1 https://github.com/obsidianmd/obsidian-help.git` and
 `…/s-blu/obsidian_dataview_example_vault.git`.
 
-## 6. Standing session rules (unchanged, still earning their keep)
+## 6. Callouts and block references — the two measured gaps, closed
+
+**Callouts** (`src/engine/callouts.js`): all 14 Obsidian types with their
+aliases, case-insensitive (`[!NOTE]`, `[!note]`, `[!Note]` alike),
+FontAwesome Free paths inlined as SVG, foldables via `<details>`.
+Registered LAST so it is offered before the engine's own GFM-alert rule
+and all five of those render identically to the other nine.
+
+**Block references** (`src/engine/block-refs.js`) — `[[Note#^id]]` links,
+`![[Note#^id]]` transcludes just the block, and the marker is invisible
+in reading mode. Three things are worth not rediscovering:
+
+- **`^` is superscript in this dialect** (`x^2`). The marker rule claims
+  the WHITESPACE before the caret so the two rules can never be offered
+  the same offset; registration order is irrelevant. `x^2` ending a
+  paragraph stays an exponent — there is a test that says so.
+- **Tables eat the marker line.** marked's `start()` hook clips paragraphs
+  and nothing else, so `^payoff-table` under a table became a phantom row
+  reading "ᵖayoff-table". `tableBeforeAnchor` takes the rows first and
+  re-lexes them; this works only because marked UNSHIFTS extension
+  tokenizers, so a host's extensions are offered before the engine's.
+  Verified: `data-source-line` does not drift across the re-lex.
+- **A blank line inside a fence is not a block boundary.** Both the
+  slicer and the indexer walk fence-aware; a masked walk strode straight
+  over the code block a marker was naming. Caught by a test, not by luck.
+
+Authoring is `editor/block-ids.js` + the **Copy Link to Block** command
+(Edit menu and palette): writes a six-character id if the block has none,
+copies `[[Note#^id]]`, and is idempotent. `[[Note#^` completes existing
+ids. Smoke-verified end to end against the real app — marker on disk,
+correct placement for both marker forms, index lines pointing at the top
+of the block.
+
+**Not adopted, deliberately:** Obsidian's `\[\[` escape for a literal
+`[[`. In a LaTeX-flavoured engine `\[` opens display math, and the escape
+renders as broken red MathJax. Backticks are Clew's way and the demo
+vault already uses them; obsidian-help contains all of 3 occurrences.
+Recorded in the manual as a known incompatibility.
+
+## 7. Standing session rules (unchanged, still earning their keep)
 
 - **NEVER `git add -A`** — stage explicit paths.
 - Always pass `CLEW_SMOKE_VAULT`; `git status` demo/study vaults after
