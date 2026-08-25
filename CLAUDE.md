@@ -264,6 +264,12 @@ browser-window-focus).
   entries on blank lines. The engine's inline CSS assumes a light page;
   `src/engine/preview.css` carries the dark-theme overrides (alerts,
   highlights, TikZ/MetaPost plates).
+- **Markdown tables are editable** (`editor/tables.js`): Tab/Shift-Tab walk
+  the cells, Enter walks the rows, both adding a row at the end, and the
+  table reflows so the pipes line up. Registered with `Prec.high` so Tab
+  reaches a table before `indentWithTab` — every handler returns false
+  outside a table, which hands the key back. Parsing/formatting are pure
+  functions (unit-tested); only the keymap touches CodeMirror.
 - **Commands + keybindings** live in `commands/registry.js` + `builtin.js`
   (CM chord notation). Add shortcuts as commands — never ad-hoc keydown
   listeners — so the palette, the settings hotkey editor, and the native
