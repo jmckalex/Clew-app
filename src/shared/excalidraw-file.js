@@ -40,11 +40,30 @@ const { compressToBase64, decompressFromBase64 } = lzString;
 
 const CHUNK = 256;
 
-// Deliberately the plugin's own expressions (src/shared/excalidrawMarkdownParsing.ts).
-// The `[^`]*` before the fence lets a "## Drawing" heading carry trailing text;
-// the fallbacks catch files where the fence is missing or the section is last.
-const COMPRESSED_RE = /(\n##? Drawing\n[^`]*(?:```compressed-json\n))([\s\S]*?)(```\n)/m;
-const JSON_RE = /(\n##? Drawing\n[^`]*(?:```json\n))([\s\S]*?)(```\n)/m;
+// Where the scene sits in the file, built from the FORMAT rather than copied
+// from anyone's implementation. Obsidian's Excalidraw plugin ships a LICENSE
+// file that is AGPL-3.0 while its package.json claims MIT; the file governs, so
+// none of its code belongs in a GPL-3.0 project and none of it is here. What
+// follows is a description of the on-disk layout, which is what compatibility
+// actually requires:
+//
+//   a "# Drawing" or "## Drawing" heading on its own line,
+//   optionally followed by text carrying no backtick,
+//   then a fence tagged `compressed-json` or `json`,
+//   the payload, and the closing fence.
+//
+// Three groups, because serializeExcalidraw rewrites only the middle one and
+// puts the opening and closing fences back exactly as it found them.
+const drawingSection = (tag) => new RegExp(
+	'(\\n#{1,2} Drawing\\n'   // the heading, on a line of its own
+	+ '[^`]*'                  // any preamble, so long as it is not a fence
+	+ '```' + tag + '\\n)'      // the opening fence
+	+ '([\\s\\S]*?)'            // the payload — lazy: the FIRST close wins
+	+ '(```\\n)',               // the closing fence
+	'm');
+
+const COMPRESSED_RE = drawingSection('compressed-json');
+const JSON_RE = drawingSection('json');
 
 /** Does this path hold an Excalidraw drawing? */
 export function isExcalidrawPath(path = '') {

@@ -281,6 +281,12 @@ browser-window-focus).
 - Editor↔preview scroll sync runs over `preview/scroll-sync.js` (bus +
   per-side suppressors). Emit only on user scroll; `suppress()` before any
   programmatic scroll.
+- **Obsidian's Excalidraw PLUGIN is AGPL-3.0** (its LICENSE file; its
+  package.json says MIT, which is stale — the file governs). Its code must
+  never enter this GPL-3.0 tree. Compatibility is achieved by implementing
+  the on-disk FORMAT, which is not copyrightable, and verifying behaviour
+  against real files — never by lifting source. `@excalidraw/excalidraw`
+  itself is MIT and is embedded normally.
 - Obsidian compatibility is a hard constraint: never write into
   `.obsidian/`, keep `[[wikilink]]` semantics Obsidian-shaped, `.md` files
   stay `.md`. Clew state lives in `.clew/` (gitignored).
