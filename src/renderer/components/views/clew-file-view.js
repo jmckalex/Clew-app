@@ -35,6 +35,7 @@ class ClewFileView extends ClewElement {
 			// viewer fetches the PDF from its own origin.
 			el = document.createElement('iframe');
 			el.className = 'pdf-frame';
+			el.allow = 'fullscreen';
 			el.src = pdfViewerUrl(url);
 		} else if (kind === 'audio') {
 			el = document.createElement('audio');

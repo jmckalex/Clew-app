@@ -185,6 +185,7 @@ export function buildNodeContent(node, embedHooks) {
 		// a canvas is annotatable like every other PDF surface.
 		const iframe = document.createElement('iframe');
 		iframe.className = 'canvas-pdf-frame';
+		iframe.allow = 'fullscreen';
 		iframe.src = pdfViewerUrl(url);
 		wrap.append(iframe, titleBar(node));
 	} else if (kind === 'audio') {
