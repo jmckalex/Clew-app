@@ -138,6 +138,11 @@ export class RenderService {
 				`wikiembed, wikilink from ${path.join(engineAssets, 'wikilinks.js')}`,
 				`mermaidFence, leafletFence from ${path.join(engineAssets, 'obsidian-fences.js')}`,
 				`queryFence, tasksFence, kanbanFence from ${path.join(engineAssets, 'query-fences.js')}`,
+				// LAST on purpose: marked offers the most recently registered
+				// block extension first, and callouts must be seen before the
+				// engine's own GFM-alert rule so that every `> [!type]` in a
+				// document — the five GFM ones included — renders identically.
+				`calloutBlock from ${path.join(engineAssets, 'callouts.js')}`,
 				// Enabled vault plugins' engine surfaces (custom syntax).
 				...engineExtensionEntries(this.vaultRoot, this.#vaultOptions),
 			],

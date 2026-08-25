@@ -114,9 +114,16 @@ const FRONTMATTER_PLUGINS = {
 	'annotation-target': ['Annotator', 'PDF/EPUB annotation target'],
 };
 
-// GFM defines five alert types; Obsidian defines a dozen more, and the extras
-// fall back to a plain blockquote rather than a coloured callout.
-const GFM_ALERTS = new Set(['note', 'tip', 'important', 'warning', 'caution']);
+// Callout types Clew renders (src/engine/callouts.js) — Obsidian's set plus
+// their aliases. Anything outside this falls back to a plain blockquote, which
+// is what the report is for.
+const CALLOUTS = new Set([
+	'note', 'abstract', 'summary', 'tldr', 'info', 'todo',
+	'tip', 'hint', 'important', 'success', 'check', 'done',
+	'question', 'help', 'faq', 'warning', 'caution', 'attention',
+	'failure', 'fail', 'missing', 'danger', 'error', 'bug',
+	'example', 'quote', 'cite', 'compatibility',
+]);
 
 // ---- the walk --------------------------------------------------------------
 
@@ -212,9 +219,9 @@ function scan(vault, { examples = 3 } = {}) {
 		// Prose-level syntax, outside fences.
 		for (const m of masked.matchAll(/^[ \t]*>\s*\[!([a-zA-Z-]+)\]/gm)) {
 			const type = m[1].toLowerCase();
-			if (!GFM_ALERTS.has(type)) {
+			if (!CALLOUTS.has(type)) {
 				syntax.add(`callout [!${type}]`, rel,
-					['core Obsidian', 'beyond GFM\'s five alert types — renders as a plain blockquote']);
+					['core Obsidian', 'not a type Clew knows — renders as a plain blockquote']);
 			}
 		}
 		if (/\[\[[^\]\n]*#\^[^\]\n]+\]\]/.test(masked)) {
