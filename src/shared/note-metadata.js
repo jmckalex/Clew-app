@@ -73,6 +73,11 @@ export function parseFrontmatter(text) {
 }
 
 const HEADING_RE = /^(#{1,6})[ \t]+(.+?)[ \t]*#*[ \t]*$/;
+// Obsidian block identifiers: `^some-id` ending a line, or alone on one. The
+// leading whitespace in the first form is required, and is what keeps a
+// superscript (`x^2`) from being read as an identifier — the same rule the
+// engine extension uses (src/engine/block-refs.js).
+const BLOCK_ID_RE = /(?:^[ \t]*|[ \t])\^([A-Za-z0-9-]{1,128})[ \t]*$/;
 const LINK_RE = /(!?)\[\[([^\[\]|#\n]*)(?:#([^\[\]|\n]+))?(?:\|([^\[\]\n]+))?\]\]/g;
 // #tag with nesting; must not match the ### of headings (require non-# before)
 // or pure numbers ("bug #123" style is still a tag in Obsidian — keep it).
@@ -90,7 +95,20 @@ export function extractNoteMetadata(text) {
 
 	const headings = [];
 	const links = [];
+	const blocks = [];
 	const tags = new Map(); // tag -> [lines]
+
+	// Line indices covered by a fenced block. A blank line INSIDE a fence is
+	// content, not a block boundary, and the backward walk that locates a
+	// block from its marker has to know the difference.
+	const fenced = new Set();
+	FENCE_RE.lastIndex = 0;
+	for (const fence of text.matchAll(FENCE_RE)) {
+		const first = text.slice(0, fence.index).split('\n').length - 1;
+		const count = fence[0].split('\n').length;
+		for (let k = 0; k < count; k++) fenced.add(first + k);
+	}
+	const isBoundary = (n) => rawLines[n].trim() === '' && !fenced.has(n);
 
 	// Skip frontmatter lines for headings/tags/links scanning.
 	const fmLineCount = frontmatter.end ? text.slice(0, frontmatter.end).split('\n').length - 1 : 0;
@@ -102,6 +120,24 @@ export function extractNoteMetadata(text) {
 		const heading = HEADING_RE.exec(rawLines[i] ?? '');
 		if (heading && HEADING_RE.test(line)) {
 			headings.push({ level: heading[1].length, text: heading[2].trim(), line: lineNo });
+		}
+
+		// Block identifiers. The recorded line is the one to SCROLL TO, which
+		// for a marker on its own line is the top of the block above it, not
+		// the marker: landing on the marker would leave the table or the code
+		// fence it names sitting off the top of the window.
+		const blockId = BLOCK_ID_RE.exec(line);
+		if (blockId && !heading) {
+			// The walk reads rawLines, not the masked copy: masking blanks a
+			// fenced block wholesale, so a masked walk would stride straight
+			// over the very code block the marker was put there to name.
+			let at = i;
+			if (/^[ \t]*\^/.test(line)) {
+				at = i - 1;
+				while (at >= 0 && isBoundary(at)) at--;
+				while (at > 0 && !isBoundary(at - 1)) at--;
+			}
+			if (at >= 0) blocks.push({ id: blockId[1], line: at + 1 });
 		}
 
 		LINK_RE.lastIndex = 0;
@@ -140,6 +176,7 @@ export function extractNoteMetadata(text) {
 	return {
 		aliases: frontmatter.aliases,
 		headings,
+		blocks,
 		links,
 		tags: [...tags.entries()].map(([tag, lineNos]) => ({ tag, lines: lineNos })),
 	};

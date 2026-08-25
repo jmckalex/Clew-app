@@ -248,6 +248,11 @@ class AppMenu {
 				{ role: 'pasteAndMatchStyle' },
 				{ role: 'selectAll' },
 				{ type: 'separator' },
+				// Obsidian's "Copy link to block". It lives here rather than in
+				// the palette alone because an identifier nobody can discover
+				// is an identifier nobody writes.
+				c('editor:copy-block-ref', 'Copy Link to Block', { needs: 'editor' }),
+				{ type: 'separator' },
 				c('edit:find-in-note', 'Find in Note', { chord: 'Mod-f', needs: 'editor' }),
 				c('nav:search', 'Search in All Files', { chord: 'Mod-Shift-f', needs: 'vault' }),
 			],

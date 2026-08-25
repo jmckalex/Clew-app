@@ -15,7 +15,9 @@
 //
 // Syntax (Obsidian-compatible):
 //     [[Note]]  [[Note|alias]]  [[Note#Heading]]  [[Note#Heading|alias]]
-//     ![[Note]] / ![[Note#Heading]] on its own line — block embed (transclusion)
+//     [[Note#^block-id]] — a block reference (see block-refs.js for the marker)
+//     ![[Note]] / ![[Note#Heading]] / ![[Note#^block-id]] on its own line —
+//     transclusion of the note, the section, or the single block
 //
 // This file runs inside a one-shot jmarkdown worker: module-level caches last
 // exactly one build, so the lazy vault scan below is per-build by construction.
@@ -23,6 +25,7 @@
 // without it, links render unresolved but nothing breaks.
 import fs from 'node:fs';
 import path from 'node:path';
+import { sliceBlock } from './block-refs.js';
 
 const NOTE_EXT = /\.(md|jmd)$/i;
 const IGNORED = new Set(['.obsidian', '.clew', '.git', 'node_modules', '.trash']);
@@ -151,17 +154,27 @@ export function parseMediaAlias(alias) {
 	};
 }
 
-// [[target]] / [[target#heading]] / [[target|alias]] — target may be empty
-// for same-file heading links ([[#Heading]]).
+// [[target]] / [[target#heading]] / [[target#^block-id]] / [[target|alias]] —
+// target may be empty for same-file links ([[#Heading]], [[#^block-id]]).
 const LINK_RE = /^\[\[([^\[\]|#\n]*)(?:#([^\[\]|\n]+))?(?:\|([^\[\]\n]+))?\]\]/;
 
 function parseLink(match) {
 	const target = match[1].trim();
-	const heading = match[2]?.trim() ?? null;
+	const fragment = match[2]?.trim() ?? null;
+	// Obsidian overloads `#`: a leading caret means a block identifier rather
+	// than a heading. They resolve against different things, so they are split
+	// apart here once and never re-sniffed downstream.
+	const isBlock = fragment !== null && fragment.startsWith('^');
+	const block = isBlock ? fragment.slice(1).trim() : null;
+	const heading = isBlock ? null : fragment;
 	const alias = match[3]?.trim() ?? null;
-	const label = alias ?? (target && heading ? `${target} § ${heading}` : target || heading || '');
-	const full = target + (heading ? `#${heading}` : '');
-	return { target, heading, alias, label, full };
+	// § for a heading, ¶ for a block: the typographic marks for precisely these
+	// two things, so a reader can see which kind of link it is without being
+	// shown Obsidian's `#^` machinery.
+	const section = block ? `¶ ${block}` : heading ? `§ ${heading}` : null;
+	const label = alias ?? (target && section ? `${target} ${section}` : target || section || '');
+	const full = target + (fragment ? `#${fragment}` : '');
+	return { target, fragment, heading, block, alias, label, full };
 }
 
 export const wikilink = {
@@ -181,7 +194,9 @@ export const wikilink = {
 			const rel = token.target ? resolveTarget(token.target) : null;
 			if (!rel) return `<span class="internal-link unresolved">${escapeHtml(token.label)}</span>`;
 			const page = sitePath(rel.replace(NOTE_EXT, '')) + '.html'
-				+ (token.heading ? `#${encodeURIComponent(token.heading)}` : '');
+				// A block anchor's id IS `^the-id`; browsers percent-decode a
+				// fragment before matching, so `#%5Ethe-id` lands on it.
+				+ (token.fragment ? `#${encodeURIComponent(token.fragment)}` : '');
 			return `<a class="internal-link" href="${escapeAttr(page)}">${escapeHtml(token.label)}</a>`;
 		}
 		const resolved = token.target
@@ -270,6 +285,10 @@ export const wikiembed = {
 			const section = sliceHeading(content, link.heading);
 			if (section === null) { token.failed = 'missing-heading'; return token; }
 			content = section;
+		} else if (link.block) {
+			const chunk = sliceBlock(content, link.block);
+			if (chunk === null) { token.failed = 'missing-block'; return token; }
+			content = chunk;
 		}
 		embedStack.push(abs);
 		try {
@@ -335,7 +354,10 @@ export const wikiembed = {
 		const title = escapeHtml(token.label);
 		const target = escapeAttr(token.full);
 		if (token.failed) {
-			const reason = token.failed === 'cycle' ? 'circular embed' : 'not found';
+			const reason = token.failed === 'cycle' ? 'circular embed'
+				: token.failed === 'missing-block' ? 'no such block'
+				: token.failed === 'missing-heading' ? 'no such heading'
+				: 'not found';
 			return `<div class="internal-embed unresolved" data-href="${target}">`
 				+ `<div class="embed-title">${title}</div>`
 				+ `<div class="embed-note">(${reason})</div></div>\n`;

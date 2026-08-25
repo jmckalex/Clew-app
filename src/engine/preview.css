@@ -112,6 +112,27 @@ a.internal-link { text-decoration: none; border-bottom: 1px solid transparent; }
 a.internal-link:hover { border-bottom-color: var(--preview-accent); }
 a.internal-link.unresolved { color: var(--preview-muted); border-bottom: 1px dashed var(--preview-muted); }
 
+/* Block identifiers (^some-id). The marker is a navigation target, not
+   content: it takes no space and shows nothing, exactly as in Obsidian's
+   reading view — a note full of visible `^a3f9c1` would be unreadable. */
+.block-anchor {
+	display: inline-block;
+	width: 0;
+	height: 0;
+	overflow: hidden;
+	/* Anchors sit flush against the block's last word, so a fragment jump in
+	   an exported site would otherwise scroll the block's first line under
+	   any sticky chrome. */
+	scroll-margin-top: 3em;
+}
+/* Following `[[Note#^id]]` in an exported site: say what was arrived at.
+   In the app, navigation is line-based and never sets a fragment. */
+:has(> .block-anchor:target) {
+	background: color-mix(in srgb, var(--preview-accent) 14%, transparent);
+	border-radius: 4px;
+	box-shadow: 0 0 0 4px color-mix(in srgb, var(--preview-accent) 14%, transparent);
+}
+
 /* Embeds (transclusion) */
 .internal-embed {
 	border: 1px solid var(--preview-border);

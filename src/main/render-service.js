@@ -138,6 +138,7 @@ export class RenderService {
 				`wikiembed, wikilink from ${path.join(engineAssets, 'wikilinks.js')}`,
 				`mermaidFence, leafletFence from ${path.join(engineAssets, 'obsidian-fences.js')}`,
 				`queryFence, tasksFence, kanbanFence from ${path.join(engineAssets, 'query-fences.js')}`,
+				`tableBeforeAnchor, blockAnchorLine, blockAnchor from ${path.join(engineAssets, 'block-refs.js')}`,
 				// LAST on purpose: marked offers the most recently registered
 				// block extension first, and callouts must be seen before the
 				// engine's own GFM-alert rule so that every `> [!type]` in a

@@ -64,6 +64,11 @@ class VaultStore extends Emitter {
 		return this.index[path]?.headings ?? [];
 	}
 
+	/** `^block-id` markers in a note: [{id, line}] — see note-metadata.js. */
+	blocksFor(path) {
+		return this.index[path]?.blocks ?? [];
+	}
+
 	/** Map of tag -> {count, notes:[path]} over the whole vault (nested tags kept whole). */
 	tagIndex() {
 		const map = new Map();
