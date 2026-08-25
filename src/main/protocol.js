@@ -70,6 +70,8 @@ export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDi
 		fontawesome: path.join(nodeModulesDir, '@fortawesome', 'fontawesome-free', 'js'),
 		jquery: path.join(nodeModulesDir, 'jquery', 'dist'),
 		leaflet: path.join(nodeModulesDir, 'leaflet', 'dist'),
+		// SPIKE (spike/embedpdf): the EmbedPDF bundle + pdfium.wasm.
+		embedpdf: path.join(nodeModulesDir, '@embedpdf', 'snippet', 'dist'),
 		preview: engineAssetsDir, // preview.css
 	};
 
