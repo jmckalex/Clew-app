@@ -42,6 +42,9 @@ const SAVE_DEBOUNCE_MS = 1000;
 const params = new URLSearchParams(location.search);
 const src = params.get('src');
 const vaultPath = params.get('path');
+// Embeds open read-only: reading a note should not put you one stray
+// click away from altering a diagram.
+const viewMode = params.get('view') === '1';
 const root = document.getElementById('root');
 const status = document.getElementById('status');
 const setStatus = (text) => {
@@ -74,7 +77,11 @@ function ask(payload) {
 			resolve, reject,
 			timer: setTimeout(() => { pending.delete(id); reject(new Error('timed out')); }, 30_000),
 		});
-		window.parent.postMessage({ source: 'clew-excalidraw', id, ...payload }, '*');
+			// window.TOP, not window.parent. In a file tab or a canvas node the two
+		// are the same, but an embed inside a rendered note sits two frames
+		// deep — the parent there is the preview document, which has no bridge,
+		// so a request to it simply never gets answered and boot() hangs.
+		(window.top ?? window.parent).postMessage({ source: 'clew-excalidraw', id, ...payload }, '*');
 	});
 }
 
@@ -96,7 +103,9 @@ async function boot() {
 	// The shape library is per vault, so a .excalidrawlib dropped onto the
 	// canvas is still there tomorrow — Excalidraw itself keeps libraries in
 	// browser storage, which for a note app means "until something clears it".
-	const libraryItems = await ask({ type: 'excalidraw-library-load' }).catch(() => []);
+	// A read-only embed has no use for a shape library, and asking for one is
+	// a round trip a note does not need while it renders.
+	const libraryItems = viewMode ? [] : await ask({ type: 'excalidraw-library-load' }).catch(() => []);
 	window.__clewExcalidrawLibraryCount = libraryItems.length;   // smoke hook
 
 	// Excalidraw owns the scene from here; we keep only what saving needs.
@@ -163,7 +172,8 @@ async function boot() {
 				libraryItems,
 				scrollToContent: true,
 			},
-			onChange,
+			onChange: viewMode ? undefined : onChange,
+			viewModeEnabled: viewMode,
 			onLibraryChange: (items) => {
 				ask({ type: 'excalidraw-library-save', items }).catch(() => {});
 			},

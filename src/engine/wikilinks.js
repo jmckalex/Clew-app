@@ -34,8 +34,15 @@ const MEDIA_KIND = {
 	'.mp3': 'audio', '.m4a': 'audio', '.wav': 'audio', '.ogg': 'audio', '.flac': 'audio',
 	'.mp4': 'video', '.webm': 'video', '.mov': 'video',
 	'.canvas': 'canvas',
+	'.excalidraw': 'excalidraw',
 };
-const mediaKind = (p) => MEDIA_KIND[p.slice(p.lastIndexOf('.')).toLowerCase()] ?? null;
+// An Obsidian drawing is `name.excalidraw.md` — a .md by extension, which the
+// note path would otherwise claim and transclude as prose. The compound suffix
+// is therefore tested first.
+const mediaKind = (p) => {
+	if (/\.excalidraw\.md$/i.test(p)) return 'excalidraw';
+	return MEDIA_KIND[p.slice(p.lastIndexOf('.')).toLowerCase()] ?? null;
+};
 
 let noteIndex = null; // Map<lowercased basename-no-ext, string[] of vault-relative paths>
 let fileIndex = null; // Map<lowercased basename WITH ext, string[]> for non-note files
@@ -294,6 +301,15 @@ export const wikiembed = {
 					return `<audio class="internal-media" controls src="${src}"></audio>\n`;
 				case 'video':
 					return `<video class="internal-media" controls src="${src}"${dims}></video>\n`;
+				case 'excalidraw':
+					// A read-only Excalidraw view. The preview client turns this
+					// into an iframe running the editor page in view mode, lazily
+					// — each one is a React instance, so a note holding several
+					// drawings must not build them all at once.
+					return `<div class="internal-embed excalidraw-embed-box">`
+						+ `<div class="embed-title"><a class="internal-link" href="#" data-href="${escapeAttr(token.full)}">${alt}</a></div>`
+						+ `<div class="excalidraw-embed" data-excalidraw-src="${src}"`
+						+ ` data-excalidraw-path="${escapeAttr(token.media.rel ?? '')}"></div></div>\n`;
 				case 'canvas':
 					// A live, read-only canvas view — the preview client fetches
 					// the JSON at data-canvas-path and renders the scene into the

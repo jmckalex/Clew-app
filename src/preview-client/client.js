@@ -17,6 +17,7 @@ import { initCanvasEmbeds, refreshCanvasEmbeds, broadcastThemeToNested } from '.
 import { initLeafletMaps } from './leaflet-maps.js';
 import { initQueryInteract } from './query-interact.js';
 import { initPdfEmbeds } from './pdf-embed.js';
+import { initExcalidrawEmbeds } from './excalidraw-embed.js';
 
 const HOST_SOURCE = 'clew-preview-host';
 const post = (msg) => window.parent.postMessage({ source: 'clew-preview', ...msg }, '*');
@@ -119,6 +120,7 @@ function applyRender(html) {
 		initCanvasEmbeds();
 		initLeafletMaps();
 		initPdfEmbeds();
+		initExcalidrawEmbeds();
 		retypeset();
 		// Morphs never re-execute scripts; note-API controls re-bind on this.
 		document.dispatchEvent(new CustomEvent('clew:render'));
@@ -268,5 +270,6 @@ enableTaskCheckboxes();
 initCanvasEmbeds();
 initLeafletMaps();
 initPdfEmbeds();
+initExcalidrawEmbeds();
 initQueryInteract();
 post({ type: 'ready' });
