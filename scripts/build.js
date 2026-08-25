@@ -59,6 +59,29 @@ export const bundles = [
 		format: 'iife',
 	},
 	{
+		// The Excalidraw editor page. This is the ONLY bundle that contains
+		// React: it is loaded in an iframe when a drawing is opened, so the
+		// app's own renderer never carries a framework. Excalidraw is bundled
+		// as-is — upgrading is `npm install @excalidraw/excalidraw@latest`
+		// plus a rebuild, with no code of ours to revisit.
+		entryPoints: [path.join(root, 'src/excalidraw/page.js')],
+		outfile: path.join(root, 'dist/excalidraw/page.js'),
+		bundle: true,
+		format: 'iife',
+		jsx: 'automatic',
+		// Excalidraw's exports map offers only development/production
+		// conditions — no default — so without this neither its entry
+		// point nor its stylesheet resolves.
+		conditions: ['production'],
+		// The only minified bundle in the project, and it earns it: React plus
+		// Excalidraw is 14 MB unminified and about a seventh of that minified.
+		// Nothing of ours is in here to debug — it is third-party code we do
+		// not modify.
+		minify: true,
+		loader: { '.woff2': 'file', '.ttf': 'file', '.png': 'file', '.svg': 'file' },
+		define: { 'process.env.NODE_ENV': '"production"' },
+	},
+	{
 		// The standalone PDF viewer page's script, served from
 		// __clew_assets__/clewpdf/ for the file tab and canvas PDF nodes.
 		entryPoints: [path.join(root, 'src/preview-client/pdf-page.js')],
@@ -80,6 +103,8 @@ export const bundles = [
 // by the render worker and the preview protocol, not bundled.
 export const staticDirs = [
 	{ from: path.join(root, 'src/renderer/index.html'), to: path.join(root, 'dist/renderer/index.html') },
+	// Host page for the Excalidraw editor.
+	{ from: path.join(root, 'src/excalidraw/page.html'), to: path.join(root, 'dist/excalidraw/page.html') },
 	// Host page for the standalone PDF viewer.
 	{ from: path.join(root, 'src/preview-client/pdf-page.html'), to: path.join(root, 'dist/preview-client/pdf-page.html') },
 	{ from: path.join(root, 'src/renderer/styles'), to: path.join(root, 'dist/renderer/styles') },

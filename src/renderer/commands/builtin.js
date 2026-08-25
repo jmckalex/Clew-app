@@ -13,6 +13,7 @@
 import { registerCommand, buildContext, allCommands, isEnabled, effectiveKeymap } from './registry.js';
 import { openSearchPanel } from '@codemirror/search';
 import { registerFormatCommands, activeEditorView, needsEditor } from './format.js';
+import { formatTableAtCursor } from '../editor/tables.js';
 import { openDiaryDay } from './diary.js';
 import { notice } from '../plugins.js';
 import { substituteTemplate } from '../../shared/diary.js';
@@ -78,6 +79,13 @@ export function registerBuiltinCommands() {
 			run: () => document.querySelector('clew-file-explorer')?.createFolder?.('') },
 		{ id: 'file:new-canvas', name: 'Create new canvas', when: needsVault,
 			run: () => document.querySelector('clew-file-explorer')?.createCanvas?.('') },
+		{ id: 'file:new-drawing', name: 'Create new drawing (Excalidraw)', when: needsVault,
+			run: () => document.querySelector('clew-file-explorer')?.createDrawing?.('') },
+		{ id: 'editor:format-table', name: 'Format table at cursor', when: needsEditor,
+			run: () => {
+				const view = activeEditorView();
+				if (view) formatTableAtCursor(view);
+			} },
 		{ id: 'file:save', name: 'Save note', hotkeys: ['Mod-s'], when: needsNote,
 			run: (ctx) => editorPool.flush(ctx.activeTab.id) },
 		{ id: 'file:open-vault', name: 'Open another vault…',

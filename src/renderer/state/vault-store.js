@@ -11,6 +11,7 @@
 // Renderer-side mirror of the vault: identity + file tree (the full index
 // mirror — backlinks, tags, graph — arrives with the M3 indexer).
 import { Emitter } from '../lib/emitter.js';
+import { isExcalidrawPath } from '../../shared/excalidraw-file.js';
 import { NOTE_EXTENSIONS } from '../../shared/channels.js';
 
 class VaultStore extends Emitter {
@@ -174,6 +175,10 @@ class VaultStore extends Emitter {
 }
 
 export function isNotePath(path) {
+	// An Excalidraw drawing is stored as `.excalidraw.md` — a markdown file by
+	// extension, but a drawing to every user who has one. It routes to the
+	// drawing editor, not the note editor.
+	if (isExcalidrawPath(path)) return false;
 	return NOTE_EXTENSIONS.some((ext) => path.toLowerCase().endsWith(ext));
 }
 

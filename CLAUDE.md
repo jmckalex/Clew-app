@@ -62,7 +62,7 @@ note API, plugins, and every settings key.
 - **Tests:** `npm test` (`node --test`, files in `tests/`): workspace tree,
   note-metadata extractor, BibTeX parser, the ported jmarkdown-scan suite,
   canvas model, diary, frontmatter, plugins discovery, query/leaflet/exif
-  parsers — 190 tests. DOM/UI work is verified with the smoke harness.
+  parsers, Excalidraw round-trip, markdown tables — 217 tests. DOM/UI work is verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js] [CLEW_SMOKE_VAULT=/path/vault]
   electron .` — SMOKE_VAULT opens exactly that vault, never touching the
@@ -264,6 +264,12 @@ browser-window-focus).
   entries on blank lines. The engine's inline CSS assumes a light page;
   `src/engine/preview.css` carries the dark-theme overrides (alerts,
   highlights, TikZ/MetaPost plates).
+- **Markdown tables are editable** (`editor/tables.js`): Tab/Shift-Tab walk
+  the cells, Enter walks the rows, both adding a row at the end, and the
+  table reflows so the pipes line up. Registered with `Prec.high` so Tab
+  reaches a table before `indentWithTab` — every handler returns false
+  outside a table, which hands the key back. Parsing/formatting are pure
+  functions (unit-tested); only the keymap touches CodeMirror.
 - **Commands + keybindings** live in `commands/registry.js` + `builtin.js`
   (CM chord notation). Add shortcuts as commands — never ad-hoc keydown
   listeners — so the palette, the settings hotkey editor, and the native
@@ -275,6 +281,12 @@ browser-window-focus).
 - Editor↔preview scroll sync runs over `preview/scroll-sync.js` (bus +
   per-side suppressors). Emit only on user scroll; `suppress()` before any
   programmatic scroll.
+- **Obsidian's Excalidraw PLUGIN is AGPL-3.0** (its LICENSE file; its
+  package.json says MIT, which is stale — the file governs). Its code must
+  never enter this GPL-3.0 tree. Compatibility is achieved by implementing
+  the on-disk FORMAT, which is not copyrightable, and verifying behaviour
+  against real files — never by lifting source. `@excalidraw/excalidraw`
+  itself is MIT and is embedded normally.
 - Obsidian compatibility is a hard constraint: never write into
   `.obsidian/`, keep `[[wikilink]]` semantics Obsidian-shaped, `.md` files
   stay `.md`. Clew state lives in `.clew/` (gitignored).

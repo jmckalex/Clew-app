@@ -194,6 +194,7 @@ class AppMenu {
 			submenu: [
 				c('file:new-note', 'New Note', { chord: 'Mod-n', needs: 'vault' }),
 				c('file:new-canvas', 'New Canvas', { needs: 'vault' }),
+				c('file:new-drawing', 'New Drawing (Excalidraw)', { needs: 'vault' }),
 				c('file:new-folder', 'New Folder', { needs: 'vault' }),
 				c('workspace:new-tab', 'New Tab', { chord: 'Mod-t' }),
 				{

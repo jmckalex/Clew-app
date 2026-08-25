@@ -1,4 +1,4 @@
-# Handover — 2026-08-24 (docs split out to ../Clew-docs; manual, bibliography, split/alignment fixes)
+# Handover — 2026-08-25 (PDF viewer, Excalidraw, engine syncs, table editing)
 
 Session-rollover state. Durable architecture, conventions, and gotchas live
 in **CLAUDE.md** (trust it); the original design plan is at
@@ -7,223 +7,150 @@ session; keep it short and current.
 
 ## 0. Where things stand
 
-- Branch `main`. **Everything is now committed**: the three sessions'
-  backlog (150 modified, 3 untracked, 11 staged deletions) went in as ten
-  commits on top of `5fbb59b`, grouped by the change they made —
-  licence headers, icon redraw, signing/notarization, canvas groups, the
-  `docs/` move, bibliography, the three bug fixes, the version bump.
-  Working tree clean. `npm test` → **190 green**.
-  Demo/study vaults carry only intended edits (§3, §5).
-- **`../Clew-docs` is the exception**: that repo was created this session
-  and is fully committed (4 commits, clean tree). Nothing is pending
-  there. It has its **own `HANDOVER.md`** — read that, not this file,
-  when working on the website or the manual.
-- **The 0.8.0 release set in `out/` is now stale**: it was built before
-  this session's manual, bibliography feature, and bug fixes. Shipping any
-  of that means rebuilding — which folds into the still-undecided
-  **`v0.8.0` tag collision** (tag exists on an older commit; retag or go
-  0.9.0). The new features make 0.9.0 the natural answer, but nobody has
-  chosen. Signing/notarization is settled and working — see the 2026-08-23
-  handover in git history (`git show 5fbb59b:HANDOVER.md`) for the full
-  release/notarization/canvas/icon/licence record; all of it still holds.
+- Branch **`feat/excalidraw`** (9 commits), based on `main`. Working tree
+  clean, `npm test` → **217 green**. Demo/study vaults clean.
+- **`main` is where everything else landed** — the whole three-session
+  backlog was committed at the start of this session (11 commits), then
+  the PDF work, two engine syncs and a canvas fix on top.
+- `../Clew-docs` is clean, 5 commits this session. Read **its** HANDOVER
+  for the website; the DNS blocker there is unchanged.
+- **The branch is not merged.** That is the first decision waiting.
 
-`docs/` is gone from this repo — see §1.
+## 1. Decisions
 
-**Still true when committing: stage explicit paths, never `git add -A`**
-(§5). Two files needed splitting to keep the history honest, and the same
-trick will be wanted again: `scripts/make-icon.js` carried both the icon
-redraw and the cross-repo site write, and `package.json` carried both the
-mac build config and the version bump. Both were split by filtering hunks
-out of `git diff` and `git apply --cached`-ing the rest; the licence
-headers were separated from 18 files' real changes by constructing
-"HEAD content + header" blobs straight into the index.
+1. **Merge `feat/excalidraw`?** It is complete and documented (§3). Nothing
+   depends on it staying separate.
+2. ~~The Excalidraw plugin's licence~~ — **settled.** Its LICENSE file is
+   AGPL-3.0 (its package.json says MIT; the file governs). Its two regexes
+   are gone from `src/shared/excalidraw-file.js`, replaced by a builder
+   written from the on-disk format, with behaviour verified unchanged. The
+   rule is recorded in CLAUDE.md: the PLUGIN is AGPL and its source must
+   never enter this tree; `@excalidraw/excalidraw` itself is MIT and is
+   embedded normally.
 
-## 1. The docs moved out — ../Clew-docs (new repo, this session)
+Also still open from before: the **v0.8.0 tag collision** (the tag is on an
+older commit; retag or go 0.9.0), and `out/` holds stale artefacts.
 
-The website and the 28-page manual are no longer in this repo. They are a
-third sibling under `~/Source/Clew/`, beside `Clew-app` and `Clew-iOS`,
-with their own git history (4 commits, clean) and their own deployment.
-**That repo has its own `HANDOVER.md`, `README.md` and `CLAUDE.md`** —
-its session state, the deploy procedure, and the manual's house style all
-live there and are not repeated here.
+## 2. PDFs are EmbedPDF now (merged to main)
 
-Why it happened now: the manual was still untracked, so 7 MB of
-screenshots would otherwise have entered *this* repo's history
-permanently on the next commit.
+All three surfaces — note embeds, the file tab, canvas nodes — run
+EmbedPDF (MIT, Pdfium-wasm, 9.5 MB staged), replacing Chromium's plugin.
+One implementation, `preview-client/pdf-core.js`. **Annotations autosave
+into the vault's own PDF** (2.5s debounce → `renderer/pdf-save.js` →
+`CH.PDF_WRITE` → `vault.writePdf`, which refuses anything that is not an
+existing `.pdf` inside the vault). CJK fallback fonts are an app setting
+(`pdfCjkFonts`), downloaded on demand into userData.
 
-- Nothing in the build, packaging, or tests referenced `docs/`. The one
-  code coupling is `scripts/make-icon.js`, which now writes the site's
-  `icon.svg`/`favicon.svg`/`icon-256.png` into `../Clew-docs/site/images`
-  and skips the step (existing `existsSync` guard) if that repo is not
-  checked out. Verified: the path resolves.
-- **New features MUST still update the manual** — but a stale manual no
-  longer shows up in this repo's `git status`. This is now the easiest
-  thing in the project to forget; both `CLAUDE.md` files say so.
-- Deployment is `make sync` in `Clew-docs` (rsync to the droplet,
-  `clew-app.com`). §8 below has the state of that.
+Owner-verified: print, find, text selection and trackpad feel all hold up.
+Owner-reported and fixed: the first-render flash (Chromium's plugin
+painting for a frame before removal — now hidden by CSS), Fullscreen doing
+nothing (no iframe had `allow="fullscreen"`), and a ⟷ expand-to-width
+control for the narrow note column.
 
-## 2. Bug fixes this session (owner-reported, all smoke-verified)
+**The 139 MB CJK download has never been run end to end.** URL construction
+and per-file logic are verified separately; nobody has watched 26 files
+land.
 
-- **`>> right` / `>> centered <<` alignment did nothing in previews**:
-  the engine emits `.jmarkdown-right`/`.jmarkdown-center` but ships no
-  CSS for them (only its docs-site stylesheets define them). Fixed with
-  two rules in `src/engine/preview.css`. *Upstream candidate*: the rules
-  belong in the engine's `jmarkdown.css` so every consumer gets them.
-- **Splits could not be closed from a preview** (and worse, ⌘W closed a
-  tab in the *other* pane): chords forwarded from the preview iframe ran
-  against the app's active group, but clicks inside the cross-origin
-  iframe never reach the pointerdown focus tracking. Fixed in
-  `clew-preview-view.js` (chord handler activates its own `tabId` first;
-  new `focused` message) + `client.js` (posts `focused` on pointerdown).
-  Don't regress: an iframe click must count as pane focus.
-- **Welcome banner had too much empty space**: `header-height: 120` in
-  `Welcome.md`, and the header plugin (v1.1.0) gained `header-position`
-  (CSS background-position) and `header-align` (top/center/bottom).
-  `plugins.html` quotes this plugin — keep the quotes in sync.
+## 3. Excalidraw (branch `feat/excalidraw`)
 
-## 3. New feature: vault-wide bibliography + References panel
+Obsidian vaults are full of `.excalidraw.md`. Clew now opens, edits and
+creates them, using the real Excalidraw **shimmed, not ported** — porting
+meant 86k lines of React against Clew's ~4k-line canvas, re-authored
+forever. Upgrading is `npm install @excalidraw/excalidraw@latest` + build.
 
-Vault settings (Settings → This vault / `.clew/vault-settings.json`):
-`bibliography` (path from vault root or absolute), `bibliographyStyle`
-(named style or `.csl` path), `bibliographyPanel` (bool). **No engine
-changes** — the design facts:
+- **React is quarantined** in one bundle (`dist/excalidraw/page.js`, 8 MB
+  minified, the only minified bundle) loaded in an iframe only when a
+  drawing is opened. Never in the app's renderer.
+- **The file layer is the contract** (`src/shared/excalidraw-file.js`, 13
+  tests): LZString base64 in 256-char lines, reproduced byte-identically —
+  verified against the plugin's own `compress()`. Saving splices into the
+  original text, so frontmatter, prose, `## Text Elements` and the
+  compression all survive; an unedited scene re-serialises byte-for-byte.
+- **Both extensions work**, `excalidrawFormat` chooses which Clew creates.
+  Drawings are indexed either way — `drawingText()` reads the words out of
+  the scene, so a `[[wikilink]]` inside a drawing is a real link.
+- Embeds are read-only; canvas nodes are editable; libraries persist per
+  vault in `.clew/excalidraw-library.json`.
 
-- `render-service.js#writeEngineConfig` emits a `Biblify` config section
-  (absolute paths; custom styles via `template: {name, file}`). The
-  engine's 8 named styles ship inside it already (apa, chicago, harvard1,
-  vancouver, bjps, ajp, econometrica, ergo — `vendor/jmarkdown/src/csl/`).
-- **Per-note override is engine precedence**: metadata headers are
-  processed after the config file, so `Bibliography:` / `Bibliography
-  style:` properties win per note. Verified (vault apa, note bjps).
-- **The References panel's feed** is a hidden
-  `<aside class="clew-bib-panel-source"><div class="biblify-bibliography"
-  data-all="true">` at the end of `clew-template.html` — the citation
-  post-pass runs on the *templated* document and fills (or removes) it.
-  The panel (`panels/clew-bibliography.js`, right-bar "Refs" tab, gated
-  on the vault setting via `clew-app.js` `when:` + the
-  `clew:vault-settings-changed` window event) fetches rendered HTML over
-  the new `RENDER_HTML` IPC and lifts the list out, sanitized — so it
-  works with the note in source mode too.
-- Sectional bibliographies (engine, verified): bare `@bibliography` =
-  per-section (collects since last marker), `{all}`, `{scope="#css"}`,
-  `{style= title=}`; a sectional marker's style reaches its section's
-  inline citations. All composes with the vault setting; documented in
-  `citations.html#sectional`.
+Round-trip validated against the plugin's OWN parser (9/9) — the closest
+thing to "does Obsidian read this?" without Obsidian. **Untested:**
+drawings holding embedded images (`files{}`).
 
-## 4. Real bugs found, NOT fixed (owner triage)
+## 4. Everything else this session
 
-1. `query-fences.js#scanNotes` (~line 148) uses bare `entry.isDirectory()`
-   — **queries don't traverse symlinked folders**, contra CLAUDE.md's
-   walk rule.
-2. Map distance tool leaks: third Shift-click starts a new measurement
-   but the old line/readout stay until re-render
-   (`leaflet-maps.js:259-279`).
-3. App-surface plugins load only on vault open — the settings checkbox
-   implies live toggling but doesn't reload them (`renderer/plugins.js`
-   only runs on `vault-changed`).
-4. Alias wikilinks render in the unresolved dashed style though they
-   navigate correctly (engine resolver checks basenames only,
-   `src/engine/wikilinks.js:84-98`).
-5. A kanban wider than the note column silently clips trailing columns
-   (macOS overlay scrollbar invisible) — documented honestly in the
-   manual; the landing `kanban.jpg` shows 3 of 4 columns because of it.
-6. Landing page still claims "37 pages" for the demo-vault export
-   (drifted; manual says "roughly forty"). **Now a `../Clew-docs` item.**
-7. Still open from before: engine passes `<` raw in code spans.
+- **Engine synced twice** from the golden master's dirty tree: `@image`/
+  `@video` with translated attributes, then pandoc citations (`[@key]`) and
+  `\citefile`. Pandoc citations are wired as a vault setting
+  (`pandocCitations`, off by default — `@` is the directive sigil, so a
+  bare `@word` becomes a citation key).
+- **Canvas style bar fixed**: line/path style, fill and opacity did nothing
+  and dropped the selection, because `.canvas-stylebar` was missing from
+  `#onPointerDown`'s chrome guard. All three guards now use a shared
+  `canvas-chrome` class.
+- **Table editing** (`editor/tables.js`): Tab/Enter walk cells and rows,
+  adding rows at the end, reflowing as you go. Not a shim — Advanced
+  Tables emits plain GFM.
+- **`npm run vault-report -- <vault>`** (scripts/vault-report.js): walks an
+  Obsidian vault read-only and names what Clew would not understand.
+  Calibrated both ways — Clew's own vaults report "opens cleanly".
+- Splits, panes, NUL byte, Note Headers 1.2.0 (animated HTML banners via
+  `data-clew-keep`) — all on main, all documented in the manual.
 
-## 5. Standing session rules (learned the hard way)
+## 5. Gaps, now MEASURED against real vaults
 
-- **NEVER `git add -A`** — stage explicit paths (§0 list).
+`npm run vault-report` was run against two public Obsidian vaults. The
+ranking below is data, not impressions.
+
+**obsidianmd/obsidian-help** (Obsidian's own help vault, 175 notes):
+
+| finding | count |
+|---|---|
+| callouts beyond GFM's five, 16 distinct types | **102** |
+| block references `[[note#^id]]` | 13 |
+| `permalink` / `publish` frontmatter (Publish; harmless) | 229 |
+| exotic code fences (twig, liquid, mathjax, htaccess) | 25 |
+
+**s-blu/obsidian_dataview_example_vault** (264 notes):
+
+| finding | count |
+|---|---|
+| ```` ```dataview ```` | **253** |
+| ```` ```dataviewjs ```` | 130 |
+| callouts beyond GFM's five (`[!help]` alone 79) | 79+ |
+
+What that says:
+
+1. **Callouts are the biggest gap by an order of magnitude**, and they are
+   CORE Obsidian, not a plugin — 102 in Obsidian's own documentation, 79+
+   in a vault about something else entirely. `[!info]`, `[!todo]`,
+   `[!example]`, `[!abstract]`, `[!danger]`, `[!hint]`, `[!question]`,
+   `[!success]`, `[!failure]`, `[!bug]`, `[!quote]`, `[!summary]`… all
+   fall back to plain blockquotes. The engine already renders GFM's five,
+   so this is mapping the rest onto that machinery, plus foldable
+   `[!note]-` and custom titles. **Do this first.**
+2. **Block references** `[[note#^id]]` — also core, 13 in the help vault.
+3. **Dataview** is confirmed as the plugin that matters, though 253/130 in
+   a vault *about* Dataview is a biased sample. Translate the safe DQL
+   subset; refuse `dataviewjs` honestly rather than half-supporting it.
+4. Kanban and Tasks did not appear in either sample — worth a third vault
+   before ranking them.
+
+Both vaults are cloned under the session scratchpad; re-clone with
+`git clone --depth 1 https://github.com/obsidianmd/obsidian-help.git` and
+`…/s-blu/obsidian_dataview_example_vault.git`.
+
+## 6. Standing session rules (unchanged, still earning their keep)
+
+- **NEVER `git add -A`** — stage explicit paths.
 - Always pass `CLEW_SMOKE_VAULT`; `git status` demo/study vaults after
-  every smoke. This session's intended vault edits: `Welcome.md`,
-  `.clew/plugins/header/*` (demo). `demo-vault/clewdata.json` is tracked —
-  restore it (`git checkout`) after any smoke that clicks the Habit
-  Tracker.
-- The owner's bug reports have been consistently RIGHT — reproduce THEIR
-  gesture path (this session: the split bug needed a real keystroke inside
-  the preview iframe to reproduce; store-driven repros passed wrongly).
-- Theme-changing smokes persist to app-global settings — follow with a
-  restore-dark run.
-- Verify artefacts by content, not logs.
-
-## 6. Verification kit (works, use it)
-
-Smoke pattern as in CLAUDE.md; `window.__clew` = stores, registry, ipc,
-actions, editorPool. New tricks that earned their keep:
-
-- Interactive grids (Habit Tracker) re-render per click — frame scripts
-  must **re-query elements before every click**.
-- Wide content: collapse sidebars (`workspace:toggle-left/right-sidebar`)
-  before screenshotting; delete a vault's `.clew/workspace.json` for a
-  clean single-pane layout (it regenerates).
-- Renderer diagnostics that survive quit: wrap store methods and stream a
-  log via `C.ipc.invoke('clew:note-write', …)` into a THROWAWAY vault;
-  or read `.clew/workspace.json` after quit for final layout.
-- Frame scripts can dispatch real `KeyboardEvent`s to test the preview
-  chord forwarder; a frame script that throws skips the screenshot.
-- Headless Chrome (`--headless --screenshot`) renders any HTML page for a
-  visual check without Electron — used in `../Clew-docs` for both the
-  manual pages and the social card.
-
-## 7. Open items (carried + new)
-
-1. **v0.8.0 tag collision / version bump + rebuild** — blocks release
-   (release set in `out/` predates this session's features).
-2. Windows/Linux artefacts never launched on real hardware. (The site's
-   Windows download filename mismatch is **fixed**: `Clew-docs`'
-   `make stage-downloads` renames `Clew Setup X.Y.Z.exe` →
-   `Clew-Setup-X.Y.Z.exe` on the way to the server, so the page's
-   hyphenated href is the one that ships.)
-3. `out/` holds stale 0.7.0 artefacts beside the (now also stale) 0.8.0s.
-4. §4 bug list above; canvas style bar still ignores selected ink.
-5. Upstream jmarkdown candidates: alignment CSS (§2), code-span `<`,
-   sidebar-restore emit, engine extension-registry hook (see 5fbb59b
-   handover §6.10).
-6. Kanban/query polish and Obsidian-universe candidates — unchanged from
-   last session's list.
-7. Manual follow-ups if features change: it documents split behaviour,
-   citations, panels, settings keys — keep it truthful. It now lives in
-   `../Clew-docs`.
-8. **Neither this repo nor `../Clew-docs` has a git remote.** Everything —
-   150 uncommitted files here, ~50k words of manual there — exists on one
-   machine only. Worth deciding on before the release, not after.
-
-## 8. Website hosting (set up this session, not yet live)
-
-`../Clew-docs` deploys to the same DigitalOcean droplet as the owner's
-other sites (`ssh do` → 144.126.236.254, Ubuntu 24.04, nginx 1.24,
-certbot). It follows the house pattern in `~/Sites/digital_ocean/`
-(`/var/www/<name>`, `web:web`, `--rsync-path="sudo rsync"`), departing
-from it in one respect: a directory sync with `--delete` instead of an
-explicit file list, because the site is 70 files and a hand-kept list
-would be wrong the first time a chapter is added.
-
-**The app has its own domains now**: `clew-app.com` (canonical) and
-`clew-app.net` (redirects to it), both registered with GoDaddy. That is
-why the site is not on `jmckalex.org` at all.
-
-**Blocked on one thing only: DNS.** Both domains still resolve to
-GoDaddy's parking IPs; repointing the A records at 144.126.236.254 needs
-registrar access. `make dns-check` in `Clew-docs` is the gate and refuses
-to go on until all four names agree. After that it is
-`make provision`, `make nginx-install`, `make sync`, `make tls` — the
-last runs certbot for all four names, including the two `.net` ones that
-only redirect (a browser in HTTPS-first mode tries `https://clew-app.net`
-before `http://`, so an uncertificated alternate fails rather than
-redirecting). Nothing on the droplet has been changed — everything so far
-is read-only inventory.
-
-Release binaries (~640 MB) are deliberately outside git and outside the
-ordinary sync: `make stage-downloads` copies them from this repo's `out/`,
-`make sync-downloads` uploads them. The landing page's four `downloads/…`
-links 404 until that runs — they always have; the directory never existed.
-Not run yet, because the version is undecided (§0/§7.1): `VERSION` in that
-Makefile and the nine `0.8.0` strings in the landing page have to move
-together with whatever this repo tags.
-
-The site also gained full social-preview tags and a generated 1200×630
-card this session. The card is rendered from HTML that reuses the landing
-page's palette and tagline, and **must be re-rendered on a Mac** (it uses
-Avenir Next). Details in `../Clew-docs/HANDOVER.md` §4 — including that
-none of it can be checked against Facebook's or Twitter's debuggers until
-DNS resolves, since they fetch the live URL.
+  every smoke.
+- The owner's bug reports have been consistently RIGHT.
+- **Write assertions that can fail.** A table-editing smoke came back
+  4/4 green with two assertions that were vacuous (`doc.lines >= 9`, and a
+  literal `true`). Rewritten to count rows and cursor cells, it proved the
+  real thing.
+- Verify artefacts by content: the .canvas file, the .excalidraw.md bytes,
+  the saved PDF — not the log.
+- `npm run dev` and `npm run package` **re-sync the engine** from the
+  master's working tree. That is how newer engine work arrives unbidden;
+  it is not your edit.
