@@ -16,20 +16,17 @@ session; keep it short and current.
   for the website; the DNS blocker there is unchanged.
 - **The branch is not merged.** That is the first decision waiting.
 
-## 1. Two decisions waiting
+## 1. Decisions
 
 1. **Merge `feat/excalidraw`?** It is complete and documented (§3). Nothing
    depends on it staying separate.
-2. **The Excalidraw plugin's licence is ambiguous, and we touched it.**
-   `zsviczian/obsidian-excalidraw-plugin` ships `package.json: MIT` and a
-   `LICENSE` file that is **AGPL-3.0**. Two of its regexes were copied into
-   `src/shared/excalidraw-file.js` (the comment there says so). Two short
-   regexes matching a documented format are plausibly de minimis, but AGPL
-   cannot be absorbed into GPL-3.0 and the metadata conflict makes the
-   question live. Cheap fix: re-derive them from the format and describe
-   it in the comment instead of citing their file. NOT done unilaterally —
-   it is the owner's exposure. **Note: `@excalidraw/excalidraw` itself is
-   MIT and is not affected; this is only the Obsidian plugin.**
+2. ~~The Excalidraw plugin's licence~~ — **settled.** Its LICENSE file is
+   AGPL-3.0 (its package.json says MIT; the file governs). Its two regexes
+   are gone from `src/shared/excalidraw-file.js`, replaced by a builder
+   written from the on-disk format, with behaviour verified unchanged. The
+   rule is recorded in CLAUDE.md: the PLUGIN is AGPL and its source must
+   never enter this tree; `@excalidraw/excalidraw` itself is MIT and is
+   embedded normally.
 
 Also still open from before: the **v0.8.0 tag collision** (the tag is on an
 older commit; retag or go 0.9.0), and `out/` holds stale artefacts.
@@ -99,21 +96,48 @@ drawings holding embedded images (`files{}`).
 - Splits, panes, NUL byte, Note Headers 1.2.0 (animated HTML banners via
   `data-clew-keep`) — all on main, all documented in the manual.
 
-## 5. Gaps the vault report already surfaced
+## 5. Gaps, now MEASURED against real vaults
 
-Core Obsidian, so higher priority than any plugin:
+`npm run vault-report` was run against two public Obsidian vaults. The
+ranking below is data, not impressions.
 
-1. **Callouts beyond GFM's five** (`[!abstract]`, `[!question]`, …) fall
-   back to plain blockquotes. The engine handles GFM alerts; Obsidian has
-   ~13 types plus foldable `[!note]-` and custom titles.
-2. **Block references** `[[note#^id]]` are not resolved at all (headings
-   are).
+**obsidianmd/obsidian-help** (Obsidian's own help vault, 175 notes):
 
-Then, by value: **Kanban** (Clew already has a board renderer — detect
-`kanban-plugin` frontmatter and point it at one), **Tasks** emoji fields
-(📅 🔁 ⏫ — a small parser feeding the existing ```tasks), **Dataview**
-(biggest install base, biggest job; translate the safe subset and refuse
-`dataviewjs` honestly), **Charts**. Advanced Tables needed no shim — done.
+| finding | count |
+|---|---|
+| callouts beyond GFM's five, 16 distinct types | **102** |
+| block references `[[note#^id]]` | 13 |
+| `permalink` / `publish` frontmatter (Publish; harmless) | 229 |
+| exotic code fences (twig, liquid, mathjax, htaccess) | 25 |
+
+**s-blu/obsidian_dataview_example_vault** (264 notes):
+
+| finding | count |
+|---|---|
+| ```` ```dataview ```` | **253** |
+| ```` ```dataviewjs ```` | 130 |
+| callouts beyond GFM's five (`[!help]` alone 79) | 79+ |
+
+What that says:
+
+1. **Callouts are the biggest gap by an order of magnitude**, and they are
+   CORE Obsidian, not a plugin — 102 in Obsidian's own documentation, 79+
+   in a vault about something else entirely. `[!info]`, `[!todo]`,
+   `[!example]`, `[!abstract]`, `[!danger]`, `[!hint]`, `[!question]`,
+   `[!success]`, `[!failure]`, `[!bug]`, `[!quote]`, `[!summary]`… all
+   fall back to plain blockquotes. The engine already renders GFM's five,
+   so this is mapping the rest onto that machinery, plus foldable
+   `[!note]-` and custom titles. **Do this first.**
+2. **Block references** `[[note#^id]]` — also core, 13 in the help vault.
+3. **Dataview** is confirmed as the plugin that matters, though 253/130 in
+   a vault *about* Dataview is a biased sample. Translate the safe DQL
+   subset; refuse `dataviewjs` honestly rather than half-supporting it.
+4. Kanban and Tasks did not appear in either sample — worth a third vault
+   before ranking them.
+
+Both vaults are cloned under the session scratchpad; re-clone with
+`git clone --depth 1 https://github.com/obsidianmd/obsidian-help.git` and
+`…/s-blu/obsidian_dataview_example_vault.git`.
 
 ## 6. Standing session rules (unchanged, still earning their keep)
 
