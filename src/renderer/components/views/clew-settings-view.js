@@ -121,6 +121,18 @@ class ClewSettingsView extends ClewElement {
 				+ 'absolute). Notes can override with a Bibliography style: '
 				+ 'property.',
 				['apa', 'chicago', 'harvard1', 'vancouver', 'bjps', 'ajp', 'econometrica', 'ergo']),
+			...this.#vaultTextRow('excalidrawFormat',
+				'New Excalidraw drawings are saved as',
+				'markdown — Obsidian\'s convention (default)',
+				'Leave empty or set "markdown" for Obsidian\'s .excalidraw.md, which '
+				+ 'is what a vault shared with Obsidian should contain: its plugin '
+				+ 'only indexes markdown, so the wrapper is what gives a drawing '
+				+ 'backlinks, tags and searchable text THERE. Set "json" for a plain '
+				+ '.excalidraw, which is the honest extension for a vault Clew has to '
+				+ 'itself. Clew reads and indexes both identically — it reads the '
+				+ 'words out of the drawing itself — so the choice costs you nothing '
+				+ 'here, only in Obsidian.',
+				['markdown', 'json']),
 			...this.#vaultToggle('pandocCitations',
 				'Pandoc citations: read [@key] and @key as citations',
 				'For vaults whose notes were written for pandoc — Zotero and '

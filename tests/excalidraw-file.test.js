@@ -12,7 +12,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
 	isExcalidrawPath, isExcalidrawMarkdown, compressScene, decompressScene,
-	parseExcalidraw, serializeExcalidraw, emptyScene, newMarkdownFile,
+	parseExcalidraw, serializeExcalidraw, emptyScene, newMarkdownFile, drawingText,
 } from '../src/shared/excalidraw-file.js';
 
 const SCENE = {
@@ -136,4 +136,16 @@ test('newMarkdownFile is a file we can read back', () => {
 	assert.deepEqual(parsed.scene, emptyScene());
 	// The frontmatter key is what makes Obsidian's plugin claim the file.
 	assert.ok(text.includes('excalidraw-plugin: parsed'));
+});
+
+test('drawingText pulls the words out of a scene, skipping deleted', () => {
+	const scene = { elements: [
+		{ type: 'text', text: 'Hello [[Welcome]]' },
+		{ type: 'rectangle' },
+		{ type: 'text', text: 'gone', isDeleted: true },
+		{ type: 'text', text: '#todo later' },
+	] };
+	assert.equal(drawingText(scene), 'Hello [[Welcome]]\n#todo later');
+	assert.equal(drawingText({}), '');
+	assert.equal(drawingText(null), '');
 });

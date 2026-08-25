@@ -13,6 +13,11 @@
 // rendering engine (this runs over every note in the vault on open and on
 // every keystroke's save). Code fences, inline code, and math are masked
 // first so links/tags inside them don't count.
+//
+// Drawings are handled here too (extractDrawingMetadata, below): lz-string is
+// not the rendering engine, and reading a scene is the same kind of cheap
+// structural parse as everything else in this file.
+import { parseExcalidraw, drawingText } from './excalidraw-file.js';
 
 const FENCE_RE = /^(```|~~~).*$[\s\S]*?^\1\s*$/gm;
 const INLINE_CODE_RE = /`[^`\n]*`/g;
@@ -137,6 +142,29 @@ export function extractNoteMetadata(text) {
 		headings,
 		links,
 		tags: [...tags.entries()].map(([tag, lineNos]) => ({ tag, lines: lineNos })),
+	};
+}
+
+/**
+ * Metadata for an Excalidraw drawing, in the same shape as a note's.
+ *
+ * The drawing's text elements are treated as the document's text, so the
+ * existing scanner finds the links and tags written inside it — no second
+ * implementation, and a drawing joins the graph on equal terms with a note.
+ * Falls back to null when the file holds no scene, which lets the caller
+ * treat it as ordinary text.
+ */
+export function extractDrawingMetadata(text, path) {
+	const parsed = parseExcalidraw(text, path);
+	if (!parsed) return null;
+	const meta = extractNoteMetadata(drawingText(parsed.scene));
+	// The markdown wrapper's frontmatter still carries tags and aliases when
+	// there is one; a plain .excalidraw has none.
+	const frontmatter = parseFrontmatter(text);
+	return {
+		...meta,
+		aliases: frontmatter.aliases?.length ? frontmatter.aliases : meta.aliases,
+		tags: [...meta.tags, ...frontmatter.tags.map((tag) => ({ tag, lines: [1] }))],
 	};
 }
 

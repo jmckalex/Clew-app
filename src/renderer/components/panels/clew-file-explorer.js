@@ -19,7 +19,7 @@ import { workspaceStore } from '../../state/workspace-store.js';
 import { editorPool } from '../../editor/pool.js';
 import { ipc, CH } from '../../ipc.js';
 import { showMenu } from '../chrome/menu.js';
-import { newMarkdownFile } from '../../../shared/excalidraw-file.js';
+import { newMarkdownFile, emptyScene } from '../../../shared/excalidraw-file.js';
 import { bookmarkStore } from '../../state/bookmark-store.js';
 import { settingsStore } from '../../state/settings-store.js';
 import * as actions from '../../commands/actions.js';
@@ -278,10 +278,20 @@ class ClewFileExplorer extends ClewElement {
 	 */
 	async createDrawing(folder = '') {
 		if (!vaultStore.vault) return;
-		const rel = folder ? `${folder}/Untitled.excalidraw.md` : 'Untitled.excalidraw.md';
+		// Obsidian's convention by default (.excalidraw.md), because a shared
+		// vault should look native there. A Clew-only vault can prefer the
+		// honest extension — Clew indexes both identically, so nothing is lost
+		// by choosing it (see excalidrawFormat in vault settings).
+		const settings = await ipc.invoke(CH.VAULT_SETTINGS_GET).catch(() => ({}));
+		const plain = settings?.excalidrawFormat === 'json';
+		const name = plain ? 'Untitled.excalidraw' : 'Untitled.excalidraw.md';
+		const rel = folder ? `${folder}/${name}` : name;
 		try {
 			const created = await ipc.invoke(CH.NOTE_CREATE, { path: rel });
-			await ipc.invoke(CH.NOTE_WRITE, { path: created, content: newMarkdownFile() });
+			await ipc.invoke(CH.NOTE_WRITE, {
+				path: created,
+				content: plain ? JSON.stringify(emptyScene(), null, 2) : newMarkdownFile(),
+			});
 			this.#pendingRename = created;
 			workspaceStore.openFile(created);
 		} catch (err) {

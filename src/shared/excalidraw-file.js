@@ -150,3 +150,24 @@ export function newMarkdownFile(scene = emptyScene()) {
 		+ '# Excalidraw Data\n\n## Text Elements\n\n'
 		+ `## Drawing\n\`\`\`compressed-json\n${compressScene(JSON.stringify(scene, null, 2))}\n\`\`\`\n%%`;
 }
+
+/**
+ * The words inside a drawing, one text element per line.
+ *
+ * This is what makes a drawing searchable and linkable in Clew. Obsidian gets
+ * the same thing by mirroring text elements into a "## Text Elements" section
+ * of the markdown wrapper — a workaround for the fact that its indexer only
+ * reads markdown. Ours reads whatever we tell it to, so we go to the source
+ * and the wrapper stops mattering: a plain .excalidraw indexes exactly as well
+ * as a .excalidraw.md.
+ *
+ * Wikilinks and #tags written inside a drawing therefore reach the graph,
+ * backlinks and search like any other text.
+ */
+export function drawingText(scene) {
+	const elements = Array.isArray(scene?.elements) ? scene.elements : [];
+	return elements
+		.filter((el) => el && el.type === 'text' && !el.isDeleted && typeof el.text === 'string')
+		.map((el) => el.text)
+		.join('\n');
+}
