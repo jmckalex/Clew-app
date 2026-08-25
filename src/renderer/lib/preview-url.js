@@ -43,6 +43,16 @@ export function pdfViewerUrl(fileUrl) {
 		+ `?src=${encodeURIComponent(fileUrl)}`;
 }
 
+/**
+ * The Excalidraw editor page, wrapping a drawing. Like pdfViewerUrl, the page
+ * itself is an ASSET (no session id) while the file it edits is a vault path
+ * (which carries one) — the two travel as separate parameters.
+ */
+export function excalidrawUrl(path) {
+	return 'clew-preview://vault/__clew_assets__/clewex/page.html'
+		+ `?src=${encodeURIComponent(vaultFileUrl(path))}&path=${encodeURIComponent(path)}`;
+}
+
 /** Engine fragment-render endpoint (canvas cards; POST markdown → HTML). */
 export function fragmentUrl() {
 	return `clew-preview://vault/${sessionId}/__clew_fragment__`;

@@ -12,7 +12,7 @@
 // built-in viewer), audio, video — served through clew-preview://.
 import { ClewElement } from '../base/clew-element.js';
 import { fileKind } from '../../lib/file-types.js';
-import { vaultFileUrl, pdfViewerUrl } from '../../lib/preview-url.js';
+import { vaultFileUrl, pdfViewerUrl, excalidrawUrl } from '../../lib/preview-url.js';
 
 class ClewFileView extends ClewElement {
 	tabId = null;
@@ -24,7 +24,14 @@ class ClewFileView extends ClewElement {
 		const kind = fileKind(this.path);
 
 		let el;
-		if (kind === 'image') {
+		if (kind === 'excalidraw') {
+			// The Excalidraw editor, in its own document. React is confined to
+			// that iframe and loads only when a drawing is opened.
+			el = document.createElement('iframe');
+			el.className = 'excalidraw-frame';
+			el.allow = 'fullscreen; clipboard-write';
+			el.src = excalidrawUrl(this.path);
+		} else if (kind === 'image') {
 			el = document.createElement('img');
 			el.src = url;
 			el.alt = this.path;

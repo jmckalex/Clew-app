@@ -8,7 +8,8 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// PDF annotation autosave, app-page side.
+// Autosave bridges for the two editors that live in their own documents:
+// the PDF viewer's annotations, and the Excalidraw editor's drawings.
 //
 // PDF viewers run in three different frames (a rendered note preview, the
 // file tab's viewer page, a canvas node's viewer page) but all three are
@@ -22,6 +23,36 @@
 // user already has — the same thing annotating does on purpose.
 import { ipc } from './ipc.js';
 import { CH } from '../shared/channels.js';
+import { isExcalidrawPath } from '../shared/excalidraw-file.js';
+
+/**
+ * Excalidraw saves, app-page side. The editor runs in an iframe under
+ * __clew_assets__, so it cannot reach IPC itself and posts here instead.
+ *
+ * Constrained the same way vault.writePdf is: the path must be a drawing.
+ * NOTE_WRITE will happily write any text anywhere, and a preview document is
+ * vault-authored content, so the gate is that this bridge only ever forwards
+ * a path isExcalidrawPath() recognises.
+ */
+export function installExcalidrawSaveBridge() {
+	window.addEventListener('message', async (event) => {
+		const msg = event.data;
+		if (!msg || msg.source !== 'clew-excalidraw' || msg.type !== 'excalidraw-save') return;
+		const reply = (ok, error) => event.source?.postMessage(
+			{ source: 'clew-excalidraw-host', type: 'excalidraw-save-result', id: msg.id, ok, error }, '*');
+		if (!isExcalidrawPath(msg.path ?? '')) {
+			reply(false, 'not a drawing');
+			return;
+		}
+		try {
+			await ipc.invoke(CH.NOTE_WRITE, { path: msg.path, content: msg.text });
+			reply(true);
+		} catch (err) {
+			console.warn('[clew] drawing save failed:', err);
+			reply(false, String(err?.message ?? err));
+		}
+	});
+}
 
 export function installPdfSaveBridge() {
 	window.addEventListener('message', async (event) => {

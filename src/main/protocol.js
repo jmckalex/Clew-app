@@ -78,6 +78,11 @@ export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDi
 		clewpdf: path.join(distDir, 'preview-client'),
 		// Optional CJK fonts, downloaded on demand into userData.
 		pdffonts: fontsDir(),
+		// The Excalidraw editor page + its bundle (React lives only here).
+		clewex: path.join(distDir, 'excalidraw'),
+		// Excalidraw's own fonts and locale data, from our copy of the package
+		// — window.EXCALIDRAW_ASSET_PATH points here so it never calls unpkg.
+		excalidraw: path.join(nodeModulesDir, '@excalidraw', 'excalidraw', 'dist', 'prod'),
 		preview: engineAssetsDir, // preview.css
 	};
 
