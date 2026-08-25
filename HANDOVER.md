@@ -138,11 +138,15 @@ What that says:
    fall back to plain blockquotes. The engine already renders GFM's five,
    so this is mapping the rest onto that machinery, plus foldable
    `[!note]-` and custom titles. **Do this first.**
-2. **Block references** `[[note#^id]]` — also core, 13 in the help vault.
-3. **Dataview** is confirmed as the plugin that matters, though 253/130 in
+2. **Block references** `[[note#^id]]` — now the largest remaining gap in
+   the help vault (13), and core Obsidian. Clew resolves headings but not
+   block ids.
+3. `%%comments%%` (2 in the help vault) — hidden in Obsidian's preview,
+   rendered as text by Clew.
+4. **Dataview** is confirmed as the plugin that matters, though 253/130 in
    a vault *about* Dataview is a biased sample. Translate the safe DQL
    subset; refuse `dataviewjs` honestly rather than half-supporting it.
-4. Kanban and Tasks did not appear in either sample — worth a third vault
+5. Kanban and Tasks did not appear in either sample — worth a third vault
    before ranking them.
 
 Both vaults are cloned under the session scratchpad; re-clone with
