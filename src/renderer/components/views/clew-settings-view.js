@@ -121,6 +121,16 @@ class ClewSettingsView extends ClewElement {
 				+ 'absolute). Notes can override with a Bibliography style: '
 				+ 'property.',
 				['apa', 'chicago', 'harvard1', 'vancouver', 'bjps', 'ajp', 'econometrica', 'ergo']),
+			...this.#vaultToggle('pandocCitations',
+				'Pandoc citations: read [@key] and @key as citations',
+				'For vaults whose notes were written for pandoc — Zotero and '
+				+ 'Better BibTeX export this style. [@key] becomes a parenthetical '
+				+ 'citation, @key a textual one, [-@key] a bare year; they mix '
+				+ 'freely with \\cite commands and resolve against the same '
+				+ 'bibliography. Off by default because @ is jmarkdown\'s '
+				+ 'directive sigil: with this on, a bare @word that is not a '
+				+ 'registered directive is read as a citation key, so an email '
+				+ 'address or an @mention in prose will change how it renders.'),
 			...this.#vaultToggle('bibliographyPanel',
 				'References panel: show the bibliography in the right sidebar',
 				'Adds a Refs tab beside Links/Out/Tags showing the active note\'s '

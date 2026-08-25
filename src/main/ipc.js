@@ -138,7 +138,7 @@ export function registerIpc() {
 		const current = s.vaults.loadState('vault-settings.json') ?? {};
 		current[key] = value;
 		s.vaults.saveState('vault-settings.json', current);
-		if (key === 'jmarkdownProject' || key === 'normalSyntax') {
+		if (key === 'jmarkdownProject' || key === 'normalSyntax' || key === 'pandocCitations') {
 			s.renderService.reconfigure({ [key]: value === true });
 		}
 		// Bibliography settings rewrite the engine config the same way.

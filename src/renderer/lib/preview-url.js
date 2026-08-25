@@ -31,9 +31,9 @@ export function vaultFileUrl(path) {
 }
 
 /**
- * SPIKE (spike/embedpdf): our EmbedPDF viewer page, wrapping a raw PDF URL.
- * Used where a PDF is shown in an iframe of its own (the file tab, canvas
- * PDF nodes) rather than inside a rendered note.
+ * Our EmbedPDF viewer page, wrapping a raw PDF URL. Used where a PDF is shown
+ * in an iframe of its own (the file tab, canvas PDF nodes) rather than inside
+ * a rendered note.
  */
 export function pdfViewerUrl(fileUrl) {
 	// NB: no session id. Asset URLs sit at the root of the URL space

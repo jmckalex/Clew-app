@@ -72,7 +72,7 @@ export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDi
 		fontawesome: path.join(nodeModulesDir, '@fortawesome', 'fontawesome-free', 'js'),
 		jquery: path.join(nodeModulesDir, 'jquery', 'dist'),
 		leaflet: path.join(nodeModulesDir, 'leaflet', 'dist'),
-		// SPIKE (spike/embedpdf): the EmbedPDF bundle + pdfium.wasm.
+		// The EmbedPDF bundle + pdfium.wasm (the PDF viewer).
 		embedpdf: path.join(nodeModulesDir, '@embedpdf', 'snippet', 'dist'),
 		// Our own PDF viewer page + its bundle (pdf-page.html/.js).
 		clewpdf: path.join(distDir, 'preview-client'),

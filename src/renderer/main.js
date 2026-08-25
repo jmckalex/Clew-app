@@ -22,7 +22,7 @@ import { registerBuiltinCommands } from './commands/builtin.js';
 import { installMenuBridge } from './commands/menu-bridge.js';
 import { installHotkeys } from './commands/registry.js';
 import { initPlugins } from './plugins.js';
-import { installPdfSaveBridge } from './pdf-save.js';   // SPIKE: spike/embedpdf
+import { installPdfSaveBridge } from './pdf-save.js';
 import './components/chrome/clew-app.js';
 
 // ---- IPC events → stores --------------------------------------------------

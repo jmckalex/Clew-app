@@ -59,8 +59,8 @@ export const bundles = [
 		format: 'iife',
 	},
 	{
-		// SPIKE (spike/embedpdf): the standalone PDF viewer page's script,
-		// served from __clew_assets__/clewpdf/ for the file tab and canvas.
+		// The standalone PDF viewer page's script, served from
+		// __clew_assets__/clewpdf/ for the file tab and canvas PDF nodes.
 		entryPoints: [path.join(root, 'src/preview-client/pdf-page.js')],
 		outfile: path.join(root, 'dist/preview-client/pdf-page.js'),
 		bundle: true,
@@ -80,7 +80,7 @@ export const bundles = [
 // by the render worker and the preview protocol, not bundled.
 export const staticDirs = [
 	{ from: path.join(root, 'src/renderer/index.html'), to: path.join(root, 'dist/renderer/index.html') },
-	// SPIKE (spike/embedpdf): host page for the standalone PDF viewer.
+	// Host page for the standalone PDF viewer.
 	{ from: path.join(root, 'src/preview-client/pdf-page.html'), to: path.join(root, 'dist/preview-client/pdf-page.html') },
 	{ from: path.join(root, 'src/renderer/styles'), to: path.join(root, 'dist/renderer/styles') },
 	{ from: path.join(root, 'src/engine'), to: path.join(root, 'dist/engine') },

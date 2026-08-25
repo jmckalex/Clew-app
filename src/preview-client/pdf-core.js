@@ -1,4 +1,4 @@
-// SPIKE (branch spike/embedpdf) — the EmbedPDF viewer, shared by every PDF
+// The EmbedPDF viewer, shared by every PDF
 // surface: note embeds (pdf-embed.js, inside a rendered preview document) and
 // the standalone viewer page (pdf-page.js) that the file tab and canvas PDF
 // nodes load in an iframe.

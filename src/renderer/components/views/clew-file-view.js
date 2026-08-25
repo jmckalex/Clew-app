@@ -29,10 +29,10 @@ class ClewFileView extends ClewElement {
 			el.src = url;
 			el.alt = this.path;
 		} else if (kind === 'pdf') {
-			// SPIKE (spike/embedpdf): our own EmbedPDF page rather than
-			// Chromium's plugin, so the tab gains annotation and matches both
-			// the note-embed surface and Clew-iOS. Still unsandboxed — the
-			// viewer fetches the PDF from its own origin.
+			// Our own EmbedPDF page rather than Chromium's plugin, so the tab
+			// gains annotation and matches both the note-embed surface and
+			// Clew-iOS. Unsandboxed: the viewer fetches the PDF from its own
+			// origin.
 			el = document.createElement('iframe');
 			el.className = 'pdf-frame';
 			el.allow = 'fullscreen';

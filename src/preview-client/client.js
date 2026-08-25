@@ -16,7 +16,7 @@ import morphdom from 'morphdom';
 import { initCanvasEmbeds, refreshCanvasEmbeds, broadcastThemeToNested } from './canvas-embed.js';
 import { initLeafletMaps } from './leaflet-maps.js';
 import { initQueryInteract } from './query-interact.js';
-import { initPdfEmbeds } from './pdf-embed.js';   // SPIKE: spike/embedpdf
+import { initPdfEmbeds } from './pdf-embed.js';
 
 const HOST_SOURCE = 'clew-preview-host';
 const post = (msg) => window.parent.postMessage({ source: 'clew-preview', ...msg }, '*');

@@ -181,8 +181,8 @@ export function buildNodeContent(node, embedHooks) {
 		img.draggable = false;
 		wrap.append(img);
 	} else if (kind === 'pdf') {
-		// SPIKE (spike/embedpdf): the EmbedPDF viewer page, so a PDF pinned to
-		// a canvas is annotatable like every other PDF surface.
+		// Our EmbedPDF viewer page, so a PDF pinned to a canvas reads and
+		// annotates like every other PDF surface.
 		const iframe = document.createElement('iframe');
 		iframe.className = 'canvas-pdf-frame';
 		iframe.allow = 'fullscreen';

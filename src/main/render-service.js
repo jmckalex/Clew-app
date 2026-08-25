@@ -126,6 +126,12 @@ export class RenderService {
 			// "jmarkdown project" vaults (the book manuscript case) re-enable
 			// the engine's own-line [[file.md]] inclusion in previews.
 			'File inclusion': this.#vaultOptions.jmarkdownProject === true,
+			// Pandoc-style [@key] / @key citations. Off unless the vault asks:
+			// @ is the engine's directive sigil, so with this on a bare @word
+			// that is not a registered directive becomes a citation key. The
+			// engine exposes it as a config key precisely for a host like Clew,
+			// rendering notes that carry no metadata header of their own.
+			'Pandoc citations': this.#vaultOptions.pandocCitations === true,
 			'Header style': 'fenced',
 			'Template': path.join(engineAssets, 'clew-template.html'),
 			'Extensions': [

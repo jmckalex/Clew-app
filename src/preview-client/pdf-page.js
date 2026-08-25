@@ -1,4 +1,4 @@
-// SPIKE (branch spike/embedpdf) — the standalone PDF viewer page.
+// The standalone PDF viewer page.
 //
 // The file tab (<clew-file-view>) and canvas PDF nodes point an iframe at a
 // raw PDF today, which is what makes Chromium's plugin appear. There is no

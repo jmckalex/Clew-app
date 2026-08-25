@@ -62,7 +62,7 @@ note API, plugins, and every settings key.
 - **Tests:** `npm test` (`node --test`, files in `tests/`): workspace tree,
   note-metadata extractor, BibTeX parser, the ported jmarkdown-scan suite,
   canvas model, diary, frontmatter, plugins discovery, query/leaflet/exif
-  parsers — 178 tests. DOM/UI work is verified with the smoke harness.
+  parsers — 190 tests. DOM/UI work is verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js] [CLEW_SMOKE_VAULT=/path/vault]
   electron .` — SMOKE_VAULT opens exactly that vault, never touching the
@@ -111,9 +111,14 @@ browser-window-focus).
 - `src/preview-client/client.js` — injected into every rendered note:
   morphdom patching (guards: scripts, canvas-embed scenes, initialized
   leaflet divs, custom elements — kept, attrs synced), postMessage bridge,
-  checkbox enabling, mermaid theming. Siblings: `canvas-embed.js` (live
-  read-only canvas scenes w/ pan/zoom), `leaflet-maps.js` (maps; asset
-  base parameterized for site export), `query-interact.js` (editable
+  checkbox enabling, mermaid theming. Chrome a plugin or vault script adds
+  to the document is discarded by every morph unless it carries
+  **`data-clew-keep`** — the opt-out that lets a banner, an overlay or a
+  PDF viewer survive a re-render instead of restarting.
+  Siblings: `canvas-embed.js` (live read-only canvas scenes w/ pan/zoom),
+  `leaflet-maps.js` (maps; asset base parameterized for site export),
+  `pdf-core.js`/`pdf-embed.js`/`pdf-page.js` (the PDF viewer, below),
+  `query-interact.js` (editable
   cells + kanban drag → field-edit messages; payload key is fieldSource —
   'source' would collide with the postMessage envelope), `api.js`,
   `site-client.js` (static-site runtime bundle).
@@ -203,17 +208,40 @@ browser-window-focus).
   (`clew-preview://vault/<sid>/<path>`) because protocol handlers cannot
   see which window asked; the renderer builds them via
   `lib/preview-url.js` (`setPreviewSession` from the vault-opened event).
-- The preview iframe is **deliberately unsandboxed** (a sandbox blocks
-  Chromium's PDF plugin for `![[x.pdf]]` embeds). Isolation instead:
-  previews live on the `clew-preview://` origin (app is `file://`),
-  `setWindowOpenHandler` denies all popups, and a `will-navigate` guard
-  pins the app frame. Don't re-add the sandbox attribute without solving
-  PDF embeds another way.
+- The preview iframe is **deliberately unsandboxed**, and the reason is no
+  longer PDFs (see below) — it is `fetch`. `sandbox="allow-scripts"` gives
+  the frame an opaque origin, and preview documents fetch `clew-preview://`
+  URLs constantly: canvas embeds read canvas JSON and POST fragments,
+  leaflet maps load GeoJSON/GPX, plugins read their own note. All of that
+  fails from a null origin, and `allow-same-origin` would buy back only
+  top-navigation/form/download blocking on a frame that is ALREADY
+  cross-origin from the app. Isolation instead: previews live on the
+  `clew-preview://` origin (app is `file://`), `setWindowOpenHandler`
+  denies all popups, and a `will-navigate` guard pins the app frame.
+  Iframes carry `allow="fullscreen"` (EmbedPDF's control needs it).
+- **PDFs are EmbedPDF, not Chromium's plugin** (MIT, Pdfium-in-wasm, ~9.5
+  MB staged). One implementation, `preview-client/pdf-core.js`, serves all
+  three surfaces: note embeds upgrade `<embed class="pdf-embed">` in place
+  (`pdf-embed.js`), while the file tab and canvas nodes — which point an
+  iframe at a raw PDF and so have no document to upgrade — load
+  `pdf-page.html` from `__clew_assets__/clewpdf/`. Heavy wasm belongs in a
+  clew-preview document, never the app page (a lesson Clew-iOS paid for on
+  a real iPad); on desktop that falls out for free, and those documents
+  carry no CSP. Feed it an ArrayBuffer via `openDocumentBuffer` — URL
+  loaders read a `clew-preview://` path as base64. Annotations autosave
+  into the vault's own PDF (2.5s debounce → `renderer/pdf-save.js` →
+  `CH.PDF_WRITE` → `vault.writePdf`, which refuses anything that is not an
+  existing `.pdf` inside the vault). CJK fallback fonts are an app setting
+  (`pdfCjkFonts`), downloaded on demand into userData by
+  `main/pdf-fonts.js` — 139 MB, so never shipped; `src/shared/pdf-fonts.json`
+  (2.6 KB, regenerate with `scripts/gen-pdf-fonts.js`) names the files.
 - Exports (`export.js`) use the note's own directory as cwd — the user's
   normal jmarkdown config cascade, NOT the Clew preview config.
 - Per-vault render options live in `<vault>/.clew/vault-settings.json`
   (`jmarkdownProject: true` re-enables the engine's own-line `[[file.md]]`
-  inclusion). Changing them goes through `renderService.reconfigure()`,
+  inclusion; `pandocCitations: true` turns on `[@key]`/`@key` — off by
+  default because `@` is the directive sigil, so a bare `@word` in prose
+  becomes a citation key). Changing them goes through `renderService.reconfigure()`,
   which rewrites the engine config, discards the warm standby worker (it
   imported the old config), and re-renders open previews.
 

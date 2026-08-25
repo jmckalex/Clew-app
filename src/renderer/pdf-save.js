@@ -8,7 +8,7 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// SPIKE (branch spike/embedpdf) — annotation autosave, app-page side.
+// PDF annotation autosave, app-page side.
 //
 // PDF viewers run in three different frames (a rendered note preview, the
 // file tab's viewer page, a canvas node's viewer page) but all three are

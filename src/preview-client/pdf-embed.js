@@ -1,4 +1,4 @@
-// SPIKE (branch spike/embedpdf) — the note-embed PDF surface.
+// The note-embed PDF surface.
 //
 // Upgrades the engine's <embed class="pdf-embed"> (from ![[paper.pdf]]) into a
 // live EmbedPDF viewer at reading height: read, search, zoom and annotate in
