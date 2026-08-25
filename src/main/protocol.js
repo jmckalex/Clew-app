@@ -72,6 +72,8 @@ export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDi
 		leaflet: path.join(nodeModulesDir, 'leaflet', 'dist'),
 		// SPIKE (spike/embedpdf): the EmbedPDF bundle + pdfium.wasm.
 		embedpdf: path.join(nodeModulesDir, '@embedpdf', 'snippet', 'dist'),
+		// Our own PDF viewer page + its bundle (pdf-page.html/.js).
+		clewpdf: path.join(distDir, 'preview-client'),
 		preview: engineAssetsDir, // preview.css
 	};
 

@@ -116,6 +116,7 @@ export function registerIpc() {
 	handle(CH.RENDER_SUBSCRIBE, (s, { path }) => s.renderService.subscribe(path));
 	handle(CH.RENDER_UNSUBSCRIBE, (s, { path }) => s.renderService.unsubscribe(path));
 	handle(CH.RENDER_HTML, (s, { path }) => s.renderService.renderedHtml(path));
+	handle(CH.PDF_WRITE, (s, { path, bytes }) => s.vaults.writePdf(path, bytes));
 	handleGlobal(CH.SHELL_OPEN_EXTERNAL, ({ url }) => {
 		if (/^https?:|^mailto:/i.test(url)) shell.openExternal(url);
 	});

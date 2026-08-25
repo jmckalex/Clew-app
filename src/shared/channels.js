@@ -61,6 +61,7 @@ export const CH = {
 	RENDER_SUBSCRIBE: 'clew:render-subscribe',
 	RENDER_UNSUBSCRIBE: 'clew:render-unsubscribe',
 	RENDER_HTML: 'clew:render-html',
+	PDF_WRITE: 'clew:pdf-write',
 	SHELL_OPEN_EXTERNAL: 'clew:shell-open-external',
 
 	// invoke: native application menu (renderer pushes context + hotkeys)

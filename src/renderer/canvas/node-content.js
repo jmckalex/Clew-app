@@ -13,7 +13,7 @@
 // its content interactive. Note embeds are live jmarkdown previews — the
 // canvas view drives their render subscription and postMessage traffic.
 import { fileKind } from '../lib/file-types.js';
-import { vaultFileUrl } from '../lib/preview-url.js';
+import { vaultFileUrl, pdfViewerUrl } from '../lib/preview-url.js';
 import { isNotePath } from '../state/vault-store.js';
 import { previewUrl, fragmentUrl, previewOrigin } from '../lib/preview-url.js';
 import { renderCardHtml } from './card-markdown.js';
@@ -181,9 +181,11 @@ export function buildNodeContent(node, embedHooks) {
 		img.draggable = false;
 		wrap.append(img);
 	} else if (kind === 'pdf') {
+		// SPIKE (spike/embedpdf): the EmbedPDF viewer page, so a PDF pinned to
+		// a canvas is annotatable like every other PDF surface.
 		const iframe = document.createElement('iframe');
 		iframe.className = 'canvas-pdf-frame';
-		iframe.src = url;
+		iframe.src = pdfViewerUrl(url);
 		wrap.append(iframe, titleBar(node));
 	} else if (kind === 'audio') {
 		const audio = document.createElement('audio');

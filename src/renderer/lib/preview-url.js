@@ -30,6 +30,19 @@ export function vaultFileUrl(path) {
 	return `clew-preview://vault/${sessionId}/${encode(path)}`;
 }
 
+/**
+ * SPIKE (spike/embedpdf): our EmbedPDF viewer page, wrapping a raw PDF URL.
+ * Used where a PDF is shown in an iframe of its own (the file tab, canvas
+ * PDF nodes) rather than inside a rendered note.
+ */
+export function pdfViewerUrl(fileUrl) {
+	// NB: no session id. Asset URLs sit at the root of the URL space
+	// (vault/__clew_assets__/…); only vault FILES are sid-prefixed. The PDF
+	// itself keeps its sid — it travels in the src parameter.
+	return `clew-preview://vault/__clew_assets__/clewpdf/pdf-page.html`
+		+ `?src=${encodeURIComponent(fileUrl)}`;
+}
+
 /** Engine fragment-render endpoint (canvas cards; POST markdown → HTML). */
 export function fragmentUrl() {
 	return `clew-preview://vault/${sessionId}/__clew_fragment__`;
