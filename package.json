@@ -19,7 +19,8 @@
     "package:dmg": "node scripts/package.js --dmg",
     "package:dist": "node scripts/package.js --dmg --sign --notarize",
     "package:win": "node scripts/package.js --win",
-    "package:linux": "node scripts/package.js --linux"
+    "package:linux": "node scripts/package.js --linux",
+    "vault-report": "node scripts/vault-report.js"
   },
   "devDependencies": {
     "electron": "^43.4.1",
