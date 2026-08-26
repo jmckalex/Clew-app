@@ -32,6 +32,8 @@ rendered; **⌘O** finds any note; **⌘P** lists every command.
   is one)
 - [[Note Headers]] — that banner in detail, including animated HTML
   backgrounds
+- [[Charts]] — bar, line and pie charts from a fenced block of YAML,
+  or from a dataviewjs script
 - [[Search]] — full-text search and its operators
 - [[Graph View]] — the vault as a graph
 - [[Daily Notes and Templates]] — the diary calendar, per-day or
