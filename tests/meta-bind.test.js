@@ -24,7 +24,8 @@ before(() => {
 	root = fs.mkdtempSync(path.join(os.tmpdir(), 'clew-mb-'));
 	fs.writeFileSync(path.join(root, 'Habits.md'),
 		'---\ndone: true\nrating: 7\nstatus: review\nsubtitle: morning pages\n'
-		+ 'stars: 3\ndue: 2026-09-15\nurl: https://clew-app.com\nink: "#8b7ec8"\n---\nThe note.\n');
+		+ 'stars: 3\ndue: 2026-09-15\nurl: https://clew-app.com\nink: "#8b7ec8"\n---\nThe note.\n\n'
+		+ 'A motto worth editing. ^motto\n\n```\nnot a block ^fenced\n```\n');
 	fs.writeFileSync(path.join(root, 'Other.md'), '---\nflag: false\n---\nOther.\n');
 	process.env.CLEW_VAULT_ROOT = root;
 	global.current_file = path.join(root, 'Habits.md');
@@ -105,6 +106,16 @@ test('VIEW: bare value, and the formatter kinds', () => {
 	assert.match(viewHtml('relativeTime:{due}'), /<wa-relative-time date="2026-09-15T00:00:00" sync/);
 	assert.match(viewHtml('formatDate:{due}'), /<wa-format-date date="2026-09-15T00:00:00"/);
 	assert.match(viewHtml('qr:{subtitleMissing}'), /nothing to encode/);
+});
+
+test('block bindings: a text widget edits the PROSE a ^marker names', () => {
+	const input = inputHtml('text:^motto');
+	assert.match(input, /value="A motto worth editing\."/);
+	assert.match(input, /data-edit-field="\^motto"/);
+	assert.match(input, /data-edit-source="block"/);
+	assert.match(inputHtml('toggle:^motto'), /only text and textArea bind to a \^block/);
+	assert.match(inputHtml('text:^fenced'), /no \^fenced block/, 'markers inside fences are not blocks');
+	assert.match(inputHtml('text:^nowhere'), /no \^nowhere block/);
 });
 
 test('the inline tokenizer claims the syntax; fences behave', () => {

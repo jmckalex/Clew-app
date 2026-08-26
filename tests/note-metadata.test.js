@@ -10,7 +10,17 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { extractNoteMetadata, parseFrontmatter } from '../src/shared/note-metadata.js';
+import { extractNoteMetadata, parseFrontmatter, rewriteBlockText } from '../src/shared/note-metadata.js';
+
+test('rewriteBlockText replaces the marker line, keeps the marker, skips fences', () => {
+	const text = 'Intro.\n\nOld motto here. ^motto\n\n```\nfake ^motto\n```\nAfter.';
+	const next = rewriteBlockText(text, 'motto', 'A better motto.');
+	assert.match(next, /^A better motto\. \^motto$/m);
+	assert.match(next, /fake \^motto/, 'the fenced lookalike is untouched');
+	assert.equal(rewriteBlockText(text, 'absent', 'x'), null);
+	// Multi-line input flattens: a marker names ONE block.
+	assert.match(rewriteBlockText(text, 'motto', 'two\nlines'), /^two lines \^motto$/m);
+});
 
 test('extracts headings with levels and lines', () => {
 	const meta = extractNoteMetadata('# One\n\ntext\n\n## Two ##\n');

@@ -18,6 +18,7 @@ import { isCanvasPath } from '../lib/file-types.js';
 import { scrollSyncBus } from '../preview/scroll-sync.js';
 import { ipc, CH } from '../ipc.js';
 import { parseProperties, applyProperties } from '../../shared/frontmatter.js';
+import { rewriteBlockText } from '../../shared/note-metadata.js';
 import { notice } from '../plugins.js';
 
 export function closeActiveTab() {
@@ -211,7 +212,12 @@ export async function editNoteField(path, field, value, source = 'fm') {
 	try {
 		const text = await ipc.invoke(CH.NOTE_READ, { path });
 		let next;
-		if (source.startsWith('line:')) {
+		if (source === 'block') {
+			// `field` is '^id': a block-bound widget rewrites the marker
+			// line's TEXT, marker kept — prose editing with an address.
+			next = rewriteBlockText(text, field.replace(/^\^/, ''), value);
+			if (next === null) throw new Error(`no ${field} block in the note`);
+		} else if (source.startsWith('line:')) {
 			const lineNo = Number(source.slice(5));
 			const lines = text.split('\n');
 			if (!(lineNo >= 1 && lineNo <= lines.length)) throw new Error('stale line');

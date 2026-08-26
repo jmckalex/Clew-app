@@ -1,11 +1,6 @@
 ---
 done: false
-rating: 6
 status: drafting
-stars: 3.5
-ink: "#8b7ec8"
-due: 2026-09-15
-url: "https://clew-app.com"
 tags:
   - guide
 ---
@@ -60,32 +55,15 @@ Terms combine with AND, `"quotes"` make phrases, `tag:`, `path:` and
 
 ## Meta Bind widgets
 
-`INPUT[…]` renders a live control **two-way bound to a property** —
-these three are bound to this very note's frontmatter, so flip them and
-watch the Properties panel follow (the file is the truth; the widgets
-are just a view of it):
+The Meta Bind plugin's `INPUT[…]` syntax renders live controls
+two-way bound to a note's properties — and in Clew, to its *text*, via
+block references. They have a whole page of their own: **[[Widgets]]**,
+with every control live on it. One taste, bound to this note's
+frontmatter:
 
-Done: INPUT[toggle:done] · Rating: INPUT[slider(minValue(0), maxValue(10)):rating] — currently VIEW[{rating}] · Status: INPUT[inlineSelect(option(drafting), option(review), option(shipped)):status]
+Done: INPUT[toggle:done] · Status: INPUT[inlineSelect(option(drafting), option(review), option(shipped)):status]
 
-The widgets are [Web Awesome](https://webawesome.com) components (MIT,
-bundled, loaded only when a note carries one). Beyond Meta Bind's own
-toggle, slider, text, number and select, Clew renders its `textArea`,
-`datePicker` and `time` types, a bound read-only `progressBar` — and
-adds two types of its own, worth knowing are Clew-native: **rating**
-and **color**.
-
-Stars: INPUT[rating(stepSize(0.5)):stars] · Ink: INPUT[color:ink] · Due: INPUT[datePicker:due] — which is VIEW[relativeTime:{due}] · Progress: INPUT[progressBar(minValue(0), maxValue(10)):rating]
-
-`VIEW[…]` grew formatter kinds the same way (Clew-native):
-`relativeTime`, `formatDate`, `formatNumber`, `formatBytes`, `badge` —
-status as a badge: VIEW[badge:{status}] — and `qr`, which turns a bound
-URL into something an iPad can scan straight off the screen:
-
-VIEW[qr:{url}]
-
-Everything writes through the same path as
-[[Queries|editable query cells]] — the frontmatter safety valve
-included. Other input types, `VIEW[…]` expressions, and the plugin's
+Unsupported input types, `VIEW[…]` expressions, and the plugin's
 button system are refused by name.
 
 ## Where the line is

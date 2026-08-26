@@ -31,6 +31,7 @@
 // In a site export widgets render disabled: a static page has no write path.
 import { display, coerceDate } from './dv-expr.js';
 import { currentPage, scanPages, resolvePath } from './vault-model.js';
+import { ID as BLOCK_ID } from './block-refs.js';
 
 const esc = (s) => String(s)
 	.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -98,10 +99,32 @@ export function parseInputDeclaration(inner) {
 	const hash = bind.lastIndexOf('#');
 	if (hash > 0) { file = bind.slice(0, hash).trim(); prop = bind.slice(hash + 1); }
 	prop = prop.trim();
-	if (!/^[A-Za-z_][\w-]*$/.test(prop)) return { error: `bind target “${bind}” (nested paths are not supported)` };
+	// `^block-id` binds the widget to TEXT — the block the marker names —
+	// rather than to a property. Only the text widgets can hold prose.
+	if (new RegExp(`^\\^${BLOCK_ID}$`).test(prop)) {
+		if (decl.type !== 'text' && decl.type !== 'textarea') {
+			return { error: `only text and textArea bind to a ^block (INPUT[${type}:${prop}])` };
+		}
+		decl.block = true;
+	} else if (!/^[A-Za-z_][\w-]*$/.test(prop)) {
+		return { error: `bind target “${bind}” (nested paths are not supported)` };
+	}
 	decl.file = file;
 	decl.prop = prop;
 	return decl;
+}
+
+/** The text a `^id` marker names: its line, marker stripped, fences masked. */
+export function blockTextOf(text, id) {
+	const re = new RegExp(`^(.*?)[ \\t]+\\^${id}[ \\t]*$`);
+	let inFence = false;
+	for (const line of String(text).split('\n')) {
+		if (/^\s*(```|~~~)/.test(line)) { inFence = !inFence; continue; }
+		if (inFence) continue;
+		const m = re.exec(line);
+		if (m) return m[1];
+	}
+	return null;
 }
 
 // ---- rendering --------------------------------------------------------------
@@ -120,8 +143,13 @@ export function inputHtml(inner) {
 	if (decl.error) return refusal(`INPUT[${inner}] — ${decl.error}`);
 	const page = boundPage(decl.file);
 	if (!page) return refusal(`INPUT[${inner}] — “${decl.file}” is not in this vault`);
-	const value = page.fields?.[decl.prop] ?? decl.defaultValue;
-	const source = page.sources?.[decl.prop] ?? 'fm';
+	const value = decl.block
+		? blockTextOf(page.text ?? '', decl.prop.slice(1))
+		: page.fields?.[decl.prop] ?? decl.defaultValue;
+	if (decl.block && value === null) {
+		return refusal(`INPUT[${inner}] — no ${decl.prop} block in “${page.path}”`);
+	}
+	const source = decl.block ? 'block' : page.sources?.[decl.prop] ?? 'fm';
 	const disabled = process.env.CLEW_SITE_EXPORT === '1' ? ' disabled' : '';
 	const data = `class="clew-mb" data-edit-path="${esc(page.path)}"`
 		+ ` data-edit-field="${esc(decl.prop)}" data-edit-source="${esc(source)}"`;
