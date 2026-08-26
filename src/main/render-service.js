@@ -139,6 +139,8 @@ export class RenderService {
 				`mermaidFence, leafletFence from ${path.join(engineAssets, 'obsidian-fences.js')}`,
 				`queryFence, tasksFence, kanbanFence from ${path.join(engineAssets, 'query-fences.js')}`,
 				`tableBeforeAnchor, blockAnchorLine, blockAnchor from ${path.join(engineAssets, 'block-refs.js')}`,
+				// Obsidian's Dataview, for vaults that arrive carrying it.
+				`dataviewFence, dataviewJsFence, dataviewInline from ${path.join(engineAssets, 'dataview.js')}`,
 				// LAST on purpose: marked offers the most recently registered
 				// block extension first, and callouts must be seen before the
 				// engine's own GFM-alert rule so that every `> [!type]` in a
