@@ -13,6 +13,7 @@
 // morphdom-patches re-renders in place so scroll position and rendered math
 // survive updates.
 import morphdom from 'morphdom';
+import { anchorTarget } from './anchors.js';
 import { initCanvasEmbeds, refreshCanvasEmbeds, broadcastThemeToNested } from './canvas-embed.js';
 import { initLeafletMaps } from './leaflet-maps.js';
 import { initQueryInteract } from './query-interact.js';
@@ -209,7 +210,11 @@ document.addEventListener('click', (e) => {
 		e.preventDefault();
 		post({ type: 'external-link', url: href });
 	} else if (href.startsWith('#')) {
-		// In-document anchor: let default behavior scroll.
+		// In-document anchor. The wild writes GitHub-style hashes
+		// (#deep-work) while the engine ids headings toc-<slug>; resolve
+		// rather than letting the browser silently miss (anchors.js).
+		e.preventDefault();
+		anchorTarget(href)?.scrollIntoView({ block: 'start' });
 	} else {
 		e.preventDefault(); // unknown relative navigation — never leave the doc
 	}
