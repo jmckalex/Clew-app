@@ -8,12 +8,13 @@ session; keep it short and current.
 ## 0. Where things stand
 
 - Everything is on **`main`** and merged. Working tree clean,
-  `npm test` → **253 green**. Demo/study vaults clean.
+  `npm test` → **322 green**. Demo/study vaults clean.
 - This session: the three-session backlog committed (11 commits), the PDF
   viewer replaced by EmbedPDF, two engine syncs, Excalidraw (merged from
   `feat/excalidraw`, which can be deleted), table editing, the vault
   report, third-party notices, and then the two gaps §5 had measured —
-  **callouts** and **block references** (§6).
+  **callouts** and **block references** (§6), then Dataview, Bases and
+  dataviewjs (§7).
 - `../Clew-docs` is clean, 5 commits this session. Read **its** HANDOVER
   for the website; the DNS blocker there is unchanged.
 
@@ -142,9 +143,8 @@ What that says:
 2. ~~**Block references**~~ — **done**, see §6.
 3. `%%comments%%` (2 in the help vault) — hidden in Obsidian's preview,
    rendered as text by Clew. **Now the largest measured gap.**
-4. **Dataview** is confirmed as the plugin that matters, though 253/130 in
-   a vault *about* Dataview is a biased sample. Translate the safe DQL
-   subset; refuse `dataviewjs` honestly rather than half-supporting it.
+4. ~~**Dataview**~~ — **done**, see §7. The bias warning was right: two
+   more vaults showed real usage is a fraction of the docs vault's.
 5. Kanban and Tasks did not appear in either sample — worth a third vault
    before ranking them.
 
@@ -191,7 +191,63 @@ renders as broken red MathJax. Backticks are Clew's way and the demo
 vault already uses them; obsidian-help contains all of 3 occurrences.
 Recorded in the manual as a known incompatibility.
 
-## 7. Standing session rules (unchanged, still earning their keep)
+## 7. Obsidian's query formats (Dataview, Bases, dataviewjs)
+
+§5 ranked Dataview as the plugin that matters and warned the sample was
+biased. Two more vaults settled it, and the answer was not what the
+first measurement suggested.
+
+**The survey** (`dvscan.js`/`dvcover.js` in the session scratchpad):
+
+| vault | notes | ```dataview | ```dataviewjs | .base |
+|---|---:|---:|---:|---:|
+| s-blu (a vault ABOUT Dataview) | 262 | 253 | 130 | 0 |
+| bramses (real) | 67 | 14 | **0** | 0 |
+| OB_Template (real) | 48 | 11 | **0** | 0 |
+| kepano (Obsidian's CEO, real) | 103 | **0** | **0** | **30** |
+
+Two findings the biased sample hid. `dataviewjs` is DOCUMENTATION, not
+usage — 130 in the vault teaching it, zero across three real ones. And
+kepano has abandoned Dataview entirely for **Bases**, embedding one in
+50 of his 103 notes — every one of which Clew rendered as "(not found)".
+
+**All three are now implemented.** The subset chosen for DQL covers
+100% of the queries in the three real vaults (25/25) and 43% of the
+teaching vault; the difference is FLATTEN, `GROUP BY … rows`,
+file.day/file.lists and CALENDAR. Anything outside is refused BY NAME —
+a query that silently drops a clause shows numbers that are wrong.
+
+Things worth not rediscovering:
+
+- **One expression parser serves both dialects.** Bases writes
+  `a.contains(b)`, Dataview `contains(a, b)`; a method call desugars to
+  a function call. Deciding that while writing the parser is why Bases
+  cost days less than Dataview did.
+- **linkKey must canonicalise.** A page keys as "places/japan", the
+  frontmatter string `loc: "[[Japan]]"` as "japan" — so kepano's
+  commonest filter matched nothing. Bare names now resolve as wikilinks.
+- **Link identity only where a side is a link** (`isLinkish`), or
+  `contains(file.name, "ign")` becomes a failed link lookup.
+- **Date-only strings are LOCAL midnight.** `new Date("2024-03-01")` is
+  UTC, so west of Greenwich every date silently became the day before.
+  The suite passes at UTC+14 and UTC-11; keep it that way.
+- **Clause splitting is stateful**: mid-line keywords split only after a
+  type or FROM, else `WHERE limit > 5` splits into a LIMIT clause.
+- `global.current_file` (engine-set, like `global.isLatex`) is what
+  makes `this` free.
+
+**dataviewjs is gated** (`dataviewJs` per vault, off by default) because
+JS cannot be statically checked the way a query can. Measured against
+the 130 real blocks: 34 render, 56 correctly render nothing (their
+conditions are false), 40 report a NAMED failure — 14 asynchronous, 14
+wanting Obsidian's `app` or Luxon. Those numbers came from
+`dvjsrun.mjs`, which is the way to check any change here.
+
+Still open: FLATTEN is the one refused construct with real demand (92
+occurrences, all in the teaching vault). Map views in Bases are refused;
+Clew has Leaflet, so it is possible.
+
+## 8. Standing session rules (unchanged, still earning their keep)
 
 - **NEVER `git add -A`** — stage explicit paths.
 - Always pass `CLEW_SMOKE_VAULT`; `git status` demo/study vaults after

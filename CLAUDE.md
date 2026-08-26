@@ -63,7 +63,8 @@ note API, plugins, and every settings key.
   note-metadata extractor, BibTeX parser, the ported jmarkdown-scan suite,
   canvas model, diary, frontmatter, plugins discovery, query/leaflet/exif
   parsers, Excalidraw round-trip, markdown tables, callouts, block
-  references — 253 tests. DOM/UI work is verified with the smoke harness.
+  references, Dataview/Bases/dataviewjs — 322 tests. DOM/UI work is
+  verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js] [CLEW_SMOKE_VAULT=/path/vault]
   electron .` — SMOKE_VAULT opens exactly that vault, never touching the
@@ -123,6 +124,20 @@ browser-window-focus).
   of the block, not the marker) and written by the "Copy Link to Block"
   command (`renderer/editor/block-ids.js`), which imports its idea of a
   legal id from block-refs.js so writer and reader cannot drift.
+- **Obsidian's own query formats** — for opening other people's vaults,
+  alongside (not replacing) Clew's `query`/`tasks`/`kanban` fences:
+  `vault-model.js` (the vault as pages: `file.*`, the link graph,
+  attachments as rows, cached per build), `dv-expr.js` (lexer + Pratt
+  parser + evaluator — NOT eval; a method call desugars to a function
+  call so ONE parser serves Dataview's `contains(a,b)` and Bases'
+  `a.contains(b)`), `dv-functions.js`, `dataview.js` (```dataview DQL),
+  `dataview-js.js` (```dataviewjs behind the per-vault `dataviewJs`
+  flag, passed to the worker as CLEW_DATAVIEW_JS), `bases.js` (`.base`
+  YAML + views; the `![[X.base#View]]` embed is dispatched from
+  wikilinks.js, which is why vault-model.js must never import it).
+  **What is unsupported is refused BY NAME** rather than partly run.
+  `global.current_file` (set by the engine, like `global.isLatex`) is
+  what makes `this` free.
 - `src/preview-client/client.js` — injected into every rendered note:
   morphdom patching (guards: scripts, canvas-embed scenes, initialized
   leaflet divs, custom elements — kept, attrs synced), postMessage bridge,
