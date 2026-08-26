@@ -36,6 +36,7 @@ import { FUNCTIONS, KNOWN_FUNCTIONS, valueHtml } from './dv-functions.js';
 import {
 	scanPages, currentPage, pageValue, fileFields, linkKey, isLinkish, makeLink, isLink, resolvePath,
 } from './vault-model.js';
+import { jsEnabled, renderDataviewJs } from './dataview-js.js';
 
 const NOTE_FILE = /\.(md|jmd)$/i;
 
@@ -498,11 +499,14 @@ export const dataviewJsFence = {
 	},
 	renderer(token) {
 		if (global.isLatex) return '';
-		return notice('dataviewjs is not run', [
-			'This block is arbitrary JavaScript with access to the whole '
-			+ 'application, so Clew does not execute it.',
-			'Clew\'s equivalent is a jmarkdown script block using the '
-			+ '<code>vault</code> global — see the manual.',
+		if (jsEnabled()) return renderDataviewJs(token.text);
+		return notice('dataviewjs is not run in this vault', [
+			'These blocks are JavaScript, so unlike a query there is no way to '
+			+ 'tell in advance what one will do. Clew can run them — turn on '
+			+ '<strong>Run dataviewjs blocks</strong> in this vault\'s settings — '
+			+ 'but not by default in a vault you have just opened.',
+			'Clew\'s own equivalent is a jmarkdown script block using the '
+			+ '<code>vault</code> global; see the manual.',
 		]) + `<pre class="clew-query-source"><code>${escapeHtml(token.text)}</code></pre>\n`;
 	},
 };

@@ -208,6 +208,10 @@ export class RenderService {
 				PATH: toolchainPath(),
 				CLEW_VAULT_ROOT: this.vaultRoot,
 				CLEW_SESSION_ID: this.sessionId ?? '',
+				// Per-vault opt-in for running ```dataviewjs. Safe as spawn-time
+				// env because reconfigure() discards the warm standby whenever
+				// vault options change.
+				CLEW_DATAVIEW_JS: this.#vaultOptions.dataviewJs === true ? '1' : '',
 				// Engine console chatter goes to the pipes; keep them from filling.
 			},
 		});

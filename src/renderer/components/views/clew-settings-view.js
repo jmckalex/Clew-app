@@ -143,6 +143,17 @@ class ClewSettingsView extends ClewElement {
 				+ 'directive sigil: with this on, a bare @word that is not a '
 				+ 'registered directive is read as a citation key, so an email '
 				+ 'address or an @mention in prose will change how it renders.'),
+			...this.#vaultToggle('dataviewJs',
+				'Run dataviewjs blocks in this vault',
+				'Obsidian\'s ```dataviewjs blocks are JavaScript, not queries, so '
+				+ 'there is no way to tell in advance what one will do — which is '
+				+ 'why this is per-vault and off by default rather than a global '
+				+ 'setting you turn on once and forget. Turn it on for a vault you '
+				+ 'wrote or trust. Clew gives those blocks a `dv` object over its '
+				+ 'own index: dv.pages, dv.current, dv.table, dv.list, dv.taskList '
+				+ 'and dv.view all work. dv.app, dv.io and dv.luxon have no '
+				+ 'equivalent here and say so by name when a block reaches for '
+				+ 'them. Plain ```dataview queries always run and need no setting.'),
 			...this.#vaultToggle('bibliographyPanel',
 				'References panel: show the bibliography in the right sidebar',
 				'Adds a Refs tab beside Links/Out/Tags showing the active note\'s '
