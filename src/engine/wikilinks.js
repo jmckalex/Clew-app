@@ -26,6 +26,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { sliceBlock } from './block-refs.js';
+import { renderBaseEmbed } from './bases.js';
 
 const NOTE_EXT = /\.(md|jmd)$/i;
 const IGNORED = new Set(['.obsidian', '.clew', '.git', 'node_modules', '.trash']);
@@ -38,6 +39,7 @@ const MEDIA_KIND = {
 	'.mp4': 'video', '.webm': 'video', '.mov': 'video',
 	'.canvas': 'canvas',
 	'.excalidraw': 'excalidraw',
+	'.base': 'base',
 };
 // An Obsidian drawing is `name.excalidraw.md` — a .md by extension, which the
 // note path would otherwise claim and transclude as prose. The compound suffix
@@ -262,6 +264,9 @@ export const wikiembed = {
 		if (fileRel && mediaKind(fileRel)) {
 			const { alt, width, height } = parseMediaAlias(link.alias);
 			token.media = { rel: fileRel, kind: mediaKind(fileRel), width, height };
+			// `![[Trips.base#Location]]` names a VIEW, not a heading — the one
+			// embed whose fragment means something other than a place to scroll.
+			if (token.media.kind === 'base') token.media.view = link.heading ?? null;
 			// A pure-size alias ("300") is not a caption — fall back to the name.
 			if (link.alias) token.label = alt ?? link.target;
 			return token;
@@ -338,6 +343,20 @@ export const wikiembed = {
 						+ `<div class="embed-title"><a class="internal-link" href="#" data-href="${escapeAttr(token.full)}">${alt}</a></div>`
 						+ `<div class="excalidraw-embed" data-excalidraw-src="${src}"`
 						+ ` data-excalidraw-path="${escapeAttr(token.media.rel ?? '')}"></div></div>\n`;
+				case 'base': {
+					// An Obsidian Bases view, rendered server-side like a query
+					// rather than shipped to the client — it is a table over the
+					// vault, and the worker is where the vault is.
+					const html = renderBaseEmbed(token.media.rel, token.media.view,
+						(rel) => { try { return fs.readFileSync(path.join(vaultRoot(), rel), 'utf8'); } catch { return null; } });
+					// The title is the base FILE. Its `§` label would read as a
+					// heading, and the fragment here names a view — which the
+					// rendered output captions for itself.
+					const baseName = escapeHtml(token.media.rel.split('/').pop());
+					return `<div class="internal-embed base-embed" data-href="${escapeAttr(token.full)}">`
+						+ `<div class="embed-title"><a class="internal-link" href="#" data-href="${escapeAttr(token.full)}">${baseName}</a></div>`
+						+ html + '</div>\n';
+				}
 				case 'canvas':
 					// A live, read-only canvas view — the preview client fetches
 					// the JSON at data-canvas-path and renders the scene into the

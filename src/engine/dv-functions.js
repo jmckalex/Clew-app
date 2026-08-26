@@ -20,7 +20,7 @@ import {
 	asArray, coerceDate, display, formatDuration, isDate, isDuration,
 	makeDuration, parseDuration, truthy, valuesEqual,
 } from './dv-expr.js';
-import { linkKey, makeLink, isLink } from './vault-model.js';
+import { linkKey, makeLink, isLink, isLinkish } from './vault-model.js';
 
 /** An external link value — rendered as an <a href> by the table renderers. */
 export const makeExternalLink = (url, text) => ({ __extlink: true, url, display: text ?? url });
@@ -34,13 +34,19 @@ const num = (v) => {
 	const n = Number(String(v).replace(/,/g, ''));
 	return Number.isNaN(n) ? undefined : n;
 };
-const eq = (a, b) => valuesEqual(a, b, linkKey);
+const eq = (a, b) => valuesEqual(a, b, linkKey, isLinkish);
 
 /** Dataview's `contains`: substring for text, membership for lists, key for objects. */
 function containsValue(haystack, needle, fold = false) {
 	if (haystack === undefined || haystack === null) return false;
 	if (Array.isArray(haystack)) return haystack.some((item) => containsValue(item, needle, fold));
-	if (isLink(haystack) || isLink(needle)) return eq(haystack, needle);
+	// A link on EITHER side makes this a link lookup — `list(loc).contains(this)`
+	// has a frontmatter string `[[Japan]]` on one side and a page on the other.
+	if (isLinkish(haystack) || isLinkish(needle)) {
+		const a = linkKey(haystack);
+		const b = linkKey(needle);
+		if (a !== null && b !== null) return a === b;
+	}
 	if (typeof haystack === 'object') return Object.keys(haystack).some((k) => (fold ? k.toLowerCase() : k) === (fold ? str(needle).toLowerCase() : str(needle)));
 	const a = fold ? str(haystack).toLowerCase() : str(haystack);
 	const b = fold ? str(needle).toLowerCase() : str(needle);
@@ -174,7 +180,25 @@ export const FUNCTIONS = {
 	elink: ([url, text]) => (url === undefined || url === null || str(url) === '' ? undefined
 		: makeExternalLink(str(url), text === undefined ? str(url) : str(text))),
 
+	// -- links, Bases spelling -------------------------------------------------
+	// `file.hasLink(this)` — does this row's file link to that page? Either
+	// side may be a link, a page, or a `file` namespace; linkKey settles it.
+	haslink: ([from, to]) => {
+		const key = linkKey(to);
+		if (key === null) return false;
+		const links = [...asArray(from?.links ?? from?.outlinks), ...asArray(from?.embeds)];
+		return links.some((link) => linkKey(link) === key);
+	},
+	hastag: ([page, ...tags]) => {
+		const own = asArray(page?.tags).map((t) => String(t).toLowerCase().replace(/^#/, ''));
+		return tags.flat().some((tag) => own.includes(String(tag).toLowerCase().replace(/^#/, '')));
+	},
+	infolder: ([page, folder]) => String(page?.folder ?? '').toLowerCase()
+		.startsWith(String(folder).toLowerCase().replace(/\/$/, '')),
+
 	// -- control ---------------------------------------------------------------
+	// Bases writes `if(a, b, c)` where Dataview writes `choice(a, b, c)`.
+	if: ([test, whenTrue, whenFalse]) => (truthy(test) ? whenTrue : whenFalse),
 	choice: ([test, whenTrue, whenFalse]) => (truthy(test) ? whenTrue : whenFalse),
 	default: ([a, fallback]) => (a === undefined || a === null || a === '' ? fallback : a),
 	ldefault: ([a, fallback]) => (a === undefined || a === null || a === '' ? fallback : a),
@@ -202,3 +226,39 @@ function pick(args, better) {
 
 /** Function names this build understands — used to report the unsupported ones. */
 export const KNOWN_FUNCTIONS = new Set(Object.keys(FUNCTIONS));
+
+// ---- rendering a value ------------------------------------------------------
+
+const NOTE_FILE = /\.(md|jmd)$/i;
+const escapeHtml = (s) => String(s)
+	.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+const internalLink = (target, text) =>
+	`<a class="internal-link" href="#" data-href="${escapeHtml(String(target).replace(NOTE_FILE, ''))}">${escapeHtml(text)}</a>`;
+
+/**
+ * One value as cell HTML, shared by both dialects so a link looks the same
+ * wherever it came from.
+ *
+ * The case worth naming: a frontmatter value is often the STRING `[[Parks]]`
+ * rather than a link object — YAML has no link type — and rendering it as text
+ * put literal double brackets in the middle of kepano's tables. A string that
+ * is shaped like a wikilink is a wikilink.
+ */
+export function valueHtml(value) {
+	if (value === undefined || value === null) return '';
+	if (isLink(value)) return internalLink(value.path, value.display ?? String(value.path).replace(NOTE_FILE, ''));
+	if (isExternalLink(value)) {
+		return `<a class="external-link" href="${escapeHtml(value.url)}" rel="noopener noreferrer">${escapeHtml(value.display)}</a>`;
+	}
+	if (Array.isArray(value)) return value.map(valueHtml).filter(Boolean).join(', ');
+	if (typeof value === 'string') {
+		const wikilink = /^\[\[([^\]|]*)(?:\|([^\]]*))?\]\]$/.exec(value.trim());
+		if (wikilink) {
+			const target = wikilink[1].split('#')[0].trim();
+			return internalLink(target, wikilink[2]?.trim() || target);
+		}
+	}
+	if (typeof value === 'boolean') return value ? '✓' : '';
+	return escapeHtml(display(value));
+}

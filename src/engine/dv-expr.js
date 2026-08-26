@@ -314,10 +314,14 @@ function comparable(value) {
 }
 
 /** `a === b` across the value types, links included. */
-export function valuesEqual(a, b, linkKey) {
-	const ka = linkKey?.(a);
-	const kb = linkKey?.(b);
-	if (ka !== null && ka !== undefined && kb !== null && kb !== undefined) return ka === kb;
+export function valuesEqual(a, b, linkKey, isLinkish) {
+	// Link identity applies only when a side really is a link: linkKey() will
+	// reduce any string, and two ordinary strings must compare as strings.
+	if (!isLinkish || isLinkish(a) || isLinkish(b)) {
+		const ka = linkKey?.(a);
+		const kb = linkKey?.(b);
+		if (ka !== null && ka !== undefined && kb !== null && kb !== undefined) return ka === kb;
+	}
 	const ca = comparable(a);
 	const cb = comparable(b);
 	if (ca === null || cb === null) return a === b;
@@ -403,8 +407,8 @@ function binary(node, ctx) {
 	const a = run(node.left, ctx);
 	const b = run(node.right, ctx);
 
-	if (op === '=' || op === '==') return valuesEqual(a, b, ctx.linkKey);
-	if (op === '!=' || op === '<>') return !valuesEqual(a, b, ctx.linkKey);
+	if (op === '=' || op === '==') return valuesEqual(a, b, ctx.linkKey, ctx.isLinkish);
+	if (op === '!=' || op === '<>') return !valuesEqual(a, b, ctx.linkKey, ctx.isLinkish);
 
 	if (op === '+' || op === '-') {
 		const arith = dateArithmetic(op, a, b);

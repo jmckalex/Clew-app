@@ -43,14 +43,65 @@ export function makeLink(target, display = null, subpath = null) {
 
 export const isLink = (v) => v !== null && typeof v === 'object' && v.__link === true;
 
-/** The comparable identity of a link, page, or plain string. */
-export function linkKey(value) {
-	if (isLink(value)) return stripExt(value.path).toLowerCase();
-	if (value !== null && typeof value === 'object' && value.file?.link) {
-		return stripExt(value.file.link.path).toLowerCase();
+/**
+ * Is this value a LINK in spirit — a link object, a page, a `file` namespace,
+ * or a frontmatter string someone wrote as `[[Note]]`?
+ *
+ * The distinction matters because linkKey() will happily reduce any string,
+ * and comparing two ordinary strings by their link identity would make
+ * `contains(file.name, "ign")` a failed link lookup instead of a substring
+ * test. Link rules apply only when at least one side really is a link.
+ */
+export function isLinkish(value) {
+	if (isLink(value)) return true;
+	if (typeof value === 'string') return /^\[\[[\s\S]*\]\]$/.test(value.trim());
+	if (value !== null && typeof value === 'object') {
+		return isLink(value.link) || isLink(value.file?.link) || typeof value.path === 'string';
 	}
-	if (typeof value === 'string') return stripExt(value.replace(/^\[\[|\]\]$/g, '').split('|')[0]).toLowerCase();
+	return false;
+}
+
+/**
+ * The comparable identity of a link, a page, a `file` namespace, or a plain
+ * string. Bases writes `file.hasLink(this)`, where one side is a namespace
+ * object and the other a page — both have to reduce to the same key.
+ */
+export function linkKey(value) {
+	const target = linkTarget(value);
+	return target === null ? null : canonicalKey(target);
+}
+
+function linkTarget(value) {
+	if (isLink(value)) return value.path;
+	if (value !== null && typeof value === 'object') {
+		if (isLink(value.link)) return value.link.path;
+		if (value.file && isLink(value.file.link)) return value.file.link.path;
+		if (typeof value.path === 'string') return value.path;
+	}
+	if (typeof value === 'string') return value.replace(/^\[\[|\]\]$/g, '').split('|')[0].split('#')[0];
 	return null;
+}
+
+const keyCache = new Map();
+
+/**
+ * A link target reduced to one identity.
+ *
+ * The two sides of a comparison rarely arrive in the same form: the model
+ * builds links with FULL PATHS, while a frontmatter value is whatever the
+ * author typed — `loc: "[[Japan]]"`. Keying those as "places/japan" and
+ * "japan" made `list(loc).contains(this)` — kepano's commonest filter — match
+ * nothing at all. So a bare name is resolved the way a wikilink would be, and
+ * both sides end up at the same key.
+ */
+function canonicalKey(target) {
+	const clean = stripExt(String(target).trim());
+	if (!clean) return null;
+	if (keyCache.has(clean)) return keyCache.get(clean);
+	const resolved = resolvePath(clean);
+	const key = stripExt(resolved ?? clean).toLowerCase();
+	keyCache.set(clean, key);
+	return key;
 }
 
 const stripExt = (p) => String(p).replace(NOTE_FILE, '');
@@ -65,7 +116,7 @@ const mask = (text) => text
 	.replace(FENCE_MASK, (m) => m.replace(/[^\n]/g, ' '))
 	.replace(INLINE_CODE, (m) => ' '.repeat(m.length));
 
-const WIKILINK = /\[\[([^\[\]|#\n]*)(?:#([^\[\]|\n]+))?(?:\|([^\[\]\n]+))?\]\]/g;
+const WIKILINK = /(!?)\[\[([^\[\]|#\n]*)(?:#([^\[\]|\n]+))?(?:\|([^\[\]\n]+))?\]\]/g;
 const BODY_TAG = /(^|[\s(,;])#([A-Za-z0-9_][A-Za-z0-9_/-]*)/g;
 
 function walk(root) {
@@ -114,7 +165,22 @@ export function scanPages() {
 		const base = rel.split('/').pop();
 		addName(base, rel);                                  // with extension
 		if (NOTE_FILE.test(base)) addName(base.replace(NOTE_FILE, ''), rel);
-		if (!NOTE_FILE.test(base)) continue;
+
+		// Non-note files are pages too, with the file namespace and nothing
+		// else. Dataview indexes only Markdown and filters them back out;
+		// Bases queries attachments on purpose (kepano's vault has a whole
+		// base for unused ones), so the model has to carry them.
+		if (!NOTE_FILE.test(base)) {
+			pages.push({
+				path: rel, name: base.replace(/\.[^.]+$/, ''),
+				folder: rel.includes('/') ? rel.slice(0, rel.lastIndexOf('/')) : '',
+				ext: base.slice(base.lastIndexOf('.') + 1),
+				size: stat.size, ctime: stat.birthtimeMs || stat.ctimeMs, mtime: stat.mtimeMs,
+				isNote: false, tags: [], aliases: [], fields: {}, sources: {}, text: '',
+				rawLinks: [], rawEmbeds: [], tasks: [], outlinks: [], inlinks: [], embeds: [],
+			});
+			continue;
+		}
 
 		let text;
 		try { text = fs.readFileSync(abs, 'utf8'); } catch { continue; }
@@ -136,16 +202,20 @@ export function scanPages() {
 		const aliases = Array.isArray(fm.aliases) ? fm.aliases
 			: fm.aliases ? [fm.aliases] : Array.isArray(fm.alias) ? fm.alias : fm.alias ? [fm.alias] : [];
 
+		const references = [...masked.matchAll(WIKILINK)].map((m) => ({
+			target: m[2].trim(), display: m[4]?.trim() ?? null, embed: m[1] === '!',
+		}));
 		pages.push({
 			path: rel, name, folder, ext: base.slice(base.lastIndexOf('.') + 1),
 			size: stat.size, ctime: stat.birthtimeMs || stat.ctimeMs, mtime: stat.mtimeMs,
+			isNote: true,
 			tags: [...tags], aliases: aliases.map(String),
 			fields: { ...inline.fields, ...fm },
-			sources, text, rawLinks: [...masked.matchAll(WIKILINK)].map((m) => ({
-				target: m[1].trim(), display: m[3]?.trim() ?? null,
-			})),
+			sources, text,
+			rawLinks: references.filter((r) => !r.embed),
+			rawEmbeds: references.filter((r) => r.embed),
 			tasks: extractTasks(text),
-			outlinks: [], inlinks: [],
+			outlinks: [], inlinks: [], embeds: [],
 		});
 	}
 
@@ -163,7 +233,19 @@ export function scanPages() {
 			const to = byPath.get(target);
 			if (to && to !== page) to.inlinks.push(makeLink(page.path));
 		}
+		// An embed is a link too — Obsidian counts `![[x]]` as a backlink, and
+		// Bases queries `file.embeds` to find, say, a note's first image.
+		for (const raw of page.rawEmbeds) {
+			if (!raw.target) continue;
+			const target = resolvePath(raw.target);
+			if (!target) continue;
+			page.embeds.push(makeLink(target, raw.display));
+			page.outlinks.push(makeLink(target, raw.display));
+			const to = byPath.get(target);
+			if (to && to !== page) to.inlinks.push(makeLink(page.path));
+		}
 		delete page.rawLinks;
+		delete page.rawEmbeds;
 	}
 	return cache;
 }
@@ -196,8 +278,8 @@ export function currentPage() {
 	return scanPages().byPath.get(rel) ?? null;
 }
 
-/** Reset the per-build cache. Tests only — a real worker builds once. */
-export function resetCache() { cache = null; }
+/** Reset the per-build caches. Tests only — a real worker builds once. */
+export function resetCache() { cache = null; keyCache.clear(); }
 
 // ---- the `file.*` namespace -------------------------------------------------
 
@@ -221,8 +303,13 @@ export function fileFields(page) {
 		aliases: page.aliases,
 		inlinks: page.inlinks,
 		outlinks: page.outlinks,
+		backlinks: page.inlinks,          // Bases' name for the same thing
+		links: page.outlinks,
+		embeds: page.embeds,
 		tasks: page.tasks,
 		day: page.fields.date ?? null,
+		// `image: file.file` in a cards view means "the file itself".
+		file: makeLink(page.path, page.name),
 	};
 }
 

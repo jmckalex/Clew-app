@@ -32,9 +32,9 @@
 import {
 	display, evaluate, parseExpression, isDate, isDuration,
 } from './dv-expr.js';
-import { FUNCTIONS, KNOWN_FUNCTIONS, isExternalLink } from './dv-functions.js';
+import { FUNCTIONS, KNOWN_FUNCTIONS, valueHtml } from './dv-functions.js';
 import {
-	scanPages, currentPage, pageValue, fileFields, linkKey, makeLink, isLink, resolvePath,
+	scanPages, currentPage, pageValue, fileFields, linkKey, isLinkish, makeLink, isLink, resolvePath,
 } from './vault-model.js';
 
 const NOTE_FILE = /\.(md|jmd)$/i;
@@ -268,6 +268,7 @@ function contextFor(page, self, extra = {}) {
 	return {
 		functions: FUNCTIONS,
 		linkKey,
+		isLinkish,
 		makeLink,
 		resolve(name) {
 			if (name === 'this') return self ? { file: fileFields(self), ...self.fields } : undefined;
@@ -330,17 +331,7 @@ function sortKey(value) {
 const internalLink = (target, text) =>
 	`<a class="internal-link" href="#" data-href="${escapeHtml(String(target).replace(NOTE_FILE, ''))}">${escapeHtml(text)}</a>`;
 
-/** One value as table-cell HTML. Links become links; everything else is text. */
-export function cellHtml(value) {
-	if (value === undefined || value === null) return '';
-	if (isLink(value)) return internalLink(value.path, value.display ?? String(value.path).replace(NOTE_FILE, ''));
-	if (isExternalLink(value)) {
-		return `<a class="external-link" href="${escapeHtml(value.url)}" rel="noopener noreferrer">${escapeHtml(value.display)}</a>`;
-	}
-	if (Array.isArray(value)) return value.map(cellHtml).filter(Boolean).join(', ');
-	if (typeof value === 'boolean') return value ? '✓' : '';
-	return escapeHtml(display(value));
-}
+export const cellHtml = valueHtml;
 
 const notice = (title, lines) =>
 	`<div class="clew-query is-unsupported"><div class="clew-query-title">${escapeHtml(title)}</div>`
@@ -439,7 +430,9 @@ export function renderQuery(source) {
 		]);
 	}
 
-	const { pages } = scanPages();
+	// Dataview indexes Markdown only; the model also carries attachments,
+	// because Bases queries those on purpose.
+	const pages = scanPages().pages.filter((p) => p.isNote);
 	const self = currentPage();
 	const rows = runQuery(query, pages.filter((p) => p !== self || query.from), self);
 
