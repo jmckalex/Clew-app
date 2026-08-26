@@ -198,11 +198,15 @@ export function makeDv(out, self, viewDepth = 0) {
 		current: () => (self ? pageProxy(self) : undefined),
 		array: (value) => dataArray(asList(value)),
 		isArray: (value) => Array.isArray(value) || Boolean(value?.values),
-		/** The DQL engine, for `dv.tryQuery`-style use. Returns a DataArray. */
+		/** The DQL engine, for `dv.tryQuery`-style use. Returns a DataArray.
+		 *  Rows carry FLATTEN bindings; after GROUP BY they are `{key, rows}`
+		 *  group objects rather than pages, as in Dataview. */
 		tryQuery: (source) => {
 			const query = parseQuery(String(source));
 			const rows = runQuery(query, scanPages().pages.filter((p) => p.isNote), self);
-			return dataArray(rows.map(pageProxy));
+			return dataArray(rows.map((row) => (row.page
+				? { ...pageProxy(row.page), ...row.extra }
+				: { ...row.extra })));
 		},
 		query: (source) => ({ successful: true, value: { values: dv.tryQuery(source).values } }),
 
