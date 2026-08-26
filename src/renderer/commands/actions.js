@@ -103,6 +103,13 @@ export function historyForward() {
  * (Obsidian-style, in the vault root) when unresolved.
  */
 export async function openWikilink(target, { newTab = false, mode } = {}) {
+	// A URL is not a note name. Whatever routed it here (a pasted link in
+	// the switcher, a stray href), creating "https:/…/.md" directories in
+	// someone's vault is never the right reading of it.
+	if (/^[a-z][a-z0-9+.-]*:\/\//i.test(String(target ?? ''))) {
+		ipc.invoke(CH.SHELL_OPEN_EXTERNAL, { url: String(target) }).catch(() => {});
+		return;
+	}
 	const { name, heading } = splitTarget(target);
 	if (!name) {
 		// [[#Heading]]: jump within the active note.
