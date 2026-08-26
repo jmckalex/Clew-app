@@ -1,4 +1,4 @@
-# Handover — 2026-08-25 (Obsidian compatibility: callouts, block refs, Dataview, Bases)
+# Handover — 2026-08-26 (the Charts plugin, and what it proved)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it); the original design plan is at
@@ -8,140 +8,108 @@ it again.
 
 ## 0. Where things stand
 
-- Everything is on **`main`**, working tree clean, `npm test` → **322
-  green**. Demo and study vaults clean. `../Clew-docs` clean.
-- The last stretch of work was **Obsidian compatibility**, chosen by
-  measurement rather than impression (§2): callouts, block references,
-  Dataview, Bases and dataviewjs all landed. Before that, in the same
-  session: the PDF viewer became EmbedPDF, Excalidraw was shimmed in, and
-  table-editing ergonomics were added.
-- `feat/excalidraw` is merged and can be deleted.
+- Everything is on **`main`**, working tree clean, `npm test` → **339
+  green**. Demo and study vaults clean. `../Clew-docs` manual updated to
+  match (plugins, queries, diagrams chapters) and committed.
+- This session: **Charts** — Obsidian's ```` ```chart ```` YAML fence and
+  the dataviewjs `renderChart(config, el)` bridge, built as the demo
+  vault's third plugin (`demo-vault/.clew/plugins/charts/`). It is the
+  first plugin to use the **engine surface**, and the worked example of an
+  engine + preview pair: the engine surface parses/refuses and emits a
+  `data-chart` placeholder; the preview surface draws it with a vendored
+  Chart.js 4.5.1 (MIT; `dependencies` + `scripts/vendor-chartjs.js`, copy
+  committed like the icon). Upstream obsidian-charts is **AGPL with a
+  stale MIT package.json — the same trap as Excalidraw**; the format was
+  reimplemented from charts.phib.ro, no upstream source read.
+- Fallout fixes that outlive charts: **site export now ships enabled
+  plugins' preview surfaces** (`assets/plugins/<id>/`, whole folder) and
+  **passes CLEW_DATAVIEW_JS to its workers** — dataviewjs output used to
+  silently bake as "not run" even in vaults that enable it.
+- The dataviewjs sandbox grew Obsidian-shaped bindings: `window` (a
+  naming proxy), `this.container` / `dv.container` (passable token that
+  fails by name on use), bare `renderChart`.
 
-## 1. The compatibility work, and how to re-check it
+## 1. Charts facts a future session will want
 
-Two tools, both read-only, both calibrated so that Clew's own vaults come
-back nearly empty:
+- Fence → `buildChart()` maps the documented modifiers onto a finished
+  Chart.js config; **unknown/unsupported keys refuse the whole chart by
+  name** (`time:` and `id:` are the deliberate refusals — a date adapter
+  is not shipped; sankey is refused as an unknown type).
+- The preview glue keeps charts alive across morphs: canvas carries
+  `data-clew-keep`, unchanged `data-chart` is left alone (no re-animate),
+  theme recolor via `Chart.defaults` + `update('none')` on a `data-theme`
+  MutationObserver.
+- `global.clewCharts.emit(config)` is the bridge hook; `dataview-js.js`
+  only looks it up, so no plugin → named failure, and the coupling stays
+  one-way. Configs cross worker→preview as JSON; functions are refused
+  naming their path.
+- `demo-vault/Guide/Charts.md` is documentation AND test corpus: 5 live
+  fences + 1 deliberate `time:` refusal + 1 renderChart chart. The smoke
+  frame script asserted exactly that (6 live Chart instances, 1 refusal).
 
-```
-npm run vault-report     -- <vault>   # what Clew would not understand at all
-npm run dataview-report  -- <vault>   # Dataview/Bases usage, and how much runs
-```
+## 2. The compatibility measurement (kept for the open items)
 
-`dataview-report` imports `src/engine` rather than describing it, so it
-measures the shipping code: **if a query stops working, it notices.** Every
-number below came out of it and can be reproduced.
-
-Public vaults worth keeping around (re-clone; they are not in this repo):
-
-```
-git clone --depth 1 https://github.com/obsidianmd/obsidian-help.git
-git clone --depth 1 https://github.com/s-blu/obsidian_dataview_example_vault.git
-git clone --depth 1 https://github.com/kepano/kepano-obsidian.git
-git clone --depth 1 https://github.com/bramses/bramses-highly-opinionated-vault-2023.git
-```
-
-## 2. What the measurement actually said
-
-The first survey ranked **Dataview** as the plugin that mattered and warned
-that a vault *about* Dataview was a biased sample. Adding three real vaults
-changed the picture twice over:
-
-| vault | notes | ```dataview | ```dataviewjs | .base |
-|---|---:|---:|---:|---:|
-| s-blu (a vault ABOUT Dataview) | 262 | 253 | 130 | 0 |
-| bramses (real) | 67 | 14 | **0** | 0 |
-| OB_Template (real) | 48 | 11 | **0** | 0 |
-| kepano (Obsidian's CEO, real) | 103 | **0** | **0** | **30** |
-
-1. **`dataviewjs` is documentation, not usage** — 130 occurrences in the
-   vault that teaches it, zero across three real ones.
-2. **kepano has abandoned Dataview for Bases**, embedding one in 50 of his
-   103 notes — every one of which Clew rendered as "(not found)".
-
-All three formats are implemented now. The DQL subset covers **100% of the
-queries in the three real vaults** (25/25) and 43% of the teaching vault.
-Of s-blu's 130 dataviewjs blocks: 34 render, 56 correctly render nothing
-(their conditions are false), 40 report a named failure.
-
-**The rule that matters: what is unsupported is refused BY NAME.** A query
-that silently dropped its FLATTEN would show numbers that are wrong, which
-is worse than showing nothing.
-
-`dataviewjs` runs only behind a per-vault opt-in (`dataviewJs`, off by
-default). Unlike a query, whose unsupported parts can be listed before it
-runs, JavaScript cannot be checked in advance — so the promise made
-instead is that failure is named.
+`npm run vault-report -- <vault>` and `npm run dataview-report -- <vault>`
+(imports src/engine, so it measures shipping code). Corpus vaults live in
+`../test-vaults/` — obsidian-help, s-blu, kepano, bramses re-cloned this
+session. Findings that still steer priorities: dataviewjs is
+documentation, not usage (130 occurrences in the teaching vault, 0 in
+three real ones — and s-blu's two renderChart blocks are fenced
+`//dataviewjs`, display-only); kepano abandoned Dataview for Bases; the
+DQL subset covers 25/25 queries in the real vaults. Charts itself scored
+**zero** in the corpus — it was built as a flagship for the plugin
+system, not from compat pressure.
 
 ## 3. Open items, in the order I would take them
 
-- **FLATTEN** is the one refused construct with real demand — 92
-  occurrences, but all in the teaching vault, so the demand may be
-  illusory. Check a fifth vault before building it.
-- **Bases map views** are refused; Clew has Leaflet, so this is possible
-  rather than hard.
-- **Kanban and Tasks plugins** have still never appeared in a sample. Do
-  not rank them until a vault shows them.
-- **The 139 MB CJK font download has never been run end to end.** URL
-  construction and per-file logic are verified separately; nobody has
-  watched 26 files land.
+- **FLATTEN** — 92 occurrences, all in the teaching vault. Check a fifth
+  vault before building it.
+- **Bases map views** are refused; Clew has Leaflet, so possible.
+- **Charts extras if demand ever appears**: a date adapter for `time:`,
+  sankey, Charts View (the other plugin). None seen in the wild yet.
+- **The 139 MB CJK font download has never been run end to end.**
 - **Excalidraw drawings with embedded images (`files{}`)** are untested.
-- **The v0.8.0 tag is on the wrong commit** — retag or go to 0.9.0. `out/`
-  holds stale artefacts.
+- **The v0.8.0 tag is on the wrong commit** — retag or go to 0.9.0;
+  `out/` holds stale artefacts, and check-links flags the four missing
+  download files on the site.
 - `../Clew-docs` has its own HANDOVER; the DNS blocker there is unchanged.
 
-**Settled, do not reopen:** `%%comments%%` (jmarkdown has comment syntax
-already — the owner's call); Obsidian's `\[\[` escape (in a
-LaTeX-flavoured engine `\[` opens display math, so it renders as broken
-MathJax — backticks are Clew's way); and licensing (Clew is
-GPL-3.0-or-later, `npm run notices` regenerates THIRD-PARTY-NOTICES.md,
-citeproc's CPAL attribution is met by it, and the Excalidraw PLUGIN is
-AGPL so its source must never enter this tree).
+**Settled, do not reopen:** `%%comments%%`; Obsidian's `\[\[` escape;
+licensing (GPL-3.0-or-later; `npm run notices` regenerated this session
+for chart.js + @kurkle/color; Excalidraw plugin AND obsidian-charts are
+AGPL — formats only, never their source).
 
-## 4. Things that cost hours to find
+## 4. Things that cost time to find
 
-CLAUDE.md carries the architectural half of what was learned. These are the
-traps — each is a bug that only shows up somewhere other than where you are
-looking.
-
-- **Date-only strings must parse as LOCAL midnight.**
-  `new Date("2024-03-01")` is UTC, so west of Greenwich every such date
-  silently became the day before. Run `TZ=Pacific/Midway npm test` after
-  touching anything date-shaped; the suite passes at UTC+14 and UTC-11.
-- **`^` is superscript in this dialect**, so a block-id marker claims the
-  whitespace *before* the caret. `x^2` ending a paragraph is an exponent,
-  not an identifier.
-- **A blank line inside a fence is not a block boundary.** Both the block
-  slicer and the indexer walk fence-aware; a masked walk strode straight
-  over the code block a marker was naming.
-- **linkKey must canonicalise.** A page keys as "places/japan" and the
-  frontmatter string `loc: "[[Japan]]"` as "japan", so kepano's commonest
-  filter matched nothing until bare names resolved like wikilinks.
-- **Link identity applies only where a side really is a link**
-  (`isLinkish`), or `contains(file.name, "ign")` becomes a failed link
-  lookup instead of a substring test.
-- **marked UNSHIFTS extension tokenizers**, so a host's extensions are
-  offered before the engine's. That is what lets `tableBeforeAnchor` claim
-  a table's rows before the table rule can swallow the marker beneath it.
-- **A three-backtick fence cannot quote a three-backtick fence.** A
-  demo-vault note had been rendering half its content as a code block
-  because of this; the wrapper needs four.
+- **`export-site.js` builds its own worker env.** A per-vault flag wired
+  through render-service does NOT reach exports automatically —
+  CLEW_DATAVIEW_JS was missing there since Dataview landed. Next flag:
+  add it in both places, and verify the export by content.
+- **A lazy regex turned gray to yellow.** `rgb(a, b, c)` fed to
+  `/\(([^)]+?)(?:,\s*[\d.]+)?\)/` captures two channels and eats the
+  third as "alpha" → `rgba(218, 218, 0.15)` = yellow grid lines. The
+  smoke assertions were all green while the screenshot was visibly
+  wrong: **assert content AND look at the picture.**
+- **Smoke recipe that works** (scenario → frame): `openNote(path,
+  { newTab: true, defaultMode: 'reading' })` + `setTabMode(tab.id,
+  'reading')`, then let the frame script poll the preview document and
+  THROW on failure — "smoke failed:" in stdout is the signal. Site
+  export can be driven headlessly via
+  `ipc.invoke('clew:export-site', { outDir })` in a scenario.
+- Older traps (local-midnight dates, `^` superscript vs block ids,
+  fence-aware walks, linkKey canonicalisation, marked UNSHIFT order,
+  four-backtick wrappers) are in CLAUDE.md and last session's git
+  history; they all still hold.
 
 ## 5. Standing session rules (they keep earning their keep)
 
 - **NEVER `git add -A`** — stage explicit paths.
 - Always pass `CLEW_SMOKE_VAULT`; `git status` the demo and study vaults
   after every smoke run.
-- **The owner's bug reports have been consistently right.** When a report
-  and the code disagree, look harder at the code.
-- **Write assertions that can fail.** A table-editing smoke once came back
-  4/4 green with two vacuous assertions (`doc.lines >= 9`, and a literal
-  `true`). Rewritten to count rows and cursor cells, it proved the real
-  thing.
-- **Verify artefacts by content** — the `.canvas` file, the
-  `.excalidraw.md` bytes, the saved PDF, the rendered HTML — never the log
-  line that says it worked.
-- **Prefer measuring to guessing.** Every good decision in this stretch
-  came from a corpus; the one bad ranking came from a single biased vault.
+- **The owner's bug reports have been consistently right.**
+- **Write assertions that can fail** — and eyeball the artefact anyway
+  (see the yellow grid above).
+- **Verify artefacts by content**, never the log line that says it worked.
+- **Prefer measuring to guessing.**
 - `npm run dev` and `npm run package` **re-sync the engine** from the
-  golden master's working tree. That is how newer engine work arrives
-  unbidden; it is not your edit.
+  golden master's working tree; that is not your edit.
