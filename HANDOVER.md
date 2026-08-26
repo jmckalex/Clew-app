@@ -1,5 +1,33 @@
 # Handover — 2026-08-26 night (the compat line is drawn)
 
+## 0a. LATER THE SAME NIGHT (post-line work — all Clew-native)
+
+- **Widgets are Web Awesome components** (@awesome.me/webawesome, MIT,
+  16 cherry-picked, zero icon assets, lazily loaded wa.js/wa.css from
+  __clew_preview__; wa-dark/wa-light track the theme; brand token =
+  Clew accent). New types: textArea/datePicker/time/progressBar (Meta
+  Bind's own, previously refused) + Clew-native `rating` and `color`;
+  VIEW formatter kinds relativeTime/formatDate/formatNumber/
+  formatBytes/badge/qr. v3 emits standard `change` — no new wiring.
+- **Widgets edit PROSE**: `INPUT[text:^block-id]` binds to the block a
+  marker names; writes go through editNoteField source 'block' →
+  rewriteBlockText (shared/note-metadata: fence-aware, marker kept,
+  values flatten to one block). Demo + docs: `Guide/Widgets.md` (its
+  own page now; the compat note is back to a pointer).
+- **MetaPost fonts fixed UPSTREAM** (jmarkdown 00b006f): HTML path is
+  EPS + dvisvgm --no-fonts → glyphs as PATHS (the old backend's <text>
+  garbled kerning and DROPPED superscripts). Clew detects ghostscript's
+  stable homebrew symlink and writes 'TiKZ libgs' (the versioned Cellar
+  default had rotted). Demo cache regenerated: 0 <text>, 78 paths.
+- **openWikilink refuses URLs** — an `https:/…/.md.md` artifact was
+  found in the demo vault (create-on-miss took a URL literally);
+  scheme-shaped targets now open externally.
+- The OWNER is working in the tree concurrently (icons/canvas files +
+  Note Headers tweak left uncommitted, deliberately untouched). Their
+  live testing also toggles demo widgets — reset `done:`/`^motto`
+  baselines before committing demo files.
+
+
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it); the original design plan is at
 `~/.claude/plans/groovy-forging-shell.md`. This file is rewritten each
