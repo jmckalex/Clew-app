@@ -59,6 +59,22 @@ export const bundles = [
 		format: 'iife',
 	},
 	{
+		// Web Awesome components for Meta Bind widgets — lazily loaded by the
+		// preview client only when a document contains one.
+		entryPoints: [path.join(root, 'src/preview-client/wa-bundle.js')],
+		outfile: path.join(root, 'dist/preview-client/wa.js'),
+		bundle: true,
+		format: 'iife',
+		minify: true,   // lazily loaded, but 650 KB of library earns a squeeze
+	},
+	{
+		// …and their base styles + default theme, resolved to one file.
+		entryPoints: [path.join(root, 'src/preview-client/wa-styles.css')],
+		outfile: path.join(root, 'dist/preview-client/wa.css'),
+		bundle: true,
+		minify: true,
+	},
+	{
 		// The Excalidraw editor page. This is the ONLY bundle that contains
 		// React: it is loaded in an iframe when a drawing is opened, so the
 		// app's own renderer never carries a framework. Excalidraw is bundled

@@ -1,0 +1,5 @@
+/* Web Awesome base styles + default theme, bundled to one file for the
+ * preview documents (esbuild resolves the imports). Clew's own token
+ * overrides live in src/engine/preview.css, which loads after this. */
+@import '@awesome.me/webawesome/dist/styles/webawesome.css';
+@import '@awesome.me/webawesome/dist/styles/themes/default.css';

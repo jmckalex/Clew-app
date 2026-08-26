@@ -159,7 +159,10 @@ export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDi
 				return fileResponse(abs, {}, request.headers.get('range'));
 			}
 			if (pathname.startsWith('__clew_preview__/')) {
-				const file = pathname.endsWith('/api.js') ? 'api.js' : 'client.js';
+				// A closed set: nothing outside dist/preview-client is servable.
+				const known = new Set(['api.js', 'client.js', 'wa.js', 'wa.css']);
+				const name = pathname.split('/').pop();
+				const file = known.has(name) ? name : 'client.js';
 				return fileResponse(path.join(distDir, 'preview-client', file));
 			}
 

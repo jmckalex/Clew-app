@@ -386,20 +386,23 @@ table.clew-query th {
 }
 .clew-task-backlink { font-size: 0.85em; color: var(--preview-muted); }
 .clew-tasks-count { font-size: 0.8em; color: var(--preview-muted); margin-top: 0.4em; }
-/* Meta Bind widgets: form controls that sit comfortably in a sentence. */
-.clew-mb { accent-color: var(--preview-accent); vertical-align: middle; }
-input.clew-mb[type='text'], input.clew-mb[type='number'], select.clew-mb {
-	background: var(--preview-code-bg);
-	color: var(--preview-text);
-	border: 1px solid var(--preview-border);
-	border-radius: 5px;
-	padding: 2px 7px;
-	font: inherit;
-	font-size: 0.92em;
+/* Meta Bind widgets (Web Awesome elements): sized to sit in a sentence.
+   Their own styling arrives with wa.css; the brand color maps to Clew's. */
+.clew-mb { vertical-align: middle; }
+html.wa-dark, html.wa-light {
+	--wa-color-brand-fill-loud: var(--preview-accent);
+	--wa-form-control-activated-color: var(--preview-accent);
 }
-input.clew-mb[type='number'] { width: 5.5em; }
-.clew-mb-slider { display: inline-flex; align-items: center; gap: 7px; vertical-align: middle; }
-.clew-mb-slider input[type='range'] { width: 150px; }
+wa-select.clew-mb { display: inline-block; min-width: 9.5em; }
+wa-input.clew-mb, wa-number-input.clew-mb, wa-time-input.clew-mb {
+	display: inline-block;
+	width: 11em;
+}
+wa-textarea.clew-mb { display: block; max-width: 36em; margin: 0.4em 0; }
+wa-color-picker.clew-mb { display: inline-block; }
+wa-progress-bar.clew-mb-display { display: inline-block; width: 160px; vertical-align: middle; }
+.clew-mb-slider { display: inline-flex; align-items: center; gap: 8px; vertical-align: middle; }
+.clew-mb-slider wa-slider, .clew-mb-slider input[type='range'] { width: 160px; }
 .clew-mb-value { font-size: 0.85em; color: var(--preview-muted); min-width: 2em; }
 .clew-mb-view { border-bottom: 1px dotted var(--preview-muted); }
 .clew-mb-refused { color: var(--preview-muted); font-size: 0.85em; }

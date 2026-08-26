@@ -33,6 +33,9 @@ window.addEventListener('message', (event) => {
 	else if (msg.type === 'scroll-to-line') scrollToLine(msg.line, msg.behavior ?? 'auto');
 	else if (msg.type === 'theme') {
 		document.documentElement.dataset.theme = msg.theme;
+		// Web Awesome widgets pick their palette from these classes.
+		document.documentElement.classList.toggle('wa-dark', msg.theme !== 'light');
+		document.documentElement.classList.toggle('wa-light', msg.theme === 'light');
 		configureMermaid(msg.theme);
 		broadcastThemeToNested(msg.theme);
 	}
@@ -350,5 +353,7 @@ initLeafletMaps();
 initPdfEmbeds();
 initExcalidrawEmbeds();
 initQueryInteract();
+// Previews start dark until the host says otherwise (preview.css defaults).
+document.documentElement.classList.add('wa-dark');
 initMetaBind();
 post({ type: 'ready' });

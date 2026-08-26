@@ -2,6 +2,10 @@
 done: false
 rating: 6
 status: drafting
+stars: 3.5
+ink: "#8b7ec8"
+due: 2026-09-15
+url: "https://clew-app.com"
 tags:
   - guide
 ---
@@ -63,10 +67,26 @@ are just a view of it):
 
 Done: INPUT[toggle:done] · Rating: INPUT[slider(minValue(0), maxValue(10)):rating] — currently VIEW[{rating}] · Status: INPUT[inlineSelect(option(drafting), option(review), option(shipped)):status]
 
-Toggle, slider, text, number and select widgets work, on the same
-write path as [[Queries|editable query cells]] — the frontmatter safety
-valve included. Other input types, `VIEW[…]` expressions, and the
-plugin's button system are refused by name.
+The widgets are [Web Awesome](https://webawesome.com) components (MIT,
+bundled, loaded only when a note carries one). Beyond Meta Bind's own
+toggle, slider, text, number and select, Clew renders its `textArea`,
+`datePicker` and `time` types, a bound read-only `progressBar` — and
+adds two types of its own, worth knowing are Clew-native: **rating**
+and **color**.
+
+Stars: INPUT[rating(stepSize(0.5)):stars] · Ink: INPUT[color:ink] · Due: INPUT[datePicker:due] — which is VIEW[relativeTime:{due}] · Progress: INPUT[progressBar(minValue(0), maxValue(10)):rating]
+
+`VIEW[…]` grew formatter kinds the same way (Clew-native):
+`relativeTime`, `formatDate`, `formatNumber`, `formatBytes`, `badge` —
+status as a badge: VIEW[badge:{status}] — and `qr`, which turns a bound
+URL into something an iPad can scan straight off the screen:
+
+VIEW[qr:{url}]
+
+Everything writes through the same path as
+[[Queries|editable query cells]] — the frontmatter safety valve
+included. Other input types, `VIEW[…]` expressions, and the plugin's
+button system are refused by name.
 
 ## Where the line is
 
