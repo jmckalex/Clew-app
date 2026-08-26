@@ -144,6 +144,12 @@ export class RenderService {
 				// Obsidian Bases. The `![[X.base]]` embed path lives in
 				// wikilinks.js; this registers the inline ```base fence.
 				`baseFence from ${path.join(engineAssets, 'bases.js')}`,
+				// The Admonition plugin's ```ad-* fences (pre-callout vaults),
+				// mapped onto callout tokens so callouts.js renders them.
+				`admonitionFence from ${path.join(engineAssets, 'admonitions.js')}`,
+				// Meta Bind's INPUT[…]/VIEW[…] widgets — editable cells that
+				// live in prose, on the same field-edit write path.
+				`metaBindInline, metaBindFence from ${path.join(engineAssets, 'meta-bind.js')}`,
 				// LAST on purpose: marked offers the most recently registered
 				// block extension first, and callouts must be seen before the
 				// engine's own GFM-alert rule so that every `> [!type]` in a

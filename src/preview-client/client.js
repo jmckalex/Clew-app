@@ -17,6 +17,7 @@ import { anchorTarget } from './anchors.js';
 import { initCanvasEmbeds, refreshCanvasEmbeds, broadcastThemeToNested } from './canvas-embed.js';
 import { initLeafletMaps } from './leaflet-maps.js';
 import { initQueryInteract } from './query-interact.js';
+import { initMetaBind } from './meta-bind.js';
 import { initPdfEmbeds } from './pdf-embed.js';
 import { initExcalidrawEmbeds } from './excalidraw-embed.js';
 
@@ -80,6 +81,9 @@ function applyRender(html) {
 			onBeforeElUpdated(fromEl, toEl) {
 				if (fromEl.tagName === 'SCRIPT') return false;
 				if (fromEl.id === '__clew_err') return false;
+				// A Meta Bind widget mid-interaction must not be yanked back
+				// to the on-disk value by an unrelated re-render.
+				if (fromEl.classList?.contains('clew-mb') && fromEl === document.activeElement) return false;
 				if (fromEl.classList?.contains('canvas-embed-scene')) return false;
 				// Custom elements (vault scripts / Script: metadata) render
 				// their own content, which the incoming HTML doesn't carry —
@@ -151,6 +155,9 @@ function enableTaskCheckboxes() {
 document.addEventListener('change', (e) => {
 	const box = e.target;
 	if (box?.type !== 'checkbox') return;
+	// Meta Bind toggles are FIELD edits, not task toggles; their own
+	// handler (meta-bind.js) owns them.
+	if (box.classList.contains('clew-mb')) return;
 	// A ```tasks item carries its SOURCE note; route the toggle there.
 	const remote = box.closest('[data-task-path]');
 	if (remote) {
@@ -343,4 +350,5 @@ initLeafletMaps();
 initPdfEmbeds();
 initExcalidrawEmbeds();
 initQueryInteract();
+initMetaBind();
 post({ type: 'ready' });

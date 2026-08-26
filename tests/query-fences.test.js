@@ -10,7 +10,41 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFrontmatter, readInlineFields, resolveDateExpr, parseQueryConfig, parseKanbanConfig, runQuery, parseTasksConfig, extractTasks, taskMeta, parseObsidianTasksQuery } from '../src/engine/query-fences.js';
+import { readFrontmatter, readInlineFields, resolveDateExpr, parseQueryConfig, parseKanbanConfig, runQuery, parseTasksConfig, extractTasks, taskMeta, parseObsidianTasksQuery, parseSearchQuery, runSearchQuery } from '../src/engine/query-fences.js';
+
+// ---- core Obsidian's ```query (embedded search) -----------------------------
+
+const SEARCH_NOTES = [
+	{ path: 'Daily/2024-01-01.md', name: '2024-01-01', text: 'Went for deep work at the library. #focus\n- [ ] plan', fm: {} },
+	{ path: 'Areas/Health.md', name: 'Health', text: 'Sleep more. #habit/sleep', fm: { status: 'active' } },
+	{ path: 'Inbox.md', name: 'Inbox', text: 'A stray thought about libraries.', fm: {} },
+];
+
+test('search: terms AND, phrases, tag/path/file operators, negation, OR', () => {
+	const hits = (q) => runSearchQuery(parseSearchQuery(q), SEARCH_NOTES).map((r) => r.note.name).sort();
+	assert.deepEqual(hits('library'), ['2024-01-01']);
+	assert.deepEqual(hits('"deep work"'), ['2024-01-01']);
+	assert.deepEqual(hits('tag:#focus'), ['2024-01-01']);
+	assert.deepEqual(hits('tag:habit'), ['Health'], 'nested tags match their parent');
+	assert.deepEqual(hits('path:Areas'), ['Health']);
+	assert.deepEqual(hits('file:Inbox'), ['Inbox']);
+	assert.deepEqual(hits('librar -thought'), ['2024-01-01']);
+	assert.deepEqual(hits('tag:#focus OR path:Areas'), ['2024-01-01', 'Health']);
+	assert.deepEqual(hits('[status:active]'), ['Health']);
+	assert.deepEqual(hits('[status]'), ['Health']);
+});
+
+test('search: matching lines become excerpts', () => {
+	const [hit] = runSearchQuery(parseSearchQuery('"deep work"'), SEARCH_NOTES);
+	assert.equal(hit.excerpts.length, 1);
+	assert.match(hit.excerpts[0], /deep work at the library/);
+});
+
+test('search: what Clew does not run is refused by name', () => {
+	assert.deepEqual(parseSearchQuery('line:(foo bar)').refused, ['line:(…) scoped search']);
+	assert.deepEqual(parseSearchQuery('/rege*x/').refused, ['regular expressions']);
+	assert.deepEqual(parseSearchQuery('(a OR b) c').refused, ['grouping with parentheses']);
+});
 
 // ---- the Tasks PLUGIN's dialect ---------------------------------------------
 

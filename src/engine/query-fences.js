@@ -208,6 +208,143 @@ export function parseQueryConfig(body) {
 	return config;
 }
 
+// ---- Obsidian's CORE ```query (an embedded search) --------------------------
+// Same fence name, different language: core Obsidian's query block holds one
+// SEARCH expression (`tag:#project path:"Areas" "deep work"`), rendered as
+// the matching notes with their matching lines. The dialects are told apart
+// by a single, reliable habit: Clew keys are written `key: value` (a space),
+// search operators are `op:value` (none). A line neither dialect owns —
+// or a search feature Clew does not run (regex, parentheses, line:/section:/
+// task: operators) — refuses the block by name.
+
+const CLEW_QUERY_LINE = /^\s*(table|list|from|tag|where|group|sort|limit)\s*:(\s|$)/i;
+
+const SEARCH_REFUSED = new Map([
+	['line', 'line:(…) scoped search'], ['block', 'block:(…) scoped search'],
+	['section', 'section:(…) scoped search'], ['task', 'task:(…) search'],
+	['task-todo', 'task search'], ['task-done', 'task search'],
+	['match-case', 'case-sensitive matching'], ['ignore-case', 'case toggles'],
+]);
+
+/** One search expression → { groups: [[term…]…], refused: [] }. Groups are
+ *  OR-alternatives; terms within a group all have to hold. */
+export function parseSearchQuery(text) {
+	const source = text.split('\n').map((l) => l.trim()).filter(Boolean).join(' ');
+	const refused = [];
+	const groups = [[]];
+	const tokens = source.match(/-?[\w-]+:"[^"]*"|-?"[^"]*"|-?\[[^\]]*\]|-?\/(?:[^/\\]|\\.)*\/|[()]|-?\S+/g) ?? [];
+	for (let token of tokens) {
+		if (token === 'OR') { groups.push([]); continue; }
+		if (token === 'AND') continue;                       // implicit anyway
+		if (token === '(' || token === ')') { refused.push('grouping with parentheses'); continue; }
+		let neg = false;
+		if (token.startsWith('-') && token.length > 1) { neg = true; token = token.slice(1); }
+		const group = groups[groups.length - 1];
+		const unquote = (s) => s.replace(/^"|"$/g, '');
+		if (/^\/.*\/$/.test(token)) { refused.push('regular expressions'); continue; }
+		if (token.startsWith('"')) { group.push({ neg, kind: 'phrase', value: unquote(token).toLowerCase() }); continue; }
+		const prop = /^\[([^\]:]+)(?::(.*))?\]$/.exec(token);
+		if (prop) {
+			group.push({ neg, kind: 'prop', key: prop[1].trim().toLowerCase(), value: prop[2]?.trim().toLowerCase() ?? null });
+			continue;
+		}
+		const op = /^([\w-]+):(.*)$/.exec(token);
+		if (op) {
+			const name = op[1].toLowerCase();
+			const value = unquote(op[2]).toLowerCase();
+			if (SEARCH_REFUSED.has(name)) { refused.push(SEARCH_REFUSED.get(name)); continue; }
+			if (name === 'tag') { group.push({ neg, kind: 'tag', value: value.replace(/^#/, '') }); continue; }
+			if (name === 'path') { group.push({ neg, kind: 'path', value }); continue; }
+			if (name === 'file') { group.push({ neg, kind: 'file', value }); continue; }
+			if (name === 'content') { group.push({ neg, kind: 'text', value }); continue; }
+			// An unknown op is what Obsidian would treat as plain text.
+		}
+		group.push({ neg, kind: 'text', value: token.toLowerCase() });
+	}
+	return { groups: groups.filter((g) => g.length), refused: [...new Set(refused)] };
+}
+
+const searchTags = (note) => new Set([
+	...noteTags(note),
+	...[...note.text.matchAll(/#([\w][\w/-]*)/g)].map((m) => m[1].toLowerCase()),
+]);
+
+function termMatches(term, note) {
+	const hit = (() => {
+		switch (term.kind) {
+			case 'text':
+			case 'phrase':
+				return note.text.toLowerCase().includes(term.value)
+					|| note.name.toLowerCase().includes(term.value);
+			case 'tag': {
+				for (const tag of searchTags(note)) {
+					if (tag === term.value || tag.startsWith(term.value + '/')) return true;
+				}
+				return false;
+			}
+			case 'path': return note.path.toLowerCase().includes(term.value);
+			case 'file': return note.path.split('/').pop().toLowerCase().includes(term.value);
+			case 'prop': {
+				const v = note.fm[term.key];
+				if (term.value === null) return v !== undefined && v !== '';
+				const list = Array.isArray(v) ? v : [v];
+				return list.some((x) => String(x ?? '').toLowerCase() === term.value);
+			}
+			default: return false;
+		}
+	})();
+	return hit !== term.neg;
+}
+
+/** Matching notes with up to three matching-line excerpts each. Pure. */
+export function runSearchQuery(query, notes) {
+	const results = [];
+	for (const note of notes) {
+		if (!query.groups.some((group) => group.every((t) => termMatches(t, note)))) continue;
+		const needles = query.groups.flat()
+			.filter((t) => !t.neg && (t.kind === 'text' || t.kind === 'phrase'))
+			.map((t) => t.value);
+		const excerpts = [];
+		if (needles.length) {
+			for (const line of note.text.split('\n')) {
+				const lower = line.toLowerCase();
+				if (needles.some((n) => lower.includes(n))) {
+					excerpts.push(line.trim().slice(0, 160));
+					if (excerpts.length === 3) break;
+				}
+			}
+		}
+		results.push({ note, excerpts });
+	}
+	return results;
+}
+
+const SEARCH_RESULT_CAP = 50;
+
+function renderSearchEmbed(body) {
+	const query = parseSearchQuery(body);
+	if (query.refused.length) {
+		return `<div class="clew-query is-unsupported"><div class="clew-query-title">`
+			+ `This search embed uses features Clew does not implement</div>`
+			+ query.refused.map((r) => `<div class="clew-query-note">${escapeHtml(r)}</div>`).join('')
+			+ `</div>\n`;
+	}
+	if (!query.groups.length) return `<div class="clew-query is-empty">Empty search.</div>\n`;
+	const results = runSearchQuery(query, scanNotes());
+	if (!results.length) return `<div class="clew-query is-empty">No results.</div>\n`;
+	const parts = ['<div class="clew-query clew-search-embed">'];
+	for (const { note, excerpts } of results.slice(0, SEARCH_RESULT_CAP)) {
+		parts.push(`<div class="clew-search-hit">${noteLink(note)}`
+			+ excerpts.map((x) => `<div class="clew-search-match">${escapeHtml(x)}</div>`).join('')
+			+ '</div>');
+	}
+	if (results.length > SEARCH_RESULT_CAP) {
+		parts.push(`<div class="clew-query-note">…and ${results.length - SEARCH_RESULT_CAP} more.</div>`);
+	}
+	parts.push('</div>');
+	return parts.join('\n') + '\n';
+}
+
 const fieldOf = (note, field) => {
 	if (field === 'name') return note.name;
 	if (field === 'path') return note.path;
@@ -275,6 +412,12 @@ export const queryFence = {
 	},
 	renderer(token) {
 		if (global.isLatex) return '';
+		// Two dialects share this fence: Clew's `key: value` lines, and core
+		// Obsidian's search expression. The space after the colon decides.
+		const lines = token.text.split('\n').map((l) => l.trim()).filter(Boolean);
+		if (lines.length && !lines.every((l) => CLEW_QUERY_LINE.test(l))) {
+			return renderSearchEmbed(token.text);
+		}
 		const config = parseQueryConfig(token.text);
 		const rows = runQuery(config, scanNotes());
 		if (rows.length === 0) return `<div class="clew-query is-empty">No notes match this query.</div>\n`;
