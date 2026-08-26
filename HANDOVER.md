@@ -1,4 +1,4 @@
-# Handover — 2026-08-26 (the Charts plugin, and what it proved)
+# Handover — 2026-08-26 (0.9.0 shipped; Charts; drawings with images; showpiece figures)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it); the original design plan is at
@@ -8,98 +8,103 @@ it again.
 
 ## 0. Where things stand
 
-- Everything is on **`main`**, working tree clean, `npm test` → **339
-  green**. Demo and study vaults clean. `../Clew-docs` manual updated to
-  match (plugins, queries, diagrams chapters) and committed.
-- This session: **Charts** — Obsidian's ```` ```chart ```` YAML fence and
-  the dataviewjs `renderChart(config, el)` bridge, built as the demo
-  vault's third plugin (`demo-vault/.clew/plugins/charts/`). It is the
-  first plugin to use the **engine surface**, and the worked example of an
-  engine + preview pair: the engine surface parses/refuses and emits a
-  `data-chart` placeholder; the preview surface draws it with a vendored
-  Chart.js 4.5.1 (MIT; `dependencies` + `scripts/vendor-chartjs.js`, copy
-  committed like the icon). Upstream obsidian-charts is **AGPL with a
-  stale MIT package.json — the same trap as Excalidraw**; the format was
-  reimplemented from charts.phib.ro, no upstream source read.
-- Fallout fixes that outlive charts: **site export now ships enabled
-  plugins' preview surfaces** (`assets/plugins/<id>/`, whole folder) and
-  **passes CLEW_DATAVIEW_JS to its workers** — dataviewjs output used to
-  silently bake as "not run" even in vaults that enable it.
-- The dataviewjs sandbox grew Obsidian-shaped bindings: `window` (a
-  naming proxy), `this.container` / `dv.container` (passable token that
-  fails by name on use), bare `renderChart`.
+- Everything is on **`main`**, working tree clean, `npm test` → **342
+  green**. Demo and study vaults clean. `../Clew-docs` clean and deployed.
+- **0.9.0 IS RELEASED.** Tagged `v0.9.0` (the mis-tagged v0.8.0 stays as
+  history), all four artefacts built and **uploaded to the droplet** with
+  byte-verified sizes: the universal dmg is signed, notarized, stapled and
+  Gatekeeper-accepted (`spctl: accepted, source=Notarized Developer ID`);
+  Windows NSIS, AppImage and deb cross-built as before (untested at
+  runtime). `make check-links` → **all local links resolve** (was 4 dead
+  download links). The public site still waits on the Clew-docs DNS
+  blocker; the droplet itself is fully populated. Old artefacts moved to
+  `out/old/`, not deleted.
+- This session, in order: the **Charts plugin** (```chart fences +
+  dataviewjs `renderChart` bridge — the first engine-surface plugin);
+  **Excalidraw embedded images** (the `## Embedded Files` section is now
+  resolved and rehydrated, injected entries stripped on save; vanilla
+  `files{}` unit-tested and smoke-proven); the **CJK font download run end
+  to end** (26/26 files, byte-exact against the manifest); site export
+  fixes (plugin preview surfaces ship; CLEW_DATAVIEW_JS reaches export
+  workers); and **showpiece demo figures** (below).
 
-## 1. Charts facts a future session will want
+## 1. The demo Diagrams note, and how figures render now
 
-- Fence → `buildChart()` maps the documented modifiers onto a finished
-  Chart.js config; **unknown/unsupported keys refuse the whole chart by
-  name** (`time:` and `id:` are the deliberate refusals — a date adapter
-  is not shipped; sankey is refused as an unknown type).
-- The preview glue keeps charts alive across morphs: canvas carries
-  `data-clew-keep`, unchanged `data-chart` is left alone (no re-animate),
-  theme recolor via `Chart.defaults` + `update('none')` on a `data-theme`
-  MutationObserver.
-- `global.clewCharts.emit(config)` is the bridge hook; `dataview-js.js`
-  only looks it up, so no plugin → named failure, and the coupling stays
-  one-way. Configs cross worker→preview as JSON; functions are refused
-  naming their path.
-- `demo-vault/Guide/Charts.md` is documentation AND test corpus: 5 live
-  fences + 1 deliberate `time:` refusal + 1 renderChart chart. The smoke
-  frame script asserted exactly that (6 live Chart instances, 1 refusal).
+- TikZ shows the owner's genuinely-3D shells figure from "The
+  incompleteness of classical mechanics" (BJPS) — supplied by the owner
+  directly; the paper file is `~/Documents/Articles/Published/The
+  incompleteness of classical mechanics/`. MetaPost shows **figure 14 of
+  `~/Documents/Archived/lfp/ep/figures/ep-figures.mp`** (owner's 1998
+  GPL'd library): an abacus-machine flowchart on the `boxes` package,
+  extracted with the three connector macros it needs. Fence attributes
+  like `@begin(metapost){width='45%'}` work (scale/width/embed).
+- **TikZ/MetaPost figures no longer get white plates in dark mode.**
+  `src/engine/preview.css` inverts them (`invert(1) hue-rotate(180deg)`):
+  white-on-transparent in dark, black-on-transparent in light. Grayscale
+  hierarchy survives inversion (faint stays faint); site export shares the
+  stylesheet.
+- The cached SVGs under `Features/TiKZ/` and `Features/MetaPost/` are
+  COMMITTED so the vault renders without TeX; regenerate by deleting them
+  and opening the note with a toolchain present.
 
-## 2. The compatibility measurement (kept for the open items)
+## 2. Charts facts a future session will want
 
-`npm run vault-report -- <vault>` and `npm run dataview-report -- <vault>`
-(imports src/engine, so it measures shipping code). Corpus vaults live in
-`../test-vaults/` — obsidian-help, s-blu, kepano, bramses re-cloned this
-session. Findings that still steer priorities: dataviewjs is
-documentation, not usage (130 occurrences in the teaching vault, 0 in
-three real ones — and s-blu's two renderChart blocks are fenced
-`//dataviewjs`, display-only); kepano abandoned Dataview for Bases; the
-DQL subset covers 25/25 queries in the real vaults. Charts itself scored
-**zero** in the corpus — it was built as a flagship for the plugin
-system, not from compat pressure.
+- `demo-vault/.clew/plugins/charts/`: engine surface parses the YAML and
+  refuses by name (`time:`, `id:`, unknown keys/types); preview surface
+  draws `data-chart` placeholders with vendored Chart.js 4.5.1
+  (`dependencies` + `scripts/vendor-chartjs.js`, copy committed).
+  Canvas carries `data-clew-keep`; unchanged configs don't re-animate.
+- `global.clewCharts.emit(config)` is the dataviewjs bridge hook;
+  `dataview-js.js` looks it up, so no plugin → named failure. The sandbox
+  now binds `window` (naming proxy), `this.container`/`dv.container`
+  (passable token, fails by name on use), and bare `renderChart`.
+- Upstream obsidian-charts is **AGPL with a stale MIT package.json — the
+  Excalidraw trap**; format reimplemented from charts.phib.ro, no source
+  read.
 
 ## 3. Open items, in the order I would take them
 
-- **FLATTEN** — 92 occurrences, all in the teaching vault. Check a fifth
-  vault before building it.
-- **Bases map views** are refused; Clew has Leaflet, so possible.
-- **Charts extras if demand ever appears**: a date adapter for `time:`,
-  sankey, Charts View (the other plugin). None seen in the wild yet.
-- **The 139 MB CJK font download has never been run end to end.**
-- **Excalidraw drawings with embedded images (`files{}`)** are untested.
-- **The v0.8.0 tag is on the wrong commit** — retag or go to 0.9.0;
-  `out/` holds stale artefacts, and check-links flags the four missing
-  download files on the site.
-- `../Clew-docs` has its own HANDOVER; the DNS blocker there is unchanged.
+- **Bases map views: now MEASURED** — kepano's vault has 3 `type: map`
+  views (68 table, 4 cards). Clew has Leaflet; small real demand.
+- **FLATTEN** — still gated on a fifth vault; all 92 occurrences are in
+  the teaching vault.
+- **Charts extras if demand appears**: `time:` axes (needs a date
+  adapter), sankey, Charts View.
+- **Win/Linux artefacts have still never been run on real machines.**
+- `../Clew-docs`: the DNS change is the one blocker between the deployed
+  droplet and a public site.
 
-**Settled, do not reopen:** `%%comments%%`; Obsidian's `\[\[` escape;
-licensing (GPL-3.0-or-later; `npm run notices` regenerated this session
-for chart.js + @kurkle/color; Excalidraw plugin AND obsidian-charts are
-AGPL — formats only, never their source).
+**Settled, do not reopen:** `%%comments%%`; `\[\[` escapes; licensing
+(notices regenerated for chart.js + @kurkle/color; Excalidraw plugin and
+obsidian-charts are AGPL — formats only).
 
 ## 4. Things that cost time to find
 
-- **`export-site.js` builds its own worker env.** A per-vault flag wired
-  through render-service does NOT reach exports automatically —
-  CLEW_DATAVIEW_JS was missing there since Dataview landed. Next flag:
-  add it in both places, and verify the export by content.
-- **A lazy regex turned gray to yellow.** `rgb(a, b, c)` fed to
-  `/\(([^)]+?)(?:,\s*[\d.]+)?\)/` captures two channels and eats the
-  third as "alpha" → `rgba(218, 218, 0.15)` = yellow grid lines. The
-  smoke assertions were all green while the screenshot was visibly
-  wrong: **assert content AND look at the picture.**
-- **Smoke recipe that works** (scenario → frame): `openNote(path,
-  { newTab: true, defaultMode: 'reading' })` + `setTabMode(tab.id,
-  'reading')`, then let the frame script poll the preview document and
-  THROW on failure — "smoke failed:" in stdout is the signal. Site
-  export can be driven headlessly via
-  `ipc.invoke('clew:export-site', { outDir })` in a scenario.
-- Older traps (local-midnight dates, `^` superscript vs block ids,
-  fence-aware walks, linkKey canonicalisation, marked UNSHIFT order,
-  four-backtick wrappers) are in CLAUDE.md and last session's git
-  history; they all still hold.
+- **`export-site.js` builds its own worker env** — a per-vault flag wired
+  through render-service does NOT reach exports automatically
+  (CLEW_DATAVIEW_JS was missing since Dataview landed). Add new flags in
+  both places; verify exports by content.
+- **A lazy regex turned gray to yellow**: `rgb(a, b, c)` fed to
+  `/\(([^)]+?)(?:,\s*[\d.]+)?\)/` eats the third channel as "alpha".
+  Green assertions, visibly wrong screenshot — **assert content AND look
+  at the picture.**
+- **`document.body.textContent` includes `<style>` sheets** — mermaid's
+  CSS defines `.error-icon`, so a text-based "no error box" assertion
+  false-positives. Use `innerText`.
+- **mpost SVG output emits `<text>` with NO font-family** — browsers
+  substitute, so TeX-kerned fragments show slight spacing quirks
+  ("empt y"). Cosmetic; the alternative (paths) needs a pipeline change.
+- **Obsidian's Excalidraw plugin keeps images OUT of the scene** — vault
+  attachments named in `## Embedded Files`, mapped by fileId. Rehydrate on
+  load, and STRIP injected entries on save or every save copies the image
+  into the markdown. `embeddedFileLinks()` in shared/excalidraw-file.js.
+- **`npm run package:dist` builds arm64 by default** — the release dmg
+  needs `-- --universal` (the site links `Clew-<v>-universal.dmg`).
+- Smoke recipe: `openNote(path, {newTab: true, defaultMode: 'reading'})` +
+  `setTabMode(id, 'reading')`; frame script polls and THROWS on failure;
+  drive site export via `ipc.invoke('clew:export-site', {outDir})`;
+  `qlmanage -t -s 1200 -o . file.svg` thumbnails SVGs/PDFs for eyeballing
+  outside the app.
 
 ## 5. Standing session rules (they keep earning their keep)
 
@@ -107,9 +112,10 @@ AGPL — formats only, never their source).
 - Always pass `CLEW_SMOKE_VAULT`; `git status` the demo and study vaults
   after every smoke run.
 - **The owner's bug reports have been consistently right.**
-- **Write assertions that can fail** — and eyeball the artefact anyway
-  (see the yellow grid above).
-- **Verify artefacts by content**, never the log line that says it worked.
+- **Write assertions that can fail** — and eyeball the artefact anyway.
+- **Verify artefacts by content**, never the log line that says it worked
+  (this session: dmg via `stapler validate` + `spctl` + `lipo -archs`,
+  fonts byte-for-byte against the manifest, remote binaries by size).
 - **Prefer measuring to guessing.**
 - `npm run dev` and `npm run package` **re-sync the engine** from the
-  golden master's working tree; that is not your edit.
+  golden master; run `sync-engine` and check `git status` BEFORE tagging.
