@@ -164,6 +164,14 @@ export class RenderService {
 				...engineExtensionEntries(this.vaultRoot, this.#vaultOptions),
 			],
 			...this.#biblifyConfig(),
+			// dvisvgm needs ghostscript to convert MetaPost EPS output (and
+			// PS specials in TikZ). Homebrew's stable opt symlink survives
+			// upgrades; the engine's own default is only a fallback.
+			...(() => {
+				const libgs = ['/opt/homebrew/opt/ghostscript/lib/libgs.dylib',
+					'/usr/local/opt/ghostscript/lib/libgs.dylib'].find((p) => fs.existsSync(p));
+				return libgs ? { 'TiKZ libgs': libgs } : {};
+			})(),
 			'MathJax': { 'src': '/__clew_assets__/mathjax/tex-svg.js' },
 			'Mermaid': '/__clew_assets__/mermaid/mermaid.min.js',
 			'Fontawesome': '/__clew_assets__/fontawesome/all.min.js',
