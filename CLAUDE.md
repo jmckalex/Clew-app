@@ -320,6 +320,17 @@ browser-window-focus).
 - Obsidian compatibility is a hard constraint: never write into
   `.obsidian/`, keep `[[wikilink]]` semantics Obsidian-shaped, `.md` files
   stay `.md`. Clew state lives in `.clew/` (gitignored).
+- **The compat line is DRAWN (owner's decision, 2026-08-26): formats are
+  owned, behaviors are not chased.** Everything an Obsidian vault puts in
+  files renders or refuses BY NAME (Dataview/dataviewjs, Bases incl. maps,
+  Kanban boards, the Tasks dialect, Excalidraw incl. images, Charts,
+  admonitions, core `query` search embeds, Meta Bind widgets,
+  `obsidian://` links). Do NOT add compat features beyond this on your own
+  judgment — a real vault plus a real user hitting a named refusal is what
+  reopens the question, and nothing else does. The extension story for the
+  rest is the code itself: vault plugins, vault scripts, patches
+  (`Guide/Obsidian Compatibility.md` in the demo vault is the public
+  statement of this).
 - **Symlinks are supported** (unlike Obsidian): every vault walk (tree,
   indexer, canvas-rename, bib scan) goes through `src/main/fs-utils.js` —
   `direntKind` follows links, `walkGuard`/`shouldRecurse` realpath-dedupe

@@ -1,4 +1,4 @@
-# Handover — 2026-08-26 evening (map views, FLATTEN, Kanban + Tasks dialects)
+# Handover — 2026-08-26 night (the compat line is drawn)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it); the original design plan is at
@@ -6,94 +6,90 @@ in **CLAUDE.md** (trust it); the original design plan is at
 session — keep it short, and prefer deleting a settled item to explaining
 it again.
 
-## 0. Where things stand
+## 0. THE HEADLINE: compatibility is closed by owner decision
 
-- Everything on **`main`**, working tree clean, `npm test` → **362
-  green**. Demo and study vaults clean. `../Clew-docs` clean; site AND all
-  four 0.9.0 binaries are deployed to the droplet (byte-verified) — only
-  the DNS change stands between the droplet and a public clew-app.com.
-- **0.9.0 is released** (earlier today): tagged, universal dmg signed +
-  notarized + stapled, win/linux cross-built, check-links clean. Charts
-  plugin, Excalidraw embedded images, CJK fonts verified, showpiece
-  TikZ/MetaPost figures (now rendered as theme-aware ink via CSS
-  invert — no more white plates).
-- This evening, in order:
-  - **Bases map views** (measured: 3 in kepano) — rows with a
-    `coordinates` property become markers on the same `clew-leaflet`
-    machinery the fences use; `defaultZoom`, named `markerColor` pins;
-    `markerIcon` names Lucide icons Clew does not ship (pins stay pins).
-    Verified against kepano's real Map.base, live in-app.
-  - **CARTO watermarks every keyless tile request now** ("API KEY
-    REQUIRED" tiles) — found while eyeballing the map smoke. Default tile
-    style is now `osm`; voyager/light/dark remain by name.
-  - **FLATTEN + real GROUP BY + lambdas** — a FIFTH measured vault
-    (Obsidian-Vault-Project-Management, in `../test-vaults/`) used
-    FLATTEN in real queries, always with lambdas and filter(). DQL data
-    commands now run as a pipeline in written order over `{page, extra}`
-    rows; GROUP BY exposes `key`/`rows`; `FLATTEN rows AS R` ungroups;
-    dv-expr has `(x) => …` lambdas; filter/map/any/all/none.
-    **DQL `list()` now CONSTRUCTS (wraps) while Bases' `list()`
-    normalizes — the dialects truly differ; DQL contexts override the
-    shared table.** Coverage: fifth vault 67→83%, teaching vault 43→66%,
-    the three other real vaults still 100%.
-  - **Obsidian Kanban boards + the Tasks plugin's dialect** — both were
-    in the corpus after all (bramses: 4 boards + a tasks dashboard; the
-    fifth vault: a Taskviewer). `kanban-plugin:` frontmatter renders the
-    note as a read-only board with LIVE checkboxes (true source lines →
-    the existing data-source-line toggle); the ```tasks fence serves both
-    dialects — all-Clew lines render as before, plugin instructions run
-    the plugin dialect, and unknown lines now refuse BY NAME (fixing
-    Clew's own fence silently ignoring junk). `… by function` refused as
-    JavaScript. Verified against bramses' real files in-app.
+The owner drew the line: **formats owned, behaviors not chased.** The
+policy, its rationale (open source is the extension story; refusals are
+the demand sensor), and the DO-NOT-REOPEN rule are in CLAUDE.md; the
+public statement is the demo vault's `Guide/Obsidian Compatibility.md`.
+Do not add compat features on your own judgment — a real vault plus a
+real user hitting a named refusal reopens a question; nothing else does.
 
-## 1. Open items, in the order I would take them
+The closing move (this evening) added the last three format items:
 
-- **Card drag between lanes on plugin boards** (write-path: move a list
-  item under another heading) — the read side ships; the edit is v2.
-- **Tasks dialect extras if demand appears**: boolean line combinations,
-  `done before/after` roll-ups, `group by` more keys, Dataview-style
-  `[due:: …]` bracket fields.
-- **Win/Linux 0.9.0 artefacts have never been run on real machines.**
-- The DNS change (owner's registrar) → then `make dns-check` + `make tls`
-  in Clew-docs.
-- Charts extras (time axes, sankey) — still zero corpus demand.
+- **Admonitions** — ```ad-* fences (pre-callout vaults) map onto
+  calloutBlock TOKENS, so callouts.js renders them: one look, no drift.
+  title/collapse honoured, icon/color cosmetic, unknown ad-types become
+  titled notes (the plugin's own behavior for user types).
+- **Core ```query search embeds** — same fence, two dialects, told apart
+  by the colon: `key: value` (space) is Clew's language, `op:value` is
+  core Obsidian's search. The search subset (terms/phrases/tag/path/
+  file/[property]/-/OR) runs in the worker over scanNotes; regex,
+  parens, line:/section:/task: refused by name. Empty body stays Clew's
+  all-notes list.
+- **Meta Bind widgets** — `INPUT[toggle:done]` etc. render live controls
+  two-way bound to properties, INCLUDING other notes' via
+  `[[Note]]#prop`. The whole thing is a new front end on the EXISTING
+  field-edit → editNoteField path (safety valve, retype coercion, key
+  creation all free). Five types (toggle/slider/text/number/
+  inlineSelect); other types, VIEW expressions, and buttons refused by
+  name; widgets render disabled under CLEW_SITE_EXPORT. Client wiring in
+  preview-client/meta-bind.js; two guards in client.js (mb toggles are
+  NOT task toggles; a focused widget survives morphs).
 
-**Settled, do not reopen:** `%%comments%%`; `\[\[` escapes; licensing
-(Excalidraw plugin + obsidian-charts AGPL — formats only;
-obsidian-kanban is GPL-3.0-compatible but equally unread;
-obsidian-tasks MIT).
+Verified end to end: the demo compat note's toggle was clicked in a
+smoke run and the FILE's frontmatter changed on disk (then reset).
+`npm test` → **380 green**. Both repos clean and committed.
 
-## 2. Things that cost time to find (new this evening)
+## 1. Earlier this same day (see git log for detail)
 
-- **The two dialects of `list()`**: Dataview's constructs
-  (`FLATTEN list(expr) AS x` is the LET idiom BECAUSE it wraps), Bases'
-  normalizes (`list(loc).contains(this)` depends on idempotence). One
-  function table with a DQL-side override; do not "unify" them.
-- **DQL clauses are a pipeline in WRITTEN order** — `WHERE` after
-  `FLATTEN` sees the bindings. parseQuery keeps `steps`; the flat fields
-  remain for renderers/refusals.
-- **`start()`-claims-everything is how a whole-document extension works**
-  (kanban-board.js): gate on `global.current_file`'s frontmatter, return
-  index 0, consume all of src in one token. Registered AFTER callouts so
-  marked offers it first.
-- **The corpus had Kanban/Tasks usage all along** — earlier surveys
-  grepped for the wrong things. When measuring, grep for the FORMAT
-  (frontmatter keys, fence bodies), not the plugin name.
-- Earlier today's traps (export-site's own worker env, the lazy rgba
-  regex, innerText vs textContent, mpost SVG fonts, Embedded Files
-  strip-on-save, `--universal`) are in this file's git history and still
-  hold.
+0.9.0 released (universal dmg notarized; site + binaries byte-verified
+on the droplet; DNS still the one blocker). Charts plugin + dataviewjs
+renderChart. Excalidraw embedded images. CJK fonts verified. Showpiece
+TikZ/MetaPost figures rendered as theme-aware ink. Bases map views
+(+ OSM default tiles — CARTO watermarks keyless use now). FLATTEN +
+real GROUP BY + lambdas (fifth vault demanded it; teaching vault
+43→66%). Kanban boards + Tasks dialect (they WERE in the corpus).
+Anchor TOCs resolve toc-<slug> ids AND are Back-able (browser-style
+same-note history); every registered chord now forwards from reading
+mode; nav is ⌘[ / ⌘]; obsidian:// links get Clew equivalents.
 
-## 3. Standing session rules (they keep earning their keep)
+## 2. Open items (none are compat)
+
+- **Win/Linux 0.9.0 artefacts have never run on real machines.**
+- The DNS change → then `make dns-check` + `make tls` in Clew-docs.
+- Kanban-board card drag (write path: move a list item between
+  headings) — v2 of a shipped feature, not new compat.
+- The demo vault's compat note leaves `done: false` on purpose; playing
+  with its widgets dirties the file (like the Habit Tracker's
+  clewdata.json). `git status` after smoke runs, as ever.
+
+## 3. New traps (this evening's)
+
+- **The two ```query dialects are told apart by the space after the
+  colon.** Documented in the manual; do not "normalize" one into the
+  other.
+- **Meta Bind toggles must not fall into the checkbox-toggle path** —
+  client.js guards on `.clew-mb`. Any future checkbox-like widget needs
+  the same guard.
+- **A focused .clew-mb element is morph-protected**; without that, a
+  re-render mid-drag yanks the slider back to the on-disk value.
+- **Admonition tokens are `calloutBlock`-typed on purpose** — marked
+  dispatches renderers by token type, so one renderer serves both
+  syntaxes. If callouts.js's token shape changes, admonitions.js must
+  follow.
+- Earlier-today traps (list() dialect split, ordered DQL pipeline,
+  whole-document extensions via start()→0, export-worker env, innerText
+  vs textContent, `--universal`) are in this file's git history.
+
+## 4. Standing session rules (they keep earning their keep)
 
 - **NEVER `git add -A`** — stage explicit paths.
-- Always pass `CLEW_SMOKE_VAULT`; `git status` the demo and study vaults
+- Always pass `CLEW_SMOKE_VAULT`; `git status` demo and study vaults
   after every smoke run.
 - **The owner's bug reports have been consistently right.**
-- **Write assertions that can fail** — and eyeball the artefact anyway
-  (that is how the CARTO watermark was caught).
-- **Verify artefacts by content**, never the log line that says it worked.
-- **Prefer measuring to guessing** — and re-measure: two "never seen in a
-  sample" items turned out to be sitting in the corpus.
+- **Write assertions that can fail — and eyeball the artefact anyway.**
+- **Verify artefacts by content**, never the log line.
+- **Prefer measuring to guessing** — and re-measure.
 - `npm run dev` / `npm run package` re-sync the engine from the golden
-  master; run `sync-engine` and check `git status` BEFORE tagging.
+  master; `sync-engine` + `git status` BEFORE tagging.
