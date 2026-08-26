@@ -43,6 +43,23 @@ test('openNote navigates the active tab in place and records history', () => {
 	assert.equal(tab.path, 'b.md');
 });
 
+test('anchor jumps are history too, browser-style', () => {
+	const state = stateWithNotes('a.md');
+	const tab = tree.activeTab(state);
+	assert.ok(tree.recordAnchorJump(state, tab.id, 12, 340));
+	assert.equal(tab.path, 'a.md', 'same note');
+	assert.equal(tab.view.cursorLine, 340, 'the view moved to the target');
+	assert.ok(tree.goBack(state, tab.id));
+	assert.equal(tab.path, 'a.md');
+	assert.equal(tab.view.cursorLine, 12, 'Back restores the departure line');
+	assert.ok(tree.goForward(state, tab.id));
+	assert.equal(tab.view.cursorLine, 340, 'Forward re-jumps');
+	// A jump after going back prunes the forward stack, like a browser.
+	assert.ok(tree.goBack(state, tab.id));
+	assert.ok(tree.recordAnchorJump(state, tab.id, 12, 64));
+	assert.equal(tab.history.forward.length, 0);
+});
+
 test('openNote with newTab opens a second tab', () => {
 	const state = stateWithNotes('a.md');
 	tree.openNote(state, 'b.md', { newTab: true });

@@ -213,9 +213,15 @@ document.addEventListener('click', (e) => {
 	} else if (href.startsWith('#')) {
 		// In-document anchor. The wild writes GitHub-style hashes
 		// (#deep-work) while the engine ids headings toc-<slug>; resolve
-		// rather than letting the browser silently miss (anchors.js).
+		// rather than letting the browser silently miss (anchors.js). The
+		// jump is browser-style navigation, so tell the host where we left
+		// from and where we landed — that is what makes Back work.
 		e.preventDefault();
-		anchorTarget(href)?.scrollIntoView({ block: 'start' });
+		const target = anchorTarget(href);
+		if (target) {
+			post({ type: 'anchor-jump', fromLine: topVisibleLine(), toLine: lineOf(target) });
+			target.scrollIntoView({ block: 'start' });
+		}
 	} else {
 		e.preventDefault(); // unknown relative navigation — never leave the doc
 	}
@@ -272,6 +278,28 @@ window.addEventListener('keydown', (e) => {
 // Clicking into the preview must focus its pane, exactly as clicking into an
 // editor does — the app's pointerdown tracking cannot see inside this iframe.
 window.addEventListener('pointerdown', () => post({ type: 'focused' }), true);
+
+/** The topmost stamped line in view — where the reader currently "is". */
+function topVisibleLine() {
+	for (const el of document.querySelectorAll('[data-source-line]')) {
+		if (el.getBoundingClientRect().bottom > 0) return Number(el.dataset.sourceLine) || 1;
+	}
+	return 1;
+}
+
+/** The source line an element belongs to: itself, a stamped ancestor, or
+ *  the last stamped element before it in document order. */
+function lineOf(el) {
+	const stamped = el.closest?.('[data-source-line]');
+	if (stamped) return Number(stamped.dataset.sourceLine) || 1;
+	let line = 1;
+	for (const s of document.querySelectorAll('[data-source-line]')) {
+		if (s.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING) {
+			line = Number(s.dataset.sourceLine) || line;
+		} else break;
+	}
+	return line;
+}
 
 // Report scroll position (topmost stamped block + fraction) for scroll-sync.
 let scrollTicking = false;

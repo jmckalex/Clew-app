@@ -17,6 +17,7 @@ import { settingsStore } from '../../state/settings-store.js';
 import { ipc, CH } from '../../ipc.js';
 import * as actions from '../../commands/actions.js';
 import { effectiveChords, runChord } from '../../commands/registry.js';
+import { openExternal } from '../../lib/external-links.js';
 import { handleApiRequest } from '../../note-api.js';
 import { scrollSyncBus, makeSuppressor } from '../../preview/scroll-sync.js';
 import { previewUrl } from '../../lib/preview-url.js';
@@ -30,6 +31,7 @@ class ClewPreviewView extends ClewElement {
 	#clientReady = false;
 	#pending = [];
 	#suppressor = makeSuppressor();
+	#lastCursorLine = null;
 
 	subscribe() {
 		this.listen({ on: ipc.on }, CH.EV_RENDER_DONE, ({ path }) => {
@@ -52,6 +54,15 @@ class ClewPreviewView extends ClewElement {
 		});
 		this.listen(settingsStore, 'settings-changed', () => {
 			this.#post({ type: 'theme', theme: document.body.dataset.theme ?? 'dark' });
+		});
+		// Back/Forward over anchor jumps restore a same-path entry, which the
+		// tab group deliberately does not rebuild — scroll the live document.
+		this.listen(workspaceStore, 'layout-changed', () => {
+			const line = workspaceStore.findTab(this.tabId)?.tab.view.cursorLine;
+			if (!Number.isFinite(line) || line === this.#lastCursorLine) return;
+			this.#lastCursorLine = line;
+			this.#suppressor.suppress();
+			this.#post({ type: 'scroll-to-line', line, behavior: 'auto' });
 		});
 		window.addEventListener('message', this.#onMessage);
 	}
@@ -111,6 +122,7 @@ class ClewPreviewView extends ClewElement {
 				this.#post({ type: 'app-chords', chords: effectiveChords() });
 				// Land where the editor's cursor was when reading mode opened.
 				const cursorLine = workspaceStore.findTab(this.tabId)?.tab.view.cursorLine;
+				this.#lastCursorLine = Number.isFinite(cursorLine) ? cursorLine : null;
 				if (cursorLine > 1) {
 					this.#suppressor.suppress();
 					this.#post({ type: 'scroll-to-line', line: cursorLine, behavior: 'auto' });
@@ -122,7 +134,13 @@ class ClewPreviewView extends ClewElement {
 				actions.openWikilink(msg.target, { newTab: msg.newTab, mode: 'reading' });
 				break;
 			case 'external-link':
-				ipc.invoke(CH.SHELL_OPEN_EXTERNAL, { url: msg.url }).catch(() => {});
+				openExternal(msg.url);
+				break;
+			case 'anchor-jump':
+				// A TOC click is browser-style navigation: the spot you left
+				// becomes a history entry, so Back returns you to it.
+				this.#lastCursorLine = msg.toLine;
+				workspaceStore.recordAnchorJump(this.tabId, msg.fromLine, msg.toLine);
 				break;
 			case 'source-line-click': {
 				// Inverse search: flip this tab to source mode at the clicked line.
