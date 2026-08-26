@@ -102,84 +102,83 @@ arrows and all. Switch to source mode to read it.
 
 ## MetaPost
 
-MetaPost's strength is that a figure is a *program*: positions are solved,
-not placed. This finite-state machine — the DFA that reads a binary number
-and accepts multiples of five — computes its own layout: the states sit on
-a circle, every transition curve is cut against the state borders with
-`cutbefore`/`cutafter`, and each label is set at the arc-length midpoint
-of its (already-trimmed) path, offset along the normal. Move a state and
-everything follows.
+MetaPost's strength is that a figure is a *program*: positions are
+**solved**, not placed. This abacus-machine flowchart comes from
+`ep-figures.mp`, a figure library the owner wrote in 1998, and shows the
+classic `boxes` package at work — box positions are declared as
+*equations* (`b2.n - b1.s = (0,-1u)`) and MetaPost solves the layout;
+the labels are set by TeX (`btex $q^+$ etex`); and every arrow, the long
+return edge and the self-loop included, is trimmed against the box
+outlines with `cutbefore`/`cutafter`.
 
-@begin(metapost)
-beginfig(1);
-  u := 1cm;
+@begin(metapost){width='45%'}
+input boxes
 
-  % The DFA that reads a binary number most-significant-bit first and
-  % tracks its value mod 5: from state s, bit b leads to (2s+b) mod 5.
-  % Accepting state: 0. Everything below is COMPUTED: the states sit on
-  % a circle, and every transition is trimmed against the state borders.
-  numeric n; n := 5;
-  pair q[]; path state[];
-  for i = 0 upto n - 1:
-    q[i] := 3.4u * dir(90 + 360 * i / n);
-    state[i] := fullcircle scaled 1.3u shifted q[i];
-  endfor;
+vardef connect(suffix a,b) =
+  drawarrow a.c..b.c cutbefore bpath.a cutafter bpath.b;
+enddef;
 
-  color zerocol, onecol, statefill;
-  zerocol   := (0.15, 0.35, 0.65);
-  onecol    := (0.70, 0.20, 0.20);
-  statefill := (0.93, 0.93, 0.97);
+vardef arrowin@# =
+  drawarrow @#.c shifted (0,1.75u)..@#.c cutafter bpath.@#;
+enddef;
 
-  % A curved transition from state a to state b: leave a at `bend` degrees
-  % off the direct bearing, cut both ends at the circles, arrow it, and
-  % set the label a little off the path's midpoint.
-  vardef edge(expr a, b, bend, s, c) =
-    save p; path p;
-    save t; numeric t;
-    p := q[a]{dir(angle(q[b] - q[a]) + bend)} .. q[b];
-    p := p cutbefore state[a] cutafter state[b];
-    drawarrow p withpen pencircle scaled 1 withcolor c;
-    t := arctime (arclength p / 2) of p;
-    label(s infont defaultfont scaled 0.9,
-      point t of p shifted (9 * dir(angle(direction t of p) + 90)))
-      withcolor c;
-  enddef;
+vardef arrowout@# =
+  drawarrow @#.c..@#.c shifted (0,-1.75u) cutbefore bpath.@#;
+enddef;
 
-  % A self-loop: out one side of the state, around, back in the other.
-  vardef selfloop(expr a, facing, s, c) =
-    save p; path p;
-    save t; numeric t;
-    p := q[a] {dir(facing + 40)} .. q[a] + 1.35u * dir(facing) .. {dir(facing - 220)} q[a];
-    p := p cutbefore state[a] cutafter state[a];
-    drawarrow p withpen pencircle scaled 1 withcolor c;
-    t := arctime (arclength p / 2) of p;
-    label(s infont defaultfont scaled 0.9,
-      point t of p shifted (9 * dir(facing))) withcolor c;
-  enddef;
+beginfig(14);
+ u:=18;
+ path p[];
+ boxit.b1(btex \setbox0=\hbox{copy $[1]$}\relax
+               \vbox{\copy0\hbox to \wd0{\hfil into $p$\hfil}}etex);
 
-  % Transitions first, so the state disks sit on top of the trimmed ends.
-  selfloop(0, 150, "0", zerocol);     % 0 --0--> 0
-  edge(0, 1,  20, "1", onecol);       % 0 --1--> 1
-  edge(1, 2,  20, "0", zerocol);      % 1 --0--> 2
-  edge(1, 3, -35, "1", onecol);       % 1 --1--> 3
-  edge(2, 4, -35, "0", zerocol);      % 2 --0--> 4
-  edge(2, 0,  20, "1", onecol);       % 2 --1--> 0
-  edge(3, 1,  35, "0", zerocol);      % 3 --0--> 1
-  edge(3, 2,  20, "1", onecol);       % 3 --1--> 2
-  edge(4, 3,  20, "0", zerocol);      % 4 --0--> 3
-  selfloop(4, -18, "1", onecol);      % 4 --1--> 4
+ boxit.b2(btex $g$ etex);
+ circleit.b3(btex $3^-$ etex);
+ circleit.a4(btex $p^-$ etex);
+ circleit.c4(btex $q^+$ etex);
 
-  % The states: filled disks, named; the accepting state is double-ringed.
-  for i = 0 upto n - 1:
-    fill state[i] withcolor statefill;
-    draw state[i] withpen pencircle scaled 1;
-    label(decimal i infont defaultfont scaled 1.1, q[i]);
-  endfor;
-  draw fullcircle scaled 1.1u shifted q[0] withpen pencircle scaled 0.8;
+ boxit.a5(btex \setbox0=\hbox{empty $q$}\relax
+               \vbox{\copy0\hbox to\wd0{\hfil into 2\hfil}}etex);
 
-  % The start arrow, slanting in clear of the self-loop.
-  drawarrow (q[0] + 1.8u * dir(55)) -- (q[0] + 0.7u * dir(55)) withpen pencircle scaled 1;
-  label("start" infont defaultfont scaled 0.9, q[0] + 2.05u * dir(55));
+ boxit.c5(btex \setbox0=\hbox{copy $[q]$}\relax
+               \vbox{\copy0\hbox to\wd0{\hfil into 2\hfil}}etex);
+
+ boxit.c6(btex \setbox0=\hbox{copy $[p]$}\relax
+               \vbox{\copy0\hbox to\wd0{\hfil into 1\hfil}}etex);
+ b1.c=(0,0);
+ b2.n - b1.s = b3.n - b2.s = (0,-1u);
+ b3.c - a4.c = (1.5u,2u);
+ a4.c - a5.n = (1.5u,1.5u);
+ b3.c - c4.c = (-1.5u,2u);
+ c4.s - c5.n = (0,1u);
+ c5.s - c6.n = (0,1u);
+ drawboxed(b1,b2,b3);
+ drawboxed(a4,a5);
+ drawboxed(c4,c5,c6);
+
+ arrowin.b1;
+ connect(b1,b2);
+ connect(b2,b3);
+
+ p1 = b3.c..a4.c cutbefore bpath.b3 cutafter bpath.a4;
+ label.top(btex $e$ etex, point .5*length p1 of p1);
+ drawarrow p1;
+ drawarrow a4.c{dir 260}..a4.c+(.75u,-.75u)..{left}a4.e %
+   cutbefore bpath.a4 cutafter bpath.a4;
+
+ p2 = a4.c..a5.n cutbefore bpath.a4 cutafter bpath.a5;
+ label.top(btex $e$ etex, point .5*length p2 of p2);
+ drawarrow p2;
+ arrowout.a5;
+
+ connect(b3,c4);
+ connect(c4,c5);
+ connect(c5,c6);
+
+ z1 = c6.se shifted (0,-.75u);
+ z2 = c5.e shifted (1u,0);
+
+ drawarrow c6.s{down}..{right}z1..tension1.5..{left}b2.e;
 endfig;
 end.
 @end(metapost)

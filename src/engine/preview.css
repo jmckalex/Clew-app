@@ -186,16 +186,18 @@ audio.internal-media { width: 100%; }
 .markdown-alert-important .markdown-alert-title { color: #f85149; }
 .markdown-alert svg.octicon { fill: currentColor; }
 
-/* Diagram SVGs (TikZ/MetaPost use currentColor-free strokes; give them a
-   light plate in dark theme so black strokes stay visible). */
+/* Diagram SVGs (TikZ/MetaPost draw ink-on-paper black; there is no
+   currentColor to inherit). In dark theme the image is INVERTED rather than
+   plated: black ink becomes white, faint grays stay faint (a light mark on
+   paper maps to a dark mark on the night page — same contrast, same
+   hierarchy), and hue-rotate flips inversion's color negatives back to
+   roughly their own hues. Figures sit on the page like text —
+   white-on-transparent in dark, black-on-transparent in light. */
 img[src*="TiKZ/"], img[src*="MetaPost/"] {
-	background: #ffffff;
-	border-radius: 6px;
-	padding: 10px;
+	filter: invert(1) hue-rotate(180deg);
 }
 html[data-theme='light'] img[src*="TiKZ/"], html[data-theme='light'] img[src*="MetaPost/"] {
-	background: transparent;
-	padding: 0;
+	filter: none;
 }
 .mermaid { text-align: center; }
 
