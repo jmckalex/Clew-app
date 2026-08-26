@@ -21,6 +21,7 @@
     "package:win": "node scripts/package.js --win",
     "package:linux": "node scripts/package.js --linux",
     "vault-report": "node scripts/vault-report.js",
+    "dataview-report": "node scripts/dataview-report.js",
     "notices": "node scripts/gen-notices.js"
   },
   "devDependencies": {
