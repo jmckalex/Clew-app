@@ -149,6 +149,11 @@ export class RenderService {
 				// engine's own GFM-alert rule so that every `> [!type]` in a
 				// document — the five GFM ones included — renders identically.
 				`calloutBlock from ${path.join(engineAssets, 'callouts.js')}`,
+				// After callouts (so it is offered first): a note whose
+				// frontmatter declares `kanban-plugin` IS a board, and this
+				// claims the whole body before any other rule can render it
+				// as prose. Inert for every other note.
+				`kanbanBoard from ${path.join(engineAssets, 'kanban-board.js')}`,
 				// Enabled vault plugins' engine surfaces (custom syntax).
 				...engineExtensionEntries(this.vaultRoot, this.#vaultOptions),
 			],

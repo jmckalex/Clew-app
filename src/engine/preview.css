@@ -375,6 +375,19 @@ table.clew-query th {
 }
 .clew-query.is-empty, .clew-tasks.is-empty { color: var(--preview-muted); font-size: 0.95em; }
 .clew-tasks-note { font-weight: 600; margin: 0.7em 0 0.2em; }
+/* The Tasks-plugin dialect: metadata badges, backlinks, and the count line. */
+.clew-task-badge {
+	font-size: 0.78em;
+	color: var(--preview-muted);
+	background: var(--preview-code-bg);
+	border-radius: 4px;
+	padding: 1px 5px;
+	white-space: nowrap;
+}
+.clew-task-backlink { font-size: 0.85em; color: var(--preview-muted); }
+.clew-tasks-count { font-size: 0.8em; color: var(--preview-muted); margin-top: 0.4em; }
+/* A Kanban-plugin board note: cards are tasks, so give the checkbox room. */
+.clew-kanban-note .kanban-card { display: flex; gap: 7px; align-items: baseline; }
 .clew-tasks-list { list-style: none; padding-left: 0.4em; margin: 0; }
 .clew-tasks-list li { margin: 0.15em 0; }
 .clew-tasks-list input[type='checkbox'] { margin-right: 0.45em; vertical-align: middle; }

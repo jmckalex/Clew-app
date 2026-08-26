@@ -10,7 +10,66 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFrontmatter, readInlineFields, resolveDateExpr, parseQueryConfig, parseKanbanConfig, runQuery, parseTasksConfig, extractTasks } from '../src/engine/query-fences.js';
+import { readFrontmatter, readInlineFields, resolveDateExpr, parseQueryConfig, parseKanbanConfig, runQuery, parseTasksConfig, extractTasks, taskMeta, parseObsidianTasksQuery } from '../src/engine/query-fences.js';
+
+// ---- the Tasks PLUGIN's dialect ---------------------------------------------
+
+test('taskMeta: emoji dates, priority, recurrence — parsed and stripped', () => {
+	const { meta, clean } = taskMeta('write the thing ⏫ 🔁 every week 📅 2024-03-01 ⏳ 2024-02-20 #work');
+	assert.equal(meta.due, '2024-03-01');
+	assert.equal(meta.scheduled, '2024-02-20');
+	assert.equal(meta.priority, 'high');
+	assert.equal(meta.recurring, 'every week');
+	assert.equal(clean, 'write the thing #work');
+	assert.equal(taskMeta('plain task').meta.priority, 'none');
+});
+
+const T = (over = {}) => ({
+	done: false, clean: 'a task', heading: 'Inbox', notePath: 'Daily/2024.md',
+	noteName: '2024', tags: ['#work'], meta: { priority: 'none' }, line: 1, ...over,
+});
+
+test('Tasks-dialect filters: status, includes, dates, priority', () => {
+	const q = parseObsidianTasksQuery('not done\npath includes daily\nheading includes inbox');
+	assert.equal(q.refused.length, 0);
+	assert.ok(q.filters.every((f) => f(T())));
+	assert.ok(!q.filters.every((f) => f(T({ done: true }))));
+	assert.ok(!q.filters.every((f) => f(T({ notePath: 'Projects/x.md' }))));
+
+	const due = parseObsidianTasksQuery('due before 2024-06-01');
+	assert.ok(due.filters[0](T({ meta: { priority: 'none', due: '2024-05-01' } })));
+	assert.ok(!due.filters[0](T({ meta: { priority: 'none', due: '2024-07-01' } })));
+	assert.ok(!due.filters[0](T()), 'no due date never matches a due comparison');
+
+	const has = parseObsidianTasksQuery('has due date');
+	assert.ok(has.filters[0](T({ meta: { priority: 'none', due: '2024-05-01' } })));
+	assert.ok(!has.filters[0](T()));
+
+	const pri = parseObsidianTasksQuery('priority is above none');
+	assert.ok(pri.filters[0](T({ meta: { priority: 'high' } })));
+	assert.ok(!pri.filters[0](T({ meta: { priority: 'low' } })));
+});
+
+test('Tasks-dialect sort, group, limit and layout lines parse', () => {
+	const q = parseObsidianTasksQuery('sort by priority\ngroup by heading\nlimit 5\nhide backlink\nshort mode');
+	assert.equal(q.refused.length, 0);
+	assert.equal(q.sorts.length, 1);
+	assert.equal(q.limit, 5);
+	assert.ok(q.hide.has('backlink'));
+	assert.ok(q.hide.has('due date'), 'short mode hides the badges');
+	assert.equal(q.group(T()), 'Inbox');
+});
+
+test('what the Tasks dialect cannot run is refused by name', () => {
+	const fn = parseObsidianTasksQuery('not done\nfilter by function task.status.type === "TODO"');
+	assert.equal(fn.refused.length, 1);
+	assert.match(fn.refused[0], /JavaScript/);
+	const junk = parseObsidianTasksQuery('utter nonsense line');
+	assert.equal(junk.refused.length, 1);
+	assert.match(junk.refused[0], /utter nonsense line/);
+	const bool = parseObsidianTasksQuery('(done) AND (path includes x)');
+	assert.match(bool.refused[0], /boolean/);
+});
 
 test('frontmatter reader: scalars, arrays, block lists', () => {
 	const fm = readFrontmatter('---\nstatus: active\npriority: 2\ndone: false\ntags: [a, b]\nlist:\n  - x\n  - y\n---\nbody');
@@ -39,11 +98,12 @@ test('query: from, tag, where, sort, limit', () => {
 test('tasks: extraction masks fences, config parses', () => {
 	const text = '# T\n- [ ] open one\n- [x] closed\n```\n- [ ] not a task (fenced)\n```\n  - [ ] indented open\nplain line';
 	const tasks = extractTasks(text);
-	assert.deepEqual(tasks, [
+	assert.deepEqual(tasks.map(({ line, done, text: t }) => ({ line, done, text: t })), [
 		{ line: 2, done: false, text: 'open one' },
 		{ line: 3, done: true, text: 'closed' },
 		{ line: 7, done: false, text: 'indented open' },
 	]);
+	assert.equal(tasks[0].heading, 'T', 'each task knows its nearest heading');
 	assert.equal(parseTasksConfig('done\nfrom: X/').status, 'done');
 	assert.equal(parseTasksConfig('all\ngroup: none').group, 'none');
 	assert.equal(parseTasksConfig('').status, 'todo');
