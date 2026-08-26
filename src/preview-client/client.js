@@ -36,6 +36,7 @@ window.addEventListener('message', (event) => {
 		broadcastThemeToNested(msg.theme);
 	}
 	else if (msg.type === 'canvas-changed') refreshCanvasEmbeds(msg.path);
+	else if (msg.type === 'app-chords') appChords = new Set(msg.chords ?? []);
 	else if (msg.type === 'error') showError(msg.message);
 	else if (msg.type === 'clear-error') showError(null);
 });
@@ -220,10 +221,47 @@ document.addEventListener('click', (e) => {
 	}
 }, true);
 
-// Forward the app-level chords the user expects to keep working while the
-// preview has focus (the iframe swallows keydown otherwise).
+// Forward app-level chords while the preview has focus — the iframe swallows
+// keydown, so without this every app shortcut is dead the moment a click
+// lands in reading mode (which read, from the outside, as "the menu commands
+// are broken"). The host sends its full effective chord list on ready
+// ('app-chords'); we forward exactly those, which also means chords the app
+// does NOT own — Cmd+C, text selection, find — stay the browser's.
+let appChords = null;
+const isMacLike = /Mac|iP(hone|ad|od)/.test(navigator.platform);
+
+// Mirrors the registry's chordOf(): same names, same order, so membership
+// tests against the host's normalized chord list are exact.
+function chordOf(e) {
+	const parts = [];
+	if (isMacLike) {
+		if (e.metaKey) parts.push('Mod');
+		if (e.ctrlKey) parts.push('Ctrl');
+	} else {
+		if (e.ctrlKey) parts.push('Mod');
+		if (e.metaKey) parts.push('Meta');
+	}
+	if (e.altKey) parts.push('Alt');
+	if (e.shiftKey) parts.push('Shift');
+	let key = e.key;
+	if (key === ' ') key = 'Space';
+	if (key.length === 1) key = key.toLowerCase();
+	if (['Meta', 'Control', 'Alt', 'Shift'].includes(key)) return null;
+	parts.push(key);
+	return parts.join('-');
+}
+
 window.addEventListener('keydown', (e) => {
 	if (!(e.metaKey || e.ctrlKey)) return;
+	if (appChords) {
+		const chord = chordOf(e);
+		if (chord && appChords.has(chord)) {
+			e.preventDefault();
+			post({ type: 'app-chord', chord });
+		}
+		return;
+	}
+	// Host predates 'app-chords' (a stale cached document): the historic four.
 	const key = e.key.toLowerCase();
 	if (['e', 'w', 't', '\\'].includes(key)) {
 		e.preventDefault();

@@ -16,6 +16,7 @@ import { workspaceStore } from '../../state/workspace-store.js';
 import { settingsStore } from '../../state/settings-store.js';
 import { ipc, CH } from '../../ipc.js';
 import * as actions from '../../commands/actions.js';
+import { effectiveChords, runChord } from '../../commands/registry.js';
 import { handleApiRequest } from '../../note-api.js';
 import { scrollSyncBus, makeSuppressor } from '../../preview/scroll-sync.js';
 import { previewUrl } from '../../lib/preview-url.js';
@@ -103,6 +104,11 @@ class ClewPreviewView extends ClewElement {
 			case 'ready': {
 				this.#clientReady = true;
 				this.#post({ type: 'theme', theme: document.body.dataset.theme ?? 'dark' });
+				// The app's chords, so the iframe can forward EVERY app
+				// shortcut rather than a hardcoded few — an iframe keydown
+				// never reaches the app window's dispatcher on its own.
+				// (Rebinding hotkeys mid-session refreshes on next reload.)
+				this.#post({ type: 'app-chords', chords: effectiveChords() });
 				// Land where the editor's cursor was when reading mode opened.
 				const cursorLine = workspaceStore.findTab(this.tabId)?.tab.view.cursorLine;
 				if (cursorLine > 1) {
@@ -159,6 +165,13 @@ class ClewPreviewView extends ClewElement {
 				else if (key === '\\') actions.splitActive(msg.shift ? 'bottom' : 'right');
 				break;
 			}
+			case 'app-chord':
+				// The general forwarding path: any registered chord, run
+				// through the registry with its usual gates — same as if the
+				// keydown had happened in the app window, acting on this pane.
+				workspaceStore.activateTab(this.tabId);
+				runChord(msg.chord);
+				break;
 			case 'morph-failed':
 				this.#clientReady = false;
 				if (this.#iframe) this.#iframe.src = previewUrl(this.path) + '?t=' + Date.now();
