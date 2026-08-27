@@ -78,6 +78,11 @@ other).
   (`.clew-mb` guard in client.js); a FOCUSED `.clew-mb` element is
   morph-protected (mid-drag sliders). Any future checkbox-like widget
   needs the same guard.
+- **Canvas cards are the app page, not a preview iframe** — engine
+  markup rendered into cards needs its own compact rules in canvas.css
+  (scoped `.canvas-text`). When an engine extension changes markup,
+  check the card styles too: callouts.js taking over GFM alerts left
+  cards styling classes that no longer arrive (the giant-pencil bug).
 - **Admonition tokens are `calloutBlock`-typed on purpose** — one
   renderer serves both syntaxes; if callouts.js's token shape changes,
   admonitions.js must follow.
