@@ -56,6 +56,25 @@ other).
   externally instead of create-on-miss) and `Tasks.md.md` (createNote
   collapses a trailing run of `.md`).
 
+## 1a. 2026-08-27: the marking vault (the first REAL dashboard vault)
+
+- `~/Documents/Teaching/Marking/2025-2026/PH456/Marking Vault/` — built
+  from the owner's real PH456 cohorts (OUTSIDE this repo; personal
+  data, never copy into it). One note per essay (47), frontmatter
+  question/marked/grade/marked-on/submitted, widgets in every note,
+  PDFs copied (never moved) into Attachments/, the WT feedback
+  jmarkdown file split into per-essay notes (private
+  `:::comment{include=false}` blocks became folded callouts), AT
+  seeded from the Moodle grades CSV. Dashboard.md: dataviewjs +
+  renderChart (progress, distribution, doughnut, pace), editable
+  queue, kanban by question. Generator script preserved in the session
+  scratchpad (`build-marking-vault.py`) — regenerate for new cohorts.
+- `Guide/Dashboards.md` in the demo vault is the documented twin.
+- Traps met: `cp -R src dest/` with dest's parent missing copies
+  CONTENTS (the charts plugin landed flat in .clew/plugins/); a
+  template note carrying the collection's tag pollutes every query —
+  templates stay untagged, the how-to says to add the tag.
+
 ## 2. Open items (none are compat)
 
 - **Win/Linux 0.9.0 artefacts have never run on real machines.**
