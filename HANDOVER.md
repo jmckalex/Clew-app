@@ -1,42 +1,4 @@
-# Handover — 2026-08-26 night (the compat line is drawn)
-
-## 0a. LATER THE SAME NIGHT (post-line work — all Clew-native)
-
-- **Widgets are Web Awesome components** (@awesome.me/webawesome, MIT,
-  16 cherry-picked, zero icon assets, lazily loaded wa.js/wa.css from
-  __clew_preview__; wa-dark/wa-light track the theme; brand token =
-  Clew accent). New types: textArea/datePicker/time/progressBar (Meta
-  Bind's own, previously refused) + Clew-native `rating` and `color`;
-  VIEW formatter kinds relativeTime/formatDate/formatNumber/
-  formatBytes/badge/qr. v3 emits standard `change` — no new wiring.
-- **Widgets edit PROSE**: `INPUT[text:^block-id]` binds to the block a
-  marker names; writes go through editNoteField source 'block' →
-  rewriteBlockText (shared/note-metadata: fence-aware, marker kept,
-  values flatten to one block). Demo + docs: `Guide/Widgets.md` (its
-  own page now; the compat note is back to a pointer).
-- **MetaPost fonts fixed UPSTREAM** (jmarkdown 00b006f): HTML path is
-  EPS + dvisvgm --no-fonts → glyphs as PATHS (the old backend's <text>
-  garbled kerning and DROPPED superscripts). Clew detects ghostscript's
-  stable homebrew symlink and writes 'TiKZ libgs' (the versioned Cellar
-  default had rotted). Demo cache regenerated: 0 <text>, 78 paths.
-- **openWikilink refuses URLs** — an `https:/…/.md.md` artifact was
-  found in the demo vault (create-on-miss took a URL literally);
-  scheme-shaped targets now open externally.
-- **wa.css is TOKENS ONLY** (themes/default.css) — the full
-  webawesome.css repaints html/body (that was the "black margins on the
-  Widgets page" bug). Components style themselves in shadow DOM.
-- **WA- elements take the NORMAL morph** (their light DOM is real
-  content — a badge's text was frozen by the keep-guard), BUT their
-  host inline style is component-owned state (wa-progress-bar keeps
-  --percentage there) and must be carried onto the incoming element
-  before the attr sync, or the fill vanishes. See client.js.
-- **createNote collapses trailing ".md.md"** — typing "Tasks.md" into a
-  create box used to make Tasks.md.md (found as a vault artifact).
-- The OWNER is working in the tree concurrently (icons/canvas files +
-  Note Headers tweak left uncommitted, deliberately untouched). Their
-  live testing also toggles demo widgets — reset `done:`/`^motto`
-  baselines before committing demo files.
-
+# Handover — 2026-08-26, late night
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it); the original design plan is at
@@ -53,81 +15,101 @@ public statement is the demo vault's `Guide/Obsidian Compatibility.md`.
 Do not add compat features on your own judgment — a real vault plus a
 real user hitting a named refusal reopens a question; nothing else does.
 
-The closing move (this evening) added the last three format items:
+The closing items (admonitions, core ```query search embeds, Meta Bind
+widgets) are shipped and tested; the two ```query dialects are told
+apart by the space after the colon (do not "normalize" one into the
+other).
 
-- **Admonitions** — ```ad-* fences (pre-callout vaults) map onto
-  calloutBlock TOKENS, so callouts.js renders them: one look, no drift.
-  title/collapse honoured, icon/color cosmetic, unknown ad-types become
-  titled notes (the plugin's own behavior for user types).
-- **Core ```query search embeds** — same fence, two dialects, told apart
-  by the colon: `key: value` (space) is Clew's language, `op:value` is
-  core Obsidian's search. The search subset (terms/phrases/tag/path/
-  file/[property]/-/OR) runs in the worker over scanNotes; regex,
-  parens, line:/section:/task: refused by name. Empty body stays Clew's
-  all-notes list.
-- **Meta Bind widgets** — `INPUT[toggle:done]` etc. render live controls
-  two-way bound to properties, INCLUDING other notes' via
-  `[[Note]]#prop`. The whole thing is a new front end on the EXISTING
-  field-edit → editNoteField path (safety valve, retype coercion, key
-  creation all free). Five types (toggle/slider/text/number/
-  inlineSelect); other types, VIEW expressions, and buttons refused by
-  name; widgets render disabled under CLEW_SITE_EXPORT. Client wiring in
-  preview-client/meta-bind.js; two guards in client.js (mb toggles are
-  NOT task toggles; a focused widget survives morphs).
+## 1. After the line: widgets grew up (all Clew-native work)
 
-Verified end to end: the demo compat note's toggle was clicked in a
-smoke run and the FILE's frontmatter changed on disk (then reset).
-`npm test` → **380 green**. Both repos clean and committed.
-
-## 1. Earlier this same day (see git log for detail)
-
-0.9.0 released (universal dmg notarized; site + binaries byte-verified
-on the droplet; DNS still the one blocker). Charts plugin + dataviewjs
-renderChart. Excalidraw embedded images. CJK fonts verified. Showpiece
-TikZ/MetaPost figures rendered as theme-aware ink. Bases map views
-(+ OSM default tiles — CARTO watermarks keyless use now). FLATTEN +
-real GROUP BY + lambdas (fifth vault demanded it; teaching vault
-43→66%). Kanban boards + Tasks dialect (they WERE in the corpus).
-Anchor TOCs resolve toc-<slug> ids AND are Back-able (browser-style
-same-note history); every registered chord now forwards from reading
-mode; nav is ⌘[ / ⌘]; obsidian:// links get Clew equivalents.
+- **Widgets are Web Awesome components** (@awesome.me/webawesome v3,
+  MIT, 16 cherry-picked, zero icon assets; wa.js/wa.css lazy-loaded
+  from `__clew_preview__` only when a note carries one; wa-dark/wa-light
+  track the theme; brand token = Clew accent). Full type set: Meta
+  Bind's toggle/slider/text/textArea/number/inlineSelect/select/
+  datePicker/time/progressBar plus Clew-native `rating` and `color`;
+  VIEW formatter kinds relativeTime/formatDate/formatNumber/
+  formatBytes/badge/qr. Everything else refused by name; disabled
+  under CLEW_SITE_EXPORT.
+- **Widgets edit PROSE**: `INPUT[text:^block-id]` binds to the block a
+  marker names; writes go editNoteField source `'block'` →
+  `rewriteBlockText` (shared/note-metadata: fence-aware, marker kept,
+  values flatten to one block). Only text/textArea may bind to blocks.
+- Demo: `Guide/Widgets.md` is the dedicated page, every control live
+  (playing with it edits the file — reset to the committed baseline
+  after smokes). The compat note is back to a pointer. Manual:
+  properties.html covers all of it including block bindings.
+- **MetaPost fonts fixed UPSTREAM** (jmarkdown `00b006f`): HTML path is
+  now EPS + `dvisvgm --no-fonts` → glyphs as PATHS (the old SVG backend
+  emitted unresolvable `<text>` and silently DROPPED superscripts).
+  Clew detects ghostscript's stable homebrew symlink for `TiKZ libgs`
+  (the versioned Cellar default had rotted). Demo cache regenerated:
+  0 `<text>`, 78 paths; theme inversion still applies (it targets
+  fills/strokes).
+- **Two owner-reported widget bugs fixed** (commit `8317184`): the
+  Widgets page's "black margins" (wa.css shipped webawesome.css's
+  native layer, which paints html/body — now TOKENS ONLY, 52KB) and
+  the badge that never followed its select (custom-element keep-guard
+  froze its text child — WA- elements now take the normal morph).
+- **Two vault artifacts traced to real holes, both closed**: a
+  `https:/…/.md.md` note (openWikilink now opens scheme-shaped targets
+  externally instead of create-on-miss) and `Tasks.md.md` (createNote
+  collapses a trailing run of `.md`).
 
 ## 2. Open items (none are compat)
 
 - **Win/Linux 0.9.0 artefacts have never run on real machines.**
-- The DNS change → then `make dns-check` + `make tls` in Clew-docs.
+- The DNS change (owner's action) → then `make dns-check` + `make tls`
+  in Clew-docs.
 - Kanban-board card drag (write path: move a list item between
   headings) — v2 of a shipped feature, not new compat.
-- The demo vault's compat note leaves `done: false` on purpose; playing
-  with its widgets dirties the file (like the Habit Tracker's
-  clewdata.json). `git status` after smoke runs, as ever.
 
-## 3. New traps (this evening's)
+## 3. Traps (newest first)
 
-- **The two ```query dialects are told apart by the space after the
-  colon.** Documented in the manual; do not "normalize" one into the
-  other.
-- **Meta Bind toggles must not fall into the checkbox-toggle path** —
-  client.js guards on `.clew-mb`. Any future checkbox-like widget needs
-  the same guard.
-- **A focused .clew-mb element is morph-protected**; without that, a
-  re-render mid-drag yanks the slider back to the on-disk value.
-- **Admonition tokens are `calloutBlock`-typed on purpose** — marked
-  dispatches renderers by token type, so one renderer serves both
-  syntaxes. If callouts.js's token shape changes, admonitions.js must
-  follow.
-- Earlier-today traps (list() dialect split, ordered DQL pipeline,
+- **wa.css is TOKENS ONLY** (`themes/default.css`). Importing full
+  webawesome.css repaints html/body on exactly the notes that carry
+  widgets. Components style themselves in shadow DOM.
+- **WA- elements take the NORMAL morph** (their light DOM is real
+  content), BUT the host inline `style` is component-owned state
+  (wa-progress-bar keeps `--percentage` there, set from JS only on
+  value CHANGES) and must be carried onto the incoming element before
+  the attr sync or the fill vanishes. See client.js `applyRender`.
+- **Meta Bind toggles must not fall into the checkbox-toggle path**
+  (`.clew-mb` guard in client.js); a FOCUSED `.clew-mb` element is
+  morph-protected (mid-drag sliders). Any future checkbox-like widget
+  needs the same guard.
+- **Admonition tokens are `calloutBlock`-typed on purpose** — one
+  renderer serves both syntaxes; if callouts.js's token shape changes,
+  admonitions.js must follow.
+- The block-binding writer and reader both live in
+  shared/note-metadata (`rewriteBlockText`) — keep read/write symmetric
+  there, not in the engine.
+- Earlier traps (list() dialect split, ordered DQL pipeline,
   whole-document extensions via start()→0, export-worker env, innerText
   vs textContent, `--universal`) are in this file's git history.
 
-## 4. Standing session rules (they keep earning their keep)
+## 4. The owner is working in this tree concurrently
+
+Uncommitted and DELIBERATELY untouched: `scripts/generate-icons.js`,
+`src/renderer/lib/icons.js`, `src/renderer/styles/canvas.css`,
+`src/renderer/components/views/clew-canvas-view.js` (their in-progress
+icon/canvas work), plus demo-vault play state (`Guide/Note Headers.md`
+height tweak, `Projects/Demo Canvas.canvas`, `clewdata.json`). Never
+stage these. Their live testing also flips demo widgets — reset
+`status:`/`done:`/`^motto` baselines before committing demo files.
+
+## 5. Standing session rules (they keep earning their keep)
 
 - **NEVER `git add -A`** — stage explicit paths.
 - Always pass `CLEW_SMOKE_VAULT`; `git status` demo and study vaults
-  after every smoke run.
+  after every smoke run — tonight it surfaced two real bugs.
 - **The owner's bug reports have been consistently right.**
-- **Write assertions that can fail — and eyeball the artefact anyway.**
+- **Write assertions that can fail — and eyeball the artefact anyway**
+  (the vanished progress fill was caught by the eyeball, not the
+  assertion).
 - **Verify artefacts by content**, never the log line.
 - **Prefer measuring to guessing** — and re-measure.
+- A feature change is not finished until the MANUAL in `../Clew-docs`
+  matches it — nothing in this repo's git status reminds you.
 - `npm run dev` / `npm run package` re-sync the engine from the golden
   master; `sync-engine` + `git status` BEFORE tagging.
