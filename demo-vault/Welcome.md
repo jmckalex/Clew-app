@@ -36,6 +36,8 @@ rendered; **⌘O** finds any note; **⌘P** lists every command.
   or from a dataviewjs script
 - [[Widgets]] — live controls in rendered notes: toggles, sliders,
   star ratings and more, bound to a note's properties — or to its text
+- [[Dashboards]] — queries, widgets and charts combined into live
+  views of the vault, with a worked essay-marking recipe
 - [[Obsidian Compatibility]] — what an Obsidian vault gets here:
   Dataview, Bases, boards, tasks, admonitions, widgets — and where the
   line is drawn
