@@ -75,7 +75,7 @@ clew-file-explorer {
 	outline-offset: -1px;
 }
 .file-tree.drop-into-root { background: var(--clew-selection); border-radius: 6px; }
-.tree-item.is-folder { color: var(--clew-text-muted); font-weight: 500; }
+.tree-item.is-folder { color: var(--clew-text-normal); font-weight: 600; }
 .tree-chevron {
 	flex: none;
 	width: 12px;

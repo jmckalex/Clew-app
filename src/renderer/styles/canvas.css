@@ -501,7 +501,7 @@
 .canvas-text a[href^='http'] { color: var(--clew-link); cursor: pointer; }
 .canvas-text img.internal-media { max-width: 100%; border-radius: 4px; }
 .canvas-text .equation { text-align: center; margin: 0.4em 0; }
-.canvas-text mjx-container { color: var(--clew-text-primary); }
+.canvas-text mjx-container { color: var(--clew-text-normal); }
 .canvas-text table { border-collapse: collapse; margin: 0 0 0.55em; }
 .canvas-text th, .canvas-text td { border: 1px solid var(--clew-border); padding: 2px 8px; }
 
@@ -515,7 +515,7 @@
 	border-left: 3px solid var(--callout);
 	border-radius: 0 6px 6px 0;
 	background: color-mix(in srgb, var(--callout) 12%, transparent);
-	color: var(--clew-text-primary);
+	color: var(--clew-text-normal);
 }
 .canvas-text .callout-title {
 	display: flex;
