@@ -74,6 +74,14 @@ other).
   CONTENTS (the charts plugin landed flat in .clew/plugins/); a
   template note carrying the collection's tag pollutes every query —
   templates stay untagged, the how-to says to add the tag.
+- **File explorer hierarchy** (owner request): folder rows were
+  text-muted — dimmer than their own contents — now
+  `--clew-text-normal` at weight 600; per-level indent 14→18px
+  (panels.css + the paddingLeft in clew-file-explorer.js).
+- **Phantom token trap:** `--clew-text-primary` was referenced in
+  canvas.css but defined in NEITHER theme — an undefined `var()`
+  silently inherits, so it half-worked. The themes define exactly
+  faint / muted / normal / on-accent; check before inventing a name.
 
 ## 2. Open items (none are compat)
 
