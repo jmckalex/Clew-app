@@ -137,6 +137,9 @@ export class VaultManager {
 
 	/** Create a new note; appends " 1", " 2", … if the name is taken. Returns the rel path. */
 	createNote(rel) {
+		// "Tasks.md" typed into a create box arrives as "Tasks.md.md" once
+		// the caller appends the extension — collapse it; nobody means that.
+		rel = rel.replace(/(\.md)+$/i, '.md');
 		let abs = this.resolve(rel);
 		const dir = path.dirname(abs);
 		const ext = path.extname(abs) || '.md';

@@ -22,6 +22,16 @@
 - **openWikilink refuses URLs** — an `https:/…/.md.md` artifact was
   found in the demo vault (create-on-miss took a URL literally);
   scheme-shaped targets now open externally.
+- **wa.css is TOKENS ONLY** (themes/default.css) — the full
+  webawesome.css repaints html/body (that was the "black margins on the
+  Widgets page" bug). Components style themselves in shadow DOM.
+- **WA- elements take the NORMAL morph** (their light DOM is real
+  content — a badge's text was frozen by the keep-guard), BUT their
+  host inline style is component-owned state (wa-progress-bar keeps
+  --percentage there) and must be carried onto the incoming element
+  before the attr sync, or the fill vanishes. See client.js.
+- **createNote collapses trailing ".md.md"** — typing "Tasks.md" into a
+  create box used to make Tasks.md.md (found as a vault artifact).
 - The OWNER is working in the tree concurrently (icons/canvas files +
   Note Headers tweak left uncommitted, deliberately untouched). Their
   live testing also toggles demo widgets — reset `done:`/`^motto`

@@ -92,6 +92,19 @@ function applyRender(html) {
 				// their own content, which the incoming HTML doesn't carry —
 				// morphing their subtree would wipe it. Keep the element and
 				// sync attributes instead, so attributeChangedCallback fires.
+				// Web Awesome elements are the exception: their light DOM IS
+				// the incoming HTML (a wa-badge's text, a wa-select's
+				// options), so they take the normal morph — the focused-widget
+				// guard above already protects mid-interaction state. But the
+				// component owns its host inline style (wa-progress-bar keeps
+				// --percentage there), which the incoming HTML never carries —
+				// hand it across so the attribute sync doesn't strip it.
+				if (fromEl.tagName.startsWith('WA-')) {
+					if (fromEl.hasAttribute('style') && !toEl.hasAttribute('style')) {
+						toEl.setAttribute('style', fromEl.getAttribute('style'));
+					}
+					return !fromEl.isEqualNode(toEl);
+				}
 				if (fromEl.tagName.includes('-') && fromEl.tagName === toEl.tagName) {
 					for (const attr of [...toEl.attributes]) {
 						if (fromEl.getAttribute(attr.name) !== attr.value) {
