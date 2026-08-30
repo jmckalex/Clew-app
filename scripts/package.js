@@ -116,6 +116,7 @@ function developerIdIdentity() {
 }
 
 run('node scripts/vendor-jmarkdown.js');
+run('node scripts/vendor-embedpdf.js');
 run('node scripts/build.js');
 
 // Stage the engine: mirror + production node_modules, resolvable by the

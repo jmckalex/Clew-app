@@ -159,6 +159,7 @@ app.whenReady().then(() => {
 		distDir,
 		nodeModulesDir: paths.previewAssets,
 		engineAssetsDir: paths.engineAssets,
+		embedpdfDir: paths.embedpdfAssets,
 	});
 	// No { role: 'close' } anywhere in the menu: Cmd+W belongs to the
 	// renderer (close tab). See src/main/menu.js.

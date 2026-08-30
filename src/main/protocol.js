@@ -64,7 +64,7 @@ export function registerPreviewScheme() {
 const RENDERED_SUFFIX = new RegExp(`(${NOTE_EXTENSIONS.map((e) => e.replace('.', '\\.')).join('|')})\\.html$`, 'i');
 
 /** After app.whenReady(). */
-export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDir }) {
+export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDir, embedpdfDir }) {
 	const assetRoots = {
 		mathjax: path.join(nodeModulesDir, 'mathjax', 'es5'),
 		mermaid: path.join(nodeModulesDir, 'mermaid', 'dist'),
@@ -72,8 +72,9 @@ export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDi
 		fontawesome: path.join(nodeModulesDir, '@fortawesome', 'fontawesome-free', 'js'),
 		jquery: path.join(nodeModulesDir, 'jquery', 'dist'),
 		leaflet: path.join(nodeModulesDir, 'leaflet', 'dist'),
-		// The EmbedPDF bundle + pdfium.wasm (the PDF viewer).
-		embedpdf: path.join(nodeModulesDir, '@embedpdf', 'snippet', 'dist'),
+		// The EmbedPDF bundle + pdfium.wasm (the PDF viewer) — the vendored
+		// OCG/layers build (vendor/embedpdf), not the npm package.
+		embedpdf: embedpdfDir,
 		// Our own PDF viewer page + its bundle (pdf-page.html/.js).
 		clewpdf: path.join(distDir, 'preview-client'),
 		// Optional CJK fonts, downloaded on demand into userData.

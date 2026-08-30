@@ -1,5 +1,7 @@
 node_modules/
 dist/
+# The vendored EmbedPDF viewer is a committed mirror, not build output.
+!vendor/embedpdf/dist/
 out/
 .DS_Store
 *.log

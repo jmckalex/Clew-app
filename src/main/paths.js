@@ -29,9 +29,12 @@ export const paths = app.isPackaged
 		engineWorker: path.join(process.resourcesPath, 'engine', 'jmarkdown', 'src', 'watch-worker.js'),
 		engineAssets: path.join(process.resourcesPath, 'engine-assets'),
 		previewAssets: path.join(process.resourcesPath, 'preview-assets'),
+		// The vendored EmbedPDF OCG build (vendor/embedpdf), not an npm package.
+		embedpdfAssets: path.join(process.resourcesPath, 'preview-assets', 'embedpdf'),
 	}
 	: {
 		engineWorker: require.resolve('jmarkdown/src/watch-worker.js'),
 		engineAssets: path.join(distDir, 'engine'),
 		previewAssets: path.join(rootDir, 'node_modules'),
+		embedpdfAssets: path.join(rootDir, 'vendor', 'embedpdf', 'dist'),
 	};

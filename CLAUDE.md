@@ -250,7 +250,19 @@ browser-window-focus).
   denies all popups, and a `will-navigate` guard pins the app frame.
   Iframes carry `allow="fullscreen"` (EmbedPDF's control needs it).
 - **PDFs are EmbedPDF, not Chromium's plugin** (MIT, Pdfium-in-wasm, ~9.5
-  MB staged). One implementation, `preview-client/pdf-core.js`, serves all
+  MB staged) — and not the npm build: the viewer is the owner's OCG/layers
+  fork (EmbedPDF v2.15.0 + the ~/Source/pdfium-ocg patch series; the wasm
+  carries the FPDF*OCG* API, the UI a layers panel and per-annotation layer
+  assignment). Vendored like the engine: `vendor/embedpdf/dist` is a
+  committed dumb mirror of the BUILT snippet viewer, overwritten wholesale
+  by `npm run sync-embedpdf` from the master at `~/Source/EmbedPDF/v2`
+  (branch `ocg-v2`; `pnpm build` there first — the unrelated example apps
+  may fail after the snippet builds). Dev and packaging re-sync when that
+  worktree exists; other machines use the committed mirror; NEVER edit
+  vendor/ by hand. Served at `/__clew_assets__/embedpdf`
+  (paths.js#embedpdfAssets → protocol.js); note the `!vendor/embedpdf/dist/`
+  gitignore exception outranking the blanket `dist/` rule.
+  One implementation, `preview-client/pdf-core.js`, serves all
   three surfaces: note embeds upgrade `<embed class="pdf-embed">` in place
   (`pdf-embed.js`), while the file tab and canvas nodes — which point an
   iframe at a raw PDF and so have no document to upgrade — load

@@ -83,6 +83,24 @@ other).
   silently inherits, so it half-worked. The themes define exactly
   faint / muted / normal / on-accent; check before inventing a name.
 
+## 1b. 2026-08-30: the PDF viewer is now the owner's OCG build
+
+- Clew's EmbedPDF is no longer the npm package: `vendor/embedpdf/dist`
+  is a committed mirror of the BUILT snippet viewer from
+  `~/Source/EmbedPDF/v2` (branch `ocg-v2` — EmbedPDF v2.15.0 + the
+  pdfium-ocg layers series; wasm carries the FPDF*OCG* API). Synced by
+  `npm run sync-embedpdf` (scripts/vendor-embedpdf.js), auto-run by dev
+  and packaging; served via paths.js#embedpdfAssets → protocol.js.
+  `@embedpdf/snippet` removed from deps (models/pdfium kept — unused in
+  code but the owner's; ask before pruning). Verified by smoke:
+  content-assert the served chunk hash + wasm OCG symbol, then open the
+  sidebar's layers tab (icon-only, third) and assert its empty state.
+- Manual updated (`../Clew-docs` attachments-and-files.html): a Layers
+  section under the PDF embeds chapter.
+- The layers UI lives in the sidebar (thumbnails/outline/layers tabs)
+  and on a selected annotation's toolbar; sample.pdf has no layers, so
+  the demo shows the authoring empty state.
+
 ## 2. Open items (none are compat)
 
 - **Win/Linux 0.9.0 artefacts have never run on real machines.**
@@ -93,6 +111,17 @@ other).
 
 ## 3. Traps (newest first)
 
+- **The blanket `dist/` gitignore eats vendored dist dirs** —
+  `vendor/embedpdf/dist` needed an explicit `!vendor/embedpdf/dist/`
+  exception. `git check-ignore` anything you vendor before assuming it
+  will commit.
+- **The EmbedPDF viewer is ALL shadow DOM** — in smoke frame scripts
+  `document.body.textContent` is empty and `document.querySelector`
+  finds nothing; walk `shadowRoot`s recursively. Its sidebar tabs are
+  icon-only (no text, no aria-label). And Chromium's resource-timing
+  buffer missed the viewer's module chunks entirely — assert which build
+  is served by FETCHING a hashed filename, never by
+  `performance.getEntriesByType`.
 - **wa.css is TOKENS ONLY** (`themes/default.css`). Importing full
   webawesome.css repaints html/body on exactly the notes that carry
   widgets. Components style themselves in shadow DOM.
