@@ -14,6 +14,7 @@ import { registerCommand, buildContext, allCommands, isEnabled, effectiveKeymap 
 import { openSearchPanel } from '@codemirror/search';
 import { registerFormatCommands, activeEditorView, needsEditor } from './format.js';
 import { formatTableAtCursor } from '../editor/tables.js';
+import { fillAtCursor } from '../editor/fill.js';
 import { blockRefEdit, blockRefLink } from '../editor/block-ids.js';
 import { openDiaryDay } from './diary.js';
 import { notice } from '../plugins.js';
@@ -125,6 +126,12 @@ export function registerBuiltinCommands() {
 			run: () => {
 				const view = activeEditorView();
 				if (view) formatTableAtCursor(view);
+			} },
+		{ id: 'editor:fill-paragraph', name: 'Fill paragraph (hard-wrap)', hotkeys: ['Mod-Alt-q'],
+			when: needsEditor,
+			run: () => {
+				const view = activeEditorView();
+				if (view) fillAtCursor(view, settingsStore.get('fillColumn') ?? 72);
 			} },
 		{ id: 'file:save', name: 'Save note', hotkeys: ['Mod-s'], when: needsNote,
 			run: (ctx) => editorPool.flush(ctx.activeTab.id) },

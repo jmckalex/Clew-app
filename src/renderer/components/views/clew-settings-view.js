@@ -57,6 +57,7 @@ class ClewSettingsView extends ClewElement {
 					[['new-tab', 'In a new tab'], ['replace', 'In the current tab (Obsidian-style)']]),
 				this.#numberRow('Editor font size (px)', 'editorFontSize', 16, 10, 28),
 				this.#numberRow('Editor line width (em)', 'editorLineWidth', 44, 20, 120),
+				this.#numberRow('Fill column (hard-wrap)', 'fillColumn', 72, 40, 120),
 			]),
 			this.#section('Diary', [
 				this.#selectRow('Mode', 'diaryMode',

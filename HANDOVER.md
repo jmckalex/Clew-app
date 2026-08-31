@@ -101,6 +101,25 @@ other).
   and on a selected annotation's toolbar; sample.pdf has no layers, so
   the demo shows the authoring empty state.
 
+## 1c. 2026-08-31: fill-paragraph (Emacs M-q for the editor)
+
+- `editor:fill-paragraph` (⌘⌥Q, `fillColumn` setting default 72):
+  hard-wraps the paragraph at the cursor / paragraphs in the selection.
+  Pure functions in `editor/fill.js` (tables.js pattern, 14 unit
+  tests): structure never joined (fences/frontmatter/$$/tables/
+  headings/HR/:::/@directives/callout headers/^block-id lines/indented
+  code), adaptive prefixes (quote `> `, list hanging indent), atomic
+  words (wikilinks, inline code/math, \cite — plus a no-break rule so
+  a wrapped word like `-` can't become a list marker). Manual:
+  editing.html#filling + settings page. NOTE: bare `Alt-x` chords can
+  never fire on mac (chordOf uses event.key; Option types œ) — Alt
+  hotkeys must be Mod-Alt-…, which Chromium reports with the base
+  letter.
+- Auto-fill-mode (wrap while typing) was scoped, not built — owner is
+  keen; see the session summary for the design sketch (shared core in
+  fill.js, EditorView.inputHandler on space/Enter, syntax-tree context
+  check, composition guard).
+
 ## 2. Open items (none are compat)
 
 - **Win/Linux 0.9.0 artefacts have never run on real machines.**
