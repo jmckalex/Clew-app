@@ -93,6 +93,29 @@ round-trips to the .docx via the toolbar Save; Impress opens a real
 .pptx; split resize tracks; wikilink → office tab without navigating
 the note; a minimal from-scratch docx (python zipfile) opens fine.
 
+## 0b. Also new: memory measured, and LibreOffice wears Sifr (`fc4b522`)
+
+- **Memory, measured (app.getAppMetrics)**: one live office instance =
+  1.16 GB in the shared clew-preview renderer; a SECOND instance in the
+  same process adds only ~0.5 GB (compiled-wasm code is shared). The
+  floor is baked into allotropia's prebuilt bundle (initial wasm heap +
+  packed data + compiled code; wasm memory can never shrink or
+  decommit) — real reduction means allotropia shipping a leaner build,
+  not anything Clew-side. Clew-side levers if wanted later: click-to-
+  boot facades for live embeds, idle reclaim, an instance cap.
+- **Icon theme**: the bundle ships only Colibre and the wasm build
+  offers NO runtime switch (SymbolStyle read once at startup — commits
+  before load and after ui_ready are no-ops; overwriting the packed zip
+  in the Emscripten FS mid-boot dies with a wasm exception; preRun runs
+  before the packed FS is populated — ALL measured). The fix serves a
+  SPLICED soffice.data: vendor/libreoffice-icons/images_sifr.zip
+  (MPL-2.0, pinned, from the matching LO 24.2 line) replaces the packed
+  Colibre entry and the offsets metadata shifts to match
+  (main/zeta-icons.js; sync splice in dev, streaming Transform over the
+  brotli path when packaged, shipped via extraResources →
+  office-icons/). LibreOffice believes it loads Colibre and draws Sifr.
+  Delete the vendored zip to restore Colibre. Manual screenshot retaken.
+
 ## 1. Open items
 
 - **Needs a real packaged run**: the download flow is verified in dev
