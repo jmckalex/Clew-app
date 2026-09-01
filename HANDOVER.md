@@ -143,17 +143,16 @@ users without the 300 MB download.
   innerText vs textContent, `--universal`) are in this file's git
   history.
 
-## 4. The owner is working in this tree concurrently
+## 4. The owner works in this tree concurrently
 
-Uncommitted and DELIBERATELY untouched: `scripts/generate-icons.js`,
-`src/renderer/lib/icons.js`, `src/renderer/styles/canvas.css`,
-`src/renderer/components/views/clew-canvas-view.js` (their in-progress
-icon/canvas work), plus demo-vault play state (`Guide/Note Headers.md`
-height tweak, `Projects/Demo Canvas.canvas`, `clewdata.json`). Never
-stage these. **This is why the ZetaOffice spike lives in a separate
-worktree** — never switch THIS tree off main. Their live testing also
-flips demo widgets — reset `status:`/`done:`/`^motto` baselines before
-committing demo files.
+The tree was left COMPLETELY CLEAN on 2026-09-01: the long-uncommitted
+canvas delete button was smoke-verified and committed (`bff8410`), and
+the demo-vault play state reset to baseline. Anything uncommitted you
+find is NEW owner work — leave it unstaged and note it here. **The
+ZetaOffice spike lives in a separate worktree for this reason** —
+never switch THIS tree off main. Live testing flips demo widgets —
+reset `status:`/`done:`/`^motto` baselines before committing demo
+files.
 
 ## 5. Standing session rules (they keep earning their keep)
 
