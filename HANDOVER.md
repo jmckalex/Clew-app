@@ -129,6 +129,13 @@ other).
 - Smoke trick: `document.execCommand('insertText', …)` on a focused
   CM editor goes through the REAL input path, inputHandler included —
   synthetic KeyboardEvents don't insert text, execCommand does.
+- **Centered text (`>> … <<`) is a paragraph type with a SUFFIX**
+  (owner-reported bug, fixed): it opens with the quote sigil, so the
+  quote path had been carrying `>> ` and dropping `<<` — and the
+  engine's per-line rule (`syntax-enhancements.js#centerAlign`)
+  rejects a line without its closer, killing the whole block. Both
+  fills now budget `column - width(' <<')` and close every completed
+  line; the piece still being typed keeps the tail's original marker.
 
 ## 2. Open items (none are compat)
 

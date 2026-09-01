@@ -149,6 +149,47 @@ test('fillLineRange over a selection fills each paragraph independently', () => 
 	for (const r of repls) assert.ok(r.to < 4);
 });
 
+test('centered text (>> … <<) is its own paragraph with both delimiters', () => {
+	const doc = lines('plain before\n>> a centered block long enough that it wraps <<\n>> and a second centered line <<\n> a real quote');
+	const inert = inertMap(doc);
+	const para = paragraphAt(doc, inert, 1);
+	assert.equal(para.from, 1);
+	assert.equal(para.to, 2);        // joins centered lines only
+	assert.equal(para.prefixFirst, '>> ');
+	assert.equal(para.suffix, ' <<');
+	assert.ok(!para.words.includes('<<') && !para.words.includes('>>'), para.words.join('|'));
+	// The plain line and the real quote stay separate paragraphs.
+	assert.equal(paragraphAt(doc, inert, 0).to, 0);
+	assert.equal(paragraphAt(doc, inert, 3).from, 3);
+});
+
+test('fillLineRange keeps << on every centered line, within the column', () => {
+	const doc = lines('>> a centered block long enough that it certainly wraps at forty <<');
+	const [r] = fillLineRange(doc, 0, 0, 40);
+	assert.ok(r.lines.length > 1);
+	for (const l of r.lines) {
+		assert.match(l, /^>> .*<<$/);
+		assert.ok(l.length <= 40, l);
+	}
+	// Refilling the result is a no-op.
+	assert.deepEqual(fillLineRange(r.lines, 0, r.lines.length - 1, 40), []);
+});
+
+test('auto-break of a centered head closes each completed line', () => {
+	// The handler's composition: budget = column - width(' <<'), suffix
+	// appended to every piece but the one still being typed.
+	const head = '>> a centered block long enough that it wraps ';
+	const broken = autoBreakLine(head, 40 - 3, '>> ', 3);
+	assert.ok(broken.length > 1);
+	for (let k = 0; k < broken.length - 1; k++) broken[k] += ' <<';
+	for (const l of broken.slice(0, -1)) {
+		assert.match(l, /^>> .*<<$/);
+		assert.ok(l.length <= 40, l);
+	}
+	assert.ok(broken.at(-1).startsWith('>> '));
+	assert.ok(broken.at(-1).endsWith(' '));   // the typed space survives
+});
+
 test('autoBreakLine breaks behind the cursor and carries the prefix', () => {
 	// Trailing space = the just-typed one; it must survive on the last line.
 	const out = autoBreakLine('aaa bbb ccc dddddd ', 11, '', 0);

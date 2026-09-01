@@ -49,6 +49,12 @@ const BLOCK_ID_ONLY = /^\s*\^[A-Za-z0-9-]+\s*$/;
 
 const QUOTE_PREFIX = /^(\s*(?:>\s?)+)/;
 const LIST_MARKER = /^(\s*)((?:[-*+]|\d{1,9}[.)])\s+(?:\[[ xX/-]\]\s+)?)/;
+// jmarkdown centered text (syntax-enhancements centerAlign): every line of
+// the block is `>> content <<`. It opens with the quote sigil, so it must
+// be told apart from a depth-2 blockquote — and a filled line must keep
+// BOTH delimiters, because the engine's per-line rule rejects a line
+// without its closing `<<` and the whole block stops being centered.
+const CENTERED = /^>> .*<<\s*$/;
 
 const isBlank = (line) => /^\s*(?:>\s*)*$/.test(line);
 
@@ -232,6 +238,7 @@ function startsParagraph(lines, inert, j) {
 	if (j === 0) return true;
 	const prev = lines[j - 1];
 	if (inert[j - 1] || isBlank(prev) || isStructural(prev)) return true;
+	if (CENTERED.test(lines[j]) !== CENTERED.test(prev)) return true;
 	if (LIST_MARKER.test(stripQuote(lines[j]))) return true;
 	return quoteDepth(lines[j]) !== quoteDepth(prev);
 }
@@ -248,13 +255,22 @@ export function paragraphAt(lines, inert, i) {
 	let from = i;
 	while (from > 0 && !startsParagraph(lines, inert, from)) from--;
 	const depth = quoteDepth(lines[from]);
+	const centered = CENTERED.test(lines[from]);
 	let to = from;
 	while (to + 1 < lines.length) {
 		const next = lines[to + 1];
 		if (inert[to + 1] || isBlank(next) || isStructural(next)) break;
+		if (CENTERED.test(next) !== centered) break;
 		if (LIST_MARKER.test(stripQuote(next))) break;
 		if (quoteDepth(next) !== depth) break;
 		to++;
+	}
+
+	if (centered) {
+		const words = tokenize(lines.slice(from, to + 1)
+			.map((l) => l.replace(/^>> ?/, '').replace(/<<\s*$/, '').trim())
+			.join(' '));
+		return { from, to, prefixFirst: '>> ', prefixRest: '>> ', suffix: ' <<', words };
 	}
 
 	const quotePre = QUOTE_PREFIX.exec(lines[from])?.[1] ?? '';
@@ -280,7 +296,7 @@ export function paragraphAt(lines, inert, i) {
 		if (j === from && list) s = s.slice(list[0].length);
 		parts.push(s.trim());
 	}
-	return { from, to, prefixFirst, prefixRest, words: tokenize(parts.join(' ')) };
+	return { from, to, prefixFirst, prefixRest, suffix: '', words: tokenize(parts.join(' ')) };
 }
 
 /**
@@ -296,7 +312,10 @@ export function fillLineRange(lines, fromLine, toLine, column) {
 	while (i <= stop) {
 		const para = paragraphAt(lines, inert, i);
 		if (!para) { i++; continue; }
-		const filled = fillWords(para.words, column, para.prefixFirst, para.prefixRest);
+		// A suffix (centered text's ` <<`) costs width on every line.
+		const filled = fillWords(para.words, column - displayWidth(para.suffix),
+			para.prefixFirst, para.prefixRest)
+			.map((l) => l + para.suffix);
 		const original = lines.slice(para.from, para.to + 1);
 		if (filled.length !== original.length || filled.some((l, k) => l !== original[k])) {
 			out.push({ from: para.from, to: para.to, lines: filled });
@@ -365,8 +384,12 @@ export function autoFillHandler(getOptions) {
 			+ (marker ? marker[0].length : /^\s*/.exec(line.text.slice(quote.length))[0].length);
 		const head = line.text.slice(0, cut) + ' ';
 		const tail = line.text.slice(cut);
-		const broken = autoBreakLine(head, column, para.prefixRest, minIndex);
+		const broken = autoBreakLine(head, column - displayWidth(para.suffix),
+			para.prefixRest, minIndex);
 		if (broken.length === 1) return false;
+		// Completed lines take the suffix (centered text's ` <<`); the last
+		// piece is still being typed and the tail carries the original one.
+		for (let k = 0; k < broken.length - 1; k++) broken[k] += para.suffix;
 		const insert = broken.join('\n') + tail;
 		view.dispatch({
 			changes: { from: line.from, to: line.to, insert },
