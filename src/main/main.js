@@ -13,13 +13,14 @@
 // workers); windows/vaults open and close independently. Opening a vault
 // focuses the window that already shows it, fills the current window if it
 // is vaultless (the welcome screen), and otherwise makes a new window.
-import { app, BrowserWindow, dialog, shell } from 'electron';
+import { app, BrowserWindow, clipboard, dialog, shell } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { registerIpc } from './ipc.js';
 import { appMenu } from './menu.js';
 import { settings } from './settings.js';
+import { CH } from '../shared/channels.js';
 import { registerPreviewScheme, installPreviewProtocol } from './protocol.js';
 import { VaultSession, focusedSession, sessionForVault } from './session.js';
 import { paths } from './paths.js';
@@ -76,6 +77,45 @@ export function createWindow(vaultPath = null) {
 	// Defense in depth for the unsandboxed preview frames: nothing may
 	// navigate the app's main frame away from the bundled index.html.
 	win.webContents.on('will-navigate', (event) => event.preventDefault());
+
+	// A dirty office tab (LibreOffice edits are NOT auto-saved) must get its
+	// Save / Discard / Cancel moment before the window goes. The renderer is
+	// asked on every close and answers immediately when nothing blocks; the
+	// timer fails OPEN because a renderer too wedged to answer is too wedged
+	// to save anything either.
+	let closeApproved = false;
+	let closePending = false;
+	session.resolveClose = null;
+	win.on('close', (e) => {
+		if (closeApproved) return;
+		e.preventDefault();
+		if (closePending) return; // the question is already on screen
+		closePending = true;
+		const finish = (proceed) => {
+			if (!closePending) return;
+			closePending = false;
+			session.resolveClose = null;
+			if (proceed) {
+				closeApproved = true;
+				// Deferred: the resolution arrives over IPC from this very
+				// window, and destroying the sender synchronously inside its
+				// own handle() callback deadlocks the main process.
+				setImmediate(() => win.close());
+			} else {
+				// A cancelled close aborts any quit in flight; without this the
+				// stale flag would misfile later hand-closed windows as a quit.
+				quitting = false;
+			}
+		};
+		const timer = setTimeout(() => finish(true), 3000);
+		session.resolveClose = (proceed) => {
+			clearTimeout(timer);
+			// 'pending' = the renderer took the question and put a dialog up;
+			// stop the fail-open timer and wait for the person to answer it.
+			if (proceed !== 'pending') finish(proceed);
+		};
+		win.webContents.send(CH.EV_CLOSE_REQUESTED);
+	});
 
 	win.on('closed', () => {
 		windowOrder.splice(windowOrder.indexOf(win), 1);
@@ -220,6 +260,9 @@ app.on('web-contents-created', (_event, contents) => {
 });
 
 app.on('window-all-closed', () => {
+	// Smoke runs own their exit (app.exit after screenshots): quitting here
+	// would race the harness out of its final assertions.
+	if (process.env.CLEW_SMOKE) return;
 	app.quit();
 });
 
@@ -243,6 +286,36 @@ if (process.env.CLEW_SMOKE) {
 				if (process.env.CLEW_SMOKE_SCRIPT) {
 					const script = fs.readFileSync(process.env.CLEW_SMOKE_SCRIPT, 'utf8');
 					await primary.webContents.executeJavaScript(`(async () => { ${script} })()`);
+				}
+				// Real input through Chromium's pipeline — the only way to reach
+				// surfaces that synthetic DOM events can't (the LibreOffice
+				// canvas, focus-sensitive keymaps). A scenario queues descriptors
+				// in window.__clewSmokeInput: sendInputEvent objects, played in
+				// order; {wait: ms} pauses. window.__clewSmokeClipboard (string)
+				// preloads the clipboard first; CLEW_SMOKE_CLIPBOARD=1 dumps the
+				// clipboard text to the log afterwards (copy-out verification).
+				const preloadClip = await primary.webContents.executeJavaScript('window.__clewSmokeClipboard ?? null');
+				if (typeof preloadClip === 'string') clipboard.writeText(preloadClip);
+				const inputEvents = await primary.webContents.executeJavaScript('window.__clewSmokeInput ?? null');
+				if (Array.isArray(inputEvents)) {
+					for (const ev of inputEvents) {
+						if (ev.wait) { await new Promise((r) => setTimeout(r, ev.wait)); continue; }
+						primary.webContents.sendInputEvent(ev);
+						await new Promise((r) => setTimeout(r, ev.delay ?? 30));
+					}
+					await new Promise((r) => setTimeout(r, 500));
+				}
+				if (process.env.CLEW_SMOKE_CLIPBOARD) {
+					console.log('smoke-clipboard: ' + JSON.stringify(clipboard.readText()));
+				}
+				// CLEW_SMOKE_CLOSE_WINDOW=1: drive a REAL window close after the
+				// scenario, so close-guard flows (dirty office tab + the
+				// CLEW_SMOKE_CONFIRM answer) are testable end-to-end. The window
+				// count that survives is the assertion.
+				if (process.env.CLEW_SMOKE_CLOSE_WINDOW) {
+					primary.close();
+					await new Promise((r) => setTimeout(r, 2500));
+					console.log('smoke-windows: ' + BrowserWindow.getAllWindows().length);
 				}
 				// Optionally drive the preview iframe's document (cross-origin from
 				// the app, but reachable from main via webFrameMain).
@@ -271,7 +344,15 @@ if (process.env.CLEW_SMOKE) {
 			} catch (err) {
 				console.error('smoke failed:', err);
 			}
-			app.quit();
+			// Flush pending note auto-saves, then exit HARD: app.quit() runs
+			// the window-close guards, and a scenario that deliberately left a
+			// dirty office document (+ CLEW_SMOKE_CONFIRM=cancel) would block
+			// the harness forever on its own success.
+			try {
+				await windowOrder[0]?.webContents.executeJavaScript(
+					'window.__clew?.editorPool?.flushAll?.()');
+			} catch { /* window already gone */ }
+			app.exit(0);
 		}, 3000);
 	});
 }

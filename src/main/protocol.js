@@ -26,6 +26,7 @@
 import { protocol } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
+import zlib from 'node:zlib';
 import { Readable } from 'node:stream';
 import { NOTE_EXTENSIONS } from '../shared/channels.js';
 import { sessionById } from './session.js';
@@ -106,6 +107,24 @@ export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDi
 		let stat = null;
 		try { stat = fs.statSync(absPath); } catch { /* fall through to 404 */ }
 		if (!stat?.isFile()) {
+			// A brotli twin can stand in for the plain file: the downloaded
+			// ZetaOffice bundle keeps its two big files compressed on disk
+			// (~53 MB instead of 262 — see src/main/zeta-assets.js).
+			// Decompressed here in a stream: Chromium does NOT decode a
+			// Content-Encoding header on protocol.handle responses (measured
+			// 2026-09-01 — raw brotli bytes reach the page), so the header
+			// trick is a trap. Typed as the PLAIN name so soffice.wasm.br
+			// still instantiates as wasm; Range is ignored (nothing that
+			// ships compressed is range-read).
+			try {
+				if (fs.statSync(absPath + '.br').isFile()) {
+					const type = MIME[path.extname(absPath).toLowerCase()] ?? 'application/octet-stream';
+					const stream = fs.createReadStream(absPath + '.br').pipe(zlib.createBrotliDecompress());
+					return new Response(Readable.toWeb(stream), {
+						headers: { ...headers(type), ...extraHeaders },
+					});
+				}
+			} catch { /* no twin either */ }
 			return new Response('Not found', { status: 404, headers: headers('text/plain') });
 		}
 		const type = MIME[path.extname(absPath).toLowerCase()] ?? 'application/octet-stream';

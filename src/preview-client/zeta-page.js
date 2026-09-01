@@ -186,6 +186,7 @@ function onThreadMessage(port, msg, bytes) {
 
 let seenDirty = false;
 let saveSeq = 0;
+let explicitSave = false; // a 'zeta-save' is in flight from the app page
 
 function flash(text) {
 	statusEl.textContent = text;
@@ -201,8 +202,15 @@ function flash(text) {
 function onModified(state) {
 	tellParent({ cmd: 'zeta-modified', state });
 	if (state) { seenDirty = true; return; }
-	if (!seenDirty || !vaultPath) return;
+	if (!seenDirty || !vaultPath) {
+		// An explicit save that found nothing to store still gets its
+		// answer — the dock's save-and-close waits on it.
+		if (explicitSave) tellParent({ cmd: 'zeta-vault-saved', ok: true });
+		explicitSave = false;
+		return;
+	}
 	seenDirty = false;
+	explicitSave = false;
 	pushToVault();
 }
 
@@ -215,6 +223,10 @@ function pushToVault() {
 		window.removeEventListener('message', onResult);
 		if (d.ok) flash(`Saved ${vaultPath}`);
 		else fail(`vault save failed: ${d.error}`);
+		// The office dock waits on this to finish a save-and-close, and
+		// timestamps it to tell the watcher's echo of this write from a
+		// real external change.
+		tellParent({ cmd: 'zeta-vault-saved', ok: d.ok === true });
 	};
 	window.addEventListener('message', onResult);
 	window.parent.postMessage(
@@ -224,7 +236,10 @@ function pushToVault() {
 // The app page can also ask for a save (menu command, close flow) — and
 // the smoke harness for a verifiable edit.
 window.addEventListener('message', (e) => {
-	if (e.data?.cmd === 'zeta-save') thrPort?.postMessage({ cmd: 'save' });
+	if (e.data?.cmd === 'zeta-save') {
+		explicitSave = true;
+		thrPort?.postMessage({ cmd: 'save' });
+	}
 	if (e.data?.cmd === 'zeta-test-edit') thrPort?.postMessage({ cmd: 'testedit' });
 });
 

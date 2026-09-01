@@ -41,5 +41,9 @@ export const paths = app.isPackaged
 		engineAssets: path.join(distDir, 'engine'),
 		previewAssets: path.join(rootDir, 'node_modules'),
 		embedpdfAssets: path.join(rootDir, 'vendor', 'embedpdf', 'dist'),
-		zetaAssets: path.join(rootDir, 'zeta-assets'),
+		// CLEW_ZETA_DIR points the office engine somewhere else — a machine
+		// without the hand-installed repo bundle, or a download-flow test.
+		// The override is also what marks the directory writable/removable
+		// (zeta-assets.js#managed): the repo's own zeta-assets/ never is.
+		zetaAssets: process.env.CLEW_ZETA_DIR ?? path.join(rootDir, 'zeta-assets'),
 	};

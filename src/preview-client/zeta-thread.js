@@ -45,6 +45,34 @@ function disableAlienFormatWarning() {
 	});
 }
 
+// File-menu commands that operate on the Emscripten FS — Open, Recent
+// Documents, Save As, New — are not harmful, just disorienting: they show
+// a phantom filesystem the user's real files are not in. LibreOffice's
+// own kiosk mechanism (the DisableCommands set, which also strips the
+// entries from menus and toolbars) turns them off; the document's real
+// save path — toolbar Save / Ctrl+S / the app's zeta-save — stays.
+// Command names per the DisableCommands convention: the .uno: URL minus
+// its prefix.
+const DISABLED_COMMANDS = [
+	'AddDirect', 'NewDoc', 'Open', 'OpenRemote', 'RecentFileList',
+	'SaveAs', 'SaveACopy', 'SaveAll', 'ExportTo', 'ExportToPDF',
+	'ExportDirectToPDF', 'CloseDoc', 'CloseWin', 'Quit',
+];
+
+function disableFileCommands() {
+	tryUno('config', () => {
+		const config = css.configuration.ReadWriteAccess.create(context, 'en-US');
+		const disabled = config.getByHierarchicalName('/org.openoffice.Office.Commands/Execute/Disabled');
+		let n = 0;
+		for (const command of DISABLED_COMMANDS) {
+			const node = disabled.createInstance();
+			node.setPropertyValue('Command', command);
+			disabled.insertByName('clew' + n++, node);
+		}
+		config.commitChanges();
+	});
+}
+
 function loadFile(fileUrl) {
 	tryUno('load', () => {
 		xModel = desktop.loadComponentFromURL(fileUrl, '_default', 0, []);
@@ -113,5 +141,6 @@ Module.zetajs.then((pZetajs) => {
 		}
 	};
 	disableAlienFormatWarning();
+	disableFileCommands();
 	tell({ cmd: 'thr_running' });
 });

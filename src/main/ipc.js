@@ -14,6 +14,8 @@
 // session-free; everything vault-shaped routes through the session.
 import { app, dialog, ipcMain, shell } from 'electron';
 import * as pdfFonts from './pdf-fonts.js';
+import * as officeSlot from './office-slot.js';
+import * as zetaAssets from './zeta-assets.js';
 import { CH } from '../shared/channels.js';
 import { settings } from './settings.js';
 import { appMenu } from './menu.js';
@@ -129,6 +131,29 @@ export function registerIpc() {
 	handleGlobal(CH.PDF_FONTS_STATUS, () => pdfFonts.status());
 	handleGlobal(CH.PDF_FONTS_DOWNLOAD, () => pdfFonts.download());
 	handleGlobal(CH.PDF_FONTS_REMOVE, () => pdfFonts.remove());
+
+	// Office tabs: the app-global one-LibreOffice slot, the engine bundle,
+	// and the close-guard plumbing (see office-dock.js on the renderer side).
+	handleGlobal(CH.OFFICE_SLOT_ACQUIRE, (payload, event) => officeSlot.acquire(event.sender, payload ?? {}));
+	handleGlobal(CH.OFFICE_SLOT_RELEASE, (_payload, event) => officeSlot.release(event.sender));
+	handleGlobal(CH.OFFICE_ENGINE_STATUS, () => zetaAssets.status());
+	handleGlobal(CH.OFFICE_ENGINE_DOWNLOAD, () => zetaAssets.download());
+	handleGlobal(CH.OFFICE_ENGINE_REMOVE, () => zetaAssets.remove());
+	handle(CH.WINDOW_CLOSE_RESOLVED, (s, { proceed }) => s.resolveClose?.(proceed));
+	// Save / Discard / Cancel, as a native sheet. CLEW_SMOKE_CONFIRM answers
+	// it without UI so the harness can drive every branch of a close flow.
+	handle(CH.CONFIRM_DISCARD, async (s, { message, detail }) => {
+		if (process.env.CLEW_SMOKE_CONFIRM) return process.env.CLEW_SMOKE_CONFIRM;
+		const { response } = await dialog.showMessageBox(s.win, {
+			type: 'warning',
+			buttons: ['Save', 'Discard Changes', 'Cancel'],
+			defaultId: 0,
+			cancelId: 2,
+			message: String(message ?? 'Unsaved changes'),
+			detail: String(detail ?? ''),
+		});
+		return ['save', 'discard', 'cancel'][response];
+	});
 	handleGlobal(CH.SHELL_OPEN_EXTERNAL, ({ url }) => {
 		if (/^https?:|^mailto:/i.test(url)) shell.openExternal(url);
 	});

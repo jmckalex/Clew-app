@@ -63,6 +63,19 @@ export const CH = {
 	RENDER_HTML: 'clew:render-html',
 	PDF_WRITE: 'clew:pdf-write',
 	OFFICE_WRITE: 'clew:office-write',
+
+	// invoke: office tabs (ZetaOffice). The slot is the app-global
+	// one-LibreOffice-at-a-time guard; the engine channels manage the
+	// downloaded wasm bundle; convert/open-external are the no-engine rung.
+	OFFICE_SLOT_ACQUIRE: 'clew:office-slot-acquire',
+	OFFICE_SLOT_RELEASE: 'clew:office-slot-release',
+	OFFICE_ENGINE_STATUS: 'clew:office-engine-status',
+	OFFICE_ENGINE_DOWNLOAD: 'clew:office-engine-download',
+	OFFICE_ENGINE_REMOVE: 'clew:office-engine-remove',
+	OFFICE_CONVERT_PDF: 'clew:office-convert-pdf',
+	OFFICE_OPEN_EXTERNAL: 'clew:office-open-external',
+	CONFIRM_DISCARD: 'clew:confirm-discard',
+	WINDOW_CLOSE_RESOLVED: 'clew:window-close-resolved',
 	EXCALIDRAW_LIB_GET: 'clew:excalidraw-lib-get',
 	EXCALIDRAW_LIB_SET: 'clew:excalidraw-lib-set',
 	PDF_FONTS_STATUS: 'clew:pdf-fonts-status',
@@ -83,6 +96,8 @@ export const CH = {
 	EV_INDEX_PATCH: 'clew:ev-index-patch',
 	EV_MENU_COMMAND: 'clew:ev-menu-command',
 	EV_KV_CHANGED: 'clew:ev-kv-changed',
+	EV_OFFICE_SLOT: 'clew:ev-office-slot',
+	EV_CLOSE_REQUESTED: 'clew:ev-close-requested',
 };
 
 // Notes are what Clew opens in an editor.

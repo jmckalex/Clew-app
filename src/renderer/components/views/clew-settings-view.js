@@ -69,6 +69,7 @@ class ClewSettingsView extends ClewElement {
 				this.#textRow('Template note (optional)', 'dailyNoteTemplate', ''),
 			]),
 			this.#section('PDF viewer', [...this.#cjkFontRow()]),
+			this.#section('Office documents', [...this.#officeEngineRow()]),
 			this.#section('Files', [
 				this.#textRow('Attachment folder', 'attachmentFolder', 'Attachments'),
 				this.#textRow('Templates folder', 'templatesFolder', 'Templates'),
@@ -334,6 +335,63 @@ class ClewSettingsView extends ClewElement {
 		// Row + hint as siblings, the way the vault rows do it: .settings-row is
 		// a two-column flex and a third child would squeeze the label to shreds.
 		return [this.#row('Chinese, Japanese and Korean fonts', button), hint];
+	}
+
+	/**
+	 * The LibreOffice engine download — the same shape as the CJK fonts:
+	 * off the installer, fetched once by explicit choice, removable. The
+	 * pin-verification story lives in src/main/zeta-assets.js.
+	 */
+	#officeEngineRow() {
+		const button = document.createElement('button');
+		const hint = document.createElement('p');
+		hint.className = 'settings-hint';
+
+		const EXPLAIN = 'Word, Excel and PowerPoint documents open and edit in tabs using '
+			+ 'LibreOffice (ZetaOffice), downloaded once and verified against pinned '
+			+ 'checksums — nothing is fetched while you work.';
+		const mb = (bytes) => `${Math.round((bytes ?? 0) / 1048576)} MB`;
+		let polling = null;
+
+		const paint = (status) => {
+			if (status.downloading) {
+				const p = status.progress ?? {};
+				button.textContent = 'Downloading…';
+				button.disabled = true;
+				hint.textContent = `Downloading ${p.file ?? ''} — ${mb(p.received)}`
+					+ `${p.expected ? ` of ${mb(p.expected)}` : ''} (file ${Math.min(p.done + 1, p.total)} of ${p.total}). `
+					+ 'You can leave this screen; it continues in the background.';
+			} else if (status.installed) {
+				button.textContent = status.managed ? 'Remove' : 'Installed';
+				button.disabled = !status.managed; // dev tree: hand-installed
+				hint.textContent = `Installed (${mb(status.bytesOnDisk)} on disk). ` + EXPLAIN;
+			} else {
+				button.textContent = `Download (${mb(status.wireBytes)})`;
+				button.disabled = false;
+				hint.textContent = (status.lastError
+					? `The last download did not finish: ${status.lastError} `
+					: 'Not downloaded — office documents show a download offer when opened. ') + EXPLAIN;
+			}
+			if (status.downloading && !polling) polling = setInterval(refresh, 700);
+			if (!status.downloading && polling) { clearInterval(polling); polling = null; }
+		};
+
+		const refresh = () => ipc.invoke(CH.OFFICE_ENGINE_STATUS).then(paint).catch(() => {});
+
+		button.addEventListener('click', async () => {
+			const status = await ipc.invoke(CH.OFFICE_ENGINE_STATUS);
+			if (status.installed && status.managed) {
+				paint(await ipc.invoke(CH.OFFICE_ENGINE_REMOVE));
+				return;
+			}
+			button.disabled = true;
+			button.textContent = 'Downloading…';
+			polling ??= setInterval(refresh, 700);
+			paint(await ipc.invoke(CH.OFFICE_ENGINE_DOWNLOAD));
+		});
+
+		refresh();
+		return [this.#row('LibreOffice engine', button), hint];
 	}
 
 	#row(label, control) {

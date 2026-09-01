@@ -23,6 +23,7 @@ import { installMenuBridge } from './commands/menu-bridge.js';
 import { installHotkeys } from './commands/registry.js';
 import { initPlugins } from './plugins.js';
 import { installPdfSaveBridge, installOfficeSaveBridge, installExcalidrawSaveBridge, installExcalidrawLibraryBridge, installExcalidrawResolveBridge } from './pdf-save.js';
+import { officeDock } from './office-dock.js';
 import './components/chrome/clew-app.js';
 
 // ---- IPC events → stores --------------------------------------------------
@@ -83,11 +84,12 @@ installExcalidrawSaveBridge();
 installExcalidrawLibraryBridge();
 installExcalidrawResolveBridge();
 installMenuBridge();
+officeDock.init();
 
 // ---- dev hook -------------------------------------------------------------
 
 // Exposed for dev-tools poking and the CLEW_SMOKE scenario scripts.
-window.__clew = { workspaceStore, vaultStore, editorPool, settingsStore, ipc, actions };
+window.__clew = { workspaceStore, vaultStore, editorPool, settingsStore, ipc, actions, officeDock };
 import('./commands/registry.js').then((registry) => { window.__clew.registry = registry; });
 
 // ---- boot -----------------------------------------------------------------
