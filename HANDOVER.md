@@ -1,4 +1,4 @@
-# Handover — 2026-09-01 (evening: ZetaOffice GRADUATED to main)
+# Handover — 2026-09-01 (night: the ZetaOffice punch list is DONE)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it); the original design plan is at
@@ -6,173 +6,125 @@ in **CLAUDE.md** (trust it); the original design plan is at
 session — keep it short, and prefer deleting a settled item to explaining
 it again.
 
-## 0. THE ACTIVE ITEM: finish the ZetaOffice office tabs (now ON MAIN)
+## 0. ZetaOffice: all nine punch-list items landed (2026-09-01 evening)
 
-The spike — FULL embed of ZetaOffice (LibreOffice wasm via zetajs),
-office docs editing in file tabs with save-back into the vault — was
-built, measured, judged **viable**, and merged to main (fast-forward,
-commit `5387cc1`) on the owner's instruction. The viability report
-with screenshots is a Claude artifact ("The ZetaOffice Spike"); the
-finishing punch list is its own artifact and §0b below. Housekeeping
-left from graduation: the worktree `../Clew-app-zetaoffice` and branch
-`zetaoffice-spike` are now redundant — remove when no session lives
-there (`git worktree remove ../Clew-app-zetaoffice`,
-`git branch -d zetaoffice-spike`). `zeta-assets/` (the 262 MB
-gitignored wasm bundle) was COPIED into THIS tree, so office tabs work
-here in dev; PROVENANCE.md + SHA256SUMS inside it pin the build.
+Commits `2a2a4c4` (dock, guards, conflicts, download, menu prune) and
+`68ccbe3` (converter rung, verification passes) here; `79ad47b` in
+../Clew-docs (the manual chapter). The updated "Finishing ZetaOffice"
+artifact carries per-item outcomes. The spike worktree and branch are
+removed. What each item became:
 
-**Measured facts (M-series Mac, real documents):**
+- **The office dock** (`renderer/office-dock.js`) replaced the naive
+  iframe-in-tab-body: the window's ONE LibreOffice iframe lives in a
+  fixed overlay tracked to the office tab's host rect, because
+  reparenting an iframe reloads it and the tab body is replaceChildren'd
+  on every switch — previously ANY tab switch silently discarded a booted
+  LibreOffice and its edits. Office tabs never navigate and are never
+  navigated over (tree.js, like canvas tabs); splits MOVE them (a clone
+  could only show the busy notice); cross-pane opens reuse the tab.
+- **Save-on-close**: workspace-store close guards + main-side window-close
+  interception (EV_CLOSE_REQUESTED handshake) → native Save/Discard/
+  Cancel on tab/pane/window close and quit. `CLEW_SMOKE_CONFIRM` answers
+  it headlessly; all three branches verified against bytes on disk.
+- **External changes**: editorPool's model — clean reloads silently,
+  dirty banners. Echo suppression stamps at the save REQUEST (the
+  watcher outruns the save-result round-trip; stamping at the result
+  rebooted LO out from under its own save — real bug found by smoke).
+- **One instance per APP** (not per window): main-process slot
+  (`main/office-slot.js`), acquired pre-boot, released on destroy and
+  implicitly on webContents death/reload. Blocked tabs wake themselves
+  on slot changes, cross-window included (EV_OFFICE_SLOT broadcast).
+- **The engine download** (`main/zeta-assets.js` + `shared/
+  zeta-manifest.json`): pdf-fonts pattern + SHA256 pins (CDN has no
+  versioned URLs — mismatch REFUSES). The two big files stay brotli on
+  disk (52 MB not 262); the protocol serves `<name>.br` through a
+  zlib stream because **Chromium ignores Content-Encoding on
+  protocol.handle responses** (measured). Boot from .br: 2.9 s vs 2.2.
+  Settings → Office documents row + in-tab offer. `CLEW_ZETA_DIR`
+  overrides the dir in dev (and marks it writable; the repo's pinned
+  `zeta-assets/` never is) — the full CDN download + boot ran
+  end-to-end in dev through it.
+- **LO File menu pruned** via DisableCommands (screenshot-verified):
+  `Open` needed the per-app `OpenFromWriter`/`OpenFromCalc` names.
+- **Converter rung** (`main/office-convert.js`): desktop-LibreOffice
+  PDF preview into `.clew/cache/office-pdf/` (private UserInstallation
+  so a running LO can't lock it out) shown in EmbedPDF, plus Open in
+  LibreOffice / default app. Offered from the no-engine panel and the
+  busy notice.
+- **The manual**: `site/manual/office-documents.html` in ../Clew-docs,
+  cross-referenced; screenshot from a purpose-made scratch vault.
 
-- Cold boot → editable document: **2.2 s** (40 KB docx), **2.5 s**
-  (1.8 MB, 29-page docx). Warm: ~1.8–2.0 s. Boot is so cheap that
-  instance REUSE is unnecessary: boot per tab open, discard on close.
-- Memory: **~1.6 GB working set** for the office renderer process
-  (whole app ~2.1 GB with one office tab). This is why one-office-tab-
-  at-a-time stands (enforced crudely in clew-file-view: a second
-  office tab renders a notice, not a second LibreOffice).
-- Save round-trip verified end-to-end: UNO edit → LibreOffice store →
-  bytes out of the Emscripten FS → office-save bridge → OFFICE_WRITE →
-  vault file on disk (marker string found inside the saved docx).
-  Writer AND Calc both proven (real .docx/.xlsx from ~/Downloads).
-- Payload correction: ~300 MB was the DISK size; over the wire it is
-  **~53 MB** (the CDN brotli-compresses soffice.wasm/soffice.data
-  unconditionally — content-length lies; a plain curl saves raw
-  brotli, `cf ff ff 7f` not `\0asm` — see zeta-assets/PROVENANCE.md).
-  On disk decompressed: 162 MB wasm + 99.5 MB data. Design option for
-  shipping: store the .br files and serve them with
-  `Content-Encoding: br` from the protocol — 53 MB on disk too.
-- The SAB switch (`enable-features=SharedArrayBuffer` in main.js — the
-  conscious security decision, rationale in the code comment) disturbs
-  nothing: note preview, EmbedPDF viewer and the unit suite (405 pass)
-  are all clean with it on.
+**Verified by real input** (smoke + CDP): typing lands in Writer and
+round-trips to the .docx via the toolbar Save; Impress opens a real
+.pptx; split resize tracks; wikilink → office tab without navigating
+the note; a minimal from-scratch docx (python zipfile) opens fine.
 
-**What is wired (working, guarded, verified from THIS tree):**
-`zeta`/`clewzeta` asset roots + `.wasm` MIME in protocol.js,
-`zetaAssets` in paths.js, `zeta-page.{html,js}` + `zeta-thread.js` in
-src/preview-client (host page ↔ LOWA-worker script; measurement mode
-without `&path` — the page times itself and wears the numbers — tab
-mode with), `office` fileKind (six extensions, NOT embeddable — tabs
-only), clew-file-view iframe branch + one-tab guard, `zetaOfficeUrl`
-in preview-url.js, office-save bridge in pdf-save.js, `OFFICE_WRITE`
-channel → `vault.writeOffice` (writePdf's guards for office
-extensions). Saving is LibreOffice's OWN gesture (toolbar/Ctrl+S —
-WarnAlienFormat disabled at boot) or a `zeta-save` postMessage; the
-modified→false transition drives the push to disk. Smoke hook gained
-`CLEW_SMOKE_LOG=1` (all console) and `CLEW_SMOKE_METRICS=/path.json`
-(app.getAppMetrics dump).
+## 1. Open items
 
-**Decisions standing:** tabs only (no `![[x.docx]]` embeds); no
-autosave; one office tab at a time. Boot-per-tab replaced "one shared
-instance" (measured: boots are 2 s — change was taken out loud, here).
-
-## 0b. The finishing punch list (product work, no feasibility risk)
-
-Ordered roughly by user pain; details in the "Finishing ZetaOffice"
-artifact:
-
-1. **Save-on-close prompt** — a dirty office tab currently discards
-   silently on close. The page already posts `zeta-modified`; the app
-   side needs to track it per tab and intercept tab close.
-2. **External-change conflicts** — an office file changed on disk
-   under an open tab is unhandled; editorPool's banner is the model.
-   (Self-echo suppression matters here too: a save triggers the
-   watcher.)
-3. **Packaged download flow** — userData + the pdf-fonts pattern,
-   verified against the SHA256 pins; paths.js already points there
-   when packaged. Option: keep the .br files and serve them with
-   `Content-Encoding: br` (53 MB on disk instead of 262 MB).
-4. **One-tab guard refresh** — after closing the office tab, the
-   blocked tab needs a reopen by hand; re-render it on tab-close.
-5. **Prune LO's own File menu** — Open/SaveAs/Recent operate on the
-   wasm FS: harmless but weird. Hide via UNO config like the
-   standalone example hides toolbars.
-6. **Verification passes** — real keyboard typing (only UNO edits were
-   harness-tested), clipboard app↔LO, .pptx (Impress — untested),
-   split-pane resize behaviour, note-link → office-tab routing.
-7. **Multi-window policy** — the one-tab guard is per-window (DOM
-   query); two windows can still boot two 1.6 GB instances. Decide.
-8. **The MANUAL** (../Clew-docs) — office tabs, formats, one-tab rule,
-   save semantics, the download. Nothing here will remind you.
-9. **The cheap rung, still worth building** — `soffice --headless
-   --convert-to pdf` into `.clew/cache` (`toolchainPath()` pattern),
-   shown in the EXISTING EmbedPDF viewer, plus "Edit in LibreOffice"
-   externally: the fallback for users without the download.
-
-## 1. Recently shipped (all verified; manual in ../Clew-docs matches)
-
-- **Fill + auto-fill (2026-08-31/09-01):** `editor:fill-paragraph`
-  (⌥Q, `fillColumn` default 72) and auto-fill-mode (`autoFill`
-  setting, default off; EditorView.inputHandler reading settings per
-  keystroke). Pure core in `editor/fill.js`, 22 unit tests. Bare Alt
-  chords now WORK on mac — chordOf() recovers the base key from
-  event.code under Option (⌥Q types œ otherwise); dispatch and the
-  hotkey recorder share the fix.
-- **PDF viewer = the owner's EmbedPDF OCG build (2026-08-30):**
-  vendored mirror at `vendor/embedpdf`, `npm run sync-embedpdf` from
-  `~/Source/EmbedPDF/v2` branch `ocg-v2`; layers panel, layer
-  authoring, per-annotation assignment. Durable facts in CLAUDE.md.
-- Earlier and settled (Web Awesome widgets; the PH456 marking vault at
-  `~/Documents/Teaching/Marking/2025-2026/PH456/Marking Vault/`, its
-  documented twin `Guide/Dashboards.md`): see CLAUDE.md and this
-  file's git history.
-
-## 2. Open items (none are compat)
-
-- **The ZetaOffice finishing punch list (§0b)** — incl. the manual.
-- The soffice converter rung (§0b item 9) — independent and cheap.
+- **Needs a real packaged run**: the download flow is verified in dev
+  via CLEW_ZETA_DIR; nobody has run `npm run package` and watched the
+  packaged app download into userData and boot. One pass, some machine.
+- **Needs a machine with desktop LibreOffice**: office-convert's actual
+  conversion (refusal paths verified here; this Mac has no LO).
+- **Needs a human keyboard**: (a) Ctrl+S/Cmd+S inside LibreOffice —
+  synthesised accelerators arrive with ctrlKey=true but LO-wasm inserts
+  the letter instead; the manual says "use the toolbar Save" pending a
+  real-keyboard check. (b) Clipboard app↔LO — not bridged in either
+  direction under synthetic input (LOWA internal-clipboard limitation);
+  office iframes now carry allow="clipboard-read; clipboard-write" so
+  it isn't fenced off by us if a build ever supports it.
+- **Restore-boot policy**: a workspace restored with a visible office
+  tab boots LibreOffice (1.6 GB) at launch. Deliberate (reopen what was
+  open) but unreviewed — owner may prefer lazy boot on first focus.
 - Win/Linux 0.9.0 artefacts have never run on real machines.
 - The DNS change (owner's action) → then `make dns-check` + `make tls`
   in Clew-docs.
 - Kanban-board card drag (write path) — v2 of a shipped feature.
 
-## 3. Traps (newest first)
+## 2. Traps (newest first — all earned this session)
 
-- **Centered text (`>> … <<`) is a paragraph type with a SUFFIX** in
-  fill.js: it opens with the quote sigil, and the engine's per-line
-  centerAlign rule rejects any line missing its closer — one dropped
-  `<<` un-centers the whole block. Extend the suffix mechanism; don't
-  special-case downstream.
-- **Smoke trick:** `document.execCommand('insertText', …)` on a
-  focused CM editor goes through the REAL input path (inputHandler
-  included); synthetic KeyboardEvents don't insert text.
-- **The blanket `dist/` gitignore eats vendored dist dirs** —
-  `git check-ignore` anything you vendor before assuming it commits
-  (`!vendor/embedpdf/dist/` is the existing exception).
-- **The EmbedPDF viewer is ALL shadow DOM** — in frame scripts
-  `document.body.textContent` is empty; walk shadowRoots. Sidebar tabs
-  are icon-only. Assert which build is served by FETCHING a hashed
-  filename, never by resource timing (it missed the module chunks).
-- **wa.css is TOKENS ONLY** (`themes/default.css`); full webawesome.css
-  repaints html/body on widget notes.
-- **WA- elements take the NORMAL morph**, but the host inline `style`
-  is component-owned state — carry it onto the incoming element before
-  the attr sync (client.js `applyRender`).
-- **Meta Bind toggles must not fall into the checkbox-toggle path**
-  (`.clew-mb` guard in client.js); a FOCUSED `.clew-mb` element is
-  morph-protected.
-- **Canvas cards are the app page, not a preview iframe** — engine
-  markup rendered into cards needs its own compact rules in canvas.css.
-- **Admonition tokens are `calloutBlock`-typed on purpose** — one
-  renderer serves both syntaxes.
-- The block-binding writer and reader both live in
-  shared/note-metadata (`rewriteBlockText`) — keep read/write
-  symmetric there.
-- Earlier traps (list() dialect split, ordered DQL pipeline,
-  whole-document extensions via start()→0, export-worker env,
-  innerText vs textContent, `--universal`) are in this file's git
-  history.
+- **`webContents.send` during window teardown THROWS and wedges main**
+  behind an error dialog if it happens inside a 'destroyed' hook —
+  guard every broadcast (office-slot.js#broadcast is the exemplar).
+- **`win.close()` from inside that window's own ipcMain.handle
+  deadlocks Electron** — defer with setImmediate (main.js close flow).
+- **`sendInputEvent` never reaches OOPIFs** (cross-origin iframes =
+  every preview). Smoke input is CDP `Input.dispatch*` via
+  webContents.debugger; combos need REAL modifier keydowns around the
+  letter (a modifiers bitmask alone reads as plain typing in Qt).
+- **Chromium does not decode Content-Encoding on protocol.handle
+  responses** — serve compressed files through a zlib stream instead.
+- **chokidar's change event outruns the office save round-trip** — any
+  self-echo suppression must stamp when the write is REQUESTED.
+- **A frame script that awaits after triggering tab activation strands
+  the harness**: the preview frame detaches and executeJavaScript never
+  resolves. Click-and-return-immediately.
+- Smoke quits via app.exit (not app.quit) after flushing editors — the
+  close guards would otherwise hang the harness on their own success
+  (dirty office doc + CLEW_SMOKE_CONFIRM=cancel).
+- Earlier traps (centered-text suffix, execCommand insertText, blanket
+  dist/ gitignore, EmbedPDF shadow DOM, wa.css tokens, Meta Bind morph
+  guard, canvas-card CSS, calloutBlock typing) are in this file's git
+  history — all still true.
+
+## 3. Smoke-harness capabilities (grown this session; all documented in
+main.js)
+
+`CLEW_SMOKE_CONFIRM=save|discard|cancel` answers the office close
+dialog; `CLEW_SMOKE_CLOSE_WINDOW=1` drives a real window close and logs
+`smoke-windows: N`; `window.__clewSmokeInput` = [{click:{x,y}} |
+{tripleClick:{x,y}} | {text:'abc'} | {combo:{key,modifiers}} |
+{wait:ms}] plays through CDP; `window.__clewSmokeClipboard` preloads
+the clipboard, `CLEW_SMOKE_CLIPBOARD=1` dumps it after.
 
 ## 4. The owner works in this tree concurrently
 
-The tree was left CLEAN on 2026-09-01 (evening): main fast-forwarded
-to the ZetaOffice graduation (`5387cc1`), HANDOVER updated, nothing
-else touched. The gitignored `zeta-assets/` here is deliberate (see
-§0). Anything uncommitted you find is NEW owner work — leave it
-unstaged and note it here. Never switch THIS tree off main; big
-experiments get their own worktree (the spike's, now merged, awaits
-removal). Live testing flips demo widgets —
-reset `status:`/`done:`/`^motto` baselines before committing demo
-files.
+The tree was left CLEAN on 2026-09-01 (night): main at `68ccbe3`,
+408 unit tests green, regression smoke (preview/PDF/canvas) green.
+Anything uncommitted you find is NEW owner work — leave it unstaged and
+note it here. Never switch THIS tree off main. Live testing flips demo
+widgets — reset `status:`/`done:`/`^motto` baselines before committing
+demo files.
 
 ## 5. Standing session rules (they keep earning their keep)
 
