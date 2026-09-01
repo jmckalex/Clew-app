@@ -58,6 +58,7 @@ class ClewSettingsView extends ClewElement {
 				this.#numberRow('Editor font size (px)', 'editorFontSize', 16, 10, 28),
 				this.#numberRow('Editor line width (em)', 'editorLineWidth', 44, 20, 120),
 				this.#numberRow('Fill column (hard-wrap)', 'fillColumn', 72, 40, 120),
+				this.#checkRow('Auto-fill while typing', 'autoFill'),
 			]),
 			this.#section('Diary', [
 				this.#selectRow('Mode', 'diaryMode',
@@ -369,6 +370,14 @@ class ClewSettingsView extends ClewElement {
 		});
 		input.addEventListener('keydown', (e) => e.stopPropagation());
 		return this.#row(label, input);
+	}
+
+	#checkRow(label, key) {
+		const box = document.createElement('input');
+		box.type = 'checkbox';
+		box.checked = settingsStore.get(key) === true;
+		box.addEventListener('change', () => settingsStore.set(key, box.checked));
+		return this.#row(label, box);
 	}
 
 	#selectRow(label, key, options) {

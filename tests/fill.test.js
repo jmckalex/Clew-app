@@ -11,7 +11,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-	inertMap, tokenize, fillWords, paragraphAt, fillLineRange,
+	inertMap, tokenize, fillWords, paragraphAt, fillLineRange, autoBreakLine,
 } from '../src/renderer/editor/fill.js';
 
 const lines = (s) => s.split('\n');
@@ -147,6 +147,42 @@ test('fillLineRange over a selection fills each paragraph independently', () => 
 	for (const l of repls[1].lines.slice(1)) assert.ok(l.startsWith('  '), l);
 	// The fence body is untouched by construction: no replacement covers it.
 	for (const r of repls) assert.ok(r.to < 4);
+});
+
+test('autoBreakLine breaks behind the cursor and carries the prefix', () => {
+	// Trailing space = the just-typed one; it must survive on the last line.
+	const out = autoBreakLine('aaa bbb ccc dddddd ', 11, '', 0);
+	assert.deepEqual(out, ['aaa bbb ccc', 'dddddd ']);
+	const quoted = autoBreakLine('> alpha beta gamma ', 12, '> ', 2);
+	assert.deepEqual(quoted, ['> alpha beta', '> gamma ']);
+});
+
+test('autoBreakLine breaks repeatedly when far past the column', () => {
+	const out = autoBreakLine('one two three four five six seven ', 9, '', 0);
+	for (const l of out.slice(0, -1)) assert.ok(l.length <= 9, l);
+	assert.equal(out.join(' ').replace(/ +/g, ' '), 'one two three four five six seven ');
+});
+
+test('autoBreakLine preserves inner spacing except at the break', () => {
+	const out = autoBreakLine('one  two.  Three four ', 12, '', 0);
+	assert.deepEqual(out, ['one  two.', 'Three four ']);
+});
+
+test('autoBreakLine never breaks inside an atom or before a marker word', () => {
+	const wiki = autoBreakLine('see [[A Long Note Name]] end ', 12, '', 0);
+	assert.ok(wiki.some((l) => l.includes('[[A Long Note Name]]')), wiki.join('|'));
+	// "3 - 4": the "-" may not open a line.
+	const dash = autoBreakLine('it weighs 3 - 4 kg ', 12, '', 0);
+	for (const l of dash.slice(1)) assert.ok(!/^- /.test(l), l);
+});
+
+test('autoBreakLine respects minIndex and gives up without a break point', () => {
+	// The list marker itself is never a break site.
+	const list = autoBreakLine('- aaa bbb ccc ', 6, '  ', 2);
+	assert.equal(list[0], '- aaa');
+	assert.deepEqual(list.slice(1), ['  bbb', '  ccc ']);
+	// One unbreakable word: length 1, caller inserts normally.
+	assert.equal(autoBreakLine('supercalifragilistic ', 10, '', 0).length, 1);
 });
 
 test('quoted list items refill with the quote and hanging indent', () => {

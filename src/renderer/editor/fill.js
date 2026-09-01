@@ -26,8 +26,9 @@
 //   `> `, list items refill with hanging indent under the marker.
 //
 // The parsing and filling below are pure functions over arrays of lines,
-// which is why they can be unit-tested; only fillAtCursor at the bottom
-// touches CodeMirror.
+// which is why they can be unit-tested; only fillAtCursor and the
+// auto-fill input handler at the bottom touch CodeMirror.
+import { EditorView } from '@codemirror/view';
 
 const TAB_WIDTH = 4;
 
@@ -161,6 +162,70 @@ export function fillWords(words, column, prefixFirst, prefixRest) {
 	return out;
 }
 
+/** Atomic spans within `text`, as [start, end) index pairs. */
+function atomSpans(text) {
+	const spans = [];
+	let i = 0;
+	while (i < text.length) {
+		if (/\s/.test(text[i])) { i++; continue; }
+		ATOM.lastIndex = i;
+		const m = ATOM.exec(text);
+		if (m) { spans.push([i, i + m[0].length]); i += m[0].length; }
+		else i++;
+	}
+	return spans;
+}
+
+/**
+ * The last whitespace run in `text` where a break keeps the head within
+ * `column` — never inside an atom, never at or before `minIndex` (the
+ * line's own prefix), never before a word that would be reparsed as block
+ * syntax, and never the trailing run (nothing to move). Returns the run's
+ * [start, end) or null.
+ */
+function breakPointIn(text, column, minIndex) {
+	const atoms = atomSpans(text);
+	const trimmed = text.replace(/\s+$/, '').length;
+	let best = null;
+	const re = /\s+/g;
+	let m;
+	while ((m = re.exec(text))) {
+		const start = m.index;
+		const end = start + m[0].length;
+		if (end > trimmed) break;                       // the trailing run
+		if (displayWidth(text.slice(0, start)) > column) break;   // runs are ordered
+		if (start <= minIndex) continue;
+		if (atoms.some(([a, b]) => start > a && start < b)) continue;
+		const nextWord = /^\S+/.exec(text.slice(end))?.[0] ?? '';
+		if (DANGEROUS_AT_LINE_START.test(nextWord)) continue;
+		best = [start, end];
+	}
+	return best;
+}
+
+/**
+ * Emacs' do-auto-fill for one line: break `text` (a single line including
+ * its own prefix) at whitespace until every piece fits `column`, later
+ * pieces opening with `prefixRest`. Spacing between words is preserved —
+ * only the runs chosen as break points become newlines. Returns the
+ * resulting lines; length 1 means no valid break existed.
+ */
+export function autoBreakLine(text, column, prefixRest, minIndex = 0) {
+	const out = [];
+	let current = text;
+	let min = minIndex;
+	for (let guard = 0; guard < 50; guard++) {
+		if (displayWidth(current.replace(/\s+$/, '')) <= column) break;
+		const bp = breakPointIn(current, column, min);
+		if (!bp) break;
+		out.push(current.slice(0, bp[0]));
+		current = prefixRest + current.slice(bp[1]);
+		min = prefixRest.length;
+	}
+	out.push(current);
+	return out;
+}
+
 // ---- paragraphs ------------------------------------------------------------
 
 function startsParagraph(lines, inert, j) {
@@ -265,4 +330,50 @@ export function fillAtCursor(view, column) {
 		userEvent: 'format.fill',
 	});
 	return true;
+}
+
+/**
+ * Auto-fill mode: wrap while typing, Emacs-style. Fires only when a SPACE
+ * is typed with the cursor past the fill column — then the text behind the
+ * cursor is broken at the last fitting point(s) and the cursor rides onto
+ * the new line. Everything else (Enter included) types normally, paste is
+ * never touched (it does not pass through inputHandler), and the same
+ * paragraph analysis as fill-paragraph guards fences, math, frontmatter,
+ * tables and headings. `getOptions` is read per keystroke so the settings
+ * toggle applies live with no editor reconfiguration.
+ */
+export function autoFillHandler(getOptions) {
+	return EditorView.inputHandler.of((view, from, to, text) => {
+		if (text !== ' ' || from !== to || view.composing) return false;
+		const { enabled, column } = getOptions();
+		if (!enabled) return false;
+		const { state } = view;
+		if (state.selection.ranges.length !== 1 || !state.selection.main.empty) return false;
+		const line = state.doc.lineAt(from);
+		const cut = from - line.from;
+		// Emacs' trigger: the CURSOR is past the column (typing into the
+		// middle of a long line at column 20 does not reflow it).
+		if (displayWidth(line.text.slice(0, cut)) + 1 <= column) return false;
+		const lines = [];
+		for (let n = 1; n <= state.doc.lines; n++) lines.push(state.doc.line(n).text);
+		const para = paragraphAt(lines, inertMap(lines), line.number - 1);
+		if (!para) return false;
+		// The line's own prefix bounds the earliest legal break.
+		const quote = QUOTE_PREFIX.exec(line.text)?.[1] ?? '';
+		const marker = LIST_MARKER.exec(line.text.slice(quote.length));
+		const minIndex = quote.length
+			+ (marker ? marker[0].length : /^\s*/.exec(line.text.slice(quote.length))[0].length);
+		const head = line.text.slice(0, cut) + ' ';
+		const tail = line.text.slice(cut);
+		const broken = autoBreakLine(head, column, para.prefixRest, minIndex);
+		if (broken.length === 1) return false;
+		const insert = broken.join('\n') + tail;
+		view.dispatch({
+			changes: { from: line.from, to: line.to, insert },
+			selection: { anchor: line.from + insert.length - tail.length },
+			userEvent: 'input.type',
+			scrollIntoView: true,
+		});
+		return true;
+	});
 }

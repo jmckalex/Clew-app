@@ -101,9 +101,9 @@ other).
   and on a selected annotation's toolbar; sample.pdf has no layers, so
   the demo shows the authoring empty state.
 
-## 1c. 2026-08-31: fill-paragraph (Emacs M-q for the editor)
+## 1c. 2026-08-31/09-01: fill-paragraph + auto-fill-mode (Emacs for the editor)
 
-- `editor:fill-paragraph` (⌘⌥Q, `fillColumn` setting default 72):
+- `editor:fill-paragraph` (⌥Q, `fillColumn` setting default 72):
   hard-wraps the paragraph at the cursor / paragraphs in the selection.
   Pure functions in `editor/fill.js` (tables.js pattern, 14 unit
   tests): structure never joined (fences/frontmatter/$$/tables/
@@ -111,14 +111,24 @@ other).
   code), adaptive prefixes (quote `> `, list hanging indent), atomic
   words (wikilinks, inline code/math, \cite — plus a no-break rule so
   a wrapped word like `-` can't become a list marker). Manual:
-  editing.html#filling + settings page. NOTE: bare `Alt-x` chords can
-  never fire on mac (chordOf uses event.key; Option types œ) — Alt
-  hotkeys must be Mod-Alt-…, which Chromium reports with the base
-  letter.
-- Auto-fill-mode (wrap while typing) was scoped, not built — owner is
-  keen; see the session summary for the design sketch (shared core in
-  fill.js, EditorView.inputHandler on space/Enter, syntax-tree context
-  check, composition guard).
+  editing.html#filling + settings page.
+- **Auto-fill-mode shipped** (`autoFill` setting, default off — the
+  owner uses it on): `fill.js#autoFillHandler`, an
+  EditorView.inputHandler. Space typed with the cursor past the column
+  → `autoBreakLine` breaks the text behind the cursor at whitespace
+  (atoms + dangerous-word + minIndex guards; inner spacing preserved,
+  unlike M-q's retokenize), cursor rides onto the new line. Reads
+  settings per keystroke, so the toggle is live and the pool's cached
+  EditorStates need no rebuild. Paste and Enter are untouched;
+  `view.composing` guards IME.
+- **Bare Alt chords now WORK on mac**: chordOf() recovers the base key
+  from event.code (KeyX/DigitN) when Option is held, because Option
+  transforms event.key (⌥Q types œ). QWERTY-positional, dispatch and
+  the hotkey recorder both go through chordOf. An Option combination
+  that is NOT bound still types its character.
+- Smoke trick: `document.execCommand('insertText', …)` on a focused
+  CM editor goes through the REAL input path, inputHandler included —
+  synthetic KeyboardEvents don't insert text, execCommand does.
 
 ## 2. Open items (none are compat)
 

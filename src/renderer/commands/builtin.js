@@ -127,7 +127,7 @@ export function registerBuiltinCommands() {
 				const view = activeEditorView();
 				if (view) formatTableAtCursor(view);
 			} },
-		{ id: 'editor:fill-paragraph', name: 'Fill paragraph (hard-wrap)', hotkeys: ['Mod-Alt-q'],
+		{ id: 'editor:fill-paragraph', name: 'Fill paragraph (hard-wrap)', hotkeys: ['Alt-q'],
 			when: needsEditor,
 			run: () => {
 				const view = activeEditorView();
