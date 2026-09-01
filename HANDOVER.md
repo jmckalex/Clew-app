@@ -1,4 +1,4 @@
-# Handover — 2026-09-01 (evening: the spike RAN, and it is GOOD)
+# Handover — 2026-09-01 (evening: ZetaOffice GRADUATED to main)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it); the original design plan is at
@@ -6,13 +6,22 @@ in **CLAUDE.md** (trust it); the original design plan is at
 session — keep it short, and prefer deleting a settled item to explaining
 it again.
 
-## 0. THE ACTIVE ITEM: the ZetaOffice spike — MEASURED AND WIRED
+## 0. THE ACTIVE ITEM: finish the ZetaOffice office tabs (now ON MAIN)
 
-The spike (FULL embed of ZetaOffice — LibreOffice wasm via zetajs —
-office docs editing in file tabs, save-back into the vault) was built
-and measured this session ON THIS BRANCH (`zetaoffice-spike`, worktree
-`../Clew-app-zetaoffice`). **Verdict: viable, comfortably.** Numbers
-(M-series Mac, real documents):
+The spike — FULL embed of ZetaOffice (LibreOffice wasm via zetajs),
+office docs editing in file tabs with save-back into the vault — was
+built, measured, judged **viable**, and merged to main (fast-forward,
+commit `5387cc1`) on the owner's instruction. The viability report
+with screenshots is a Claude artifact ("The ZetaOffice Spike"); the
+finishing punch list is its own artifact and §0b below. Housekeeping
+left from graduation: the worktree `../Clew-app-zetaoffice` and branch
+`zetaoffice-spike` are now redundant — remove when no session lives
+there (`git worktree remove ../Clew-app-zetaoffice`,
+`git branch -d zetaoffice-spike`). `zeta-assets/` (the 262 MB
+gitignored wasm bundle) was COPIED into THIS tree, so office tabs work
+here in dev; PROVENANCE.md + SHA256SUMS inside it pin the build.
+
+**Measured facts (M-series Mac, real documents):**
 
 - Cold boot → editable document: **2.2 s** (40 KB docx), **2.5 s**
   (1.8 MB, 29-page docx). Warm: ~1.8–2.0 s. Boot is so cheap that
@@ -37,47 +46,57 @@ and measured this session ON THIS BRANCH (`zetaoffice-spike`, worktree
   nothing: note preview, EmbedPDF viewer and the unit suite (405 pass)
   are all clean with it on.
 
-**What is wired (all spike-quality but real):** `zeta-assets/`
-(gitignored download, PROVENANCE.md + SHA256SUMS pin it),
+**What is wired (working, guarded, verified from THIS tree):**
 `zeta`/`clewzeta` asset roots + `.wasm` MIME in protocol.js,
 `zetaAssets` in paths.js, `zeta-page.{html,js}` + `zeta-thread.js` in
 src/preview-client (host page ↔ LOWA-worker script; measurement mode
-without `&path`, tab mode with), `office` fileKind (six extensions,
-NOT embeddable — tabs only), clew-file-view iframe branch + one-tab
-guard, `zetaOfficeUrl` in preview-url.js, office-save bridge in
-pdf-save.js, `OFFICE_WRITE` channel → `vault.writeOffice` (writePdf's
-guards for office extensions). Saving is LibreOffice's OWN gesture
-(toolbar/Ctrl+S — WarnAlienFormat disabled at boot) or a `zeta-save`
-postMessage; the modified→false transition drives the push to disk.
-Smoke hook gained `CLEW_SMOKE_LOG=1` (all console) and
-`CLEW_SMOKE_METRICS=/path.json` (app.getAppMetrics dump).
+without `&path` — the page times itself and wears the numbers — tab
+mode with), `office` fileKind (six extensions, NOT embeddable — tabs
+only), clew-file-view iframe branch + one-tab guard, `zetaOfficeUrl`
+in preview-url.js, office-save bridge in pdf-save.js, `OFFICE_WRITE`
+channel → `vault.writeOffice` (writePdf's guards for office
+extensions). Saving is LibreOffice's OWN gesture (toolbar/Ctrl+S —
+WarnAlienFormat disabled at boot) or a `zeta-save` postMessage; the
+modified→false transition drives the push to disk. Smoke hook gained
+`CLEW_SMOKE_LOG=1` (all console) and `CLEW_SMOKE_METRICS=/path.json`
+(app.getAppMetrics dump).
 
-**Not yet done (the honest gaps):** save-on-close prompt (needs
-tab-close interception); external-change conflicts (an office file
-changed on disk under an open tab is unhandled — the editorPool-style
-banner is the model); the one-tab guard doesn't re-render when the
-other tab closes (reopen by hand); LO's Open/SaveAs dialogs inside the
-canvas are not suppressed (File menu still shows them; they operate on
-the wasm FS, harmlessly weird); packaged-app download flow (userData +
-pdf-fonts pattern) not built — paths.js has a placeholder; keyboard
-smoke of real typing (only UNO-driven edits were exercised).
-
-**Decisions still standing:** tabs only (no `![[x.docx]]` embeds); no
+**Decisions standing:** tabs only (no `![[x.docx]]` embeds); no
 autosave; one office tab at a time. Boot-per-tab replaced "one shared
 instance" (measured: boots are 2 s — change was taken out loud, here).
 
-**The cheap rung is STILL untouched and still worth building**
-regardless (days, not weeks): `soffice --headless --convert-to pdf`
-into `.clew/cache` when ordinary LibreOffice is installed
-(`toolchainPath()` pattern), shown in the EXISTING EmbedPDF viewer,
-plus "Edit in LibreOffice" externally. It remains the fallback for
-users without the download.
+## 0b. The finishing punch list (product work, no feasibility risk)
 
-**To re-run the measurements:** scenarios in the session scratchpad
-are gone after reboot; they were ~40-line CLEW_SMOKE scripts (cold+warm
-iframe of zeta-page.html?src=…, listen for zeta-saved/zeta-error
-postMessages). zeta-page.html without `&path` is self-measuring — the
-overlay prints the timings; `&measure` needs nothing else.
+Ordered roughly by user pain; details in the "Finishing ZetaOffice"
+artifact:
+
+1. **Save-on-close prompt** — a dirty office tab currently discards
+   silently on close. The page already posts `zeta-modified`; the app
+   side needs to track it per tab and intercept tab close.
+2. **External-change conflicts** — an office file changed on disk
+   under an open tab is unhandled; editorPool's banner is the model.
+   (Self-echo suppression matters here too: a save triggers the
+   watcher.)
+3. **Packaged download flow** — userData + the pdf-fonts pattern,
+   verified against the SHA256 pins; paths.js already points there
+   when packaged. Option: keep the .br files and serve them with
+   `Content-Encoding: br` (53 MB on disk instead of 262 MB).
+4. **One-tab guard refresh** — after closing the office tab, the
+   blocked tab needs a reopen by hand; re-render it on tab-close.
+5. **Prune LO's own File menu** — Open/SaveAs/Recent operate on the
+   wasm FS: harmless but weird. Hide via UNO config like the
+   standalone example hides toolbars.
+6. **Verification passes** — real keyboard typing (only UNO edits were
+   harness-tested), clipboard app↔LO, .pptx (Impress — untested),
+   split-pane resize behaviour, note-link → office-tab routing.
+7. **Multi-window policy** — the one-tab guard is per-window (DOM
+   query); two windows can still boot two 1.6 GB instances. Decide.
+8. **The MANUAL** (../Clew-docs) — office tabs, formats, one-tab rule,
+   save semantics, the download. Nothing here will remind you.
+9. **The cheap rung, still worth building** — `soffice --headless
+   --convert-to pdf` into `.clew/cache` (`toolchainPath()` pattern),
+   shown in the EXISTING EmbedPDF viewer, plus "Edit in LibreOffice"
+   externally: the fallback for users without the download.
 
 ## 1. Recently shipped (all verified; manual in ../Clew-docs matches)
 
@@ -99,9 +118,8 @@ overlay prints the timings; `&measure` needs nothing else.
 
 ## 2. Open items (none are compat)
 
-- **The ZetaOffice spike (§0).**
-- The soffice converter rung (§0, last paragraph) — independent and
-  cheap; do it whether or not the spike survives.
+- **The ZetaOffice finishing punch list (§0b)** — incl. the manual.
+- The soffice converter rung (§0b item 9) — independent and cheap.
 - Win/Linux 0.9.0 artefacts have never run on real machines.
 - The DNS change (owner's action) → then `make dns-check` + `make tls`
   in Clew-docs.
@@ -146,12 +164,13 @@ overlay prints the timings; `&measure` needs nothing else.
 
 ## 4. The owner works in this tree concurrently
 
-The tree was left COMPLETELY CLEAN on 2026-09-01: the long-uncommitted
-canvas delete button was smoke-verified and committed (`bff8410`), and
-the demo-vault play state reset to baseline. Anything uncommitted you
-find is NEW owner work — leave it unstaged and note it here. **The
-ZetaOffice spike lives in a separate worktree for this reason** —
-never switch THIS tree off main. Live testing flips demo widgets —
+The tree was left CLEAN on 2026-09-01 (evening): main fast-forwarded
+to the ZetaOffice graduation (`5387cc1`), HANDOVER updated, nothing
+else touched. The gitignored `zeta-assets/` here is deliberate (see
+§0). Anything uncommitted you find is NEW owner work — leave it
+unstaged and note it here. Never switch THIS tree off main; big
+experiments get their own worktree (the spike's, now merged, awaits
+removal). Live testing flips demo widgets —
 reset `status:`/`done:`/`^motto` baselines before committing demo
 files.
 
