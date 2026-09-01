@@ -360,6 +360,40 @@ body.is-tab-dragging .office-dock { pointer-events: none; opacity: 0.35; }
 .office-download button:hover { background: var(--clew-hover); }
 .office-download .office-download-detail { color: var(--clew-text-muted); font-size: 12.5px; }
 
+/* The desktop-LibreOffice rung: convert-to-PDF preview + open externally. */
+.office-fallback { display: flex; gap: 8px; align-items: center; justify-content: center; margin-top: 10px; flex-wrap: wrap; }
+.office-fallback button {
+	font-size: 12.5px;
+	border: 1px solid var(--clew-border);
+	border-radius: 6px;
+	padding: 5px 12px;
+	color: var(--clew-text-normal);
+}
+.office-fallback button:hover { background: var(--clew-hover); }
+.office-fallback-error { flex-basis: 100%; color: var(--clew-danger); font-size: 12px; }
+.office-pdf-preview { display: flex; flex-direction: column; width: 100%; height: 100%; align-self: stretch; min-height: 0; }
+.office-preview-banner {
+	flex: none;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 6px 14px;
+	background: var(--clew-bg-secondary);
+	border-bottom: 1px solid var(--clew-border);
+	font-size: 12px;
+	color: var(--clew-text-muted);
+}
+.office-preview-banner span { flex: 1; }
+.office-preview-banner button {
+	font-size: 12px;
+	border: 1px solid var(--clew-border);
+	border-radius: 5px;
+	padding: 2px 10px;
+	color: var(--clew-text-normal);
+}
+.office-preview-banner button:hover { background: var(--clew-hover); }
+.office-pdf-preview .pdf-frame { flex: 1; min-height: 0; }
+
 /* ---- external-change conflict banner ---- */
 .editor-host { flex-direction: column; }
 .conflict-banner {

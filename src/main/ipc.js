@@ -16,6 +16,7 @@ import { app, dialog, ipcMain, shell } from 'electron';
 import * as pdfFonts from './pdf-fonts.js';
 import * as officeSlot from './office-slot.js';
 import * as zetaAssets from './zeta-assets.js';
+import * as officeConvert from './office-convert.js';
 import { CH } from '../shared/channels.js';
 import { settings } from './settings.js';
 import { appMenu } from './menu.js';
@@ -136,9 +137,13 @@ export function registerIpc() {
 	// and the close-guard plumbing (see office-dock.js on the renderer side).
 	handleGlobal(CH.OFFICE_SLOT_ACQUIRE, (payload, event) => officeSlot.acquire(event.sender, payload ?? {}));
 	handleGlobal(CH.OFFICE_SLOT_RELEASE, (_payload, event) => officeSlot.release(event.sender));
-	handleGlobal(CH.OFFICE_ENGINE_STATUS, () => zetaAssets.status());
+	// `soffice` rides along so the offer panel knows whether the desktop-
+	// LibreOffice fallback (PDF preview, edit externally) is worth showing.
+	handleGlobal(CH.OFFICE_ENGINE_STATUS, () => ({ ...zetaAssets.status(), soffice: officeConvert.available() }));
 	handleGlobal(CH.OFFICE_ENGINE_DOWNLOAD, () => zetaAssets.download());
 	handleGlobal(CH.OFFICE_ENGINE_REMOVE, () => zetaAssets.remove());
+	handle(CH.OFFICE_CONVERT_PDF, (s, { path }) => officeConvert.convertToPdf(s.vaults, path));
+	handle(CH.OFFICE_OPEN_EXTERNAL, (s, { path }) => officeConvert.openExternally(s.vaults, path));
 	handle(CH.WINDOW_CLOSE_RESOLVED, (s, { proceed }) => s.resolveClose?.(proceed));
 	// Save / Discard / Cancel, as a native sheet. CLEW_SMOKE_CONFIRM answers
 	// it without UI so the harness can drive every branch of a close flow.

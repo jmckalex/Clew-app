@@ -169,6 +169,10 @@ class OfficeDock extends Emitter {
 		container.className = 'office-dock';
 		const frame = document.createElement('iframe');
 		frame.className = 'office-frame';
+		// Clipboard both ways for LibreOffice's paste/copy (Qt bridges the
+		// system clipboard through the async clipboard API, which needs the
+		// embedder's permissions policy to reach a cross-origin frame).
+		frame.allow = 'clipboard-read; clipboard-write';
 		frame.src = zetaOfficeUrl(path);
 		container.append(frame);
 		document.body.append(container);

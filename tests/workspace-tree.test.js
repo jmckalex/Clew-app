@@ -74,6 +74,16 @@ test('an office document open in another pane is activated, not duplicated', () 
 	assert.equal(tree.activeTab(state).id, officeTab.id, 'and focus moved to it');
 });
 
+test('splitting an office tab moves it — a clone could only show a notice', () => {
+	const state = stateWithNotes('a.md');
+	const officeTab = tree.openFile(state, 'Report.docx');
+	tree.splitWithClone(state, tree.activeGroup(state).id, 'right', officeTab.id);
+	const all = tree.allGroups(state.root).flatMap((g) => g.tabs)
+		.filter((t) => t.path === 'Report.docx');
+	assert.equal(all.length, 1, 'still exactly one office tab');
+	assert.equal(all[0].id, officeTab.id, 'and it is the original, relocated');
+});
+
 test('anchor jumps are history too, browser-style', () => {
 	const state = stateWithNotes('a.md');
 	const tab = tree.activeTab(state);

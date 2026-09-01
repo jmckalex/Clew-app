@@ -263,6 +263,12 @@ export function splitWithClone(state, targetGroupId, edge, tabId) {
 	const found = findTab(state.root, tabId);
 	if (!found) return null;
 	const source = found.tab;
+	// An office document is a singleton (one LibreOffice behind it) — a
+	// clone could only ever show the "one at a time" notice, so the split
+	// MOVES the tab instead.
+	if (isOfficePath(source.path, source.kind)) {
+		return splitWithTab(state, targetGroupId, edge, tabId);
+	}
 	const clone = createTab(source.kind, source.path);
 	clone.view = { ...clone.view, mode: source.view?.mode ?? clone.view.mode };
 	const newGroup = splitGroup(state, targetGroupId, edge, clone);

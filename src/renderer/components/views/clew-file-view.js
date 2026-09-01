@@ -14,6 +14,7 @@ import { ClewElement } from '../base/clew-element.js';
 import { fileKind } from '../../lib/file-types.js';
 import { vaultFileUrl, pdfViewerUrl, excalidrawUrl } from '../../lib/preview-url.js';
 import { officeDock } from '../../office-dock.js';
+import { ipc, CH } from '../../ipc.js';
 
 class ClewFileView extends ClewElement {
 	tabId = null;
@@ -79,22 +80,91 @@ class ClewFileView extends ClewElement {
 		this.replaceChildren(el);
 	}
 
+	#pdfPreviewPath = null;
+
 	#officeContent() {
+		if (this.#pdfPreviewPath) return this.#pdfPreview();
 		const engine = officeDock.engineStatus();
 		if (engine.pending) {
 			return this.#notice('');
 		}
 		if (engine.downloading || !engine.installed) {
-			return this.#downloadPanel(engine);
+			const panel = this.#downloadPanel(engine);
+			if (!engine.downloading) panel.append(this.#fallbackRow(engine));
+			return panel;
 		}
 		const host = document.createElement('div');
 		host.className = 'office-host';
 		const { verdict, path } = officeDock.claim(this, host);
 		if (verdict === 'mine') return host;
 		const which = path ? `“${basename(path)}”` : 'another document';
-		return this.#notice(verdict === 'other-window'
+		const blocked = this.#notice(verdict === 'other-window'
 			? `One office document at a time — ${which} is open in another window. Close it and this document opens by itself.`
 			: `One office document at a time — ${which} is open in another tab. Close it and this document opens by itself.`);
+		blocked.append(this.#fallbackRow(engine));
+		return blocked;
+	}
+
+	/**
+	 * The desktop-LibreOffice rung: a read-only PDF (converted headlessly
+	 * into .clew/cache, shown in the EmbedPDF viewer Clew already has) and
+	 * "edit it out there". Offered wherever the wasm editor is not running —
+	 * no engine downloaded, or the one instance is busy elsewhere.
+	 */
+	#fallbackRow(engine) {
+		const row = document.createElement('div');
+		row.className = 'office-fallback';
+		if (engine.soffice) {
+			const preview = document.createElement('button');
+			preview.textContent = 'Preview as PDF';
+			preview.addEventListener('click', async () => {
+				preview.disabled = true;
+				preview.textContent = 'Converting…';
+				const res = await ipc.invoke(CH.OFFICE_CONVERT_PDF, { path: this.path }).catch((err) => ({ ok: false, reason: String(err?.message ?? err) }));
+				if (res.ok) {
+					this.#pdfPreviewPath = res.path;
+					this.render();
+				} else {
+					preview.textContent = 'Preview as PDF';
+					preview.disabled = false;
+					row.querySelector('.office-fallback-error')?.remove();
+					const error = document.createElement('span');
+					error.className = 'office-fallback-error';
+					error.textContent = res.reason;
+					row.append(error);
+				}
+			});
+			row.append(preview);
+		}
+		const external = document.createElement('button');
+		external.textContent = engine.soffice ? 'Open in LibreOffice' : 'Open in default app';
+		external.addEventListener('click', () => {
+			ipc.invoke(CH.OFFICE_OPEN_EXTERNAL, { path: this.path }).catch(() => {});
+		});
+		row.append(external);
+		return row;
+	}
+
+	#pdfPreview() {
+		const wrap = document.createElement('div');
+		wrap.className = 'office-pdf-preview';
+		const banner = document.createElement('div');
+		banner.className = 'office-preview-banner';
+		const text = document.createElement('span');
+		text.textContent = `Read-only PDF preview of “${basename(this.path)}” — edits made elsewhere re-convert on reopen.`;
+		const back = document.createElement('button');
+		back.textContent = 'Back';
+		back.addEventListener('click', () => {
+			this.#pdfPreviewPath = null;
+			this.render();
+		});
+		banner.append(text, back);
+		const frame = document.createElement('iframe');
+		frame.className = 'pdf-frame';
+		frame.allow = 'fullscreen';
+		frame.src = pdfViewerUrl(vaultFileUrl(this.#pdfPreviewPath));
+		wrap.append(banner, frame);
+		return wrap;
 	}
 
 	/**

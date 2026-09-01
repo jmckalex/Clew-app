@@ -54,7 +54,8 @@ function disableAlienFormatWarning() {
 // Command names per the DisableCommands convention: the .uno: URL minus
 // its prefix.
 const DISABLED_COMMANDS = [
-	'AddDirect', 'NewDoc', 'Open', 'OpenRemote', 'RecentFileList',
+	'AddDirect', 'NewDoc', 'Open', 'OpenFromWriter', 'OpenFromCalc',
+	'OpenRemote', 'SaveRemote', 'SaveAsRemote', 'RecentFileList',
 	'SaveAs', 'SaveACopy', 'SaveAll', 'ExportTo', 'ExportToPDF',
 	'ExportDirectToPDF', 'CloseDoc', 'CloseWin', 'Quit',
 ];

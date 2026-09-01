@@ -288,22 +288,85 @@ if (process.env.CLEW_SMOKE) {
 					await primary.webContents.executeJavaScript(`(async () => { ${script} })()`);
 				}
 				// Real input through Chromium's pipeline — the only way to reach
-				// surfaces that synthetic DOM events can't (the LibreOffice
-				// canvas, focus-sensitive keymaps). A scenario queues descriptors
-				// in window.__clewSmokeInput: sendInputEvent objects, played in
-				// order; {wait: ms} pauses. window.__clewSmokeClipboard (string)
-				// preloads the clipboard first; CLEW_SMOKE_CLIPBOARD=1 dumps the
-				// clipboard text to the log afterwards (copy-out verification).
+				// surfaces synthetic DOM events can't (the LibreOffice canvas,
+				// focus-sensitive keymaps). Dispatched over CDP, NOT
+				// webContents.sendInputEvent: the office viewer is a
+				// cross-origin iframe (an OOPIF), and sendInputEvent never
+				// routes there (measured 2026-09-01) while the debugger's
+				// Input domain hit-tests properly. A scenario queues
+				// window.__clewSmokeInput = [{click:{x,y}} | {text:'abc'} |
+				// {combo:{key:'s',modifiers:2}} | {wait:ms}] (modifiers CDP
+				// bitmask: Alt 1, Ctrl 2, Meta 4, Shift 8).
+				// window.__clewSmokeClipboard (string) preloads the clipboard;
+				// CLEW_SMOKE_CLIPBOARD=1 dumps clipboard text afterwards.
+				const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 				const preloadClip = await primary.webContents.executeJavaScript('window.__clewSmokeClipboard ?? null');
 				if (typeof preloadClip === 'string') clipboard.writeText(preloadClip);
 				const inputEvents = await primary.webContents.executeJavaScript('window.__clewSmokeInput ?? null');
 				if (Array.isArray(inputEvents)) {
+					const dbg = primary.webContents.debugger;
+					try { dbg.attach('1.3'); } catch { /* already attached */ }
+					const keyParams = (key, modifiers = 0) => {
+						const upper = key.length === 1 ? key.toUpperCase() : key;
+						const vk = key.length === 1 ? upper.charCodeAt(0) : 0;
+						return {
+							modifiers,
+							key,
+							code: /^[a-z]$/i.test(key) ? `Key${upper}` : undefined,
+							windowsVirtualKeyCode: vk,
+							nativeVirtualKeyCode: vk,
+						};
+					};
 					for (const ev of inputEvents) {
-						if (ev.wait) { await new Promise((r) => setTimeout(r, ev.wait)); continue; }
-						primary.webContents.sendInputEvent(ev);
-						await new Promise((r) => setTimeout(r, ev.delay ?? 30));
+						if (ev.wait) { await sleep(ev.wait); continue; }
+						if (ev.click || ev.tripleClick) {
+							const { x, y } = ev.click ?? ev.tripleClick;
+							const base = { x, y, pointerType: 'mouse' };
+							const clicks = ev.tripleClick ? 3 : 1;
+							await dbg.sendCommand('Input.dispatchMouseEvent', { type: 'mouseMoved', button: 'none', ...base });
+							for (let count = 1; count <= clicks; count++) {
+								await dbg.sendCommand('Input.dispatchMouseEvent', { type: 'mousePressed', button: 'left', clickCount: count, ...base });
+								await dbg.sendCommand('Input.dispatchMouseEvent', { type: 'mouseReleased', button: 'left', clickCount: count, ...base });
+							}
+						} else if (typeof ev.text === 'string') {
+							for (const ch of ev.text) {
+								const params = keyParams(ch);
+								await dbg.sendCommand('Input.dispatchKeyEvent', { type: 'keyDown', text: ch, unmodifiedText: ch, ...params });
+								await dbg.sendCommand('Input.dispatchKeyEvent', { type: 'keyUp', ...params });
+								await sleep(25);
+							}
+						} else if (ev.combo) {
+							// Qt (the LibreOffice canvas) tracks modifier STATE from
+							// Control/Meta keydowns — a bare modifiers bitmask on the
+							// letter reads as plain typing there. Press the modifier
+							// keys for real, around the letter.
+							const MODS = [
+								[2, { key: 'Control', code: 'ControlLeft', windowsVirtualKeyCode: 17, nativeVirtualKeyCode: 17 }],
+								[4, { key: 'Meta', code: 'MetaLeft', windowsVirtualKeyCode: 91, nativeVirtualKeyCode: 91 }],
+								[1, { key: 'Alt', code: 'AltLeft', windowsVirtualKeyCode: 18, nativeVirtualKeyCode: 18 }],
+								[8, { key: 'Shift', code: 'ShiftLeft', windowsVirtualKeyCode: 16, nativeVirtualKeyCode: 16 }],
+							];
+							const want = ev.combo.modifiers ?? 0;
+							let held = 0;
+							const pressed = [];
+							for (const [bit, mod] of MODS) {
+								if (!(want & bit)) continue;
+								held |= bit;
+								await dbg.sendCommand('Input.dispatchKeyEvent', { type: 'keyDown', modifiers: held, ...mod });
+								pressed.push([bit, mod]);
+							}
+							const params = keyParams(ev.combo.key, held);
+							await dbg.sendCommand('Input.dispatchKeyEvent', { type: 'keyDown', ...params });
+							await dbg.sendCommand('Input.dispatchKeyEvent', { type: 'keyUp', ...params });
+							for (const [bit, mod] of pressed.reverse()) {
+								await dbg.sendCommand('Input.dispatchKeyEvent', { type: 'keyUp', modifiers: held, ...mod });
+								held &= ~bit;
+							}
+						}
+						await sleep(ev.delay ?? 30);
 					}
-					await new Promise((r) => setTimeout(r, 500));
+					try { dbg.detach(); } catch { /* fine */ }
+					await sleep(500);
 				}
 				if (process.env.CLEW_SMOKE_CLIPBOARD) {
 					console.log('smoke-clipboard: ' + JSON.stringify(clipboard.readText()));
