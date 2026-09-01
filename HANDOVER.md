@@ -1,4 +1,4 @@
-# Handover — 2026-08-26, late night
+# Handover — 2026-09-01
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it); the original design plan is at
@@ -6,184 +6,142 @@ in **CLAUDE.md** (trust it); the original design plan is at
 session — keep it short, and prefer deleting a settled item to explaining
 it again.
 
-## 0. THE HEADLINE: compatibility is closed by owner decision
+## 0. THE ACTIVE ITEM: the ZetaOffice spike (start here)
 
-The owner drew the line: **formats owned, behaviors not chased.** The
-policy, its rationale (open source is the extension story; refusals are
-the demand sensor), and the DO-NOT-REOPEN rule are in CLAUDE.md; the
-public statement is the demo vault's `Guide/Obsidian Compatibility.md`.
-Do not add compat features on your own judgment — a real vault plus a
-real user hitting a named refusal reopens a question; nothing else does.
+The owner wants a viability spike: a FULL embed of ZetaOffice
+(LibreOffice compiled to wasm, allotropia's build, scripted via its
+zetajs API) — office documents (.odt/.ods/.odp/.docx/.xlsx/.pptx)
+opening in file tabs with real editing and save-back into the vault.
+Explicitly droppable: if it proves unviable, delete the branch and
+worktree, no harm to main.
 
-The closing items (admonitions, core ```query search embeds, Meta Bind
-widgets) are shipped and tested; the two ```query dialects are told
-apart by the space after the colon (do not "normalize" one into the
-other).
+**Where:** branch `zetaoffice-spike`, checked out in its own worktree
+at `../Clew-app-zetaoffice` (dependencies installed, builds) so the
+owner's concurrent work in THIS tree is never disturbed. Do the spike
+work THERE.
 
-## 1. After the line: widgets grew up (all Clew-native work)
+**Scoping facts (2026-09-01 session — verified reasoning, not yet
+measured):**
 
-- **Widgets are Web Awesome components** (@awesome.me/webawesome v3,
-  MIT, 16 cherry-picked, zero icon assets; wa.js/wa.css lazy-loaded
-  from `__clew_preview__` only when a note carries one; wa-dark/wa-light
-  track the theme; brand token = Clew accent). Full type set: Meta
-  Bind's toggle/slider/text/textArea/number/inlineSelect/select/
-  datePicker/time/progressBar plus Clew-native `rating` and `color`;
-  VIEW formatter kinds relativeTime/formatDate/formatNumber/
-  formatBytes/badge/qr. Everything else refused by name; disabled
-  under CLEW_SITE_EXPORT.
-- **Widgets edit PROSE**: `INPUT[text:^block-id]` binds to the block a
-  marker names; writes go editNoteField source `'block'` →
-  `rewriteBlockText` (shared/note-metadata: fence-aware, marker kept,
-  values flatten to one block). Only text/textArea may bind to blocks.
-- Demo: `Guide/Widgets.md` is the dedicated page, every control live
-  (playing with it edits the file — reset to the committed baseline
-  after smokes). The compat note is back to a pointer. Manual:
-  properties.html covers all of it including block bindings.
-- **MetaPost fonts fixed UPSTREAM** (jmarkdown `00b006f`): HTML path is
-  now EPS + `dvisvgm --no-fonts` → glyphs as PATHS (the old SVG backend
-  emitted unresolvable `<text>` and silently DROPPED superscripts).
-  Clew detects ghostscript's stable homebrew symlink for `TiKZ libgs`
-  (the versioned Cellar default had rotted). Demo cache regenerated:
-  0 `<text>`, 78 paths; theme inversion still applies (it targets
-  fills/strokes).
-- **Two owner-reported widget bugs fixed** (commit `8317184`): the
-  Widgets page's "black margins" (wa.css shipped webawesome.css's
-  native layer, which paints html/body — now TOKENS ONLY, 52KB) and
-  the badge that never followed its select (custom-element keep-guard
-  froze its text child — WA- elements now take the normal morph).
-- **Two vault artifacts traced to real holes, both closed**: a
-  `https:/…/.md.md` note (openWikilink now opens scheme-shaped targets
-  externally instead of create-on-miss) and `Tasks.md.md` (createNote
-  collapses a trailing run of `.md`).
+- Payload is ~300 MB of wasm. NEVER ship it in the app: on-demand
+  download into userData following `main/pdf-fonts.js` (the 139 MB
+  precedent), served via the `__clew_assets__` protocol. Self-host a
+  pinned build — allotropia's CDN has its own usage terms.
+- LibreOffice wasm is pthreads-built → needs SharedArrayBuffer. True
+  cross-origin isolation fights the architecture (app page is file://,
+  previews are DELIBERATELY cross-origin clew-preview://), so the
+  Electron escape is enabling SAB via Chromium switch in main.js. That
+  is a conscious security decision — canvas web nodes host arbitrary
+  sites in `<webview>` guests (separate processes, contained) — record
+  it in the commit message.
+- Licensing is fine: LibreOffice MPL-2.0 + zetajs MIT beside GPL-3.0,
+  aggregation exactly like EmbedPDF.
+- iOS is OUT of scope permanently (WKWebView's jetsam memory cap vs a
+  300 MB module). The iOS story, if ever, is QuickLook viewing +
+  open-in-Collabora, and it lives in Clew-iOS.
 
-## 1a. 2026-08-27: the marking vault (the first REAL dashboard vault)
+**The template is the PDF viewer** (CLAUDE.md's PDF bullet): a
+`zeta-page.html` beside `pdf-page.html`, loaded by the file tab's
+iframe on the clew-preview origin; document bytes fetched from
+clew-preview:// as a buffer (pdf-core's lesson — URL loaders mangle
+the scheme); saves flow out over the postMessage save bridge to a
+main-process writer with `vault.writePdf`'s guards generalized to
+office extensions. `lib/file-types.js` fileKind/isViewablePath gain
+the office extensions; clew-file-view gains the iframe branch.
 
-- `~/Documents/Teaching/Marking/2025-2026/PH456/Marking Vault/` — built
-  from the owner's real PH456 cohorts (OUTSIDE this repo; personal
-  data, never copy into it). One note per essay (47), frontmatter
-  question/marked/grade/marked-on/submitted, widgets in every note,
-  PDFs copied (never moved) into Attachments/, the WT feedback
-  jmarkdown file split into per-essay notes (private
-  `:::comment{include=false}` blocks became folded callouts), AT
-  seeded from the Moodle grades CSV. Dashboard.md: dataviewjs +
-  renderChart (progress, distribution, doughnut, pace), editable
-  queue, kanban by question. Generator script preserved in the session
-  scratchpad (`build-marking-vault.py`) — regenerate for new cohorts.
-- `Guide/Dashboards.md` in the demo vault is the documented twin.
-- Traps met: `cp -R src dest/` with dest's parent missing copies
-  CONTENTS (the charts plugin landed flat in .clew/plugins/); a
-  template note carrying the collection's tag pollutes every query —
-  templates stay untagged, the how-to says to add the tag.
-- **File explorer hierarchy** (owner request): folder rows were
-  text-muted — dimmer than their own contents — now
-  `--clew-text-normal` at weight 600; per-level indent 14→18px
-  (panels.css + the paddingLeft in clew-file-explorer.js).
-- **Phantom token trap:** `--clew-text-primary` was referenced in
-  canvas.css but defined in NEITHER theme — an undefined `var()`
-  silently inherits, so it half-worked. The themes define exactly
-  faint / muted / normal / on-accent; check before inventing a name.
+**Decisions already taken in scoping — change them out loud, not
+silently:**
 
-## 1b. 2026-08-30: the PDF viewer is now the owner's OCG build
+- ONE LibreOffice instance (each is ~0.5–1 GB and seconds to start):
+  v1 is a single shared instance, or one office tab at a time.
+- Explicit save + save-on-close prompt, NOT debounced autosave (a
+  half-edited spreadsheet is not a PDF annotation).
+- Vault-watcher conflicts: suppress self-echoes the way editorPool
+  does (`lastWrittenText`).
+- Note embeds (`![[x.docx]]` live in previews) are ruled out — one
+  wasm instance per embed is not survivable. Tabs only.
 
-- Clew's EmbedPDF is no longer the npm package: `vendor/embedpdf/dist`
-  is a committed mirror of the BUILT snippet viewer from
-  `~/Source/EmbedPDF/v2` (branch `ocg-v2` — EmbedPDF v2.15.0 + the
-  pdfium-ocg layers series; wasm carries the FPDF*OCG* API). Synced by
-  `npm run sync-embedpdf` (scripts/vendor-embedpdf.js), auto-run by dev
-  and packaging; served via paths.js#embedpdfAssets → protocol.js.
-  `@embedpdf/snippet` removed from deps (models/pdfium kept — unused in
-  code but the owner's; ask before pruning). Verified by smoke:
-  content-assert the served chunk hash + wasm OCG symbol, then open the
-  sidebar's layers tab (icon-only, third) and assert its empty state.
-- Manual updated (`../Clew-docs` attachments-and-files.html): a Layers
-  section under the PDF embeds chapter.
-- The layers UI lives in the sidebar (thumbnails/outline/layers tabs)
-  and on a selected annotation's toolbar; sample.pdf has no layers, so
-  the demo shows the authoring empty state.
+**Spike order — measure before wiring:**
 
-## 1c. 2026-08-31/09-01: fill-paragraph + auto-fill-mode (Emacs for the editor)
+1. Obtain a ZetaOffice build + zetajs. Stand up a BARE zeta-page in a
+   clew-preview iframe with the SAB switch on; load a real .docx from
+   a buffer. Measure: cold/warm startup, instance memory, and whether
+   the switch disturbs anything else (canvas webviews, preview
+   fetches, the PDF viewer).
+2. Only if the numbers are acceptable: wire the tab + the save path.
+3. Either way, a viability report to the owner WITH the numbers.
 
-- `editor:fill-paragraph` (⌥Q, `fillColumn` setting default 72):
-  hard-wraps the paragraph at the cursor / paragraphs in the selection.
-  Pure functions in `editor/fill.js` (tables.js pattern, 14 unit
-  tests): structure never joined (fences/frontmatter/$$/tables/
-  headings/HR/:::/@directives/callout headers/^block-id lines/indented
-  code), adaptive prefixes (quote `> `, list hanging indent), atomic
-  words (wikilinks, inline code/math, \cite — plus a no-break rule so
-  a wrapped word like `-` can't become a list marker). Manual:
-  editing.html#filling + settings page.
-- **Auto-fill-mode shipped** (`autoFill` setting, default off — the
-  owner uses it on): `fill.js#autoFillHandler`, an
-  EditorView.inputHandler. Space typed with the cursor past the column
-  → `autoBreakLine` breaks the text behind the cursor at whitespace
-  (atoms + dangerous-word + minIndex guards; inner spacing preserved,
-  unlike M-q's retokenize), cursor rides onto the new line. Reads
-  settings per keystroke, so the toggle is live and the pool's cached
-  EditorStates need no rebuild. Paste and Enter are untouched;
-  `view.composing` guards IME.
-- **Bare Alt chords now WORK on mac**: chordOf() recovers the base key
-  from event.code (KeyX/DigitN) when Option is held, because Option
-  transforms event.key (⌥Q types œ). QWERTY-positional, dispatch and
-  the hotkey recorder both go through chordOf. An Option combination
-  that is NOT bound still types its character.
-- Smoke trick: `document.execCommand('insertText', …)` on a focused
-  CM editor goes through the REAL input path, inputHandler included —
-  synthetic KeyboardEvents don't insert text, execCommand does.
-- **Centered text (`>> … <<`) is a paragraph type with a SUFFIX**
-  (owner-reported bug, fixed): it opens with the quote sigil, so the
-  quote path had been carrying `>> ` and dropping `<<` — and the
-  engine's per-line rule (`syntax-enhancements.js#centerAlign`)
-  rejects a line without its closer, killing the whole block. Both
-  fills now budget `column - width(' <<')` and close every completed
-  line; the piece still being typed keeps the tail's original marker.
+**The cheap rung is untouched by this spike** and worth building
+regardless (days, not weeks): `soffice --headless --convert-to pdf`
+into `.clew/cache` when ordinary LibreOffice is installed
+(`toolchainPath()` pattern), shown in the EXISTING EmbedPDF viewer,
+plus "Edit in LibreOffice" externally. It remains the fallback for
+users without the 300 MB download.
+
+## 1. Recently shipped (all verified; manual in ../Clew-docs matches)
+
+- **Fill + auto-fill (2026-08-31/09-01):** `editor:fill-paragraph`
+  (⌥Q, `fillColumn` default 72) and auto-fill-mode (`autoFill`
+  setting, default off; EditorView.inputHandler reading settings per
+  keystroke). Pure core in `editor/fill.js`, 22 unit tests. Bare Alt
+  chords now WORK on mac — chordOf() recovers the base key from
+  event.code under Option (⌥Q types œ otherwise); dispatch and the
+  hotkey recorder share the fix.
+- **PDF viewer = the owner's EmbedPDF OCG build (2026-08-30):**
+  vendored mirror at `vendor/embedpdf`, `npm run sync-embedpdf` from
+  `~/Source/EmbedPDF/v2` branch `ocg-v2`; layers panel, layer
+  authoring, per-annotation assignment. Durable facts in CLAUDE.md.
+- Earlier and settled (Web Awesome widgets; the PH456 marking vault at
+  `~/Documents/Teaching/Marking/2025-2026/PH456/Marking Vault/`, its
+  documented twin `Guide/Dashboards.md`): see CLAUDE.md and this
+  file's git history.
 
 ## 2. Open items (none are compat)
 
-- **Win/Linux 0.9.0 artefacts have never run on real machines.**
+- **The ZetaOffice spike (§0).**
+- The soffice converter rung (§0, last paragraph) — independent and
+  cheap; do it whether or not the spike survives.
+- Win/Linux 0.9.0 artefacts have never run on real machines.
 - The DNS change (owner's action) → then `make dns-check` + `make tls`
   in Clew-docs.
-- Kanban-board card drag (write path: move a list item between
-  headings) — v2 of a shipped feature, not new compat.
+- Kanban-board card drag (write path) — v2 of a shipped feature.
 
 ## 3. Traps (newest first)
 
+- **Centered text (`>> … <<`) is a paragraph type with a SUFFIX** in
+  fill.js: it opens with the quote sigil, and the engine's per-line
+  centerAlign rule rejects any line missing its closer — one dropped
+  `<<` un-centers the whole block. Extend the suffix mechanism; don't
+  special-case downstream.
+- **Smoke trick:** `document.execCommand('insertText', …)` on a
+  focused CM editor goes through the REAL input path (inputHandler
+  included); synthetic KeyboardEvents don't insert text.
 - **The blanket `dist/` gitignore eats vendored dist dirs** —
-  `vendor/embedpdf/dist` needed an explicit `!vendor/embedpdf/dist/`
-  exception. `git check-ignore` anything you vendor before assuming it
-  will commit.
-- **The EmbedPDF viewer is ALL shadow DOM** — in smoke frame scripts
-  `document.body.textContent` is empty and `document.querySelector`
-  finds nothing; walk `shadowRoot`s recursively. Its sidebar tabs are
-  icon-only (no text, no aria-label). And Chromium's resource-timing
-  buffer missed the viewer's module chunks entirely — assert which build
-  is served by FETCHING a hashed filename, never by
-  `performance.getEntriesByType`.
-- **wa.css is TOKENS ONLY** (`themes/default.css`). Importing full
-  webawesome.css repaints html/body on exactly the notes that carry
-  widgets. Components style themselves in shadow DOM.
-- **WA- elements take the NORMAL morph** (their light DOM is real
-  content), BUT the host inline `style` is component-owned state
-  (wa-progress-bar keeps `--percentage` there, set from JS only on
-  value CHANGES) and must be carried onto the incoming element before
-  the attr sync or the fill vanishes. See client.js `applyRender`.
+  `git check-ignore` anything you vendor before assuming it commits
+  (`!vendor/embedpdf/dist/` is the existing exception).
+- **The EmbedPDF viewer is ALL shadow DOM** — in frame scripts
+  `document.body.textContent` is empty; walk shadowRoots. Sidebar tabs
+  are icon-only. Assert which build is served by FETCHING a hashed
+  filename, never by resource timing (it missed the module chunks).
+- **wa.css is TOKENS ONLY** (`themes/default.css`); full webawesome.css
+  repaints html/body on widget notes.
+- **WA- elements take the NORMAL morph**, but the host inline `style`
+  is component-owned state — carry it onto the incoming element before
+  the attr sync (client.js `applyRender`).
 - **Meta Bind toggles must not fall into the checkbox-toggle path**
   (`.clew-mb` guard in client.js); a FOCUSED `.clew-mb` element is
-  morph-protected (mid-drag sliders). Any future checkbox-like widget
-  needs the same guard.
+  morph-protected.
 - **Canvas cards are the app page, not a preview iframe** — engine
-  markup rendered into cards needs its own compact rules in canvas.css
-  (scoped `.canvas-text`). When an engine extension changes markup,
-  check the card styles too: callouts.js taking over GFM alerts left
-  cards styling classes that no longer arrive (the giant-pencil bug).
+  markup rendered into cards needs its own compact rules in canvas.css.
 - **Admonition tokens are `calloutBlock`-typed on purpose** — one
-  renderer serves both syntaxes; if callouts.js's token shape changes,
-  admonitions.js must follow.
+  renderer serves both syntaxes.
 - The block-binding writer and reader both live in
-  shared/note-metadata (`rewriteBlockText`) — keep read/write symmetric
-  there, not in the engine.
+  shared/note-metadata (`rewriteBlockText`) — keep read/write
+  symmetric there.
 - Earlier traps (list() dialect split, ordered DQL pipeline,
-  whole-document extensions via start()→0, export-worker env, innerText
-  vs textContent, `--universal`) are in this file's git history.
+  whole-document extensions via start()→0, export-worker env,
+  innerText vs textContent, `--universal`) are in this file's git
+  history.
 
 ## 4. The owner is working in this tree concurrently
 
@@ -192,21 +150,24 @@ Uncommitted and DELIBERATELY untouched: `scripts/generate-icons.js`,
 `src/renderer/components/views/clew-canvas-view.js` (their in-progress
 icon/canvas work), plus demo-vault play state (`Guide/Note Headers.md`
 height tweak, `Projects/Demo Canvas.canvas`, `clewdata.json`). Never
-stage these. Their live testing also flips demo widgets — reset
-`status:`/`done:`/`^motto` baselines before committing demo files.
+stage these. **This is why the ZetaOffice spike lives in a separate
+worktree** — never switch THIS tree off main. Their live testing also
+flips demo widgets — reset `status:`/`done:`/`^motto` baselines before
+committing demo files.
 
 ## 5. Standing session rules (they keep earning their keep)
 
 - **NEVER `git add -A`** — stage explicit paths.
 - Always pass `CLEW_SMOKE_VAULT`; `git status` demo and study vaults
-  after every smoke run — tonight it surfaced two real bugs.
+  after every smoke run. App settings (theme, autoFill, fillColumn)
+  are GLOBAL and persist — smoke scenarios that flip them must restore
+  them.
 - **The owner's bug reports have been consistently right.**
-- **Write assertions that can fail — and eyeball the artefact anyway**
-  (the vanished progress fill was caught by the eyeball, not the
-  assertion).
+- **Write assertions that can fail — and eyeball the artefact anyway.**
 - **Verify artefacts by content**, never the log line.
 - **Prefer measuring to guessing** — and re-measure.
 - A feature change is not finished until the MANUAL in `../Clew-docs`
   matches it — nothing in this repo's git status reminds you.
-- `npm run dev` / `npm run package` re-sync the engine from the golden
-  master; `sync-engine` + `git status` BEFORE tagging.
+- `npm run dev` / `npm run package` re-sync the engine AND the
+  EmbedPDF viewer from their masters; `sync-engine` + `sync-embedpdf`
+  + `git status` BEFORE tagging.
