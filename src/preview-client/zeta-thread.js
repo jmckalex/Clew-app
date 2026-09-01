@@ -74,11 +74,25 @@ function disableFileCommands() {
 	});
 }
 
-function loadFile(fileUrl) {
+function loadFile(fileUrl, chromeless) {
 	tryUno('load', () => {
 		xModel = desktop.loadComponentFromURL(fileUrl, '_default', 0, []);
 		const ctrl = xModel.getCurrentController();
 		ctrl.getFrame().getContainerWindow().FullScreen = true;
+		if (chromeless) {
+			// Thumbnail mode: the capture wants the DOCUMENT, so every piece
+			// of LibreOffice chrome goes — toolbars/menubar/statusbar via the
+			// layout manager, the sidebar via its own toggle (it opens by
+			// default and the layout manager does not own it).
+			tryUno('chromeless', () => {
+				ctrl.getFrame().LayoutManager.setVisible(false);
+				ctrl.getFrame().LayoutManager.hideElement('private:resource/menubar/menubar');
+				const dispatcher = css.frame.DispatchHelper.create(context);
+				// Both are TOGGLES (default on): the sidebar rail and the ruler.
+				dispatcher.executeDispatch(ctrl.getFrame(), '.uno:Sidebar', '', 0, []);
+				dispatcher.executeDispatch(ctrl.getFrame(), '.uno:Ruler', '', 0, []);
+			});
+		}
 		// Dirty-state tracking: every store (ours, the toolbar's, Ctrl+S)
 		// resets the modified flag, so the page can treat modified→false as
 		// "the Emscripten FS now matches the model — push it to the vault".
@@ -134,7 +148,7 @@ Module.zetajs.then((pZetajs) => {
 
 	zetajs.mainPort.onmessage = (e) => {
 		switch (e.data.cmd) {
-		case 'load': loadFile(e.data.fileUrl); break;
+		case 'load': loadFile(e.data.fileUrl, e.data.chromeless === true); break;
 		case 'save': storeInPlace(); break;
 		case 'testedit': testEdit(); break;
 		case 'savetest': saveFile(e.data.fileUrl, e.data.filterName); break;

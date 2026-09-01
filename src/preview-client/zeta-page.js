@@ -23,7 +23,15 @@
 // in Module.uno_scripts); this page owns fetch, the Emscripten FS, timing,
 // and reporting. Timings go three ways at once: the #status overlay (so a
 // screenshot carries them), window.__zetaReport (for frame scripts), and
-// postMessage to the parent (for the smoke scenario and the tab).
+// postMessage to window.top (for the smoke scenario, the office dock, and
+// the save bridge — TOP, not parent, because this page also runs nested
+// inside preview documents as a live `![[x.docx|live]]` embed, and the
+// bridges live on the app page).
+//
+//   &thumb=1      thumbnail mode: chromeless LibreOffice (no menubar,
+//                 toolbars or sidebar), no save-back, no status overlay —
+//                 the offscreen thumbnailer (main/office-thumbs.js)
+//                 captures the window once the document is up.
 //
 // Saving is LibreOffice's own explicit gesture (toolbar Save, Ctrl+S, or
 // a 'zeta-save' message from the app): every store resets the model's
@@ -41,7 +49,8 @@ const ZETA_URL = ASSET_BASE + 'zeta.js';
 
 const params = new URLSearchParams(location.search);
 const src = params.get('src');
-const vaultPath = params.get('path'); // tab mode; absent in the measure rig
+const vaultPath = params.get('path'); // tab/embed mode; absent in the measure rig
+const thumbMode = params.get('thumb') === '1';
 const statusEl = document.getElementById('status');
 const canvas = document.getElementById('qtcanvas');
 
@@ -63,7 +72,7 @@ function mark(name) {
 }
 
 function tellParent(msg) {
-	try { window.parent.postMessage(msg, '*'); } catch { /* no parent */ }
+	try { window.top.postMessage(msg, '*'); } catch { /* no parent */ }
 }
 
 function fail(message) {
@@ -137,7 +146,7 @@ function onThreadMessage(port, msg, bytes) {
 		const efs = globalThis.FS ?? Module.FS;
 		try { efs.mkdir('/tmp/office'); } catch { /* exists */ }
 		efs.writeFile(fsPath, bytes);
-		port.postMessage({ cmd: 'load', fileUrl: 'file://' + fsPath });
+		port.postMessage({ cmd: 'load', fileUrl: 'file://' + fsPath, chromeless: thumbMode });
 		break;
 	}
 	case 'ui_ready':
@@ -145,7 +154,10 @@ function onThreadMessage(port, msg, bytes) {
 		// Size the embedded LO window to the canvas (the example's trick).
 		window.dispatchEvent(new Event('resize'));
 		tellParent({ cmd: 'zeta-ready', report });
-		if (vaultPath) {
+		if (thumbMode) {
+			// Thumbnail mode: the capture wants the document, not the log.
+			statusEl.style.display = 'none';
+		} else if (vaultPath) {
 			// Tab mode: quiet down once the document is up; from here the
 			// overlay is a transient save indicator.
 			setTimeout(() => { if (!report.error) statusEl.style.display = 'none'; }, 1500);
@@ -229,7 +241,9 @@ function pushToVault() {
 		tellParent({ cmd: 'zeta-vault-saved', ok: d.ok === true });
 	};
 	window.addEventListener('message', onResult);
-	window.parent.postMessage(
+	// window.top: the save bridge lives on the app page, and this page may
+	// be nested one level deeper when running as a live embed in a preview.
+	window.top.postMessage(
 		{ source: 'clew-zeta', type: 'office-save', id, path: vaultPath, bytes }, '*');
 }
 

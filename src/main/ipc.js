@@ -17,6 +17,7 @@ import * as pdfFonts from './pdf-fonts.js';
 import * as officeSlot from './office-slot.js';
 import * as zetaAssets from './zeta-assets.js';
 import * as officeConvert from './office-convert.js';
+import * as officeThumbs from './office-thumbs.js';
 import { CH } from '../shared/channels.js';
 import { settings } from './settings.js';
 import { appMenu } from './menu.js';
@@ -144,6 +145,7 @@ export function registerIpc() {
 	handleGlobal(CH.OFFICE_ENGINE_REMOVE, () => zetaAssets.remove());
 	handle(CH.OFFICE_CONVERT_PDF, (s, { path }) => officeConvert.convertToPdf(s.vaults, path));
 	handle(CH.OFFICE_OPEN_EXTERNAL, (s, { path }) => officeConvert.openExternally(s.vaults, path));
+	handle(CH.OFFICE_THUMBNAIL, (s, { path }) => officeThumbs.thumbnail(s, path));
 	handle(CH.WINDOW_CLOSE_RESOLVED, (s, { proceed }) => s.resolveClose?.(proceed));
 	// Save / Discard / Cancel, as a native sheet. CLEW_SMOKE_CONFIRM answers
 	// it without UI so the harness can drive every branch of a close flow.

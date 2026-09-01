@@ -46,6 +46,11 @@ class OfficeDock extends Emitter {
 	#slot = { held: false }; // the app-global slot, per EV_OFFICE_SLOT
 	#engine = null; // cached OFFICE_ENGINE_STATUS result
 	#syncQueued = false;
+	// Live office EMBEDS (`![[x.docx|live]]` in previews, live canvas
+	// nodes) also post zeta-modified through this window; tracked here so
+	// the close guards cover their unsaved edits too. Keyed by the posting
+	// window: WindowProxy → { dirty, waiters }.
+	#embeds = new Map();
 
 	init() {
 		window.addEventListener('message', this.#onMessage);
@@ -78,7 +83,8 @@ class OfficeDock extends Emitter {
 	// ---- what the file view asks ------------------------------------------
 
 	isDirty(tabId) {
-		return this.#state?.tabId === tabId && this.#state.dirty === true;
+		if (this.#state?.tabId === tabId && this.#state.dirty === true) return true;
+		return this.#embeds.size > 0 && this.#dirtyEmbedsUnder(tabId).length > 0;
 	}
 
 	/** Engine install state, cached; kicks off a fetch when unknown. */
@@ -237,11 +243,16 @@ class OfficeDock extends Emitter {
 		});
 	}
 
-	/** workspaceStore close guard: claim office tabs with unsaved edits. */
+	/** workspaceStore close guard: claim office tabs with unsaved edits —
+	 *  and note/canvas tabs whose LIVE EMBEDS have unsaved edits. */
 	#guardClose(tab) {
 		const st = this.#state;
-		if (!st || tab.id !== st.tabId || !st.dirty) return null;
-		return this.#confirmClose();
+		if (st && tab.id === st.tabId && st.dirty) return this.#confirmClose();
+		if (this.#embeds.size > 0) {
+			const dirty = this.#dirtyEmbedsUnder(tab.id);
+			if (dirty.length) return this.#confirmEmbeds(dirty);
+		}
+		return null;
 	}
 
 	/** Save / Discard / Cancel for the current document. Resolves true when
@@ -262,50 +273,139 @@ class OfficeDock extends Emitter {
 		return true;
 	}
 
-	/** The window wants to close (main asked). Clean → yes; dirty → dialog. */
+	/** The window wants to close (main asked). Clean → yes; anything dirty
+	 *  — the office tab or any live embed — gets its dialog first. */
 	async #onCloseRequested() {
-		if (!this.#state?.dirty) {
+		this.#sweepEmbeds();
+		const dirtyEmbeds = [...this.#embeds].filter(([, e]) => e.dirty).map(([w]) => w);
+		if (!this.#state?.dirty && dirtyEmbeds.length === 0) {
 			ipc.invoke(CH.WINDOW_CLOSE_RESOLVED, { proceed: true }).catch(() => {});
 			return;
 		}
 		ipc.invoke(CH.WINDOW_CLOSE_RESOLVED, { proceed: 'pending' }).catch(() => {});
-		const proceed = await this.#confirmClose();
+		let proceed = true;
+		if (this.#state?.dirty) proceed = await this.#confirmClose();
+		if (proceed && dirtyEmbeds.length) proceed = await this.#confirmEmbeds(dirtyEmbeds);
 		ipc.invoke(CH.WINDOW_CLOSE_RESOLVED, { proceed }).catch(() => {});
 	}
 
 	// ---- events from the viewer page --------------------------------------
 
 	#onMessage = (e) => {
-		const st = this.#state;
-		if (!st || e.source !== st.frame?.contentWindow) return;
 		const msg = e.data;
+		const st = this.#state;
+		const isDock = Boolean(st && e.source === st.frame?.contentWindow);
 		// The save-back REQUEST passes through this window on its way to the
 		// office-save bridge. Stamp the echo window here, before the write:
 		// the vault watcher fires faster than the save-result round-trip,
 		// and a stamp taken only at 'zeta-vault-saved' loses that race and
 		// reboots LibreOffice out from under its own save.
 		if (msg?.source === 'clew-zeta' && msg?.type === 'office-save') {
-			st.lastSaveAt = Date.now();
+			if (isDock) st.lastSaveAt = Date.now();
 			return;
 		}
-		switch (msg?.cmd) {
-		case 'zeta-ready':
-			st.ready = true;
-			break;
-		case 'zeta-modified':
-			if (st.dirty !== msg.state) {
-				st.dirty = msg.state;
-				this.emit('dirty-changed', { tabId: st.tabId });
+		if (isDock) {
+			switch (msg?.cmd) {
+			case 'zeta-ready':
+				st.ready = true;
+				break;
+			case 'zeta-modified':
+				if (st.dirty !== msg.state) {
+					st.dirty = msg.state;
+					this.emit('dirty-changed', { tabId: st.tabId });
+				}
+				break;
+			case 'zeta-vault-saved': {
+				st.lastSaveAt = Date.now();
+				const waiters = st.saveWaiters.splice(0);
+				for (const resolve of waiters) resolve(msg.ok === true);
+				break;
 			}
-			break;
-		case 'zeta-vault-saved': {
-			st.lastSaveAt = Date.now();
-			const waiters = st.saveWaiters.splice(0);
-			for (const resolve of waiters) resolve(msg.ok === true);
-			break;
+			}
+			return;
 		}
+		// Not the dock's frame: a live EMBED somewhere under this window.
+		if (msg?.cmd === 'zeta-modified' && e.source) {
+			const entry = this.#embeds.get(e.source) ?? { dirty: false, waiters: [] };
+			entry.dirty = msg.state === true;
+			this.#embeds.set(e.source, entry);
+			const tabId = this.#tabForEmbed(e.source);
+			if (tabId) this.emit('dirty-changed', { tabId });
+		} else if (msg?.cmd === 'zeta-vault-saved' && e.source) {
+			const entry = this.#embeds.get(e.source);
+			if (entry) {
+				for (const resolve of entry.waiters.splice(0)) resolve(msg.ok === true);
+			}
 		}
 	};
+
+	// ---- live embeds --------------------------------------------------------
+
+	/** Drop tracking for embed windows that no longer exist. */
+	#sweepEmbeds() {
+		for (const [win, entry] of this.#embeds) {
+			let gone = false;
+			try { gone = win.closed === true; } catch { gone = true; }
+			if (gone) {
+				for (const resolve of entry.waiters.splice(0)) resolve(false);
+				this.#embeds.delete(win);
+			}
+		}
+	}
+
+	/** The workspace tab whose view hosts this embed's window, if visible:
+	 *  walk the window's parent chain until an iframe of a view matches. */
+	#tabForEmbed(sourceWin) {
+		const views = document.querySelectorAll('clew-preview-view, clew-canvas-view');
+		let w = sourceWin;
+		for (let depth = 0; w && depth < 5; depth++) {
+			for (const view of views) {
+				for (const frame of view.querySelectorAll('iframe')) {
+					if (frame.contentWindow === w) return view.tabId ?? null;
+				}
+			}
+			let parent = null;
+			try { parent = w.parent && w.parent !== w ? w.parent : null; } catch { parent = null; }
+			w = parent;
+		}
+		return null;
+	}
+
+	/** Dirty embed windows living under one workspace tab. */
+	#dirtyEmbedsUnder(tabId) {
+		this.#sweepEmbeds();
+		const out = [];
+		for (const [win, entry] of this.#embeds) {
+			if (entry.dirty && this.#tabForEmbed(win) === tabId) out.push(win);
+		}
+		return out;
+	}
+
+	/** Ask every given embed to store, and wait for the vault write-backs. */
+	#saveEmbeds(wins) {
+		return Promise.all(wins.map((win) => new Promise((resolve) => {
+			const entry = this.#embeds.get(win);
+			if (!entry?.dirty) { resolve(true); return; }
+			let settled = false;
+			const once = (ok) => { if (!settled) { settled = true; resolve(ok); } };
+			entry.waiters.push(once);
+			try { win.postMessage({ cmd: 'zeta-save' }, '*'); } catch { once(false); }
+			setTimeout(() => once(false), SAVE_TIMEOUT);
+		}))).then((results) => results.every(Boolean));
+	}
+
+	/** Save / Discard / Cancel for dirty embedded editors; true = proceed. */
+	async #confirmEmbeds(wins) {
+		const choice = await ipc.invoke(CH.CONFIRM_DISCARD, {
+			message: wins.length === 1
+				? 'Save changes to the embedded office document?'
+				: `Save changes to ${wins.length} embedded office documents?`,
+			detail: 'Office documents are not auto-saved. If you don’t save, your changes will be lost.',
+		}).catch(() => 'cancel');
+		if (choice === 'cancel') return false;
+		if (choice === 'save') return this.#saveEmbeds(wins);
+		return true;
+	}
 
 	#onFileChanged(path) {
 		const st = this.#state;

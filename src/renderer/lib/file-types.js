@@ -51,8 +51,7 @@ export function isCanvasPath(path) {
 
 /** Files that embed with `![[...]]` (vs a plain `[[...]]` link). */
 export function isEmbeddablePath(path) {
-	// Office documents open in tabs only — a wasm LibreOffice per embedded
-	// `![[x.docx]]` is not survivable (spike decision; HANDOVER §0).
-	const kind = fileKind(path);
-	return kind !== null && kind !== 'office';
+	// Office documents embed too (owner's decision, 2026-09-01): a static
+	// thumbnail by default, a live LibreOffice with the `|live` alias.
+	return fileKind(path) !== null;
 }
