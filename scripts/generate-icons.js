@@ -25,6 +25,7 @@ const ICONS = {
 	'card': 'regular/note-sticky',
 	'pencil': 'solid/pencil',
 	'eraser': 'solid/eraser',
+	'trash': 'regular/trash-can',
 	'square': 'regular/square',
 	'circle': 'regular/circle',
 	'diamond': 'solid/diamond',
