@@ -1,4 +1,38 @@
-# Handover — 2026-09-01 (night: the ZetaOffice punch list is DONE)
+# Handover — 2026-09-01 (late night: punch list DONE + office EMBEDS)
+
+## 0a. NEW since the punch list: office embeds (owner's decision, same evening)
+
+The no-embeds rule is lifted: `![[x.docx]]` renders a STATIC THUMBNAIL
+(default), `![[x.docx|live]]` a full editable LibreOffice; canvas file
+nodes the same via a context-menu Office row (Thumb/Live, stored as
+`clew.nodeStyles[id].office` — Obsidian-safe). Commit `34b8205` here,
+`7f5a167` in ../Clew-docs. All smoke-verified: boot on both surfaces,
+edit → note/canvas tab dirty dot, close guards claim the tab, save →
+bytes on disk, thumbnail cache + mtime refresh, morph survival.
+
+- **Thumbnails** (`main/office-thumbs.js`): offscreen BrowserWindow
+  boots the chromeless zeta page (`&thumb=1`; thread hides LayoutManager
+  chrome + sidebar + ruler), one capturePage →
+  `.clew/cache/office-thumbs/<rel>.png` (mirrored path ON PURPOSE:
+  read-only surfaces construct the URL). mtime-cached, jobs strictly
+  serialized. `offscreen: true` works fine with the SAB pthreads wasm.
+- **Live embeds**: hoisted out of morphed flow into an absolutely
+  positioned data-clew-keep holder on the preview body, tracked to a
+  placeholder slot (`preview-client/office-embed.js`). TWO measured
+  traps forced this: any DOM move reloads an iframe, and a
+  parser-created iframe detached before first-load-commit does NOT
+  renavigate on reinsertion — the hoisted editor must be a FRESH
+  iframe, src set after insertion. client.js strips src from incoming
+  live iframes at morph (into data-live-src) so re-renders never boot
+  throwaways.
+- zeta-page posts to window.top (embeds sit one frame deeper); the dock
+  tracks embed dirt per source window and its guards cover embeds on
+  tab close + window close. Live embeds BYPASS the one-instance slot
+  (the |live opt-in is consent — "allow users to make bad decisions").
+  They die with their preview (tab switch, mode toggle): documented in
+  the manual's warning callout, NOT guarded — the known sharp edge.
+
+
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it); the original design plan is at
