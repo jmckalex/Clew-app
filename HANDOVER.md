@@ -115,6 +115,15 @@ the note; a minimal from-scratch docx (python zipfile) opens fine.
   brotli path when packaged, shipped via extraResources →
   office-icons/). LibreOffice believes it loads Colibre and draws Sifr.
   Delete the vendored zip to restore Colibre. Manual screenshot retaken.
+- **Icon SIZE** (`3bc44bf`): small 16 px toolbar icons — unlike the
+  theme, size IS consulted at toolbar build, so a plain config commit
+  before loadComponentFromURL lands (zeta-thread.js#loadFile). The keys
+  are UNO shorts: values must go through `zetajs.Any(type.short, …)` or
+  configmgr refuses them. NOTE for smoke scenarios: toolbar-button
+  click coordinates changed with the density (old Save offset ~(60,39)
+  no longer holds). Owner is trialling the look — if it doesn't earn
+  its keep, the size block in loadFile and/or the vendored zip are the
+  two independent reverts.
 
 ## 1. Open items
 
