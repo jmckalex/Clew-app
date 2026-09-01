@@ -31,10 +31,15 @@ export const paths = app.isPackaged
 		previewAssets: path.join(process.resourcesPath, 'preview-assets'),
 		// The vendored EmbedPDF OCG build (vendor/embedpdf), not an npm package.
 		embedpdfAssets: path.join(process.resourcesPath, 'preview-assets', 'embedpdf'),
+		// ZetaOffice wasm bundle (spike). Final design: downloaded on demand
+		// into userData like the CJK PDF fonts — this placeholder keeps the
+		// packaged app from throwing while the spike is dev-only.
+		zetaAssets: path.join(app.getPath('userData'), 'zeta-assets'),
 	}
 	: {
 		engineWorker: require.resolve('jmarkdown/src/watch-worker.js'),
 		engineAssets: path.join(distDir, 'engine'),
 		previewAssets: path.join(rootDir, 'node_modules'),
 		embedpdfAssets: path.join(rootDir, 'vendor', 'embedpdf', 'dist'),
+		zetaAssets: path.join(rootDir, 'zeta-assets'),
 	};

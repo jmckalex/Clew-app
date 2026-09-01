@@ -13,6 +13,9 @@
 export const IMAGE_EXT = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.avif', '.svg', '.bmp'];
 export const AUDIO_EXT = ['.mp3', '.m4a', '.wav', '.ogg', '.flac'];
 export const VIDEO_EXT = ['.mp4', '.webm', '.mov'];
+// Office documents open in a ZetaOffice (LibreOffice wasm) tab — the six
+// formats the spike scoped: both ODF and OOXML, one per application.
+export const OFFICE_EXT = ['.odt', '.ods', '.odp', '.docx', '.xlsx', '.pptx'];
 
 import { isExcalidrawPath } from '../../shared/excalidraw-file.js';
 export { isExcalidrawPath };
@@ -32,6 +35,7 @@ export function fileKind(path) {
 	if (ext === '.pdf') return 'pdf';
 	if (AUDIO_EXT.includes(ext)) return 'audio';
 	if (VIDEO_EXT.includes(ext)) return 'video';
+	if (OFFICE_EXT.includes(ext)) return 'office';
 	return null;
 }
 
@@ -47,5 +51,8 @@ export function isCanvasPath(path) {
 
 /** Files that embed with `![[...]]` (vs a plain `[[...]]` link). */
 export function isEmbeddablePath(path) {
-	return fileKind(path) !== null;
+	// Office documents open in tabs only — a wasm LibreOffice per embedded
+	// `![[x.docx]]` is not survivable (spike decision; HANDOVER §0).
+	const kind = fileKind(path);
+	return kind !== null && kind !== 'office';
 }

@@ -135,6 +135,16 @@ export class VaultManager {
 		fs.writeFileSync(abs, Buffer.from(data));
 	}
 
+	// The ZetaOffice viewer's save path, guarded like writePdf: only an
+	// office document that already exists inside the vault may be
+	// overwritten — the viewer edits documents, it does not create them.
+	writeOffice(rel, data) {
+		if (!/\.(odt|ods|odp|docx|xlsx|pptx)$/i.test(rel)) throw new Error(`Not an office document: ${rel}`);
+		const abs = this.resolve(rel);
+		if (!fs.existsSync(abs)) throw new Error(`No such document: ${rel}`);
+		fs.writeFileSync(abs, Buffer.from(data));
+	}
+
 	/** Create a new note; appends " 1", " 2", … if the name is taken. Returns the rel path. */
 	createNote(rel) {
 		// "Tasks.md" typed into a create box arrives as "Tasks.md.md" once

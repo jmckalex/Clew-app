@@ -12,7 +12,7 @@
 // built-in viewer), audio, video — served through clew-preview://.
 import { ClewElement } from '../base/clew-element.js';
 import { fileKind } from '../../lib/file-types.js';
-import { vaultFileUrl, pdfViewerUrl, excalidrawUrl } from '../../lib/preview-url.js';
+import { vaultFileUrl, pdfViewerUrl, excalidrawUrl, zetaOfficeUrl } from '../../lib/preview-url.js';
 
 class ClewFileView extends ClewElement {
 	tabId = null;
@@ -44,6 +44,23 @@ class ClewFileView extends ClewElement {
 			el.className = 'pdf-frame';
 			el.allow = 'fullscreen';
 			el.src = pdfViewerUrl(url);
+		} else if (kind === 'office') {
+			// ZetaOffice (LibreOffice wasm) in its own document, like the PDF
+			// viewer: the 160 MB wasm lives on the preview origin, never the
+			// app page. Save-back flows over the office-save bridge. One
+			// instance at a time (each costs ~1.6 GB — spike decision), so a
+			// second office tab gets a notice, not a second LibreOffice.
+			const other = [...document.querySelectorAll('iframe.office-frame')]
+				.some((frame) => !this.contains(frame));
+			if (other) {
+				el = document.createElement('div');
+				el.className = 'panel-empty';
+				el.textContent = 'One office document at a time — close the other office tab, then reopen this one.';
+			} else {
+				el = document.createElement('iframe');
+				el.className = 'office-frame';
+				el.src = zetaOfficeUrl(this.path);
+			}
 		} else if (kind === 'audio') {
 			el = document.createElement('audio');
 			el.controls = true;

@@ -112,6 +112,14 @@ export const bundles = [
 		bundle: true,
 		format: 'iife',
 	},
+	{
+		// The ZetaOffice host page's script (spike), served from
+		// __clew_assets__/clewzeta/.
+		entryPoints: [path.join(root, 'src/preview-client/zeta-page.js')],
+		outfile: path.join(root, 'dist/preview-client/zeta-page.js'),
+		bundle: true,
+		format: 'iife',
+	},
 ];
 
 // Static files copied as-is; CSS is deliberately not compiled. The engine
@@ -123,6 +131,11 @@ export const staticDirs = [
 	{ from: path.join(root, 'src/excalidraw/page.html'), to: path.join(root, 'dist/excalidraw/page.html') },
 	// Host page for the standalone PDF viewer.
 	{ from: path.join(root, 'src/preview-client/pdf-page.html'), to: path.join(root, 'dist/preview-client/pdf-page.html') },
+	// Host page + office-thread script for the ZetaOffice viewer (spike).
+	// The thread script is copied verbatim: the LOWA worker loads it as a
+	// plain script via Module.uno_scripts, not through any bundle.
+	{ from: path.join(root, 'src/preview-client/zeta-page.html'), to: path.join(root, 'dist/preview-client/zeta-page.html') },
+	{ from: path.join(root, 'src/preview-client/zeta-thread.js'), to: path.join(root, 'dist/preview-client/zeta-thread.js') },
 	{ from: path.join(root, 'src/renderer/styles'), to: path.join(root, 'dist/renderer/styles') },
 	{ from: path.join(root, 'src/engine'), to: path.join(root, 'dist/engine') },
 ];

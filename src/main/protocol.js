@@ -43,6 +43,9 @@ const MIME = {
 	'.mp4': 'video/mp4', '.webm': 'video/webm', '.mp3': 'audio/mpeg',
 	'.m4a': 'audio/mp4', '.wav': 'audio/wav', '.txt': 'text/plain',
 	'.md': 'text/plain', '.jmd': 'text/plain',
+	// application/wasm lets WebAssembly.instantiateStreaming work (the
+	// ZetaOffice module is 36 MB — the buffered fallback path hurts there).
+	'.wasm': 'application/wasm',
 };
 
 export const PREVIEW_SCHEME = 'clew-preview';
@@ -64,7 +67,7 @@ export function registerPreviewScheme() {
 const RENDERED_SUFFIX = new RegExp(`(${NOTE_EXTENSIONS.map((e) => e.replace('.', '\\.')).join('|')})\\.html$`, 'i');
 
 /** After app.whenReady(). */
-export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDir, embedpdfDir }) {
+export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDir, embedpdfDir, zetaDir }) {
 	const assetRoots = {
 		mathjax: path.join(nodeModulesDir, 'mathjax', 'es5'),
 		mermaid: path.join(nodeModulesDir, 'mermaid', 'dist'),
@@ -77,6 +80,12 @@ export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDi
 		embedpdf: embedpdfDir,
 		// Our own PDF viewer page + its bundle (pdf-page.html/.js).
 		clewpdf: path.join(distDir, 'preview-client'),
+		// ZetaOffice (LibreOffice wasm) bundle: soffice.{js,wasm,data,…} +
+		// zeta.js, downloaded — never shipped (spike; see HANDOVER §0).
+		zeta: zetaDir,
+		// Our own ZetaOffice host page + bundle (zeta-page.html/.js + the
+		// office-thread script that runs inside the LOWA worker).
+		clewzeta: path.join(distDir, 'preview-client'),
 		// Optional CJK fonts, downloaded on demand into userData.
 		pdffonts: fontsDir(),
 		// The Excalidraw editor page + its bundle (React lives only here).

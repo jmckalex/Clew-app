@@ -13,3 +13,5 @@ demo-vault/.clew/*
 !demo-vault/.clew/plugins/
 first-session-2026-08-21.pdf
 build-engine/
+# ZetaOffice wasm bundle (spike): downloaded, never committed — see HANDOVER.
+zeta-assets/

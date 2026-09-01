@@ -1,4 +1,4 @@
-# Handover — 2026-09-01
+# Handover — 2026-09-01 (evening: the spike RAN, and it is GOOD)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it); the original design plan is at
@@ -6,77 +6,78 @@ in **CLAUDE.md** (trust it); the original design plan is at
 session — keep it short, and prefer deleting a settled item to explaining
 it again.
 
-## 0. THE ACTIVE ITEM: the ZetaOffice spike (start here)
+## 0. THE ACTIVE ITEM: the ZetaOffice spike — MEASURED AND WIRED
 
-The owner wants a viability spike: a FULL embed of ZetaOffice
-(LibreOffice compiled to wasm, allotropia's build, scripted via its
-zetajs API) — office documents (.odt/.ods/.odp/.docx/.xlsx/.pptx)
-opening in file tabs with real editing and save-back into the vault.
-Explicitly droppable: if it proves unviable, delete the branch and
-worktree, no harm to main.
+The spike (FULL embed of ZetaOffice — LibreOffice wasm via zetajs —
+office docs editing in file tabs, save-back into the vault) was built
+and measured this session ON THIS BRANCH (`zetaoffice-spike`, worktree
+`../Clew-app-zetaoffice`). **Verdict: viable, comfortably.** Numbers
+(M-series Mac, real documents):
 
-**Where:** branch `zetaoffice-spike`, checked out in its own worktree
-at `../Clew-app-zetaoffice` (dependencies installed, builds) so the
-owner's concurrent work in THIS tree is never disturbed. Do the spike
-work THERE.
+- Cold boot → editable document: **2.2 s** (40 KB docx), **2.5 s**
+  (1.8 MB, 29-page docx). Warm: ~1.8–2.0 s. Boot is so cheap that
+  instance REUSE is unnecessary: boot per tab open, discard on close.
+- Memory: **~1.6 GB working set** for the office renderer process
+  (whole app ~2.1 GB with one office tab). This is why one-office-tab-
+  at-a-time stands (enforced crudely in clew-file-view: a second
+  office tab renders a notice, not a second LibreOffice).
+- Save round-trip verified end-to-end: UNO edit → LibreOffice store →
+  bytes out of the Emscripten FS → office-save bridge → OFFICE_WRITE →
+  vault file on disk (marker string found inside the saved docx).
+  Writer AND Calc both proven (real .docx/.xlsx from ~/Downloads).
+- Payload correction: ~300 MB was the DISK size; over the wire it is
+  **~53 MB** (the CDN brotli-compresses soffice.wasm/soffice.data
+  unconditionally — content-length lies; a plain curl saves raw
+  brotli, `cf ff ff 7f` not `\0asm` — see zeta-assets/PROVENANCE.md).
+  On disk decompressed: 162 MB wasm + 99.5 MB data. Design option for
+  shipping: store the .br files and serve them with
+  `Content-Encoding: br` from the protocol — 53 MB on disk too.
+- The SAB switch (`enable-features=SharedArrayBuffer` in main.js — the
+  conscious security decision, rationale in the code comment) disturbs
+  nothing: note preview, EmbedPDF viewer and the unit suite (405 pass)
+  are all clean with it on.
 
-**Scoping facts (2026-09-01 session — verified reasoning, not yet
-measured):**
+**What is wired (all spike-quality but real):** `zeta-assets/`
+(gitignored download, PROVENANCE.md + SHA256SUMS pin it),
+`zeta`/`clewzeta` asset roots + `.wasm` MIME in protocol.js,
+`zetaAssets` in paths.js, `zeta-page.{html,js}` + `zeta-thread.js` in
+src/preview-client (host page ↔ LOWA-worker script; measurement mode
+without `&path`, tab mode with), `office` fileKind (six extensions,
+NOT embeddable — tabs only), clew-file-view iframe branch + one-tab
+guard, `zetaOfficeUrl` in preview-url.js, office-save bridge in
+pdf-save.js, `OFFICE_WRITE` channel → `vault.writeOffice` (writePdf's
+guards for office extensions). Saving is LibreOffice's OWN gesture
+(toolbar/Ctrl+S — WarnAlienFormat disabled at boot) or a `zeta-save`
+postMessage; the modified→false transition drives the push to disk.
+Smoke hook gained `CLEW_SMOKE_LOG=1` (all console) and
+`CLEW_SMOKE_METRICS=/path.json` (app.getAppMetrics dump).
 
-- Payload is ~300 MB of wasm. NEVER ship it in the app: on-demand
-  download into userData following `main/pdf-fonts.js` (the 139 MB
-  precedent), served via the `__clew_assets__` protocol. Self-host a
-  pinned build — allotropia's CDN has its own usage terms.
-- LibreOffice wasm is pthreads-built → needs SharedArrayBuffer. True
-  cross-origin isolation fights the architecture (app page is file://,
-  previews are DELIBERATELY cross-origin clew-preview://), so the
-  Electron escape is enabling SAB via Chromium switch in main.js. That
-  is a conscious security decision — canvas web nodes host arbitrary
-  sites in `<webview>` guests (separate processes, contained) — record
-  it in the commit message.
-- Licensing is fine: LibreOffice MPL-2.0 + zetajs MIT beside GPL-3.0,
-  aggregation exactly like EmbedPDF.
-- iOS is OUT of scope permanently (WKWebView's jetsam memory cap vs a
-  300 MB module). The iOS story, if ever, is QuickLook viewing +
-  open-in-Collabora, and it lives in Clew-iOS.
+**Not yet done (the honest gaps):** save-on-close prompt (needs
+tab-close interception); external-change conflicts (an office file
+changed on disk under an open tab is unhandled — the editorPool-style
+banner is the model); the one-tab guard doesn't re-render when the
+other tab closes (reopen by hand); LO's Open/SaveAs dialogs inside the
+canvas are not suppressed (File menu still shows them; they operate on
+the wasm FS, harmlessly weird); packaged-app download flow (userData +
+pdf-fonts pattern) not built — paths.js has a placeholder; keyboard
+smoke of real typing (only UNO-driven edits were exercised).
 
-**The template is the PDF viewer** (CLAUDE.md's PDF bullet): a
-`zeta-page.html` beside `pdf-page.html`, loaded by the file tab's
-iframe on the clew-preview origin; document bytes fetched from
-clew-preview:// as a buffer (pdf-core's lesson — URL loaders mangle
-the scheme); saves flow out over the postMessage save bridge to a
-main-process writer with `vault.writePdf`'s guards generalized to
-office extensions. `lib/file-types.js` fileKind/isViewablePath gain
-the office extensions; clew-file-view gains the iframe branch.
+**Decisions still standing:** tabs only (no `![[x.docx]]` embeds); no
+autosave; one office tab at a time. Boot-per-tab replaced "one shared
+instance" (measured: boots are 2 s — change was taken out loud, here).
 
-**Decisions already taken in scoping — change them out loud, not
-silently:**
-
-- ONE LibreOffice instance (each is ~0.5–1 GB and seconds to start):
-  v1 is a single shared instance, or one office tab at a time.
-- Explicit save + save-on-close prompt, NOT debounced autosave (a
-  half-edited spreadsheet is not a PDF annotation).
-- Vault-watcher conflicts: suppress self-echoes the way editorPool
-  does (`lastWrittenText`).
-- Note embeds (`![[x.docx]]` live in previews) are ruled out — one
-  wasm instance per embed is not survivable. Tabs only.
-
-**Spike order — measure before wiring:**
-
-1. Obtain a ZetaOffice build + zetajs. Stand up a BARE zeta-page in a
-   clew-preview iframe with the SAB switch on; load a real .docx from
-   a buffer. Measure: cold/warm startup, instance memory, and whether
-   the switch disturbs anything else (canvas webviews, preview
-   fetches, the PDF viewer).
-2. Only if the numbers are acceptable: wire the tab + the save path.
-3. Either way, a viability report to the owner WITH the numbers.
-
-**The cheap rung is untouched by this spike** and worth building
+**The cheap rung is STILL untouched and still worth building**
 regardless (days, not weeks): `soffice --headless --convert-to pdf`
 into `.clew/cache` when ordinary LibreOffice is installed
 (`toolchainPath()` pattern), shown in the EXISTING EmbedPDF viewer,
 plus "Edit in LibreOffice" externally. It remains the fallback for
-users without the 300 MB download.
+users without the download.
+
+**To re-run the measurements:** scenarios in the session scratchpad
+are gone after reboot; they were ~40-line CLEW_SMOKE scripts (cold+warm
+iframe of zeta-page.html?src=…, listen for zeta-saved/zeta-error
+postMessages). zeta-page.html without `&path` is self-measuring — the
+overlay prints the timings; `&measure` needs nothing else.
 
 ## 1. Recently shipped (all verified; manual in ../Clew-docs matches)
 

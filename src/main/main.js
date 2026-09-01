@@ -30,6 +30,16 @@ const rootDir = path.dirname(distDir);
 
 registerPreviewScheme();
 
+// SharedArrayBuffer for the ZetaOffice (LibreOffice wasm) viewer, which is
+// a pthreads build. True cross-origin isolation (COOP/COEP) is off the
+// table by architecture: the app page is file:// and previews are
+// DELIBERATELY cross-origin clew-preview://, so the top-level document can
+// never satisfy COEP for its frames. This switch enables SAB without COI —
+// a conscious relaxation. The exposure is bounded: arbitrary web content
+// runs only in canvas-web-node <webview> guests (separate processes), and
+// SAB matters for cross-origin data mainly as a Spectre timer amplifier.
+app.commandLine.appendSwitch('enable-features', 'SharedArrayBuffer');
+
 let quitting = false;
 const windowOrder = []; // creation order, for the smoke hook
 
@@ -160,6 +170,7 @@ app.whenReady().then(() => {
 		nodeModulesDir: paths.previewAssets,
 		engineAssetsDir: paths.engineAssets,
 		embedpdfDir: paths.embedpdfAssets,
+		zetaDir: paths.zetaAssets,
 	});
 	// No { role: 'close' } anywhere in the menu: Cmd+W belongs to the
 	// renderer (close tab). See src/main/menu.js.
@@ -222,6 +233,13 @@ if (process.env.CLEW_SMOKE) {
 		setTimeout(async () => {
 			try {
 				const primary = windowOrder[0];
+				// CLEW_SMOKE_LOG=1: every console message from every frame
+				// (previews included) to the terminal — wasm-boot debugging.
+				if (process.env.CLEW_SMOKE_LOG) {
+					primary.webContents.on('console-message', (details) => {
+						console.log(`[smoke:${details.level}] ${details.message}`);
+					});
+				}
 				if (process.env.CLEW_SMOKE_SCRIPT) {
 					const script = fs.readFileSync(process.env.CLEW_SMOKE_SCRIPT, 'utf8');
 					await primary.webContents.executeJavaScript(`(async () => { ${script} })()`);
@@ -244,6 +262,12 @@ if (process.env.CLEW_SMOKE) {
 					fs.writeFileSync(file, image.toPNG());
 				}
 				console.log(`smoke: ${windowOrder.length} screenshot(s) written`);
+				// CLEW_SMOKE_METRICS=/path.json: per-process memory/CPU dump
+				// beside the screenshot (the ZetaOffice spike measures with it).
+				if (process.env.CLEW_SMOKE_METRICS) {
+					fs.writeFileSync(process.env.CLEW_SMOKE_METRICS,
+						JSON.stringify(app.getAppMetrics(), null, '\t'));
+				}
 			} catch (err) {
 				console.error('smoke failed:', err);
 			}

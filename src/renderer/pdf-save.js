@@ -100,6 +100,28 @@ export function installExcalidrawResolveBridge() {
 	});
 }
 
+/**
+ * ZetaOffice saves, app-page side. Like the PDF bridge: the viewer runs in
+ * an iframe under __clew_assets__, posts bytes here, and main-side
+ * vault.writeOffice refuses anything that is not an existing office
+ * document inside the vault.
+ */
+export function installOfficeSaveBridge() {
+	window.addEventListener('message', async (event) => {
+		const msg = event.data;
+		if (!msg || msg.source !== 'clew-zeta' || msg.type !== 'office-save') return;
+		const reply = (ok, error) => event.source?.postMessage(
+			{ source: 'clew-zeta-host', type: 'office-save-result', id: msg.id, ok, error }, '*');
+		try {
+			await ipc.invoke(CH.OFFICE_WRITE, { path: msg.path, bytes: msg.bytes });
+			reply(true);
+		} catch (err) {
+			console.warn('[clew] office save failed:', err);
+			reply(false, String(err?.message ?? err));
+		}
+	});
+}
+
 export function installPdfSaveBridge() {
 	window.addEventListener('message', async (event) => {
 		const msg = event.data;
