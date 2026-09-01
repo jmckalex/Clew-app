@@ -130,6 +130,13 @@
           "fonts/**/*",
           "data/**/*"
         ]
+      },
+      {
+        "from": "vendor/libreoffice-icons",
+        "to": "office-icons",
+        "filter": [
+          "images_sifr.zip"
+        ]
       }
     ],
     "mac": {

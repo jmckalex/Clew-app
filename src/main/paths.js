@@ -35,6 +35,9 @@ export const paths = app.isPackaged
 		// into userData like the CJK PDF fonts — this placeholder keeps the
 		// packaged app from throwing while the spike is dev-only.
 		zetaAssets: path.join(app.getPath('userData'), 'zeta-assets'),
+		// The vendored Sifr icon theme, spliced over the wasm bundle's
+		// Colibre at serve time (zeta-icons.js).
+		officeIcons: path.join(process.resourcesPath, 'office-icons'),
 	}
 	: {
 		engineWorker: require.resolve('jmarkdown/src/watch-worker.js'),
@@ -46,4 +49,5 @@ export const paths = app.isPackaged
 		// The override is also what marks the directory writable/removable
 		// (zeta-assets.js#managed): the repo's own zeta-assets/ never is.
 		zetaAssets: process.env.CLEW_ZETA_DIR ?? path.join(rootDir, 'zeta-assets'),
+		officeIcons: path.join(rootDir, 'vendor', 'libreoffice-icons'),
 	};
