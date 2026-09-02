@@ -30,6 +30,7 @@ import { parseBib } from '../shared/bib.js';
 import { direntKind, shouldRecurse, walkGuard, writeFileAtomic } from './fs-utils.js';
 import { listSnapshots, readSnapshot } from './history.js';
 import { listPlugins } from './plugins.js';
+import { paths } from './paths.js';
 import fs from 'node:fs';
 import nodePath from 'node:path';
 
@@ -215,12 +216,21 @@ export function registerIpc() {
 	});
 
 	handle(CH.PLUGINS_LIST, (s) => {
-		if (!s.vaults.isOpen) return { plugins: [], enabled: [] };
+		if (!s.vaults.isOpen) return { plugins: [], enabled: [], globalDir: paths.globalPlugins };
 		const vaultSettings = s.vaults.loadState('vault-settings.json') ?? {};
 		return {
-			plugins: listPlugins(s.vaults.root),
+			plugins: listPlugins(s.vaults.root, paths.globalPlugins),
 			enabled: Array.isArray(vaultSettings.plugins) ? vaultSettings.plugins : [],
+			globalDir: paths.globalPlugins,
 		};
+	});
+
+	// "Where do I put them?" — open the global plugin folder, creating it on
+	// the way (it does not exist until the first plugin is installed).
+	handleGlobal(CH.PLUGINS_REVEAL_GLOBAL, () => {
+		fs.mkdirSync(paths.globalPlugins, { recursive: true });
+		shell.openPath(paths.globalPlugins);
+		return paths.globalPlugins;
 	});
 
 	handle(CH.EXPORT_NOTE, (s, { path, format }) =>

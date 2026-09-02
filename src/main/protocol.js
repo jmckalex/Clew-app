@@ -30,7 +30,7 @@ import zlib from 'node:zlib';
 import { Readable } from 'node:stream';
 import { NOTE_EXTENSIONS } from '../shared/channels.js';
 import { sessionById } from './session.js';
-import { previewPluginPaths, enabledPlugins } from './plugins.js';
+import { previewPluginScripts, enabledPlugins } from './plugins.js';
 import { settings } from './settings.js';
 import { fontsDir, fallbackConfig } from './pdf-fonts.js';
 import { themedMetadata, themedSplice, spliceTransform } from './zeta-icons.js';
@@ -69,7 +69,7 @@ export function registerPreviewScheme() {
 const RENDERED_SUFFIX = new RegExp(`(${NOTE_EXTENSIONS.map((e) => e.replace('.', '\\.')).join('|')})\\.html$`, 'i');
 
 /** After app.whenReady(). */
-export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDir, embedpdfDir, zetaDir, officeIconsDir }) {
+export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDir, embedpdfDir, zetaDir, officeIconsDir, globalPluginsDir = null }) {
 	const assetRoots = {
 		mathjax: path.join(nodeModulesDir, 'mathjax', 'es5'),
 		mermaid: path.join(nodeModulesDir, 'mermaid', 'dist'),
@@ -236,15 +236,43 @@ export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDi
 					return new Response('No session', { status: 503, headers: headers('text/plain') });
 				}
 				const vaultSettings = pluginSession.vaults.loadState('vault-settings.json') ?? {};
-				const plugin = enabledPlugins(pluginSession.vaults.root, vaultSettings)
+				const plugin = enabledPlugins(pluginSession.vaults.root, vaultSettings, globalPluginsDir)
 					.find((p) => p.id === id && p.surfaces.app);
 				if (!plugin) {
 					return new Response('Not an enabled plugin', { status: 403, headers: headers('text/plain') });
 				}
-				const abs = path.join(pluginSession.vaults.root, '.clew', 'plugins', id, plugin.surfaces.app.file);
+				// plugin.dir is the plugin's own folder, vault-local or global.
+				const abs = path.join(plugin.dir, plugin.surfaces.app.file);
 				const code = fs.readFileSync(abs, 'utf8');
 				const wrapped = `(function (clew) {\n'use strict';\n${code}\n})(window.__clewPluginApi?.[${JSON.stringify(id)}]);`;
 				return new Response(wrapped, { headers: headers('text/javascript') });
+			}
+
+			// Files inside a GLOBAL plugin's folder:
+			// /__clew_plugin_file__/<sid>/<id>/<path>. A vault plugin's files
+			// are ordinary vault content and need none of this; a global
+			// plugin lives outside every vault, so its preview surface — and
+			// any sibling it fetches (the Charts plugin loads chart.umd.js) —
+			// is served from here. Gated on the plugin being ENABLED in that
+			// session's vault, and clamped inside the plugin's own folder.
+			if (pathname.startsWith('__clew_plugin_file__/')) {
+				const segments = pathname.split('/').slice(1);
+				const [psid, id, ...rest] = segments;
+				const pluginSession = sessionById(psid);
+				if (!pluginSession?.vaults.isOpen || !id || rest.length === 0) {
+					return new Response('No session', { status: 503, headers: headers('text/plain') });
+				}
+				const vaultSettings = pluginSession.vaults.loadState('vault-settings.json') ?? {};
+				const plugin = enabledPlugins(pluginSession.vaults.root, vaultSettings, globalPluginsDir)
+					.find((p) => p.id === id && p.scope === 'global');
+				if (!plugin) {
+					return new Response('Not an enabled global plugin', { status: 403, headers: headers('text/plain') });
+				}
+				const abs = path.resolve(plugin.dir, rest.map(decodeURIComponent).join('/'));
+				if (abs !== plugin.dir && !abs.startsWith(plugin.dir + path.sep)) {
+					return new Response('Path escapes plugin', { status: 403, headers: headers('text/plain') });
+				}
+				return fileResponse(abs);
 			}
 
 			// Everything else is vault content: first segment is the session id.
@@ -295,8 +323,18 @@ export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDi
 				// as ordinary vault files from .clew/plugins/).
 				const vaultSettings = session.vaults.loadState('vault-settings.json') ?? {};
 				const sid = pathname.slice(0, slash);
-				const pluginTags = previewPluginPaths(session.vaults.root, vaultSettings)
-					.map((p) => `<script src="/${sid}/${p.split('/').map(encodeURIComponent).join('/')}"></script>`)
+				// Vault plugins load as ordinary vault files; global ones from
+				// the __clew_plugin_file__ namespace (they are outside every
+				// vault). Either way the script's own URL sits in its plugin
+				// folder, so the house convention for loading a sibling —
+				// `new URL('x.js', document.currentScript.src)`, what the
+				// Charts plugin does — works in both scopes. (A bare relative
+				// fetch resolves against the NOTE's URL, in both scopes.)
+				const pluginTags = previewPluginScripts(session.vaults.root, vaultSettings, globalPluginsDir)
+					.map((p) => (p.vaultRel
+						? `/${sid}/${p.vaultRel.split('/').map(encodeURIComponent).join('/')}`
+						: `/__clew_plugin_file__/${sid}/${encodeURIComponent(p.id)}/${encodeURIComponent(p.file)}`))
+					.map((src) => `<script src="${src}"></script>`)
 					.join('');
 				// Vault scripts: <vault>/.clew/scripts/*.js load into EVERY
 				// rendered note (alphabetical) — shared custom elements and

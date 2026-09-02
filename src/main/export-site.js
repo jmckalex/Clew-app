@@ -26,7 +26,7 @@ import path from 'node:path';
 import { paths } from './paths.js';
 import { toolchainPath } from './render-service.js';
 import { direntKind, shouldRecurse, walkGuard } from './fs-utils.js';
-import { enabledPlugins, previewPluginPaths } from './plugins.js';
+import { enabledPlugins, previewPluginScripts } from './plugins.js';
 
 const SITE_MARK = '@@SITE@@';
 const NOTE_EXT = /\.(md|jmd)$/i;
@@ -159,10 +159,11 @@ function finishPage(html, rel, vaultRoot, vaultOptions) {
 	} catch { /* none */ }
 	// Enabled plugins' preview surfaces ship too (engine surfaces already ran
 	// in the worker; without this half their fences would land as inert divs).
-	const pluginScripts = previewPluginPaths(vaultRoot, vaultOptions)
-		// ".clew/plugins/<id>/<file>" → "assets/plugins/<id>/<file>"
-		.map((p) => `<script src="${prefix || './'}assets/plugins/${p.split('/').slice(2)
-			.map(encodeURIComponent).join('/')}"></script>`)
+	// Both scopes land in assets/plugins/<id>/ below, so the emitted src is
+	// the same whether the plugin was installed in the vault or globally.
+	const pluginScripts = previewPluginScripts(vaultRoot, vaultOptions, paths.globalPlugins)
+		.map((p) => `<script src="${prefix || './'}assets/plugins/${encodeURIComponent(p.id)}/${
+			encodeURIComponent(p.file)}"></script>`)
 		.join('');
 	// Web Awesome widgets (Meta Bind) render disabled on a static page, but
 	// they still need their definitions to LOOK like anything.
@@ -217,9 +218,8 @@ function copyAssets(outDir, vaultRoot, distDir, vaultOptions) {
 	}
 	// Enabled plugins with a preview surface travel whole (a surface may load
 	// siblings from its own folder — the Charts plugin fetches chart.umd.js).
-	for (const plugin of enabledPlugins(vaultRoot, vaultOptions)) {
+	for (const plugin of enabledPlugins(vaultRoot, vaultOptions, paths.globalPlugins)) {
 		if (!plugin.surfaces.preview) continue;
-		fs.cpSync(path.join(vaultRoot, '.clew', 'plugins', plugin.id),
-			path.join(assets, 'plugins', plugin.id), { recursive: true });
+		fs.cpSync(plugin.dir, path.join(assets, 'plugins', plugin.id), { recursive: true });
 	}
 }

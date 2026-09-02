@@ -180,12 +180,25 @@ browser-window-focus).
   `actions.editNoteField` (frontmatter via shared/frontmatter — respects
   the clean flag — or the inline `Key:: value` line). Both preview-view
   and canvas-view route field-edit/task-toggle.
-- **Plugins** (`src/main/plugins.js`, `src/renderer/plugins.js`): vault
-  plugins in `.clew/plugins/<id>/` with engine/preview/app surfaces,
-  per-vault opt-in (`vault-settings.json` plugins array). App surfaces
-  load via the `__clew_plugin_app__` protocol namespace (CSP has no
-  unsafe-eval); everything registered unwinds on vault change. Vault
-  scripts: `.clew/scripts/*.js` inject into every preview, no manifest.
+- **Plugins** (`src/main/plugins.js`, `src/renderer/plugins.js`):
+  engine/preview/app surfaces, discovered in TWO roots — the vault's
+  `.clew/plugins/<id>/` and the GLOBAL `<userData>/plugins/<id>/`
+  (`paths.globalPlugins`, installed by the user, never by a vault). A
+  vault plugin SHADOWS a global one of the same id. Installing is
+  global; **enabling stays per-vault** (`vault-settings.json` plugins
+  array) — the trust boundary does not move. Every plugin carries
+  `scope` + `dir` (its own folder), and surfaces resolve against `dir`,
+  never against the vault root. plugins.js must stay importable WITHOUT
+  electron (its unit tests run under plain node), so the global dir is
+  passed in by callers rather than read from paths.js. App surfaces load
+  via the `__clew_plugin_app__` protocol namespace (CSP has no
+  unsafe-eval); a global plugin's preview surface and its siblings are
+  served from `__clew_plugin_file__/<sid>/<id>/<path>`, gated on being
+  enabled and clamped inside the plugin folder. A surface loads a
+  sibling with `new URL('x.js', document.currentScript.src)` (a bare
+  relative fetch resolves against the NOTE's URL, in both scopes).
+  Everything registered unwinds on vault change. Vault scripts:
+  `.clew/scripts/*.js` inject into every preview, no manifest.
 - **Site export** (`src/main/export-site.js`, File → Export → Vault as
   Website): one-shot workers with CLEW_SITE_EXPORT=1, marker-URL
   relativization per page depth, assets/ copy, queries baked static.

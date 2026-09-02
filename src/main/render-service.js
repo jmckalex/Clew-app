@@ -23,7 +23,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { CH } from '../shared/channels.js';
 import { paths } from './paths.js';
-import { engineExtensionEntries, previewPluginPaths } from './plugins.js';
+import { engineExtensionEntries } from './plugins.js';
 import { writeFileAtomic } from './fs-utils.js';
 
 const WORKER_PATH = paths.engineWorker;
@@ -162,7 +162,7 @@ export class RenderService {
 				// as prose. Inert for every other note.
 				`kanbanBoard from ${path.join(engineAssets, 'kanban-board.js')}`,
 				// Enabled vault plugins' engine surfaces (custom syntax).
-				...engineExtensionEntries(this.vaultRoot, this.#vaultOptions),
+				...engineExtensionEntries(this.vaultRoot, this.#vaultOptions, paths.globalPlugins),
 			],
 			...this.#biblifyConfig(),
 			// dvisvgm needs ghostscript to convert MetaPost EPS output (and

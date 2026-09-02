@@ -48,6 +48,10 @@ export const paths = app.isPackaged
 		// The bundled demo vault (read-only app payload; main.js copies it
 		// into Documents before opening — a vault must be writable).
 		demoVault: path.join(process.resourcesPath, 'demo-vault'),
+		// Globally installed plugins: written by the USER, never by Clew or
+		// by a vault, which is why installing there is a one-time act while
+		// enabling stays per-vault (main/plugins.js).
+		globalPlugins: path.join(app.getPath('userData'), 'plugins'),
 	}
 	: {
 		engineWorker: require.resolve('jmarkdown/src/watch-worker.js'),
@@ -63,4 +67,7 @@ export const paths = app.isPackaged
 		// In dev the repo's demo-vault IS the working documentation corpus;
 		// it opens in place, no copy.
 		demoVault: path.join(rootDir, 'demo-vault'),
+		// Same userData location in dev, so a plugin installed while
+		// developing is the same one the packaged app finds.
+		globalPlugins: path.join(app.getPath('userData'), 'plugins'),
 	};
