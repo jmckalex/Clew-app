@@ -97,6 +97,13 @@ iOS app must either match or consciously diverge from. The manual in
 
 ## 2. Small residue (none blocks anything)
 
+- **Meta Bind widget polish, DONE** (`c579d11`; manual `45c1b1f`): number
+  pickers were a text field's 11em (mostly empty for a 2-digit mark) and
+  any narrower host width overflowed the + stepper — the component's
+  intrinsic min is ~277px (a 20-char input). Fix: size="small" + shrink
+  the INPUT PART to 3.5em (host sizes naturally to ~9.5em). Also
+  `class(…)` is now honored, not dropped — author classes land on the
+  element (Obsidian-parity), so a vault script can restyle one widget.
 - **Settings-leak incident, fixed same day**: smoke runs had been
   writing recentVaults/lastVault into the REAL settings for several
   sessions (vault.open → rememberVault), and the owner's launch
