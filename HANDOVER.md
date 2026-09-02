@@ -97,6 +97,17 @@ iOS app must either match or consciously diverge from. The manual in
 
 ## 2. Small residue (none blocks anything)
 
+- **Global plugins, DONE** (`376b626`; manual `aecb9ee`) — owner's ask:
+  making a vault should not mean re-copying plugin folders. Plugins are
+  now discovered in TWO roots (vault `.clew/plugins/` + global
+  `<userData>/plugins/`), vault shadowing global by id. Installing is
+  global, ENABLING stays per-vault — the trust boundary did not move.
+  Durable details are in CLAUDE.md § Plugins; the one to remember is
+  that main/plugins.js must stay importable without electron (unit
+  tests run under plain node), which is why the global dir is passed in
+  by callers. Known reload semantics, PRE-EXISTING and unchanged:
+  toggling a plugin checkbox does not reload app/preview surfaces —
+  the settings hint already says to reopen. Worth fixing one day.
 - **Meta Bind widget polish, DONE** (`c579d11`; manual `45c1b1f`): number
   pickers were a text field's 11em (mostly empty for a 2-digit mark) and
   any narrower host width overflowed the + stepper — the component's
