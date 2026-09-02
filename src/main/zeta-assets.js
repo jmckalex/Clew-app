@@ -39,6 +39,7 @@ import { promisify } from 'node:util';
 
 const brotliDecompress = promisify(zlib.brotliDecompress);
 import { paths } from './paths.js';
+import { writeFileAtomic } from './fs-utils.js';
 import MANIFEST from '../shared/zeta-manifest.json' with { type: 'json' };
 
 let progress = null; // { done, total, file, received, expected, failed } while downloading
@@ -144,8 +145,7 @@ export async function download() {
 					throw new Error(`hash mismatch (got ${hash.slice(0, 12)}…) — the CDN has moved to a build Clew has not verified`);
 				}
 				const target = path.join(dir(), file.br ? file.name + '.br' : file.name);
-				fs.writeFileSync(target + '.part', raw);
-				fs.renameSync(target + '.part', target);
+				writeFileAtomic(target, raw);
 			} catch (err) {
 				console.warn(`[clew] office engine download failed (${file.name}):`, err?.message ?? err);
 				progress.failed.push({ file: file.name, error: String(err?.message ?? err) });

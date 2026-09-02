@@ -19,7 +19,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { settings } from './settings.js';
-import { direntKind, shouldRecurse, walkGuard } from './fs-utils.js';
+import { direntKind, shouldRecurse, walkGuard, writeFileAtomic } from './fs-utils.js';
 
 // Never shown in the explorer, never indexed.
 const IGNORED_DIRS = new Set(['.obsidian', '.clew', '.git', 'node_modules', '.trash']);
@@ -116,7 +116,7 @@ export class VaultManager {
 	writeNote(rel, content) {
 		const abs = this.resolve(rel);
 		fs.mkdirSync(path.dirname(abs), { recursive: true });
-		fs.writeFileSync(abs, content);
+		writeFileAtomic(abs, content);
 	}
 
 	/**
@@ -132,7 +132,7 @@ export class VaultManager {
 		if (!/\.pdf$/i.test(rel)) throw new Error(`Not a PDF: ${rel}`);
 		const abs = this.resolve(rel);
 		if (!fs.existsSync(abs)) throw new Error(`No such PDF: ${rel}`);
-		fs.writeFileSync(abs, Buffer.from(data));
+		writeFileAtomic(abs, Buffer.from(data));
 	}
 
 	// The ZetaOffice viewer's save path, guarded like writePdf: only an
@@ -142,7 +142,7 @@ export class VaultManager {
 		if (!/\.(odt|ods|odp|docx|xlsx|pptx)$/i.test(rel)) throw new Error(`Not an office document: ${rel}`);
 		const abs = this.resolve(rel);
 		if (!fs.existsSync(abs)) throw new Error(`No such document: ${rel}`);
-		fs.writeFileSync(abs, Buffer.from(data));
+		writeFileAtomic(abs, Buffer.from(data));
 	}
 
 	/** Create a new note; appends " 1", " 2", … if the name is taken. Returns the rel path. */
@@ -199,7 +199,7 @@ export class VaultManager {
 				fs.rmSync(tmp, { force: true });
 			}
 		}
-		fs.writeFileSync(candidate, Buffer.from(data));
+		writeFileAtomic(candidate, Buffer.from(data));
 		return path.relative(this.root, candidate);
 	}
 
@@ -232,7 +232,7 @@ export class VaultManager {
 
 	saveState(name, data) {
 		if (!this.root) return;
-		fs.writeFileSync(path.join(this.root, '.clew', name), JSON.stringify(data, null, 2));
+		writeFileAtomic(path.join(this.root, '.clew', name), JSON.stringify(data, null, 2));
 	}
 
 	// ---- watching ---------------------------------------------------------

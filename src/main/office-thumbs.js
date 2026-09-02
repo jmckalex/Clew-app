@@ -23,6 +23,7 @@ import { BrowserWindow } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import { status as engineStatus } from './zeta-assets.js';
+import { writeFileAtomic } from './fs-utils.js';
 
 const OFFICE_RE = /\.(odt|ods|odp|docx|xlsx|pptx)$/i;
 const BOOT_TIMEOUT = 90_000;
@@ -100,7 +101,7 @@ async function generate(session, rel, outAbs) {
 		const png = image.toPNG();
 		if (png.length < 1024) throw new Error('empty capture');
 		fs.mkdirSync(path.dirname(outAbs), { recursive: true });
-		fs.writeFileSync(outAbs, png);
+		writeFileAtomic(outAbs, png);
 		const stamp = Math.round(fs.statSync(outAbs).mtimeMs);
 		return { ok: true, path: thumbRel(rel), stamp };
 	} finally {

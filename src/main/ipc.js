@@ -27,7 +27,7 @@ import { propagateRename } from './rename-links.js';
 import { exportNote } from './export.js';
 import { exportSite } from './export-site.js';
 import { parseBib } from '../shared/bib.js';
-import { direntKind, shouldRecurse, walkGuard } from './fs-utils.js';
+import { direntKind, shouldRecurse, walkGuard, writeFileAtomic } from './fs-utils.js';
 import { listPlugins } from './plugins.js';
 import fs from 'node:fs';
 import nodePath from 'node:path';
@@ -242,7 +242,7 @@ export function registerIpc() {
 			if (canceled || !chosen) return null;
 			target = chosen;
 		}
-		fs.writeFileSync(target, Buffer.from(data, 'base64'));
+		writeFileAtomic(target, Buffer.from(data, 'base64'));
 		return target;
 	});
 

@@ -24,6 +24,7 @@ import path from 'node:path';
 import { CH } from '../shared/channels.js';
 import { paths } from './paths.js';
 import { engineExtensionEntries, previewPluginPaths } from './plugins.js';
+import { writeFileAtomic } from './fs-utils.js';
 
 const WORKER_PATH = paths.engineWorker;
 
@@ -177,7 +178,7 @@ export class RenderService {
 			'Fontawesome': '/__clew_assets__/fontawesome/all.min.js',
 			'Highlight src': '/__clew_assets__/highlight/atom-one-dark.min.css',
 		};
-		fs.writeFileSync(
+		writeFileAtomic(
 			path.join(this.engineDir, '.jmarkdown', 'config.json'),
 			JSON.stringify(config, null, 2),
 		);
