@@ -1,4 +1,4 @@
-# Handover — 2026-09-02 (office work SETTLED into CLAUDE.md; next: the launch list)
+# Handover — 2026-09-02 (launch list: 6/6 worked; what's left is owner-side)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it); the original design plan is at
@@ -8,94 +8,96 @@ it again.
 
 ## 0. Where things stand
 
-The whole ZetaOffice arc is DONE and MOVED: punch list (9/9), office
-embeds (thumbnail/`|live` in notes and canvases), the Sifr icon splice
-and small icons — everything shipped, smoke-verified, documented in the
-manual, and its durable architecture now lives in **CLAUDE.md § Office
-documents** (written 2026-09-02; trust it, including the teardown
-gotchas and the new smoke-harness knobs). Trees clean here and in
-../Clew-docs; 408 unit tests green. Recent commits: `2a2a4c4` →
-`3bc44bf` tell the story; the "Finishing ZetaOffice" artifact holds the
-per-item outcomes. Owner is trialling the Sifr/small-icons look — the
-two reverts are independent (size block in zeta-thread.js#loadFile;
-vendored zip in vendor/libreoffice-icons/).
+The whole launch-readiness list from 2026-09-02 was worked in one
+session. Commits `5b70193` → `28af145` here, `7bc52fa` + `e618ed9` in
+../Clew-docs. 423 unit tests green; every feature smoke-verified with
+artefacts eyeballed.
 
-## 1. THE PLAN (agreed with the owner, 2026-09-02): launch readiness
+1. **Atomic vault writes — DONE** (`5b70193`). `writeFileAtomic` in
+   fs-utils.js (dot-temp + fsync + rename, symlink-following,
+   mode-preserving) behind every durable write. Measured: the rename
+   reaches chokidar as a plain 'change', so nothing downstream moved.
+2. **Note history — DONE** (`22c59b4`). `.clew/history/` snapshots
+   (5 min interval / 40 versions / 60 days, newest always spared),
+   "View note history…" browse-and-restore modal, per-vault `history`
+   setting (default ON), manual chapter + guide-note section shipped.
+3. **First-run — DONE** (`dd703e7`). The packaged app ships the demo
+   vault (Resources/demo-vault), copies it to ~/Documents/Clew Demo
+   Vault on first use; welcome screen gained Create new vault… +
+   Explore the demo vault; Help → Clew Documentation works installed;
+   a vault with no saved workspace opens its Welcome.md. Verified on
+   the real packaged .app against fresh userData (`CLEW_USER_DATA` —
+   HOME alone does NOT isolate Electron on macOS).
+4. **Packaged office-engine download — DONE.** Real CDN download from
+   the packaged .app into (isolated) userData: 5 files hash-verified,
+   brotli twins on disk, LibreOffice booted, docx opened
+   (smoke/office-download-scenario.js). Not literally run from a
+   mounted .dmg into the owner's real userData — same code path; do
+   that once by hand if you want the last inch.
+5. **Win/Linux artefacts — BUILT, NOT RUN.** `Clew Setup 0.9.0.exe`,
+   `.AppImage`, `.deb` all build with today's changes (demo vault
+   verified inside both unpacked trees). Runtime on real machines
+   still untested — keep them off the download page until a VM run, or
+   say "untested" next to them. This is the one genuinely open item.
+6. **Big-vault stress — DONE, no cliff.** 5003 synthetic notes: cold
+   index 412ms / warm 64ms; search 1–6ms; query dashboard ~1s first
+   render, ~1.5s save→requery (600ms debounce included); ~800MB total.
+   Kit + baseline in `smoke/README.md`. Honest cost, not a cliff: any
+   save re-renders every open query dashboard (~1s of worker per save).
 
-The strategic read the owner signed off on: the app needs USERS more
-than features. In order — **the next session starts at item 1**:
+**Owner's own actions, unchanged**: the GoDaddy DNS change (A records
+for clew-app.com/.net → 144.126.236.254), then in Clew-docs
+`make dns-check` → `provision` → `sync` → `tls`. Plus item 5's VM run
+if the Win/Linux artefacts are to ship, and the Sifr/small-icons
+verdict (still untried; the two independent reverts are documented in
+git history — size block in zeta-thread.js#loadFile, vendored zip in
+vendor/libreoffice-icons/).
 
-1. **Atomic vault writes** — `vault.writeNote` (and writePdf/
-   writeOffice/saveState/kv-store) are bare `writeFileSync`; a crash
-   mid-write can truncate a note. Adopt the `.part` + rename pattern
-   (pdf-fonts.js is the in-repo exemplar) across every vault write.
-2. **Note history snapshots** — `.clew/history/` keeping the last N
-   versions per note (cap by count/age), with a restore affordance.
-   Closes the "auto-save ate my paragraphs" gap Obsidian users assume
-   is covered. Manual chapter needed (the rule with no mechanism!).
-3. **First-run experience** — install the packaged app somewhere fresh
-   and look: what does a stranger see, and can they reach the demo
-   vault (the de-facto tutorial)? Fix what that shows.
-4. **One real packaged run** of the office engine download (verified in
-   dev via CLEW_ZETA_DIR; never from an actual .dmg into real userData).
-5. **Win/Linux artefacts on real machines** (a VM is fine) — or keep
-   them off the download page; untested installers are worse than none.
-6. **Big-vault stress** — synthetic ~5k-note vault through indexer,
-   search, and query fences; find the cliff before Reddit does.
+## 1. Small residue (none blocks anything)
 
-**Owner's own action, the gate for all of it**: the GoDaddy DNS change
-(A records for clew-app.com/.net → 144.126.236.254), then in Clew-docs
-`make dns-check` → `provision` → `sync` → `tls`.
+- `smoke/` is now committed — extend it, don't rewrite scenarios in
+  scratchpads. big-vault note folders are RANDOM: touch a path from the
+  index, never a guessed one (an add-not-change cost an hour here).
+- Query-dashboard renders served from a warm cache emit NO
+  EV_RENDER_DONE — a scenario timing "first render" must delete the
+  vault's .clew/ first (smoke/README says so).
+- History restore on a note in READING mode: verified via the external
+  change path. Canvas files snapshot too, but the modal/restore UI is
+  notes-only (command gated `needsNote`) — a future affordance.
+- Toggling the history switch OFF then ON from Settings writes a plain
+  boolean and so discards a hand-edited tuning object (documented in
+  the manual).
+- Rename of an OPEN pdf/office/canvas tab still leaves the tab on the
+  old path (`remapPaths` only handles note tabs) — survived the list.
+- Real-keyboard checks inside LibreOffice (⌘S, clipboard) and
+  office-convert on a machine with desktop LO: still unverifiable here.
+- Restore-boot policy unchanged: a restored office tab boots
+  LibreOffice at launch (deliberate, unreviewed).
+- Kanban card drag (write path) — v2 of a shipped feature.
 
-## 2. Small residue (none blocks anything)
+## 2. The owner works in this tree concurrently
 
-- Real-keyboard checks inside LibreOffice: ⌘S/Ctrl+S and clipboard
-  (synthetic input can't settle them; manual says "toolbar Save").
-- office-convert's actual conversion needs a machine WITH desktop
-  LibreOffice (refusal paths verified here).
-- Restore-boot policy: a workspace restored with a visible office tab
-  boots LibreOffice (1.6 GB) at launch — deliberate, unreviewed.
-- Rename of an OPEN pdf/office/canvas file leaves its tab pointing at
-  the old path (`remapPaths` only handles note tabs) — fold into the
-  launch work.
-- Kanban-board card drag (write path) — v2 of a shipped feature.
-- Smoke scenarios live only in session scratchpads and die with them —
-  consider a committed `smoke/` directory of the reusable ones
-  (office boot/save/guard, regression) so sessions stop rewriting them.
+Tree left CLEAN on 2026-09-02: main at `28af145`, Clew-docs at
+`e618ed9`. `zeta-assets/` here is deliberate and gitignored
+(PROVENANCE.md inside). `out/` holds fresh mac/win/linux artefacts from
+this session. Anything uncommitted you find is NEW owner work — leave
+it unstaged and note it here. Never switch THIS tree off main. Live
+testing flips demo widgets — reset `status:`/`done:`/`^motto`
+baselines before committing demo files.
 
-## 3. Traps for THIS stretch of work
-
-- **Toolbar-click smoke coordinates changed** with the small icons —
-  any scenario clicking LibreOffice's toolbar by offset must be
-  re-derived (old Save offset ~(60,39) from the dock rect is stale).
-- Long smoke runs (double LibreOffice boots) look like hangs from the
-  terminal — run them `run_in_background` with output to a file; the
-  owner should never watch a silent 90-second pipe.
-- Older traps (centered-text suffix, execCommand insertText, blanket
-  dist/ gitignore, EmbedPDF shadow DOM, wa.css tokens, Meta Bind morph
-  guard, canvas-card CSS) are in this file's git history — still true.
-
-## 4. The owner works in this tree concurrently
-
-The tree was left CLEAN on 2026-09-02: main at `39ac229` + the
-CLAUDE.md/HANDOVER settlement commit, Clew-docs at `059a326`. The
-gitignored `zeta-assets/` here is deliberate (PROVENANCE.md inside it).
-Anything uncommitted you find is NEW owner work — leave it unstaged and
-note it here. Never switch THIS tree off main. Live testing flips demo
-widgets — reset `status:`/`done:`/`^motto` baselines before committing
-demo files.
-
-## 5. Standing session rules (they keep earning their keep)
+## 3. Standing session rules (they keep earning their keep)
 
 - **NEVER `git add -A`** — stage explicit paths.
 - Always pass `CLEW_SMOKE_VAULT`; `git status` demo and study vaults
   after every smoke run. App settings (theme, autoFill, fillColumn)
   are GLOBAL and persist — smoke scenarios that flip them must restore
-  them.
+  them. `CLEW_USER_DATA` isolates a run entirely (fresh-install sim).
+- Long smoke runs go `run_in_background` with output to a file.
 - **The owner's bug reports have been consistently right.**
 - **Write assertions that can fail — and eyeball the artefact anyway.**
 - **Verify artefacts by content**, never the log line.
-- **Prefer measuring to guessing** — and re-measure.
+- **Prefer measuring to guessing** — and re-measure (the chokidar
+  rename measurement is why atomic writes shipped in an afternoon).
 - A feature change is not finished until the MANUAL in `../Clew-docs`
   matches it — nothing in this repo's git status reminds you.
 - `npm run dev` / `npm run package` re-sync the engine AND the
