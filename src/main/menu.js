@@ -211,6 +211,7 @@ class AppMenu {
 				{ label: 'Open Recent Vault', submenu: this.#recentSubmenu() },
 				{ type: 'separator' },
 				c('file:save', 'Save', { chord: 'Mod-s', needs: 'note' }),
+				c('file:history', 'View Note History…', { needs: 'note' }),
 				{ type: 'separator' },
 				c('file:bookmark', 'Bookmark This Note', { needs: 'note', type: 'checkbox', checked: s.bookmarked }),
 				c('file:reveal', isMac ? 'Reveal in Finder' : 'Show in File Manager', { needs: 'note' }),

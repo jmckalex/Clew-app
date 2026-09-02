@@ -105,6 +105,15 @@ class ClewSettingsView extends ClewElement {
 				+ 'state in clewdata.json (which travels with the vault). Notes are code '
 				+ 'with this on — enable it only for vaults you trust. See the Note API '
 				+ 'guide note.'),
+			...this.#vaultToggle('history',
+				'Note history: keep snapshots of notes as they change',
+				'Before a save displaces an existing note (or canvas), the old text '
+				+ 'is copied into .clew/history/ — at most one snapshot per five '
+				+ 'minutes of editing, capped per note at 40 versions and 60 days '
+				+ '(the newest always survives). Browse and restore with "View note '
+				+ 'history…" in the palette or the File menu; the snapshots are '
+				+ 'plain files you could also recover by hand.',
+				{ defaultOn: true }),
 		);
 		section.append(
 			...this.#vaultTextRow('bibliography',
@@ -239,7 +248,7 @@ class ClewSettingsView extends ClewElement {
 		return [row, hint];
 	}
 
-	#vaultToggle(key, label, hintText) {
+	#vaultToggle(key, label, hintText, { defaultOn = false } = {}) {
 		const box = document.createElement('input');
 		box.type = 'checkbox';
 		box.disabled = true;
@@ -248,7 +257,9 @@ class ClewSettingsView extends ClewElement {
 		hint.className = 'settings-hint';
 		hint.textContent = hintText;
 		ipc.invoke(CH.VAULT_SETTINGS_GET).then((vaultSettings) => {
-			box.checked = vaultSettings?.[key] === true;
+			box.checked = defaultOn
+				? vaultSettings?.[key] !== false
+				: vaultSettings?.[key] === true;
 			box.disabled = false;
 		}).catch(() => {});
 		box.addEventListener('change', () => {

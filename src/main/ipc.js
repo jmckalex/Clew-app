@@ -28,6 +28,7 @@ import { exportNote } from './export.js';
 import { exportSite } from './export-site.js';
 import { parseBib } from '../shared/bib.js';
 import { direntKind, shouldRecurse, walkGuard, writeFileAtomic } from './fs-utils.js';
+import { listSnapshots, readSnapshot } from './history.js';
 import { listPlugins } from './plugins.js';
 import fs from 'node:fs';
 import nodePath from 'node:path';
@@ -69,6 +70,26 @@ export function registerIpc() {
 		// Rewrite [[links]] pointing at the renamed note(s), using the
 		// pre-rename index state (the watcher re-indexes right after).
 		return propagateRename({ oldRel: path, newRel: newPath, indexer: s.indexer, vaults: s.vaults });
+	});
+
+	// Note history: list/read snapshots, and restore one. The path is
+	// validated by resolve() (must stay inside the vault); the snapshot id
+	// is validated by history.js itself. Restore force-snapshots the text
+	// it displaces first, then writes through writeNote — the open editor
+	// picks the change up over the normal external-change path.
+	handle(CH.HISTORY_LIST, (s, { path }) => {
+		s.vaults.resolve(path);
+		return listSnapshots(s.vaults.root, path);
+	});
+	handle(CH.HISTORY_READ, (s, { path, id }) => {
+		s.vaults.resolve(path);
+		return readSnapshot(s.vaults.root, path, id);
+	});
+	handle(CH.HISTORY_RESTORE, (s, { path, id }) => {
+		s.vaults.resolve(path);
+		const text = readSnapshot(s.vaults.root, path, id);
+		s.vaults.snapshotHistory(path, { force: true });
+		s.vaults.writeNote(path, text);
 	});
 
 	handle(CH.INDEX_GET, (s) => (s.vaults.isOpen ? s.indexer.snapshot() : null));

@@ -28,6 +28,11 @@ export const CH = {
 	ATTACH_SAVE: 'clew:attach-save',
 	FS_REVEAL: 'clew:fs-reveal',
 
+	// invoke: note history (.clew/history/ snapshots)
+	HISTORY_LIST: 'clew:history-list',
+	HISTORY_READ: 'clew:history-read',
+	HISTORY_RESTORE: 'clew:history-restore',
+
 	// invoke: persistence
 	WORKSPACE_LOAD: 'clew:workspace-load',
 	WORKSPACE_SAVE: 'clew:workspace-save',

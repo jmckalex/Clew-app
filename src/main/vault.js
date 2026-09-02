@@ -20,6 +20,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { settings } from './settings.js';
 import { direntKind, shouldRecurse, walkGuard, writeFileAtomic } from './fs-utils.js';
+import { snapshotBeforeWrite, renameHistory } from './history.js';
 
 // Never shown in the explorer, never indexed.
 const IGNORED_DIRS = new Set(['.obsidian', '.clew', '.git', 'node_modules', '.trash']);
@@ -116,7 +117,18 @@ export class VaultManager {
 	writeNote(rel, content) {
 		const abs = this.resolve(rel);
 		fs.mkdirSync(path.dirname(abs), { recursive: true });
+		this.snapshotHistory(rel);
 		writeFileAtomic(abs, content);
+	}
+
+	/**
+	 * Preserve the note's current disk content in .clew/history/ before it
+	 * is displaced (rate-limited inside; `force` for restore, where the
+	 * displaced text must survive regardless of the interval).
+	 */
+	snapshotHistory(rel, { force = false } = {}) {
+		const options = this.loadState('vault-settings.json')?.history;
+		return snapshotBeforeWrite(this.root, rel, options, { force });
 	}
 
 	/**
@@ -209,6 +221,7 @@ export class VaultManager {
 		if (fs.existsSync(to)) throw new Error(`Already exists: ${newRel}`);
 		fs.mkdirSync(path.dirname(to), { recursive: true });
 		fs.renameSync(from, to);
+		renameHistory(this.root, rel, newRel);
 	}
 
 	async trash(rel) {
