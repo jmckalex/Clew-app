@@ -90,7 +90,10 @@ note API, plugins, and every settings key.
   {combo:{key,modifiers}} | {wait:ms}]`, dispatched over CDP
   `Input.dispatch*` — `webContents.sendInputEvent` NEVER reaches OOPIFs
   (i.e. every preview iframe), and combos need real modifier keydowns
-  around the letter. Use it for every UI change.
+  around the letter. Use it for every UI change. Reusable scenarios and
+  the big-vault generator live in `smoke/` (its README has the recipes
+  and the 5k-note baseline numbers) — extend that folder instead of
+  rewriting scenarios in session scratchpads.
 
 ## Architecture (three processes + render workers)
 
