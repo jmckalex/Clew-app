@@ -423,10 +423,19 @@ html.wa-dark, html.wa-light {
 	--wa-form-control-activated-color: var(--preview-accent);
 }
 wa-select.clew-mb { display: inline-block; min-width: 9.5em; }
-wa-input.clew-mb, wa-number-input.clew-mb, wa-time-input.clew-mb {
+wa-input.clew-mb, wa-time-input.clew-mb {
 	display: inline-block;
 	width: 11em;
 }
+/* A number is a few digits between two steppers — no prose measure needed.
+   The component defaults to a ~20-char input (277px), so it renders at
+   size="small" and its input part is shrunk to a few digits; the host then
+   sizes naturally around the steppers (~9.5em) instead of a text field's
+   11em. Sizing the input part (not the host) is deliberate: a fixed host
+   width narrower than the component's intrinsic minimum shoves the +
+   stepper out of the pill. 3.5em holds three digits (marks reach 100). */
+wa-number-input.clew-mb { display: inline-block; vertical-align: middle; }
+wa-number-input.clew-mb::part(input) { width: 3.5em; min-width: 0; }
 wa-textarea.clew-mb { display: block; max-width: 36em; margin: 0.4em 0; }
 wa-color-picker.clew-mb { display: inline-block; }
 wa-progress-bar.clew-mb-display { display: inline-block; width: 160px; vertical-align: middle; }
