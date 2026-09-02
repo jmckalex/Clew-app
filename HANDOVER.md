@@ -87,8 +87,14 @@ iOS app must either match or consciously diverge from. The manual in
   `~/Documents/Clew Demo Vault` on first use (bundle copy is read-only
   payload; the user owns the copy). iOS likely wants the same idea
   (bundle + copy-out on first run).
+- **Global plugins are a new install location** (`<userData>/plugins/`,
+  vault copy shadows global by id; enabling still per-vault). The
+  manual's plugins.html now documents it for BOTH apps, with a
+  per-platform folder table — iOS needs its own row or a caveat.
 - **Manual sections that now speak desktop truths** — check them
-  against iOS reality and caveat where needed: `note-history.html`
+  against iOS reality and caveat where needed: `plugins.html` (global
+  plugins, above), `settings-and-hotkeys.html` (its plugin entry),
+  `note-history.html`
   (new chapter), `getting-started.html` (#first-launch welcome-screen
   buttons, #example-vaults "ships inside the app"),
   `vaults-and-files.html` (the `.clew/` table gained `history/`; the
