@@ -17,6 +17,8 @@ export const CH = {
 	VAULT_CURRENT: 'clew:vault-current',
 	VAULT_RECENT: 'clew:vault-recent',
 	VAULT_TREE: 'clew:vault-tree',
+	VAULT_CREATE_DIALOG: 'clew:vault-create-dialog',
+	VAULT_OPEN_DEMO: 'clew:vault-open-demo',
 
 	// invoke: file operations (paths are vault-relative)
 	NOTE_READ: 'clew:note-read',

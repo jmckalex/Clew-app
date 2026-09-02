@@ -34,6 +34,12 @@ ipc.on(CH.EV_VAULT_OPENED, async ({ vault, tree }) => {
 	vaultStore.setVault(vault);
 	vaultStore.setTree(tree);
 	await workspaceStore.restore((path) => vaultStore.pathExists(path));
+	// A vault opening for the first time (no saved workspace) greets with
+	// its own Welcome note when it has one, instead of an empty pane —
+	// what makes the demo vault a tutorial from the very first screen.
+	if (workspaceStore.openTabIds().size === 0 && vaultStore.pathExists('Welcome.md')) {
+		workspaceStore.openNote('Welcome.md');
+	}
 	editorPool.reap(workspaceStore.openTabIds());
 	bookmarkStore.load();
 	applySnippets();

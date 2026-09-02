@@ -137,6 +137,27 @@
         "filter": [
           "images_sifr.zip"
         ]
+      },
+      {
+        "from": "demo-vault",
+        "to": "demo-vault",
+        "filter": [
+          "**/*",
+          "!.clew/**",
+          "!**/.DS_Store"
+        ]
+      },
+      {
+        "from": "demo-vault/.clew/vault-settings.json",
+        "to": "demo-vault/.clew/vault-settings.json"
+      },
+      {
+        "from": "demo-vault/.clew/plugins",
+        "to": "demo-vault/.clew/plugins",
+        "filter": [
+          "**/*",
+          "!**/.DS_Store"
+        ]
       }
     ],
     "mac": {

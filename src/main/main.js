@@ -184,6 +184,41 @@ export async function openVaultDialog(fromSession = null) {
 	return openVaultAnywhere(result.filePaths[0], { preferSession: fromSession }).vaults.info;
 }
 
+/** Create-a-vault: pick a name and place, mkdir, open. The welcome
+ *  screen's answer for someone who has no folder of notes yet. */
+export async function createVaultDialog(fromSession = null) {
+	const result = await dialog.showSaveDialog(fromSession?.win ?? undefined, {
+		title: 'Create a new vault',
+		buttonLabel: 'Create Vault',
+		nameFieldLabel: 'Vault name',
+		defaultPath: path.join(app.getPath('documents'), 'My Vault'),
+		properties: ['createDirectory', 'showOverwriteConfirmation'],
+	});
+	if (result.canceled || !result.filePath) return null;
+	fs.mkdirSync(result.filePath, { recursive: true });
+	return openVaultAnywhere(result.filePath, { preferSession: fromSession }).vaults.info;
+}
+
+/**
+ * The demo vault — the de-facto tutorial. In dev it opens the repo's
+ * demo-vault in place (that copy IS the documentation working corpus).
+ * Installed, the bundle's copy is read-only app payload and a vault must
+ * be writable, so the user gets their own copy in Documents — created on
+ * first use, reopened (never overwritten) after that, so their edits and
+ * experiments survive.
+ */
+export function openDemoVault(fromSession = null) {
+	let target = paths.demoVault;
+	if (app.isPackaged) {
+		target = path.join(app.getPath('documents'), 'Clew Demo Vault');
+		if (!fs.existsSync(target)) {
+			fs.cpSync(paths.demoVault, target, { recursive: true });
+		}
+	}
+	if (!fs.existsSync(target)) return null;
+	return openVaultAnywhere(target, { preferSession: fromSession }).vaults.info;
+}
+
 // Dev mode: reload every window whenever esbuild rewrites the renderer
 // bundle or scripts/dev.js recopies static assets.
 function watchRendererDist() {

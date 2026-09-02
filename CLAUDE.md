@@ -55,9 +55,15 @@ note API, plugins, and every settings key.
   (build-engine/, installed with --legacy-peer-deps), the engine assets,
   and the preview assets (mathjax etc.) ship unpacked under Resources/ via
   extraResources — except the engine's node_modules, which electron-builder
-  refuses to copy and scripts/after-pack.cjs copies instead. Dev-vs-packaged
+  refuses to copy and scripts/after-pack.cjs copies instead. The demo vault
+  ships the same way (Resources/demo-vault, `.clew/` stripped to
+  vault-settings + plugins); `main.js#openDemoVault` copies it to
+  `~/Documents/Clew Demo Vault` on first use (bundle is read-only payload)
+  and the welcome screen / Help menu route through it. Dev-vs-packaged
   locations are decided ONCE in `src/main/paths.js`; new main-process file
-  dependencies must go through it. Icon: scripts/make-icon.js renders
+  dependencies must go through it. `CLEW_USER_DATA` (honored at the top of
+  paths.js, the only import-time userData reader) points the app at an
+  alternate userData dir — how a fresh install is simulated. Icon: scripts/make-icon.js renders
   build-resources/icon.svg → icns (committed).
 - **Tests:** `npm test` (`node --test`, files in `tests/`): workspace tree,
   note-metadata extractor, BibTeX parser, the ported jmarkdown-scan suite,

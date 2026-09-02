@@ -22,7 +22,7 @@ import { CH } from '../shared/channels.js';
 import { settings } from './settings.js';
 import { appMenu } from './menu.js';
 import { sessionFor } from './session.js';
-import { openVaultAnywhere, openVaultDialog } from './main.js';
+import { openVaultAnywhere, openVaultDialog, createVaultDialog, openDemoVault } from './main.js';
 import { propagateRename } from './rename-links.js';
 import { exportNote } from './export.js';
 import { exportSite } from './export-site.js';
@@ -52,6 +52,8 @@ export function registerIpc() {
 	const handleGlobal = (channel, fn) => ipcMain.handle(channel, (event, payload) => fn(payload, event));
 
 	handle(CH.VAULT_OPEN_DIALOG, (s) => openVaultDialog(s));
+	handle(CH.VAULT_CREATE_DIALOG, (s) => createVaultDialog(s));
+	handle(CH.VAULT_OPEN_DEMO, (s) => openDemoVault(s));
 	handle(CH.VAULT_OPEN_PATH, async (s, { path }) => {
 		const target = openVaultAnywhere(path, { preferSession: s });
 		await target.opened; // new windows open their vault after load

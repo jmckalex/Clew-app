@@ -279,6 +279,25 @@ clew-tab-group[data-drop='bottom'] .drop-overlay { inset: 50% 0 0 0; }
 	font-size: 14px;
 }
 .welcome-open:hover { background: var(--clew-accent-hover); }
+.welcome-actions { display: flex; gap: 8px; }
+.welcome-create,
+.welcome-demo {
+	background: var(--clew-bg-tertiary);
+	color: var(--clew-text-normal);
+	border: 1px solid var(--clew-border);
+	padding: 6px 14px;
+	border-radius: 8px;
+	font-size: 13px;
+}
+.welcome-create:hover,
+.welcome-demo:hover { background: var(--clew-hover); border-color: var(--clew-accent); }
+.welcome-hint {
+	color: var(--clew-text-faint);
+	font-size: 12px;
+	margin: 2px 0 0;
+	max-width: 380px;
+	text-align: center;
+}
 .welcome-recent {
 	display: flex;
 	flex-direction: column;
