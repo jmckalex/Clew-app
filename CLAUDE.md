@@ -63,15 +63,28 @@ note API, plugins, and every settings key.
   note-metadata extractor, BibTeX parser, the ported jmarkdown-scan suite,
   canvas model, diary, frontmatter, plugins discovery, query/leaflet/exif
   parsers, Excalidraw round-trip, markdown tables, callouts, block
-  references, Dataview/Bases/dataviewjs — 322 tests. DOM/UI work is
-  verified with the smoke harness.
+  references, Dataview/Bases/dataviewjs, office-tab layout rules —
+  408 tests. DOM/UI work is verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js] [CLEW_SMOKE_VAULT=/path/vault]
   electron .` — SMOKE_VAULT opens exactly that vault, never touching the
   user's restored vault set (always pass it). Boots the app, runs the
   scenario in the renderer (dev hook `window.__clew` exposes the stores,
   registry, ipc), optionally drives the preview iframe's document via
-  webFrameMain, screenshots, and quits. Use it for every UI change.
+  webFrameMain, screenshots, and exits HARD (`app.exit` after flushing
+  editors — the office close guards would otherwise hang the harness on
+  their own success). More knobs, all documented in main.js:
+  `CLEW_SMOKE_LOG=1` (every console line), `CLEW_SMOKE_METRICS=/p.json`
+  (app.getAppMetrics), `CLEW_SMOKE_CONFIRM=save|discard|cancel` (answers
+  the office Save/Discard/Cancel dialog without UI),
+  `CLEW_SMOKE_CLOSE_WINDOW=1` (drives a real window close; logs
+  `smoke-windows: N`), `CLEW_SMOKE_CLIPBOARD=1` (+`__clewSmokeClipboard`
+  preload), and REAL input: a scenario queues `window.__clewSmokeInput =
+  [{click:{x,y}} | {tripleClick:{x,y}} | {text:'abc'} |
+  {combo:{key,modifiers}} | {wait:ms}]`, dispatched over CDP
+  `Input.dispatch*` — `webContents.sendInputEvent` NEVER reaches OOPIFs
+  (i.e. every preview iframe), and combos need real modifier keydowns
+  around the letter. Use it for every UI change.
 
 ## Architecture (three processes + render workers)
 
@@ -198,6 +211,88 @@ browser-window-focus).
   denied and navigation pinned to http(s) in main.js — keep it that way.
 - Canvas file IO reuses NOTE_READ/NOTE_WRITE (they are extension-agnostic);
   renames propagate into canvas `file` refs via rename-links.js.
+
+### Office documents (ZetaOffice — LibreOffice-in-wasm)
+
+- Six formats (`.docx/.xlsx/.pptx/.odt/.ods/.odp`) EDIT in tabs and
+  embeds: allotropia's LOWA build + zetajs, in clew-preview iframes
+  (`preview-client/zeta-page.{html,js}` host ↔ `zeta-thread.js` in the
+  LOWA worker). Needs the SAB switch in main.js (rationale there).
+  Saving is EXPLICIT — LibreOffice's own toolbar Save (⌘S/Ctrl+S do NOT
+  reach the wasm accelerators; synthetic input proved ctrlKey arrives
+  and is ignored) → office-save bridge (pdf-save.js) → `OFFICE_WRITE` →
+  `vault.writeOffice` (existing office file in-vault only). The system
+  clipboard is NOT bridged in this LOWA build, either direction.
+- **The engine is downloaded, never shipped** (`main/zeta-assets.js`):
+  SHA256 pins in `shared/zeta-manifest.json` — the CDN has no versioned
+  URLs, so a hash mismatch REFUSES, not "probably works". The two big
+  files stay brotli on disk (~52 MB); `protocol.handle` does NOT decode
+  a Content-Encoding header (measured), so protocol.js decompresses
+  `<name>.br` twins through a zlib stream. Dev serves the repo's
+  gitignored `zeta-assets/` (its PROVENANCE.md is the pin);
+  `CLEW_ZETA_DIR` overrides the dir AND marks it writable — the repo
+  copy never is. Settings → Office documents = download/remove; the
+  first-open tab panel offers the same.
+- **The office dock** (`renderer/office-dock.js`) owns the window's ONE
+  office iframe in a fixed OVERLAY tracked to the office tab's host
+  rect: reparenting an iframe reloads it, and the tab body is
+  replaceChildren'd on every switch — an in-body frame would discard a
+  booted LibreOffice per glance at a note. Office tabs never navigate
+  and are never navigated over (tree.js#openPath, like canvas tabs);
+  splits MOVE them; cross-pane opens reuse the tab. One instance per
+  APP via the main-process slot (`main/office-slot.js`), released
+  implicitly on webContents death/reload; blocked tabs re-render on
+  slot broadcasts and wake themselves. Dirty state drives the tab dot,
+  a close guard (workspace-store `registerCloseGuard`) and a main-side
+  window-close handshake (`EV_CLOSE_REQUESTED`/`WINDOW_CLOSE_RESOLVED`,
+  with `'pending'` stopping the fail-open timer) — native
+  Save/Discard/Cancel on every close path. External changes reuse
+  editorPool's model with the echo window stamped at the save REQUEST:
+  chokidar outruns the save-result round-trip, and stamping at the
+  result reboots LibreOffice out from under its own save.
+- **Embeds** (owner's decision 2026-09-01): `![[x.docx]]` renders a
+  static thumbnail; `![[x.docx|live]]` a full editor that BYPASSES the
+  one-instance slot (the alias is the consent; ~1.2 GB first instance,
+  ~0.5 GB each thereafter in the shared preview process — measured).
+  Thumbnails: an offscreen BrowserWindow boots the chromeless page
+  (`&thumb=1`; the thread hides LayoutManager chrome, sidebar, ruler)
+  and one capturePage lands in `.clew/cache/office-thumbs/<rel>.png` —
+  mtime-cached, strictly serialized, MIRRORED path so read-only
+  surfaces (canvas embed scenes) construct URLs without asking
+  (`main/office-thumbs.js`; preview hydration over a window.top bridge).
+  Live embeds are HOISTED out of morphed flow into an absolutely
+  positioned `data-clew-keep` holder on the preview body
+  (`preview-client/office-embed.js`): any DOM move reloads an iframe,
+  and a parser-created iframe detached before first-load-commit never
+  renavigates — the holder's iframe is built FRESH with src set after
+  insertion, and client.js strips src from incoming live iframes at
+  morph so re-renders never boot throwaways. Canvas nodes pick
+  thumbnail/live via `nodeStyles[id].office` (the node menu's Office
+  row; stored under the clew key). A live embed DIES WITH ITS VIEW (tab
+  switch, mode toggle) — guarded on close only; the manual says so.
+- **Icons**: the bundle ships ONLY Colibre, and the wasm build has no
+  runtime theme switch (SymbolStyle is read once at startup; commits
+  before load and after ui_ready are both no-ops; overwriting the
+  packed zip in the Emscripten FS mid-boot dies with a wasm exception —
+  all measured). `main/zeta-icons.js` therefore serves a SPLICED
+  soffice.data: `vendor/libreoffice-icons/images_sifr.zip` (pinned,
+  MPL-2.0, same LO 24.2 line) replaces the packed Colibre entry with
+  the offsets metadata shifted to match; packaged via extraResources →
+  `office-icons/`. Icon SIZE is consulted per toolbar build, so a plain
+  config commit pre-load works — but the keys are UNO shorts and need
+  `zetajs.Any(zetajs.type.short, …)`. Delete the vendored zip to
+  restore Colibre.
+- **No engine / instance busy**: the file view offers the download and
+  the desktop-LibreOffice rung (`main/office-convert.js`): headless
+  PDF conversion into `.clew/cache/office-pdf/` (private
+  UserInstallation so a running desktop LO can't wedge it) shown in the
+  EmbedPDF viewer, plus Open in LibreOffice / default app.
+- **Main-process teardown gotchas earned here** (they generalize):
+  `webContents.send` into a window mid-teardown THROWS, and a throw
+  inside a `'destroyed'` hook wedges main behind an error dialog —
+  guard every broadcast (office-slot.js#broadcast is the exemplar). And
+  `win.close()` from inside that window's own `ipcMain.handle` callback
+  deadlocks Electron — defer with setImmediate (main.js close flow).
 
 ### Note API (scripts in rendered notes)
 
