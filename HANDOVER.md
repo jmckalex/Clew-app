@@ -97,6 +97,12 @@ iOS app must either match or consciously diverge from. The manual in
 
 ## 2. Small residue (none blocks anything)
 
+- **Settings-leak incident, fixed same day**: smoke runs had been
+  writing recentVaults/lastVault into the REAL settings for several
+  sessions (vault.open → rememberVault), and the owner's launch
+  restored the 5k stress vault via the lastVault fallback. Fix:
+  settings.js#save no-ops under CLEW_SMOKE; the owner's settings file
+  was scrubbed by hand; verified byte-identical across a smoke run.
 - `smoke/` is now committed — extend it, don't rewrite scenarios in
   scratchpads. big-vault note folders are RANDOM: touch a path from the
   index, never a guessed one (an add-not-change cost an hour here).
@@ -131,9 +137,10 @@ baselines before committing demo files.
 
 - **NEVER `git add -A`** — stage explicit paths.
 - Always pass `CLEW_SMOKE_VAULT`; `git status` demo and study vaults
-  after every smoke run. App settings (theme, autoFill, fillColumn)
-  are GLOBAL and persist — smoke scenarios that flip them must restore
-  them. `CLEW_USER_DATA` isolates a run entirely (fresh-install sim).
+  after every smoke run. Settings NEVER persist under CLEW_SMOKE
+  (settings.js#save no-ops) — the old restore-after-flip chore is
+  gone. `CLEW_USER_DATA` still isolates a run entirely (fresh-install
+  sim; also the only isolation packaged runs WITHOUT CLEW_SMOKE get).
 - Long smoke runs go `run_in_background` with output to a file.
 - **The owner's bug reports have been consistently right.**
 - **Write assertions that can fail — and eyeball the artefact anyway.**

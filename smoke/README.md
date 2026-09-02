@@ -6,8 +6,10 @@ committed so sessions stop rewriting them. Always pass
 `CLEW_SMOKE_VAULT`; add `CLEW_SMOKE_LOG=1` to see each scenario's
 `smoke-*:` assertion lines; `CLEW_USER_DATA=<dir>` isolates app settings
 (fresh-install simulation; HOME alone does not isolate Electron on
-macOS). Long runs (anything booting LibreOffice) belong in the
-background with output to a file.
+macOS). Under `CLEW_SMOKE` settings are never persisted at all
+(settings.js#save no-ops), so scenarios cannot leak vaults or setting
+flips into the user's real app state. Long runs (anything booting
+LibreOffice) belong in the background with output to a file.
 
 | Scenario | What it drives | Vault it expects |
 | --- | --- | --- |
