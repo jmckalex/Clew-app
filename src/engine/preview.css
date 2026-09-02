@@ -66,7 +66,11 @@ html[data-theme='light'] {
 body {
 	background: var(--preview-bg);
 	color: var(--preview-text);
-	font-family: 'iA Writer Quattro', 'Avenir Next', -apple-system, BlinkMacSystemFont, sans-serif;
+	/* Matches --clew-editor-font in the app themes: Avenir Next is the
+	   reading face (macOS ships it; it cannot be bundled), with a humanist
+	   tail so Windows and Linux — and exported websites read anywhere —
+	   land on something of the same character rather than bare sans-serif. */
+	font-family: 'Avenir Next', Avenir, 'Segoe UI', Cantarell, -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 16px;
 	line-height: 1.6;
 	max-width: 44em;
