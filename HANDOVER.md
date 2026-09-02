@@ -53,7 +53,49 @@ verdict (still untried; the two independent reverts are documented in
 git history — size block in zeta-thread.js#loadFile, vendored zip in
 vendor/libreoffice-icons/).
 
-## 1. Small residue (none blocks anything)
+## 1. For the Clew-iOS catch-up session (owner is starting one now)
+
+This session changed ON-DISK CONTRACTS and SHARED MANUAL text that the
+iOS app must either match or consciously diverge from. The manual in
+../Clew-docs serves BOTH apps — that is why it lives outside each repo.
+
+- **Note history is a new vault-level format.** Layout mirrors the
+  vault: `.clew/history/<note path>/<stamp><ext>`, where the note's
+  name becomes a directory and each snapshot is a plain copy. Stamp is
+  `YYYY-MM-DD HH.mm.ss` (dots, no colons — Windows/APFS-safe), optional
+  `-N` counter for same-second copies; the file is named AND mtime'd
+  for when its content was last written, not when displaced. Policy:
+  snapshot the PRE-write content, ≥5 min apart (force on restore),
+  never for identical content; prune to 40 versions / 60 days but
+  always spare the newest; covers `.md/.jmd/.canvas`; history moves
+  with renames. Reference implementation: `src/main/history.js` (unit
+  tests in `tests/history.test.js`). Per-vault switch: `history` in
+  `.clew/vault-settings.json` — `false` disables, an object overrides
+  `{minIntervalMinutes, maxVersions, maxAgeDays}`, absent = on. If iOS
+  writes notes it should produce/respect the same snapshots, or the
+  manual chapter (note-history.html) needs an iOS caveat.
+- **Atomic write convention.** Desktop writes everything durable via
+  temp + fsync + rename; the temp is `.<basename>.clew-tmp` BESIDE the
+  target (dotfile, so walks/watchers skip it; fixed name, so the next
+  save sweeps an orphan). iOS should use the same pattern and the same
+  temp shape so each app ignores the other's temps. Exemplar:
+  `src/main/fs-utils.js#writeFileAtomic`.
+- **First-open greeting rule.** A vault opening with NO saved workspace
+  opens its root `Welcome.md` if present (that is what makes the demo
+  vault a tutorial from the first screen). Cheap parity win.
+- **The demo vault ships with the desktop app** and is copied to
+  `~/Documents/Clew Demo Vault` on first use (bundle copy is read-only
+  payload; the user owns the copy). iOS likely wants the same idea
+  (bundle + copy-out on first run).
+- **Manual sections that now speak desktop truths** — check them
+  against iOS reality and caveat where needed: `note-history.html`
+  (new chapter), `getting-started.html` (#first-launch welcome-screen
+  buttons, #example-vaults "ships inside the app"),
+  `vaults-and-files.html` (the `.clew/` table gained `history/`; the
+  "no writing in here" claim was reworded), `settings-and-hotkeys.html`
+  (ninth per-vault key `history`).
+
+## 2. Small residue (none blocks anything)
 
 - `smoke/` is now committed — extend it, don't rewrite scenarios in
   scratchpads. big-vault note folders are RANDOM: touch a path from the
@@ -75,7 +117,7 @@ vendor/libreoffice-icons/).
   LibreOffice at launch (deliberate, unreviewed).
 - Kanban card drag (write path) — v2 of a shipped feature.
 
-## 2. The owner works in this tree concurrently
+## 3. The owner works in this tree concurrently
 
 Tree left CLEAN on 2026-09-02: main at `28af145`, Clew-docs at
 `e618ed9`. `zeta-assets/` here is deliberate and gitignored
@@ -85,7 +127,7 @@ it unstaged and note it here. Never switch THIS tree off main. Live
 testing flips demo widgets — reset `status:`/`done:`/`^motto`
 baselines before committing demo files.
 
-## 3. Standing session rules (they keep earning their keep)
+## 4. Standing session rules (they keep earning their keep)
 
 - **NEVER `git add -A`** — stage explicit paths.
 - Always pass `CLEW_SMOKE_VAULT`; `git status` demo and study vaults
