@@ -103,6 +103,13 @@ iOS app must either match or consciously diverge from. The manual in
 
 ## 2. Small residue (none blocks anything)
 
+- **Wikilink completion, FIXED** (manual `9eacfa0`) — owner's report,
+  right again: naming a folder killed the `[[` list. Candidates were
+  scored against the basename only, AND validFor left CodeMirror
+  re-filtering a stale set against those basenames. Now scored against
+  name + path, `filter: false`, no validFor, ranked and capped here.
+  A '/' in the query inserts the full vault path. Ranking is a pure
+  exported function (`rankLinkCandidates`) so it is unit-tested.
 - **Open-in-default-app links, DONE** (manual `48a9833`) — owner's ask.
   `[[x.pdf|external]]` (Clew-native, vault-clamped) and `file://` links
   (Obsidian-compatible, may point anywhere) both hand a file to the OS.
