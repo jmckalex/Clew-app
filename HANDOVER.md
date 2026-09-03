@@ -103,6 +103,13 @@ iOS app must either match or consciously diverge from. The manual in
 
 ## 2. Small residue (none blocks anything)
 
+- **Open-in-default-app links, DONE** (manual `48a9833`) — owner's ask.
+  `[[x.pdf|external]]` (Clew-native, vault-clamped) and `file://` links
+  (Obsidian-compatible, may point anywhere) both hand a file to the OS.
+  `main/open-file.js#planOpen` imports NO electron on purpose, so its
+  guards are unit-tested; ipc.js does the shell.openPath. Executables
+  refused BY NAME — the owner has not reviewed that list
+  (open-file.js REFUSED), so widen or narrow it on request.
 - **Global plugins, DONE** (`376b626`; manual `aecb9ee`) — owner's ask:
   making a vault should not mean re-copying plugin folders. Plugins are
   now discovered in TWO roots (vault `.clew/plugins/` + global
