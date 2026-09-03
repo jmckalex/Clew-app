@@ -14,7 +14,11 @@ come back, and ⌘Z still works.
 
 ## Completions
 
-- `[[` completes note names, aliases, and (after `#`) headings.
+- `[[` completes note names, aliases, and (after `#`) headings. The
+  query matches the **path as well as the name**, and the letters need
+  not be adjacent: `[[mkrbrc` finds *Marking Rubric*, and
+  `[[Teaching/Rubric` finds it by folder (spaces and all). Typing a `/`
+  inserts the full vault path, so the link means the file you chose.
 - `#` completes tags, including nested ones like `#project/clew`.
 - `\cite{` (and `\citep`, `\fullcite`, …) completes citation keys from
   every `.bib` file in the vault, showing author, year, and title.
