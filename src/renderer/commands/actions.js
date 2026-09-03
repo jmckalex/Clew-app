@@ -102,6 +102,24 @@ export function historyForward() {
  * Open a wikilink target: resolve it against the vault, creating the note
  * (Obsidian-style, in the vault root) when unresolved.
  */
+/**
+ * `[[paper.pdf|external]]` — hand a vault file to the OS default app
+ * instead of opening a Clew tab. Takes a vault path or a bare name (the
+ * editor click has only the name). Main clamps it inside the vault and
+ * refuses executables by name; a refusal is shown, never swallowed.
+ */
+export function openFileExternally(target) {
+	const name = String(target ?? '').trim();
+	if (!name) return;
+	const rel = vaultStore.pathExists(name)
+		? name
+		: vaultStore.resolveFileName(name) ?? vaultStore.resolveNoteName(name);
+	if (!rel) { notice(`Not in this vault: ${name}`); return; }
+	ipc.invoke(CH.SHELL_OPEN_PATH, { path: rel })
+		.then((result) => { if (result && !result.ok) notice(result.reason); })
+		.catch(() => notice(`Could not open ${name}`));
+}
+
 export async function openWikilink(target, { newTab = false, mode } = {}) {
 	// A URL is not a note name. Whatever routed it here (a pasted link in
 	// the switcher, a stray href), creating "https:/…/.md" directories in

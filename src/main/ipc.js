@@ -31,6 +31,7 @@ import { direntKind, shouldRecurse, walkGuard, writeFileAtomic } from './fs-util
 import { listSnapshots, readSnapshot } from './history.js';
 import { listPlugins } from './plugins.js';
 import { paths } from './paths.js';
+import { planOpen, pathFromFileUrl } from './open-file.js';
 import fs from 'node:fs';
 import nodePath from 'node:path';
 
@@ -187,6 +188,26 @@ export function registerIpc() {
 	});
 	handleGlobal(CH.SHELL_OPEN_EXTERNAL, ({ url }) => {
 		if (/^https?:|^mailto:/i.test(url)) shell.openExternal(url);
+	});
+
+	// Hand a file to the OS default app: `[[paper.pdf|external]]` sends a
+	// vault-relative path, a file:// link an absolute one. The guards
+	// (vault clamp, executable refusal) live in open-file.js.
+	handle(CH.SHELL_OPEN_PATH, (s, { path: rel, url }) => {
+		let plan;
+		if (url) {
+			const abs = pathFromFileUrl(url);
+			if (!abs) return { ok: false, reason: 'Not a local file:// link' };
+			plan = planOpen(s.vaults, { abs });
+		} else {
+			plan = planOpen(s.vaults, { rel: String(rel ?? '') });
+		}
+		if (!plan.ok) return plan;
+		// openPath resolves to '' on success, or a message on failure.
+		shell.openPath(plan.target).then((message) => {
+			if (message) console.warn(`[clew] openPath failed (${plan.target}): ${message}`);
+		});
+		return { ok: true };
 	});
 
 	handle(CH.WORKSPACE_LOAD, (s) => s.vaults.loadState('workspace.json'));

@@ -127,7 +127,10 @@ browser-window-focus).
   treated read-only).
 - `src/engine/` — assets the render worker loads: `wikilinks.js` (Obsidian
   links/embeds incl. media + image sizes; SITE_EXPORT branch emits real
-  hrefs), `obsidian-fences.js` (```mermaid + ```leaflet maps incl. photo
+  hrefs; the `|external` alias emits `data-open-external` — the OS default
+  app instead of a Clew tab, guarded in `main/open-file.js#planOpen`,
+  which is electron-free so its refusals are unit-tested; `file://` links
+  route to the same guard, executables refused BY NAME), `obsidian-fences.js` (```mermaid + ```leaflet maps incl. photo
   maps w/ HEIC conversion), `query-fences.js` (```query/```tasks/```kanban
   + the `vault` global for script blocks), `callouts.js` (every Obsidian
   `> [!type]`, case-insensitively, incl. foldables — registered LAST so it

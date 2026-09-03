@@ -243,6 +243,12 @@ document.addEventListener('click', (e) => {
 	}
 	const link = e.target.closest?.('a');
 	if (!link) return;
+	// [[file|external]] — hand it to the OS rather than opening a Clew tab.
+	if (link.dataset.openExternal) {
+		e.preventDefault();
+		post({ type: 'open-external-file', path: link.dataset.openExternal });
+		return;
+	}
 	if (link.classList.contains('internal-link')) {
 		e.preventDefault();
 		post({ type: 'link-click', target: link.dataset.href, newTab: e.metaKey || e.ctrlKey });

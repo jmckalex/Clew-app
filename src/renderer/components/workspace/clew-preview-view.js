@@ -136,6 +136,9 @@ class ClewPreviewView extends ClewElement {
 			case 'external-link':
 				openExternal(msg.url);
 				break;
+			case 'open-external-file':
+				actions.openFileExternally(msg.path);
+				break;
 			case 'anchor-jump':
 				// A TOC click is browser-style navigation: the spot you left
 				// becomes a history entry, so Back returns you to it.

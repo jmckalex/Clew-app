@@ -21,6 +21,21 @@ Media embeds render natively: `![[clew-gradient.png]]` shows the image,
 get players — see [[Attachments and Files]]. `![[Demo Canvas.canvas]]`
 embeds a live, read-only canvas view — see [[Canvas]].
 
+## Opening a file in another app
+
+A file link normally opens *in Clew* — [[sample.pdf]] gets the built-in
+viewer. Add an `external` alias segment to hand it to the operating
+system instead: [[sample.pdf|external]] opens in your default PDF app,
+and [[sample.pdf|the sample paper|external]] does the same while
+reading as prose (`external` alone is a mode, not a caption). It works
+in reading mode and on ⌘-click in the editor.
+
+Obsidian's `file://` links work too, for notes that came from there —
+and unlike the alias they may point anywhere on disk, not just inside
+the vault. Either way, **programs are refused by name**: a link that
+opens a `.app` or `.exe` would be one click from running code, so Clew
+says so instead of launching it.
+
 ## Block references
 
 A heading link points at a section; a **block reference** points at one

@@ -197,6 +197,25 @@ export const wikilink = {
 	},
 	renderer(token) {
 		if (global.isLatex) return token.label;
+		// Clew-native: `[[paper.pdf|external]]` hands the file to the OS
+		// default app instead of opening a Clew tab — the same "the alias is
+		// the consent" shape as the office `|live` embed. An alias that was
+		// ONLY the mode is not a caption, so the label falls back to the name.
+		const aliasParts = (token.alias ?? '').split('|').map((s) => s.trim());
+		const wantsExternal = aliasParts.some((p) => p.toLowerCase() === 'external');
+		if (wantsExternal && token.target) {
+			const rest = aliasParts.filter((p) => p.toLowerCase() !== 'external').join('|');
+			const label = escapeHtml(rest || token.target);
+			const fileRel = resolveFileTarget(token.target) ?? resolveTarget(token.target);
+			if (!fileRel) return `<span class="internal-link unresolved">${label}</span>`;
+			// A static site has no OS shell to hand anything to: link to the
+			// file itself, which is what "open this outside" means there.
+			if (SITE_EXPORT) {
+				return `<a class="internal-link" href="${escapeAttr(sitePath(fileRel))}">${label}</a>`;
+			}
+			return `<a class="internal-link external-file" href="#"`
+				+ ` data-open-external="${escapeAttr(fileRel)}">${label}</a>`;
+		}
 		if (SITE_EXPORT) {
 			const rel = token.target ? resolveTarget(token.target) : null;
 			if (!rel) return `<span class="internal-link unresolved">${escapeHtml(token.label)}</span>`;

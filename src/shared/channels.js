@@ -91,6 +91,7 @@ export const CH = {
 	PDF_FONTS_DOWNLOAD: 'clew:pdf-fonts-download',
 	PDF_FONTS_REMOVE: 'clew:pdf-fonts-remove',
 	SHELL_OPEN_EXTERNAL: 'clew:shell-open-external',
+	SHELL_OPEN_PATH: 'clew:shell-open-path',
 
 	// invoke: native application menu (renderer pushes context + hotkeys)
 	MENU_STATE: 'clew:menu-state',
