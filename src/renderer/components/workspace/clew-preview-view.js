@@ -49,6 +49,11 @@ class ClewPreviewView extends ClewElement {
 		});
 		this.listen(scrollSyncBus, 'scroll', ({ path, line, from }) => {
 			if (from === 'preview' || path !== this.path) return;
+			// A navigation jump (a [[#Heading]] click landing in reading mode)
+			// moves the reader as surely as a scroll gesture does, so it counts
+			// as the reading position; an editor's sync scroll does not — that
+			// pane's own cursor is already the truth for it.
+			if (from === 'nav') this.#rememberReadingLine(line);
 			this.#suppressor.suppress();
 			this.#post({ type: 'scroll-to-line', line, behavior: 'auto' });
 		});
@@ -94,6 +99,12 @@ class ClewPreviewView extends ClewElement {
 			return;
 		}
 		this.#iframe?.contentWindow?.postMessage({ source: HOST_SOURCE, ...msg }, '*');
+	}
+
+	/** Where the reader is now — consumed once by the editor view when this
+	 *  tab flips to source mode (see clew-editor-view#restoreViewState). */
+	#rememberReadingLine(line) {
+		if (Number.isFinite(line)) workspaceStore.updateTabView(this.tabId, { readingLine: line });
 	}
 
 	async #refresh() {
@@ -198,7 +209,16 @@ class ClewPreviewView extends ClewElement {
 				if (this.#iframe) this.#iframe.src = previewUrl(this.path) + '?t=' + Date.now();
 				break;
 			case 'scrolled':
+				// A scroll the host did not drive is the reader moving: remember
+				// where they got to, so flipping back to source mode lands the
+				// editor there instead of at the cursor they left behind. The
+				// suppressor is what separates the two, and it must: the scroll
+				// that seeds this preview from the cursor on open would otherwise
+				// record the cursor's own block and then move the cursor to the
+				// top of it, mangling a reading-mode round trip that changed
+				// nothing.
 				if (!this.#suppressor.active()) {
+					this.#rememberReadingLine(msg.line);
 					scrollSyncBus.emit('scroll', { path: this.path, line: msg.line, from: 'preview' });
 				}
 				break;
