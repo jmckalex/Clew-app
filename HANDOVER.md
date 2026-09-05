@@ -1,4 +1,4 @@
-# Handover — 2026-09-02 (launch list: 6/6 worked; what's left is owner-side)
+# Handover — 2026-09-05 (next session: THE `::` BUG, see §1)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it); the original design plan is at
@@ -8,183 +8,170 @@ it again.
 
 ## 0. Where things stand
 
-The whole launch-readiness list from 2026-09-02 was worked in one
-session. Commits `5b70193` → `28af145` here, `7bc52fa` + `e618ed9` in
-../Clew-docs. 423 unit tests green; every feature smoke-verified with
-artefacts eyeballed.
+Launch list 6/6 worked (2026-09-02) and a run of owner-asked features on
+top. Trees clean; **439 unit tests green**. Everything below was
+smoke-verified with the artefact eyeballed, not just the log line.
 
-1. **Atomic vault writes — DONE** (`5b70193`). `writeFileAtomic` in
-   fs-utils.js (dot-temp + fsync + rename, symlink-following,
-   mode-preserving) behind every durable write. Measured: the rename
-   reaches chokidar as a plain 'change', so nothing downstream moved.
-2. **Note history — DONE** (`22c59b4`). `.clew/history/` snapshots
-   (5 min interval / 40 versions / 60 days, newest always spared),
-   "View note history…" browse-and-restore modal, per-vault `history`
-   setting (default ON), manual chapter + guide-note section shipped.
-3. **First-run — DONE** (`dd703e7`). The packaged app ships the demo
-   vault (Resources/demo-vault), copies it to ~/Documents/Clew Demo
-   Vault on first use; welcome screen gained Create new vault… +
-   Explore the demo vault; Help → Clew Documentation works installed;
-   a vault with no saved workspace opens its Welcome.md. Verified on
-   the real packaged .app against fresh userData (`CLEW_USER_DATA` —
-   HOME alone does NOT isolate Electron on macOS).
-4. **Packaged office-engine download — DONE.** Real CDN download from
-   the packaged .app into (isolated) userData: 5 files hash-verified,
-   brotli twins on disk, LibreOffice booted, docx opened
-   (smoke/office-download-scenario.js). Not literally run from a
-   mounted .dmg into the owner's real userData — same code path; do
-   that once by hand if you want the last inch.
-5. **Win/Linux artefacts — BUILT, NOT RUN.** `Clew Setup 0.9.0.exe`,
-   `.AppImage`, `.deb` all build with today's changes (demo vault
-   verified inside both unpacked trees). Runtime on real machines
-   still untested — keep them off the download page until a VM run, or
-   say "untested" next to them. This is the one genuinely open item.
-6. **Big-vault stress — DONE, no cliff.** 5003 synthetic notes: cold
-   index 412ms / warm 64ms; search 1–6ms; query dashboard ~1s first
-   render, ~1.5s save→requery (600ms debounce included); ~800MB total.
-   Kit + baseline in `smoke/README.md`. Honest cost, not a cliff: any
-   save re-renders every open query dashboard (~1s of worker per save).
+- Atomic vault writes `5b70193` · note history `22c59b4` · first-run +
+  bundled demo vault `dd703e7` · packaged office-engine download (real
+  CDN, LibreOffice booted) · win/linux artefacts BUILT NOT RUN ·
+  big-vault stress, no cliff (`smoke/README.md` has the baseline).
+- Smoke isolation `04def34`: settings never persist under CLEW_SMOKE.
+  (A leak had been writing scratch vaults into the owner's real
+  recentVaults for several sessions. Scrubbed; verified byte-identical.)
+- Meta Bind widget polish `c579d11` · global plugins `376b626` ·
+  open-in-default-app links `f3a4662` · wikilink completion matches
+  paths + subsequence `418e87b` · Avenir Next is the reading face
+  `7775cb0`.
+- ../Clew-docs matched every one of those (latest `9eacfa0`).
 
-**Owner's own actions, unchanged**: the GoDaddy DNS change (A records
-for clew-app.com/.net → 144.126.236.254), then in Clew-docs
-`make dns-check` → `provision` → `sync` → `tls`. Plus item 5's VM run
-if the Win/Linux artefacts are to ship, and the Sifr/small-icons
-verdict (still untried; the two independent reverts are documented in
-git history — size block in zeta-thread.js#loadFile, vendored zip in
-vendor/libreoffice-icons/).
+## 1. THE BUG FIX — `Key:: value` mangles prose
 
-## 1. For the Clew-iOS catch-up session (owner is starting one now)
+Found 2026-09-03 while answering an owner question about Dataview; both
+faults below are **measured, not theorised**.
 
-This session changed ON-DISK CONTRACTS and SHARED MANUAL text that the
-iOS app must either match or consciously diverge from. The manual in
-../Clew-docs serves BOTH apps — that is why it lives outside each repo.
+### 1a. The collision (the real one)
 
-- **Note history is a new vault-level format.** Layout mirrors the
-  vault: `.clew/history/<note path>/<stamp><ext>`, where the note's
-  name becomes a directory and each snapshot is a plain copy. Stamp is
-  `YYYY-MM-DD HH.mm.ss` (dots, no colons — Windows/APFS-safe), optional
-  `-N` counter for same-second copies; the file is named AND mtime'd
-  for when its content was last written, not when displaced. Policy:
-  snapshot the PRE-write content, ≥5 min apart (force on restore),
-  never for identical content; prune to 40 versions / 60 days but
-  always spare the newest; covers `.md/.jmd/.canvas`; history moves
-  with renames. Reference implementation: `src/main/history.js` (unit
-  tests in `tests/history.test.js`). Per-vault switch: `history` in
-  `.clew/vault-settings.json` — `false` disables, an object overrides
-  `{minIntervalMinutes, maxVersions, maxAgeDays}`, absent = on. If iOS
-  writes notes it should produce/respect the same snapshots, or the
-  manual chapter (note-history.html) needs an iOS caveat.
-- **Atomic write convention.** Desktop writes everything durable via
-  temp + fsync + rename; the temp is `.<basename>.clew-tmp` BESIDE the
-  target (dotfile, so walks/watchers skip it; fixed name, so the next
-  save sweeps an orphan). iOS should use the same pattern and the same
-  temp shape so each app ignores the other's temps. Exemplar:
-  `src/main/fs-utils.js#writeFileAtomic`.
-- **First-open greeting rule.** A vault opening with NO saved workspace
-  opens its root `Welcome.md` if present (that is what makes the demo
-  vault a tutorial from the first screen). Cheap parity win.
-- **The demo vault ships with the desktop app** and is copied to
-  `~/Documents/Clew Demo Vault` on first use (bundle copy is read-only
-  payload; the user owns the copy). iOS likely wants the same idea
-  (bundle + copy-out on first run).
-- **Global plugins are a new install location** (`<userData>/plugins/`,
-  vault copy shadows global by id; enabling still per-vault). The
-  manual's plugins.html now documents it for BOTH apps, with a
-  per-platform folder table — iOS needs its own row or a caveat.
-- **Manual sections that now speak desktop truths** — check them
-  against iOS reality and caveat where needed: `plugins.html` (global
-  plugins, above), `settings-and-hotkeys.html` (its plugin entry),
-  `note-history.html`
-  (new chapter), `getting-started.html` (#first-launch welcome-screen
-  buttons, #example-vaults "ships inside the app"),
-  `vaults-and-files.html` (the `.clew/` table gained `history/`; the
-  "no writing in here" claim was reworded), `settings-and-hotkeys.html`
-  (ninth per-vault key `history`).
+`Key:: value` is Dataview's inline-field idiom AND jmarkdown's
+description-list syntax. Both rules fire, on different layers:
+
+- **Read**: `src/engine/query-fences.js` — `INLINE_LINE_RE` /
+  `INLINE_BRACKET_RE` scan the file as text, so queries DO see the
+  field. Verified: a query over `mark:: 65` returns 65.
+- **Render**: `vendor/jmarkdown/src/description-lists.js` — `dt_rule`
+  claims the same line and emits `<dl><dt>…</dt><dd>…</dd></dl>`.
+
+Measured results (scratch vault, reading mode):
+
+| Source | Renders as |
+| --- | --- |
+| `mark:: 65` on its own line | `<dt>mark</dt><dd>65</dd>` |
+| `the essay scored [grade:: 71] overall.` | `<dt>Also bracketed…scored [grade</dt><dd>71] overall.</dd>` |
+
+The bracketed case is the bad one: **the whole sentence is eaten** and
+turned into a definition. The query still reads `grade = 71`; the prose
+is destroyed on screen.
+
+Why this matters beyond cosmetics: the drawn compat line says an
+Obsidian vault's contents either render or are **refused BY NAME**. This
+does neither — it renders *wrongly*, silently. An Obsidian vault that
+uses inline fields opens here with mangled paragraphs and no
+explanation.
+
+**The manual is currently wrong about it.** `Clew-docs
+site/manual/properties.html` (~line 269+) documents inline fields as
+working, and its own example — `[chapter:: 5], which repays a slow
+read.` — is precisely the sentence shape that gets mangled. Whatever is
+decided, that section needs to change.
+
+Options (the choice is the OWNER'S — it is a dialect decision):
+
+1. A Clew engine extension that claims `Key:: value` lines before the
+   engine sees them and renders them Obsidian-style. Extension
+   tokenizers are UNSHIFTed (CLAUDE.md § block references), so a Clew
+   rule can win. Hard part: telling a one-line inline field from a
+   genuine description list, whose definition may continue on following
+   indented lines.
+2. Upstream `dt_rule` change so a lone `word:: value` with no following
+   indented block is not a description list. Engine changes go to the
+   master at `~/Sites/jmckalex/software/jmarkdown` (branch
+   `at-migration`), then `npm run sync-engine`. **Never edit vendor/.**
+3. Refuse by name (render a visible "inline fields collide with
+   description lists here" marker) — honest, keeps the compat promise,
+   costs the feature.
+4. Document the conflict and tell people to use frontmatter. Cheapest;
+   the manual change is required either way.
+
+Repro: a note with the two lines in the table above, opened in reading
+mode. `smoke/` has no scenario for this yet — worth adding one.
+
+### 1b. `!= null` passes for an ABSENT field (small, well-defined)
+
+`WHERE PartA != null` is TRUE for a note that has no `PartA` at all, so
+the obvious way to filter incomplete notes silently keeps them (and
+their arithmetic then produces nonsense). `typeof(PartA)` correctly
+reports `null` for the same field, so the two disagree.
+
+Cause: `src/engine/dv-expr.js:348`, in `valuesEqual` —
+`if (ca === null || cb === null) return a === b;`. A missing field is
+`undefined` (`vault-model.js#pageValue` returns `undefined`), the
+literal is `null`, and `undefined === null` is false, so `=` is false
+and `!=` is true. Dataview treats a missing field as null, so this is a
+deviation from the format Clew claims to own.
+
+Likely fix: normalise `undefined` to `null` before that comparison
+(`(a ?? null) === (b ?? null)`), which also makes `WHERE x = null`
+correctly find notes missing `x`. Wants unit tests in
+`tests/dataview.test.js` for: absent field vs `= null` / `!= null`,
+and a present-but-zero field (which must keep behaving).
+
+Workaround meanwhile, and correct today: `isnotempty(PartA)` — verified
+to include a recorded `0` and exclude an absent field.
 
 ## 2. Small residue (none blocks anything)
 
-- **Wikilink completion, FIXED** (manual `9eacfa0`) — owner's report,
-  right again: naming a folder killed the `[[` list. Candidates were
-  scored against the basename only, AND validFor left CodeMirror
-  re-filtering a stale set against those basenames. Now scored against
-  name + path, `filter: false`, no validFor, ranked and capped here.
-  A '/' in the query inserts the full vault path. Ranking is a pure
-  exported function (`rankLinkCandidates`) so it is unit-tested.
-- **Open-in-default-app links, DONE** (manual `48a9833`) — owner's ask.
-  `[[x.pdf|external]]` (Clew-native, vault-clamped) and `file://` links
-  (Obsidian-compatible, may point anywhere) both hand a file to the OS.
-  `main/open-file.js#planOpen` imports NO electron on purpose, so its
-  guards are unit-tested; ipc.js does the shell.openPath. Executables
-  refused BY NAME — the owner has not reviewed that list
-  (open-file.js REFUSED), so widen or narrow it on request.
-- **Global plugins, DONE** (`376b626`; manual `aecb9ee`) — owner's ask:
-  making a vault should not mean re-copying plugin folders. Plugins are
-  now discovered in TWO roots (vault `.clew/plugins/` + global
-  `<userData>/plugins/`), vault shadowing global by id. Installing is
-  global, ENABLING stays per-vault — the trust boundary did not move.
-  Durable details are in CLAUDE.md § Plugins; the one to remember is
-  that main/plugins.js must stay importable without electron (unit
-  tests run under plain node), which is why the global dir is passed in
-  by callers. Known reload semantics, PRE-EXISTING and unchanged:
-  toggling a plugin checkbox does not reload app/preview surfaces —
-  the settings hint already says to reopen. Worth fixing one day.
-- **Meta Bind widget polish, DONE** (`c579d11`; manual `45c1b1f`): number
-  pickers were a text field's 11em (mostly empty for a 2-digit mark) and
-  any narrower host width overflowed the + stepper — the component's
-  intrinsic min is ~277px (a 20-char input). Fix: size="small" + shrink
-  the INPUT PART to 3.5em (host sizes naturally to ~9.5em). Also
-  `class(…)` is now honored, not dropped — author classes land on the
-  element (Obsidian-parity), so a vault script can restyle one widget.
-- **Settings-leak incident, fixed same day**: smoke runs had been
-  writing recentVaults/lastVault into the REAL settings for several
-  sessions (vault.open → rememberVault), and the owner's launch
-  restored the 5k stress vault via the lastVault fallback. Fix:
-  settings.js#save no-ops under CLEW_SMOKE; the owner's settings file
-  was scrubbed by hand; verified byte-identical across a smoke run.
-- `smoke/` is now committed — extend it, don't rewrite scenarios in
-  scratchpads. big-vault note folders are RANDOM: touch a path from the
-  index, never a guessed one (an add-not-change cost an hour here).
-- Query-dashboard renders served from a warm cache emit NO
-  EV_RENDER_DONE — a scenario timing "first render" must delete the
-  vault's .clew/ first (smoke/README says so).
-- History restore on a note in READING mode: verified via the external
-  change path. Canvas files snapshot too, but the modal/restore UI is
-  notes-only (command gated `needsNote`) — a future affordance.
-- Toggling the history switch OFF then ON from Settings writes a plain
-  boolean and so discards a hand-edited tuning object (documented in
-  the manual).
-- Rename of an OPEN pdf/office/canvas tab still leaves the tab on the
-  old path (`remapPaths` only handles note tabs) — survived the list.
+- Toggling a plugin checkbox does not reload app/preview surfaces —
+  reopen the vault. PRE-EXISTING; the settings hint says so.
+- Rename of an OPEN pdf/office/canvas tab leaves the tab on the old
+  path (`remapPaths` handles note tabs only).
+- Executable extensions refused by the new open-in-default-app links
+  (`src/main/open-file.js` REFUSED) are UNREVIEWED by the owner —
+  widen or narrow on request.
+- Toggling the history switch off/on writes a plain boolean, discarding
+  a hand-edited tuning object (documented in the manual).
 - Real-keyboard checks inside LibreOffice (⌘S, clipboard) and
-  office-convert on a machine with desktop LO: still unverifiable here.
-- Restore-boot policy unchanged: a restored office tab boots
-  LibreOffice at launch (deliberate, unreviewed).
+  office-convert on a machine with desktop LibreOffice: unverifiable
+  here. Restore-boot policy (a restored office tab boots LibreOffice at
+  launch) still deliberate and unreviewed.
 - Kanban card drag (write path) — v2 of a shipped feature.
+- Query-dashboard renders from a warm cache emit NO EV_RENDER_DONE; a
+  scenario timing "first render" must delete the vault's `.clew/`.
 
-## 3. The owner works in this tree concurrently
+## 3. Manual facts worth adding (found while answering questions)
 
-Tree left CLEAN on 2026-09-02: main at `28af145`, Clew-docs at
-`e618ed9`. `zeta-assets/` here is deliberate and gitignored
-(PROVENANCE.md inside). `out/` holds fresh mac/win/linux artefacts from
-this session. Anything uncommitted you find is NEW owner work — leave
-it unstaged and note it here. Never switch THIS tree off main. Live
-testing flips demo widgets — reset `status:`/`done:`/`^motto`
-baselines before committing demo files.
+Verified, currently undocumented, and cheap wins for the Queries
+chapter: `FROM` takes a path **relative to the vault root**, so the
+vault's own name never appears in a query (a root-level vault wants no
+`FROM`, or `FROM ""`); and `WHERE field` is a TRUTHINESS test, so a
+legitimate `0` is skipped — `isnotempty()` is the fix. Both cost the
+owner real time this session.
 
-## 4. Standing session rules (they keep earning their keep)
+## 4. Owner's own actions
+
+The GoDaddy DNS change (A records for clew-app.com/.net →
+144.126.236.254), then in Clew-docs `make dns-check` → `provision` →
+`sync` → `tls`. Plus the win/linux VM run if those artefacts are to
+ship, and the Sifr/small-icons verdict (still untried; the two reverts
+are in git history — size block in `zeta-thread.js#loadFile`, vendored
+zip in `vendor/libreoffice-icons/`).
+
+## 5. The owner works in this tree concurrently
+
+Tree left CLEAN on 2026-09-05: main at the commit after this file,
+Clew-docs at `9eacfa0`. `zeta-assets/` here is deliberate and
+gitignored. `out/` holds mac/win/linux artefacts from 09-02. Anything
+uncommitted you find is NEW owner work — leave it unstaged and note it
+here. Never switch THIS tree off main. Live testing flips demo widgets
+— reset `status:`/`done:`/`^motto` baselines before committing demo
+files.
+
+## 6. Standing session rules (they keep earning their keep)
 
 - **NEVER `git add -A`** — stage explicit paths.
 - Always pass `CLEW_SMOKE_VAULT`; `git status` demo and study vaults
-  after every smoke run. Settings NEVER persist under CLEW_SMOKE
-  (settings.js#save no-ops) — the old restore-after-flip chore is
-  gone. `CLEW_USER_DATA` still isolates a run entirely (fresh-install
-  sim; also the only isolation packaged runs WITHOUT CLEW_SMOKE get).
+  after every smoke run. Settings no longer persist under CLEW_SMOKE;
+  `CLEW_USER_DATA` isolates a run entirely (fresh-install sim, and the
+  only isolation a packaged run without CLEW_SMOKE gets).
 - Long smoke runs go `run_in_background` with output to a file.
-- **The owner's bug reports have been consistently right.**
+- Reusable scenarios live in `smoke/` — extend it, don't rewrite them
+  in scratchpads.
+- **The owner's bug reports have been consistently right.** Both bugs
+  in §1 came from the owner pushing back on something I asserted.
 - **Write assertions that can fail — and eyeball the artefact anyway.**
-- **Verify artefacts by content**, never the log line.
-- **Prefer measuring to guessing** — and re-measure (the chokidar
-  rename measurement is why atomic writes shipped in an afternoon).
+- **Verify artefacts by content**, never the log line. When a fixture
+  looks broken, suspect the fixture before the app (a mis-split shell
+  loop cost a wrong bug report this session).
+- **Prefer measuring to guessing** — and re-measure.
 - A feature change is not finished until the MANUAL in `../Clew-docs`
   matches it — nothing in this repo's git status reminds you.
 - `npm run dev` / `npm run package` re-sync the engine AND the
