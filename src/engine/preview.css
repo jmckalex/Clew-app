@@ -175,6 +175,30 @@ details.internal-embed[open] > summary::after { transform: rotate(45deg); }
 /* Closed, the box is just its own title: drop the gap the margin would leave. */
 details.internal-embed:not([open]) > summary { margin-bottom: 0; }
 
+/* Printing — "Export as PDF (reading view)", and any print of a preview.
+   The paper supplies the margins, so the reading column's centring goes, and
+   so does its scroll-past-end tail (40vh of nothing, which on paper is a
+   blank final page). What is left is keeping things that read as one object
+   from being split down the middle by a page boundary. */
+@media print {
+	body {
+		max-width: none;
+		margin: 0;
+		padding: 0;
+	}
+	pre, table, figure, blockquote,
+	.callout, .internal-embed, .clew-query-group, .mermaid,
+	mjx-container[display='true'] {
+		break-inside: avoid;
+	}
+	/* A heading stranded at the foot of a page is worse than a short page. */
+	h1, h2, h3, h4, h5, h6 { break-after: avoid; }
+	p, li { orphans: 2; widows: 2; }
+	/* The disclosure arrow means nothing once printed; a folded embed still
+	   prints folded, because the reading view is what was asked for. */
+	details.internal-embed > summary::after { display: none; }
+}
+
 /* Build-error overlay (kept in sync with the app's error banner styling) */
 #__clew_err {
 	position: fixed;

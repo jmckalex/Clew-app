@@ -27,6 +27,9 @@ const DEFAULTS = {
 	// Optional 139 MB CJK font download for the PDF viewer, off by
 	// default and fetched on demand — see src/main/pdf-fonts.js.
 	pdfCjkFonts: false,
+	// Paper for "Export as PDF (reading view)" — the LaTeX PDF takes its
+	// page size from the document's own class, and is not affected.
+	printPaperSize: 'a4',
 };
 
 class Settings {

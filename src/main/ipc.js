@@ -254,8 +254,11 @@ export function registerIpc() {
 		return paths.globalPlugins;
 	});
 
-	handle(CH.EXPORT_NOTE, (s, { path, format }) =>
-		exportNote({ win: s.win, vaults: s.vaults, relPath: path, format }));
+	// `outFile` (smoke tests) skips the save dialog, like EXPORT_SITE's outDir.
+	// sessionId: the reading-view PDF prints this session's own
+	// clew-preview:// document, and the protocol resolves it by sid.
+	handle(CH.EXPORT_NOTE, (s, { path, format, outFile }) =>
+		exportNote({ win: s.win, vaults: s.vaults, sessionId: s.id, relPath: path, format, outFile }));
 
 	// The whole vault as a static website. `outDir` (smoke tests) skips the
 	// dialog; otherwise the user picks a folder and the site lands in a
