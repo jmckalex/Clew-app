@@ -16,6 +16,7 @@ import { editorPool } from '../editor/pool.js';
 import { createTab } from '../workspace/tree.js';
 import { isCanvasPath } from '../lib/file-types.js';
 import { scrollSyncBus } from '../preview/scroll-sync.js';
+import { setEmbedState } from '../../engine/embed-state.js';
 import { ipc, CH } from '../ipc.js';
 import { parseProperties, applyProperties } from '../../shared/frontmatter.js';
 import { rewriteBlockText } from '../../shared/note-metadata.js';
@@ -314,6 +315,53 @@ export async function toggleTaskLine(path, line, checked) {
 		return true;
 	}
 	return false;
+}
+
+/**
+ * Persist a collapsible embed's disclosure state (`![[Note|collapsed]]` ↔
+ * `![[Note|open]]`) onto the 1-based source line it was rendered from.
+ *
+ * The state lives in the note rather than in app state on purpose: it travels
+ * with the file. Which is also why toggling OPEN writes `|open` rather than
+ * dropping the keyword — a bare `![[Note]]` is a plain embed with no
+ * disclosure at all, so removing it would take the affordance away and the
+ * reader could never fold it again.
+ *
+ * Live editor first (undoable, auto-save persists it), else straight to disk —
+ * the toggleTaskLine arrangement, for the same reason: the note may be open
+ * and dirty in the other half of a split.
+ */
+export async function setEmbedCollapsed(path, line, collapsed) {
+	const state = collapsed ? 'collapsed' : 'open';
+
+	for (const group of workspaceStore.allGroups()) {
+		for (const tab of group.tabs) {
+			if (tab.kind !== 'note' || tab.path !== path) continue;
+			const entry = editorPool.get(tab.id);
+			if (!entry?.view) continue;
+			const doc = entry.view.state.doc;
+			if (line < 1 || line > doc.lines) return false;
+			const docLine = doc.line(line);
+			const next = setEmbedState(docLine.text, state);
+			if (next === null || next === docLine.text) return false;
+			entry.view.dispatch({
+				changes: { from: docLine.from, to: docLine.to, insert: next },
+			});
+			editorPool.flush(tab.id);
+			return true;
+		}
+	}
+
+	const text = await ipc.invoke(CH.NOTE_READ, { path }).catch(() => null);
+	if (text === null) return false;
+	const lines = text.split('\n');
+	const next = lines[line - 1] === undefined ? null : setEmbedState(lines[line - 1], state);
+	// null means the line is no longer an embed — the numbers drifted, and
+	// writing anything now would corrupt whatever took its place.
+	if (next === null || next === lines[line - 1]) return false;
+	lines[line - 1] = next;
+	await ipc.invoke(CH.NOTE_WRITE, { path, content: lines.join('\n') }).catch(() => {});
+	return true;
 }
 
 /**

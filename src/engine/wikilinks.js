@@ -139,6 +139,8 @@ export const sitePath = (rel) => {
 	return sid ? `/${encodeURIComponent(sid)}/${encoded}` : `/${encoded}`;
 };
 
+import { parseEmbedState } from './embed-state.js';
+
 const escapeAttr = (s) =>
 	s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const escapeHtml = escapeAttr;
@@ -309,6 +311,20 @@ export const wikiembed = {
 			return token;
 		}
 
+		// `![[Note|collapsed]]` / `![[Note|open]]`: a note embed that discloses.
+		// Read BEFORE the resolution guard so that even an embed that resolves
+		// to nothing gets its title fixed — otherwise the "not found" box
+		// would be titled "collapsed". Depth is recorded here, while the
+		// embed stack still means something: only a top-level embed's line
+		// number belongs to the note being rendered, and only that one can be
+		// toggled back into its source (see the renderer).
+		const embedState = parseEmbedState(link.alias);
+		if (embedState.state) {
+			token.embedState = embedState.state;
+			token.label = embedState.alias ?? link.target;
+			token.embedDepth = embedStack.length;
+		}
+
 		const rel = link.target ? resolveTarget(link.target) : null;
 		if (!rel) {
 			token.failed = 'unresolved';
@@ -447,9 +463,29 @@ export const wikiembed = {
 				+ `<div class="embed-title">${title}</div>`
 				+ `<div class="embed-note">(${reason})</div></div>\n`;
 		}
+		const body = `<div class="embed-content">\n${this.parser.parse(token.tokens)}</div>`;
+		if (token.embedState) {
+			// A real <details>, so the disclosure works with no script at all —
+			// in an export, on a static site, under any browser. The host only
+			// has to hear about the toggle to write it back.
+			//
+			// data-embed-line is what it writes: the line of THIS `![[…]]` in
+			// the note being rendered. A nested embed's line belongs to some
+			// other file, so it is left unstamped and toggles for the session
+			// only — the alternative is rewriting the wrong line of the wrong
+			// note. The title stays an anchor: clicking it opens the note (the
+			// client preventDefaults, which also stops the disclosure), while
+			// clicking anywhere else in the summary discloses.
+			const open = token.embedState === 'open' ? ' open' : '';
+			const line = token.embedDepth === 0 && token.sourceLine !== undefined
+				? ` data-embed-line="${token.sourceLine}"` : '';
+			return `<details class="internal-embed is-collapsible"${open}${line} data-href="${target}">`
+				+ `<summary class="embed-title"><a class="internal-link" href="#" data-href="${target}">${title}</a></summary>`
+				+ `${body}</details>\n`;
+		}
 		return `<div class="internal-embed" data-href="${target}">`
 			+ `<div class="embed-title"><a class="internal-link" href="#" data-href="${target}">${title}</a></div>`
-			+ `<div class="embed-content">\n${this.parser.parse(token.tokens)}</div></div>\n`;
+			+ `${body}</div>\n`;
 	},
 };
 

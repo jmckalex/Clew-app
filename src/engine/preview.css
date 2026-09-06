@@ -149,6 +149,32 @@ a.internal-link.unresolved { color: var(--preview-muted); border-bottom: 1px das
 .internal-embed .embed-title a { color: var(--preview-muted); }
 .internal-embed.unresolved .embed-note { color: var(--preview-danger); font-size: 0.9em; }
 
+/* `![[Note|collapsed]]` / `![[Note|open]]` — a disclosable embed. Same
+   <details> treatment as a foldable callout, chevron and all, so the two
+   read as one idea; the title stays a link to the note it transcludes. */
+details.internal-embed > summary {
+	cursor: pointer;
+	list-style: none;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+details.internal-embed > summary::-webkit-details-marker { display: none; }
+details.internal-embed > summary::after {
+	content: '';
+	width: 6px;
+	height: 6px;
+	margin-left: auto;
+	border-right: 2px solid currentColor;
+	border-bottom: 2px solid currentColor;
+	transform: rotate(-45deg);
+	transition: transform 0.15s ease;
+	opacity: 0.7;
+}
+details.internal-embed[open] > summary::after { transform: rotate(45deg); }
+/* Closed, the box is just its own title: drop the gap the margin would leave. */
+details.internal-embed:not([open]) > summary { margin-bottom: 0; }
+
 /* Build-error overlay (kept in sync with the app's error banner styling) */
 #__clew_err {
 	position: fixed;

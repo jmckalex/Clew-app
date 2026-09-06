@@ -213,6 +213,19 @@ document.addEventListener('change', (e) => {
 	});
 });
 
+// Collapsible note embeds (`![[Note|collapsed]]`). The disclosure is native
+// <details>, so this listener is only about PERSISTING it: the state belongs
+// to the note's own source, not to this session. `toggle` does not bubble,
+// hence the capture phase. An embed with no data-embed-line is a nested one,
+// whose line belongs to another file — it still discloses, just for now.
+document.addEventListener('toggle', (e) => {
+	const box = e.target;
+	if (!box?.classList?.contains('internal-embed')) return;
+	const line = Number(box.dataset.embedLine);
+	if (!Number.isFinite(line) || line < 1) return;
+	post({ type: 'embed-collapse', line, collapsed: !box.open });
+}, true);
+
 function showError(message) {
 	let el = document.getElementById('__clew_err');
 	if (!message) {

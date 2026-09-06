@@ -165,6 +165,11 @@ class ClewPreviewView extends ClewElement {
 				}
 				break;
 			}
+			case 'embed-collapse':
+				// A disclosable embed was folded or unfolded — the state
+				// belongs in the note, on the line it was rendered from.
+				actions.setEmbedCollapsed(this.path, msg.line, msg.collapsed);
+				break;
 			case 'checkbox-toggle':
 				actions.toggleTaskLine(this.path, msg.line, msg.checked);
 				break;
