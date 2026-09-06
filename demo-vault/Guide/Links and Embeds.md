@@ -21,6 +21,22 @@ Media embeds render natively: `![[clew-gradient.png]]` shows the image,
 get players — see [[Attachments and Files]]. `![[Demo Canvas.canvas]]`
 embeds a live, read-only canvas view — see [[Canvas]].
 
+An embed stays current: edit the embedded note and this one re-renders,
+however deeply the embeds nest.
+
+### Embeds that fold
+
+Add `collapsed` or `open` as the last alias segment and the embed gets a
+disclosure triangle. Click it and Clew writes the new state back into
+*this* note, so the fold travels with the file — try it:
+
+![[Reading Mode#Interactions|collapsed]]
+
+A plain `![[Note]]` has no triangle at all, which is why unfolding writes
+`|open` rather than removing the keyword: otherwise the fold would vanish
+the first time you used it. An earlier segment is still the title, as in
+`![[Reading Mode#Interactions|What reading mode does|open]]`.
+
 ## Opening a file in another app
 
 A file link normally opens *in Clew* — [[sample.pdf]] gets the built-in
