@@ -11,33 +11,34 @@
 // The embed disclosure keyword: read by the engine, written by the toggle.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseEmbedState, setEmbedState } from '../src/engine/embed-state.js';
+import { parseEmbedModes, setEmbedState } from '../src/engine/embed-state.js';
 
-test('no alias means no disclosure state', () => {
-	assert.deepEqual(parseEmbedState(null), { state: null, alias: null });
+test('no alias means no modes at all', () => {
+	assert.deepEqual(parseEmbedModes(null), { state: null, chrome: null, alias: null });
 });
 
 test('a keyword-only alias is a state, not a title', () => {
-	assert.deepEqual(parseEmbedState('collapsed'), { state: 'collapsed', alias: null });
-	assert.deepEqual(parseEmbedState('open'), { state: 'open', alias: null });
+	assert.deepEqual(parseEmbedModes('collapsed'), { state: 'collapsed', chrome: null, alias: null });
+	assert.deepEqual(parseEmbedModes('open'), { state: 'open', chrome: null, alias: null });
 });
 
 test('the keyword is the LAST segment; earlier segments stay the title', () => {
-	assert.deepEqual(parseEmbedState('Reading|collapsed'), { state: 'collapsed', alias: 'Reading' });
+	assert.deepEqual(parseEmbedModes('Reading|collapsed'),
+		{ state: 'collapsed', chrome: null, alias: 'Reading' });
 });
 
 test('a plain alias is left alone', () => {
-	assert.deepEqual(parseEmbedState('Week Three'), { state: null, alias: 'Week Three' });
+	assert.deepEqual(parseEmbedModes('Week Three'), { state: null, chrome: null, alias: 'Week Three' });
 });
 
 test('the keyword is recognised whatever its case', () => {
-	assert.equal(parseEmbedState('Collapsed').state, 'collapsed');
-	assert.equal(parseEmbedState('OPEN').state, 'open');
+	assert.equal(parseEmbedModes('Collapsed').state, 'collapsed');
+	assert.equal(parseEmbedModes('OPEN').state, 'open');
 });
 
 test('a title that merely contains the word is not a state', () => {
-	assert.deepEqual(parseEmbedState('collapsed notes'),
-		{ state: null, alias: 'collapsed notes' });
+	assert.deepEqual(parseEmbedModes('collapsed notes'),
+		{ state: null, chrome: null, alias: 'collapsed notes' });
 });
 
 test('setEmbedState adds a keyword to a bare embed', () => {
@@ -64,4 +65,48 @@ test('setEmbedState returns null for a line that is not an embed', () => {
 	assert.equal(setEmbedState('Just some prose.', 'collapsed'), null);
 	assert.equal(setEmbedState('[[Week 3]]', 'collapsed'), null); // a link, not an embed
 	assert.equal(setEmbedState('![[Week 3]] with trailing prose', 'collapsed'), null);
+});
+
+// ---- chrome: how much frame the embed draws ------------------------------
+
+test('quiet and bare are chrome, not state', () => {
+	assert.deepEqual(parseEmbedModes('quiet'), { state: null, chrome: 'quiet', alias: null });
+	assert.deepEqual(parseEmbedModes('bare'), { state: null, chrome: 'bare', alias: null });
+});
+
+test('chrome and state combine, in either order', () => {
+	const expected = { state: 'collapsed', chrome: 'quiet', alias: null };
+	assert.deepEqual(parseEmbedModes('quiet|collapsed'), expected);
+	assert.deepEqual(parseEmbedModes('collapsed|quiet'), expected);
+});
+
+test('a title survives in front of both keywords', () => {
+	assert.deepEqual(parseEmbedModes('Reading list|quiet|collapsed'),
+		{ state: 'collapsed', chrome: 'quiet', alias: 'Reading list' });
+});
+
+test('only the TAIL is consumed, so a note really called Bare keeps its title', () => {
+	assert.deepEqual(parseEmbedModes('Bare|quiet'),
+		{ state: null, chrome: 'quiet', alias: 'Bare' });
+});
+
+test('a repeated mode stops the scan — the last wins, the earlier is title', () => {
+	assert.deepEqual(parseEmbedModes('quiet|bare'),
+		{ state: null, chrome: 'bare', alias: 'quiet' });
+});
+
+test('setEmbedState preserves the chrome keyword when it flips the fold', () => {
+	assert.equal(setEmbedState('![[Week 3|quiet|collapsed]]', 'open'), '![[Week 3|quiet|open]]');
+	assert.equal(setEmbedState('![[Week 3|quiet]]', 'collapsed'), '![[Week 3|quiet|collapsed]]');
+});
+
+test('setEmbedState writes keywords canonically as title|chrome|state', () => {
+	assert.equal(setEmbedState('![[Week 3|Reading|collapsed|quiet]]', 'open'),
+		'![[Week 3|Reading|quiet|open]]');
+});
+
+test('the canonical round trip is a fixed point', () => {
+	const once = setEmbedState('![[Week 3|Reading|quiet|open]]', 'collapsed');
+	assert.equal(once, '![[Week 3|Reading|quiet|collapsed]]');
+	assert.equal(setEmbedState(once, 'open'), '![[Week 3|Reading|quiet|open]]');
 });

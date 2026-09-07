@@ -139,7 +139,7 @@ export const sitePath = (rel) => {
 	return sid ? `/${encodeURIComponent(sid)}/${encoded}` : `/${encoded}`;
 };
 
-import { parseEmbedState } from './embed-state.js';
+import { parseEmbedModes } from './embed-state.js';
 
 const escapeAttr = (s) =>
 	s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -300,6 +300,16 @@ export const wikiembed = {
 				// An alias that was ONLY the mode is not a caption.
 				if (!alias) token.label = link.target;
 			}
+			// A note-embed keyword on a media embed does nothing — but it must
+			// not become the alt text either, which is what it did before the
+			// keywords existed to be mistaken for captions.
+			if (alias) {
+				const stripped = parseEmbedModes(alias);
+				if (stripped.state || stripped.chrome) {
+					alias = stripped.alias;
+					if (!alias) token.label = link.target;
+				}
+			}
 			const { alt, width, height } = parseMediaAlias(alias);
 			token.media.width = width;
 			token.media.height = height;
@@ -318,10 +328,13 @@ export const wikiembed = {
 		// embed stack still means something: only a top-level embed's line
 		// number belongs to the note being rendered, and only that one can be
 		// toggled back into its source (see the renderer).
-		const embedState = parseEmbedState(link.alias);
-		if (embedState.state) {
-			token.embedState = embedState.state;
-			token.label = embedState.alias ?? link.target;
+		const modes = parseEmbedModes(link.alias);
+		if (modes.state || modes.chrome) {
+			// `bare` draws no title bar, so there is nothing to disclose and a
+			// folded one would render as literally nothing. Chrome wins.
+			token.embedChrome = modes.chrome;
+			token.embedState = modes.chrome === 'bare' ? null : modes.state;
+			token.label = modes.alias ?? link.target;
 			token.embedDepth = embedStack.length;
 		}
 
@@ -464,6 +477,15 @@ export const wikiembed = {
 				+ `<div class="embed-note">(${reason})</div></div>\n`;
 		}
 		const body = `<div class="embed-content">\n${this.parser.parse(token.tokens)}</div>`;
+		// `|bare`: no frame, no title, no disclosure — the transcluded note
+		// reads as part of this one. The wrapper stays (and keeps its class
+		// and data-href) so the preview client's DOM contract and any vault
+		// stylesheet still have something to hold on to; the CSS is what
+		// takes the decoration away.
+		if (token.embedChrome === 'bare') {
+			return `<div class="internal-embed is-bare" data-href="${target}">${body}</div>\n`;
+		}
+		const chrome = token.embedChrome ? ` is-${token.embedChrome}` : '';
 		if (token.embedState) {
 			// A real <details>, so the disclosure works with no script at all —
 			// in an export, on a static site, under any browser. The host only
@@ -479,11 +501,11 @@ export const wikiembed = {
 			const open = token.embedState === 'open' ? ' open' : '';
 			const line = token.embedDepth === 0 && token.sourceLine !== undefined
 				? ` data-embed-line="${token.sourceLine}"` : '';
-			return `<details class="internal-embed is-collapsible"${open}${line} data-href="${target}">`
+			return `<details class="internal-embed is-collapsible${chrome}"${open}${line} data-href="${target}">`
 				+ `<summary class="embed-title"><a class="internal-link" href="#" data-href="${target}">${title}</a></summary>`
 				+ `${body}</details>\n`;
 		}
-		return `<div class="internal-embed" data-href="${target}">`
+		return `<div class="internal-embed${chrome}" data-href="${target}">`
 			+ `<div class="embed-title"><a class="internal-link" href="#" data-href="${target}">${title}</a></div>`
 			+ `${body}</div>\n`;
 	},

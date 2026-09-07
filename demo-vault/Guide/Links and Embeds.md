@@ -24,6 +24,23 @@ embeds a live, read-only canvas view — see [[Canvas]].
 An embed stays current: edit the embedded note and this one re-renders,
 however deeply the embeds nest.
 
+### How much frame an embed draws
+
+The default box — accent stripe, hairline border, rounded corners, title —
+is right when the embed is a *quotation of somewhere else*. Two keywords
+turn it down when it isn't. `quiet` keeps the stripe and the title and
+loses the panel:
+
+![[Reading Mode#Interactions|quiet]]
+
+`bare` keeps nothing at all, so the other note's words sit in this one's
+flow, spaced exactly as if they had been typed here:
+
+![[Reading Mode#Interactions|bare]]
+
+That last one is the composed document: a syllabus assembled from week
+notes, a paper whose sections live in their own files.
+
 ### Embeds that fold
 
 Add `collapsed` or `open` as the last alias segment and the embed gets a

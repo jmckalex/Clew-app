@@ -149,6 +149,29 @@ a.internal-link.unresolved { color: var(--preview-muted); border-bottom: 1px das
 .internal-embed .embed-title a { color: var(--preview-muted); }
 .internal-embed.unresolved .embed-note { color: var(--preview-danger); font-size: 0.9em; }
 
+/* How much frame an embed draws — `![[Note|quiet]]` / `![[Note|bare]]`.
+   `quiet` keeps the accent stripe and loses the panel around it: still
+   visibly a transclusion, without interrupting the page. `bare` keeps
+   nothing, so the transcluded note reads as part of the host note — its
+   wrapper survives only as a hook for vault CSS. */
+.internal-embed.is-quiet {
+	border: none;
+	border-left: 3px solid var(--preview-accent);
+	border-radius: 0;
+	padding: 0 0 0 14px;
+}
+.internal-embed.is-bare {
+	border: none;
+	border-radius: 0;
+	padding: 0;
+	margin: 0;
+}
+/* Nothing zeroes the first and last child's margins here, deliberately: with
+   no border and no padding on either wrapper, the transcluded blocks' own
+   margins collapse straight through to the host note's prose, which is what
+   makes the seam invisible. Zeroing them (the framed box's habit, where the
+   panel supplies the spacing) makes a bare embed hug whatever precedes it. */
+
 /* `![[Note|collapsed]]` / `![[Note|open]]` — a disclosable embed. Same
    <details> treatment as a foldable callout, chevron and all, so the two
    read as one idea; the title stays a link to the note it transcludes. */
