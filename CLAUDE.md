@@ -69,8 +69,9 @@ note API, plugins, and every settings key.
   note-metadata extractor, BibTeX parser, the ported jmarkdown-scan suite,
   canvas model, diary, frontmatter, plugins discovery, query/leaflet/exif
   parsers, Excalidraw round-trip, markdown tables, callouts, block
-  references, Dataview/Bases/dataviewjs, office-tab layout rules —
-  408 tests. DOM/UI work is verified with the smoke harness.
+  references, Dataview/Bases/dataviewjs, office-tab layout rules, the
+  embed graph and the embed keyword syntax — 469 tests. DOM/UI work is
+  verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js] [CLEW_SMOKE_VAULT=/path/vault]
   electron .` — SMOKE_VAULT opens exactly that vault, never touching the
@@ -112,10 +113,15 @@ browser-window-focus).
   hook — captures every window), `session.js` (per-window services),
   `vault.js` (vault manager, chokidar watcher, file ops, attachment saving,
   `.clew/` state), `indexer.js` (the metadata cache: extractor over every
-  note, link resolution, incremental patches), `render-service.js` (one-shot
+  note, link resolution, incremental patches, `embeddersOf()` — who
+  transcludes a path, transitively), `render-service.js` (one-shot
   warm jmarkdown workers — see below — plus `toolchainPath()`, which extends
   PATH with TeX/homebrew dirs), `protocol.js` (`clew-preview://`),
-  `search.js`, `export.js` (HTML/LaTeX/PDF via the engine), `rename-links.js`
+  `search.js`, `export.js` (HTML/LaTeX/PDF via the engine, plus the
+  reading-view PDF), `print-pdf.js` (that PDF: the note's own
+  clew-preview:// document printed from a hidden window — no TeX, and
+  what the screen shows; polls MathJax/fonts/mermaid before printing),
+  `rename-links.js`
   (vault-wide wikilink rewriting), `settings.js` (app-global), `ipc.js`
   (every handler; channel names in `src/shared/channels.js`).
 - `src/preload/preload.cjs` — the entire bridge: `window.clew.{invoke,on}`,
@@ -130,7 +136,12 @@ browser-window-focus).
   hrefs; the `|external` alias emits `data-open-external` — the OS default
   app instead of a Clew tab, guarded in `main/open-file.js#planOpen`,
   which is electron-free so its refusals are unit-tested; `file://` links
-  route to the same guard, executables refused BY NAME), `obsidian-fences.js` (```mermaid + ```leaflet maps incl. photo
+  route to the same guard, executables refused BY NAME; note embeds carry
+  two independent mode keywords on the alias tail — `|collapsed`/`|open`
+  for the fold, `|quiet`/`|bare` for how much frame is drawn — parsed and
+  written by `embed-state.js`, which the RENDERER imports too so the
+  reader and the writer of the syntax cannot drift, the same arrangement
+  as block-refs.js/block-ids.js), `obsidian-fences.js` (```mermaid + ```leaflet maps incl. photo
   maps w/ HEIC conversion), `query-fences.js` (```query/```tasks/```kanban
   + the `vault` global for script blocks), `callouts.js` (every Obsidian
   `> [!type]`, case-insensitively, incl. foldables — registered LAST so it
@@ -179,7 +190,10 @@ browser-window-focus).
   `site-client.js` (static-site runtime bundle).
 - **Vault databases:** ```query/```tasks/```kanban scan the vault in the
   worker at render time; notes holding them re-render on ANY file change
-  (render-service tracks hasQueries). Writes flow field-edit →
+  (render-service tracks hasQueries). The same `#restale` path serves
+  EMBEDS: a transclusion puts the target's content in the embedder's
+  HTML, so a changed note restales everything that embeds it —
+  transitively, via the indexer's embeddersOf. Writes flow field-edit →
   `actions.editNoteField` (frontmatter via shared/frontmatter — respects
   the clean flag — or the inline `Key:: value` line). Both preview-view
   and canvas-view route field-edit/task-toggle.
@@ -206,7 +220,9 @@ browser-window-focus).
   Website): one-shot workers with CLEW_SITE_EXPORT=1, marker-URL
   relativization per page depth, assets/ copy, queries baked static.
 - `src/renderer/` — `state/` (Emitter stores: vault/workspace/settings/ui/
-  bookmarks), `workspace/tree.js` (pure layout model: n-ary splits,
+  bookmarks; the workspace state also carries `collapsedFolders`, the file
+  explorer's closed folders — per vault, absence meaning open),
+  `workspace/tree.js` (pure layout model: n-ary splits,
   kind-aware tabs — 'note' | 'file' | 'canvas' | 'graph' | 'settings' |
   'empty' — and per-tab history), `editor/` (`pool.js` owns every
   EditorView; `jmd/` is the dialect overlay ported from jmacs; `complete/`
