@@ -270,7 +270,17 @@ for whoever picks this up:
   files. `smoke-asset:` lines from protocol.js under CLEW_SMOKE_LOG are
   how that was counted (README). The library's prebuilt name database
   (noted in its handover, not done) would take the scan away.
-- **For the iPad** (briefed the Clew-iOS session in full): the engine
+- **The iPad has it too** (Clew-iOS session, same evening, its branches
+  fontnote-p1..p3 on top of Clew-app 4eae005, unpushed): faces built
+  from CoreText tables, served in the same URL shape, CLEW_NOTE_FONTS
+  through its worker env. Verified there against mp-tikz-wasm 1dea1b8:
+  the whole Fonts.md fixture passes in the simulator, 12pt included —
+  six figures cold in 5.6 s (desktop 4.5 s), per-figure text/faces
+  16/7, 3/2, 5/3, 0/0, 3/2, 0/0; the Diagrams note's nine figures in
+  5.0 s. Its TestFlight builds lack the bundle until 0.3.0 is released
+  and the manifest re-pins (Xcode Cloud fetches the pinned release).
+  The manual's "On iPad" sentence is Clew-docs 7e7ca70.
+- **What the iPad was told** (the brief, for reference): the engine
   build needs the bundle and the patch; faces should come from CoreText
   tables (no reading the system .ttc from the sandbox), written as an
   sfnt the way `note-fonts.js#extractFace` does; the faces map goes in
