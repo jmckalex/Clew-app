@@ -118,10 +118,16 @@ test('the file.* namespace', () => {
 	assert.ok(evalIn('file.tags', pageNamed('Signals')).includes('#project/clew'));
 });
 
-test('inline Key:: fields are queryable like frontmatter', () => {
-	assert.equal(evalIn('Effort', pageNamed('Alpha')), 12);
-	assert.equal(evalIn('Effort > 10', pageNamed('Alpha')), true);
-	assert.equal(evalIn('Effort > 10', pageNamed('Beta')), false);
+test('a Key:: line is a description list, not a field (owner, 2026-09-17)', () => {
+	// Alpha and Beta carry `Effort:: 12` / `Effort:: 4` in their bodies.
+	// jmarkdown renders that line as <dt>Effort</dt><dd>12</dd>, and the
+	// two readings cannot coexist, so the vault model reads no field from
+	// it: data lives in frontmatter. A page's fields are its frontmatter.
+	assert.ok(!('Effort' in pageNamed('Alpha').fields), 'no inline field read');
+	assert.deepEqual(Object.keys(pageNamed('Alpha').fields).sort(), ['rating', 'status']);
+	assert.ok(evalIn('Effort', pageNamed('Alpha')) == null);
+	assert.equal(evalIn('Effort > 10', pageNamed('Alpha')), false);
+	assert.equal(evalIn('rating > 2', pageNamed('Alpha')), true, 'frontmatter still answers');
 });
 
 test('the link graph resolves both ways', () => {

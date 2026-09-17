@@ -195,8 +195,13 @@ browser-window-focus).
   HTML, so a changed note restales everything that embeds it —
   transitively, via the indexer's embeddersOf. Writes flow field-edit →
   `actions.editNoteField` (frontmatter via shared/frontmatter — respects
-  the clean flag — or the inline `Key:: value` line). Both preview-view
-  and canvas-view route field-edit/task-toggle.
+  the clean flag). Both preview-view and canvas-view route
+  field-edit/task-toggle. **Fields are frontmatter only**: Dataview's
+  inline `Key:: value` is NOT read, because `Term:: definition` is the
+  dialect's description list and the engine claims such a line as a term
+  (a bracketed `[key:: value]` mid-sentence ate the sentence) — owner's
+  decision 2026-09-17, description lists win. Do not reintroduce inline
+  fields.
 - **Plugins** (`src/main/plugins.js`, `src/renderer/plugins.js`):
   engine/preview/app surfaces, discovered in TWO roots — the vault's
   `.clew/plugins/<id>/` and the GLOBAL `<userData>/plugins/<id>/`

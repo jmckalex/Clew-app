@@ -27,6 +27,14 @@ preview, so every PGF library works and nothing has to be installed
 (see [[Diagrams]]) — `obsidian://` links, GitHub-style `#anchors` — and
 the three below.
 
+One Dataview idiom is refused on purpose: **inline fields**. `Key::
+value` is jmarkdown's description-list syntax, and a line cannot be
+both a definition and a datum, so Clew renders it as a description
+list and reads no field from it — a bracketed `[key:: value]`
+mid-sentence becomes a term, sentence and all. Put the value in
+frontmatter; every query, board and panel reads it there (see
+[[Properties]]).
+
 ## Admonitions
 
 The callout syntax vaults used *before* Obsidian had callouts. An

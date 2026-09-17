@@ -230,7 +230,9 @@ const TASK_RE = /^(\s*(?:[-*+]|\d+[.)])\s+)\[( |x|X)\]/;
  * Write one field of a note — the engine behind editable query tables and
  * kanban drags. `source` says where the field lives: 'fm' (frontmatter,
  * via the same parse/serialize machinery as the properties panel) or
- * 'line:N' (a Dataview-style inline `Key:: value` on that 1-based line).
+ * 'block' (a block-bound widget: the marker line's text). There is no
+ * inline-field source any more: `Key:: value` is a description list in
+ * this dialect, not data (engine/query-fences.js says why).
  * The value is retyped to match what it replaces (number stays number,
  * array stays array via comma-splitting).
  */
@@ -243,14 +245,6 @@ export async function editNoteField(path, field, value, source = 'fm') {
 			// line's TEXT, marker kept — prose editing with an address.
 			next = rewriteBlockText(text, field.replace(/^\^/, ''), value);
 			if (next === null) throw new Error(`no ${field} block in the note`);
-		} else if (source.startsWith('line:')) {
-			const lineNo = Number(source.slice(5));
-			const lines = text.split('\n');
-			if (!(lineNo >= 1 && lineNo <= lines.length)) throw new Error('stale line');
-			const re = new RegExp(`(${field.replace(/[.*+?^$()|[\]\\]/g, '\\$&')}\\s*::\\s*)([^\\]\\n]*)`);
-			if (!re.test(lines[lineNo - 1])) throw new Error('field not on that line anymore');
-			lines[lineNo - 1] = lines[lineNo - 1].replace(re, (_, head) => head + value);
-			next = lines.join('\n');
 		} else {
 			const { entries, clean, present } = parseProperties(text);
 			if (present && !clean) throw new Error('frontmatter is outside the editable subset');

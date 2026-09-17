@@ -2,9 +2,11 @@
 author: Brian Skyrms
 status: reading
 rating: 8
+chapter: 5
 ---
 # Signals
 
-Reading for the Society paper. Inline fields work too — this one lives
-in the text, not the frontmatter: [chapter:: 5]. A query can read it
-the same way, and editing it in a table rewrites this very sentence.
+Reading for the Society paper. The relevant argument is in chapter 5,
+recorded as a property above rather than in this sentence: `::` in the
+body is a description list in this dialect, not data, so a query reads
+`chapter` from the frontmatter and a table cell edits it there.
