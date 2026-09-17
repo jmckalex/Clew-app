@@ -188,6 +188,29 @@ browser-window-focus).
   and the source pane cannot drift (`langs/tex-mode.js` is the TeX
   side; `langs/fence-languages.js` is lang-markdown's `codeLanguages`
   hook; theme.js maps the lezer tags onto the overlay's jmd-* classes).
+  **`font=note`** typesets a figure in the note's own face: the wrapper
+  emits fontspec (luaotfload's `\font` for plain TeX) naming files with
+  `Path=./`, forces a Lua engine and `fonts=woff2` (real `<text>` in an
+  embedded subset), and marks the element `data-opentype` — also set on any
+  complete document loading fontspec/unicode-math itself. That mark is
+  what `preview-client/figures.js#ensureLoader` keys on: it asks auto.js
+  for `+opentype` ONLY when a marked figure is on the page AND the staged
+  build's `bundles/index.json` lists the bundle (a findable luaotfload
+  costs every LuaTeX run ~180 ms; asking for a bundle that is not there
+  fails the whole engine — the pinned 0.2.1 has none, so marked figures
+  are then refused BY NAME). The list is read once by auto.js, so a marked
+  figure arriving later reloads the preview once. The faces come from
+  `main/note-fonts.js`: extracted at app start from the machine's own font
+  folder (`Avenir Next.ttc` is a COLLECTION, and a collection is garbled
+  under woff2 — dvisvgm keys faces by path, not index — so the four faces
+  are split into one file each; Segoe UI on Windows, static Cantarell on
+  Linux; nothing is ever shipped) into `<userData>/note-fonts/`, served at
+  `__clew_assets__/notefonts/`, handed to the engine by `mpTikzWasm.
+  addFiles` BEFORE the loader is injected, and named to the render worker
+  through `CLEW_NOTE_FONTS`. A site export bakes such figures as OUTLINES
+  (`figure-bake.js`), never embedding Apple's or Microsoft's face in a
+  published page. The manifest is still pinned to 0.2.1: the feature is
+  live only where the master's `opentype-fonts` build is staged.
 - **Obsidian's own query formats** — for opening other people's vaults,
   alongside (not replacing) Clew's `query`/`tasks`/`kanban` fences:
   `vault-model.js` (the vault as pages: `file.*`, the link graph,

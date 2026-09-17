@@ -200,7 +200,53 @@ const x = 1; // not ours: plain text
 :::
 `;
 
+// Fonts.md: `font=note` on each of the three LaTeX/TeX forms, a complete
+// document that loads fontspec itself, and a control figure that must NOT
+// pay for any of it (fonts-scenario.js).
+const fonts = `# Fonts
+
+## A latex snippet in the note's face
+
+\`\`\`latex font=note
+The note's own face: regular, \\textbf{bold}, \\textit{italic},
+\\textbf{\\textit{both}} — and maths, $x^2 + y^2 = r^2$, in Latin Modern.
+\`\`\`
+
+## A TikZ picture whose labels use it
+
+\`\`\`tikz font=note
+\\node[draw,rounded corners] (a) at (0,0) {start};
+\\node[draw,rounded corners] (b) at (3,0) {end};
+\\draw[->,thick] (a) -- node[above] {\\textit{edge}} (b);
+\`\`\`
+
+## Plain TeX in it
+
+\`\`\`tex font=note
+\\nopagenumbers
+Plain \\TeX\\ in the note's face --- {\\bf bold} and {\\it italic} too.
+\`\`\`
+
+## A complete document loading fontspec by hand
+
+\`\`\`latex
+\\documentclass[varwidth,border=2pt]{standalone}
+\\usepackage{fontspec}
+\\setmainfont{NoteFont-Regular.ttf}[Path=./,BoldFont=NoteFont-Bold.ttf]
+\\begin{document}
+Fontspec by hand, \\textbf{bold too}.
+\\end{document}
+\`\`\`
+
+## A control that keeps its outlines
+
+\`\`\`tikz
+\\draw[thick] (0,0) circle (1) node {plain};
+\`\`\`
+`;
+
 fs.writeFileSync(path.join(dir, 'Figures.md'), figures);
 fs.writeFileSync(path.join(dir, 'Edit.md'), edit);
 fs.writeFileSync(path.join(dir, 'Highlight.md'), highlight);
-console.log(`figures fixture: ${dir} (Figures.md, Edit.md, Highlight.md)`);
+fs.writeFileSync(path.join(dir, 'Fonts.md'), fonts);
+console.log(`figures fixture: ${dir} (Figures.md, Edit.md, Highlight.md, Fonts.md)`);

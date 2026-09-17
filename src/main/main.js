@@ -24,6 +24,7 @@ import { CH } from '../shared/channels.js';
 import { registerPreviewScheme, installPreviewProtocol } from './protocol.js';
 import { VaultSession, focusedSession, sessionForVault } from './session.js';
 import { paths } from './paths.js';
+import { prepareNoteFonts } from './note-fonts.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.dirname(__dirname); // dist/
@@ -240,6 +241,16 @@ function watchRendererDist() {
 app.whenReady().then(() => {
 	settings.load();
 	registerIpc();
+	// The note's typeface, as files for `font=note` figures (main/
+	// note-fonts.js). Before the protocol and before any vault opens: the
+	// render worker reads the index at spawn, and a preview fetches the
+	// faces the moment a figure asks for them. A failure here costs that
+	// feature, not the app.
+	try {
+		prepareNoteFonts(paths.noteFonts);
+	} catch (err) {
+		console.error('note fonts:', err);
+	}
 	installPreviewProtocol({
 		distDir,
 		nodeModulesDir: paths.previewAssets,
@@ -247,6 +258,7 @@ app.whenReady().then(() => {
 		embedpdfDir: paths.embedpdfAssets,
 		mptikzDir: paths.mptikzAssets,
 		zetaDir: paths.zetaAssets,
+		noteFontsDir: paths.noteFonts,
 		globalPluginsDir: paths.globalPlugins,
 	});
 	// No { role: 'close' } anywhere in the menu: Cmd+W belongs to the
