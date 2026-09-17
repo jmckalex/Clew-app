@@ -198,6 +198,36 @@ test('clauses are found by keyword, so a query may wrap across lines', () => {
 	assert.equal(q.limit, 5);
 });
 
+test('an absent field IS null: = null finds it, != null drops it, typeof agrees', () => {
+	const method = pageNamed('Method');   // no rating
+	const signals = pageNamed('Signals'); // rating: 5
+	assert.equal(evalIn('rating = null', method), true);
+	assert.equal(evalIn('rating != null', method), false);
+	assert.equal(evalIn('rating = null', signals), false);
+	assert.equal(evalIn('rating != null', signals), true);
+	// The two ways of asking must not disagree (they did: typeof said null,
+	// != null said present).
+	assert.equal(evalIn('typeof(rating)', method), 'null');
+	assert.equal(evalIn('(rating = null) = (typeof(rating) = "null")', method), true);
+	assert.equal(evalIn('(rating = null) = (typeof(rating) = "null")', signals), true);
+});
+
+test('present-but-falsy values are not null', () => {
+	const p = pageNamed('Signals');
+	assert.equal(evalIn('0 = null', p), false);
+	assert.equal(evalIn('0 != null', p), true);
+	assert.equal(evalIn('false = null', p), false);
+	assert.equal(evalIn('"" = null', p), false);
+	assert.equal(evalIn('null = null', p), true);
+	assert.equal(evalIn('null != null', p), false);
+});
+
+test('WHERE field != null is the incomplete-notes filter it reads as', () => {
+	// Every note in the vault, split by whether it has a rating at all.
+	assert.deepEqual(names(run('LIST\nWHERE rating != null')), ['Alpha', 'Beta', 'Signals']);
+	assert.deepEqual(names(run('LIST\nWHERE rating = null')), ['Method', 'Old', 'Scratchpad']);
+});
+
 test('repeated WHERE clauses are ANDed, as Dataview does', () => {
 	const q = parseQuery('table x\nfrom "A"\nwhere a = 1\nwhere b = 2');
 	assert.deepEqual(q.where, ['a = 1', 'b = 2']);
