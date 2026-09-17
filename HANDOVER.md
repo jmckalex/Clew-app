@@ -1,4 +1,4 @@
-# Handover — 2026-09-17, end of the fourth session (everything committed on `main`, nothing pushed §0)
+# Handover — 2026-09-17, end of the fifth session (UNCOMMITTED here: `font=note` — figures in the note's own typeface §2f — and the manual-screenshot kit §2e; everything else committed on `main`, nothing pushed §0)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it; it gained the figures bullet and the icons
@@ -42,6 +42,18 @@ unrelated additions) and the `\nopagenumbers` removal from wrapTex
 (the ```tex fence adds `\bye` and nothing else; tests, fixture, demo
 note and manual updated). A flipped `Guide/Widgets.md` (live-testing
 residue) was restored, not committed.
+
+**UNCOMMITTED here, ready for review, two blocks:** (1) `font=note`
+(§2f): `src/main/note-fonts.js` + `tests/note-fonts.test.js` (new),
+`src/main/asset-stamp.js` + `tests/asset-stamp.test.js` (new),
+`src/engine/figures.js`, `src/preview-client/figures.js`,
+`src/main/{paths,main,protocol,render-service,figure-bake,export-site}.js`,
+`tests/figures.test.js`, `smoke/{fonts-scenario,fonts-frame}.js` +
+`make-figures-vault.mjs` (Fonts.md), `demo-vault/Features/Diagrams.md`,
+CLAUDE.md's figures bullet, the README row. (2) The manual-screenshot
+kit `smoke/manual/` and its README section (§2e). In Clew-docs both
+passes are uncommitted too — the illustration pass and the `font=note`
+section; its HANDOVER has the tables. **524 tests green.**
 
 **515 unit tests green**; `npm run build` passes; `make check-links`
 clean in Clew-docs. Every claim in §2 was smoke-verified with the
@@ -135,6 +147,118 @@ so a page-tall empty SVG is visible in a run.
   with one line each, dated, under the same "not finished until it
   matches" rule as the manual. The owner did not say yes or no.
 
+### 2e. The manual illustrated for the 0.11 features (fifth session, uncommitted)
+
+The owner asked for the docs to "discuss and document all the new
+features, complete with screenshots". The text was already there for
+everything but the typeface (`theming.html` gained the Avenir Next
+paragraph; the reading-mode return trip had been written in
+`reading-mode.html#toggling` all along, so Clew-docs' open item 2 was
+half stale). What was missing was pictures: ten desktop screenshots,
+each from a committed scenario in `smoke/manual/` (README table there)
+over a **scratch rsync of the demo vault** (never the real one — the
+completion scenario's keystrokes auto-save into the note), fresh
+`CLEW_USER_DATA`, 2560×1700 dark, every one eyeballed. Retaken:
+`office-tab.png` (the 09-01 shot showed the Sifr icons that `9ef4375`
+reverted) and `welcome.jpg` (both copies). New: welcome screen,
+embed frames, the ```latex/```tex fences, the split with the
+TeX-highlighted fence, path-matched wikilink completion, the export
+commands in the palette, the plugin list with a `global` row, and a
+.docx thumbnail embed. Landing page: the Diagrams bullet, the plugins
+card and the "everything else" card mention the wasm TeX, global
+plugins, office documents and note history; the iPad status paragraph
+is the owner's and was left alone.
+
+Facts the kit earned: **splitting re-parents the editor and resets its
+scroll** — scroll the source pane after the split settles, and drive
+the reading pane from its frame script; **CDP keystrokes need the
+caret's viewport coords** (`view.coordsAtPos`) for the click that
+focuses the editor, and the completion popup opens at the caret, so the
+prompt line must be short enough for it to fit before the sidebar;
+**`textutil -convert docx` needs `<meta charset="utf-8">`** in its HTML
+or an em dash arrives as `â€”`; the office thumbnail for a fresh vault
+took 12 s once a LibreOffice had booted in the same app run's
+lifetime — plan on the tab's minute and a half otherwise; and
+`CLEW_SMOKE_LOG=1` prefixes scenario `console.log` lines with
+`[smoke:info]`, so a log filter that drops `smoke:info` drops the
+assertions.
+
+### 2f. `font=note`: figures in the note's own typeface (fifth session, uncommitted)
+
+The owner pointed at `~/Source/mp-tikz-wasm/docs/16-clew-integration.md`
+(the library's brief for Clew: fontspec under the wasm LuaTeX, an
+`opentype` bundle, `mpTikzWasm.addFiles`, `fonts="woff2"` for real
+`<text>`). CLAUDE.md's figures bullet has the mechanism; what matters
+for whoever picks this up:
+
+- **Gated on a release that does not exist.** The library work is on its
+  `opentype-fonts` branch, UNCOMMITTED there as of tonight (session 10
+  added the plain-TeX fix), not merged, not released. The manifest stays
+  pinned to 0.2.1 as the brief asked. Clew's code degrades correctly
+  without the bundle — `preview-client/figures.js` checks
+  `bundles/index.json` and refuses marked figures BY NAME, the site baker
+  likewise — so it is safe to commit and ship; the feature simply lights
+  up where a build carrying the bundle is staged (dev reads
+  `~/Source/mp-tikz-wasm/dist` directly; packaging stages it with
+  `sync-mptikz`, which means a DMG built on this machine today WOULD carry
+  the branch build — the owner's call). When 0.3.0 exists: re-pin
+  `src/shared/mptikz-manifest.json`, done.
+- **Decisions taken** (the brief left them open): opt-in per block
+  (`font=note`), never the default — a sans in a maths figure is not
+  always wanted and a findable luaotfload costs every LuaTeX run ~180 ms;
+  the bundle is requested only when a marked figure is on the page at
+  loader time, with a one-shot preview reload (sessionStorage-guarded) if
+  one arrives later; faces come from main, not `queryLocalFonts` (no
+  permission prompt, and the TTC has to be split anyway); site exports
+  bake such figures as outlines (no subset of Apple's face in a
+  published page). Maths stays in Computer Modern on both routes.
+- **Verified** (`smoke/fonts-scenario.js`, fresh profile, eyeballed): the
+  ```latex, ```tikz and ```tex forms all `text>0`, three Avenir Next
+  faces embedded each, the hand-written fontspec document renders, the
+  control keeps outlines, `marked=4`, `pending=0`. The demo vault's
+  Diagrams note gained two `font=note` examples and still renders every
+  figure. The TTC extractor was checked byte for byte against fontTools.
+- **Two mistakes worth remembering.** The first `ensureLoader` set its
+  "added" flag before its awaits and the reload branch read that flag —
+  the preview reloaded in a loop and NOTHING rendered, not even the
+  control, with an empty console (the tell: no library log lines at all).
+  A state machine (`null | deciding | plain | opentype`) fixed it. And
+  the TikZ form carries its block in the PREAMBLE attribute, not the
+  source, so a mark computed from the source alone missed it: it rendered
+  in the smoke only because the other figures had fetched the bundle —
+  `marked=3` where 4 were expected was the only sign. Assert the count.
+- **Plain TeX** first failed with `Module luatexbase Error: Unable to
+  register callback` (ltluatex.lua:109) then `not loadable: metric data
+  not found`; I had written a by-name refusal when the mp-tikz-wasm
+  session reported the cause (luaotfload's DVI module wants
+  `pre_shipout_filter`, which only the LaTeX kernel creates) and a patch
+  to the bundled luaotfload.sty. The refusal is gone; the idiom is the
+  library's verified one (`\input luaotfload.sty`, bracket-file `\font`s
+  with `+liga;+kern;+tlig`, `\let` over `\tenrm/\tenbf/\tenit`). A
+  build without the patch shows exactly those two lines.
+- **Stale engines, found and fixed.** Asked the library session whether
+  bundle files are cached persistently: they are not (in-memory per
+  engine instance; the result cache stores successes only), so the only
+  place a stale file survives is the HTTP cache — and protocol.js serves
+  the mptikz root `immutable, max-age=31536000` with no version in the
+  URLs. So a restaged master (and an app upgrade, same URLs) is served
+  stale for a year; the owner's profile kept the session-9
+  luaotfload.sty while a fresh profile passed. `main/asset-stamp.js`
+  now stamps the engines + bundle indexes (mtimes, sizes) + app version,
+  records it in userData, and main.js awaits
+  `session.defaultSession.clearCache()` on a change before any window
+  opens (verified: cleared on first boot, silent on the second). The
+  library-side alternative, `?v=<sha>` in the file URLs, is the
+  library owner's call and is noted in their handover.
+- **For the iPad** (briefed the Clew-iOS session in full): the engine
+  build needs the bundle and the patch; faces should come from CoreText
+  tables (no reading the system .ttc from the sandbox), written as an
+  sfnt the way `note-fonts.js#extractFace` does; the faces map goes in
+  `globalThis.CLEW_NOTE_FONTS` (added tonight for exactly that); the
+  same cache-staleness applies to any long max-age on their scheme
+  handler; and an HTML export that snapshots the preview would carry an
+  Avenir Next subset. The manual has no "On iPad" sentence for this yet.
+
 ### Measured, on this machine
 
 - LuaLaTeX ≈ 270 ms per short snippet vs pdfTeX ≈ 130 ms (Node); the
@@ -178,8 +302,11 @@ The Queries chapter's three Dataview facts are in (`b5a65a9`).
 
 ## 5. Owner's own actions
 
-- Push both repos, and `make sync` in Clew-docs to deploy the manual —
-  the site currently promises inline fields and a TeX installation.
+- Say "commit" for §2f and §2e (two commits here, two in Clew-docs),
+  then push both repos, and `make sync` in Clew-docs to deploy the
+  manual — the site currently promises inline fields and a TeX
+  installation. Decide whether a DMG built now may carry the
+  `opentype-fonts` library build (§2f), or wait for 0.3.0 and re-pin.
 - The GoDaddy DNS change (A records for clew-app.com/.net →
   144.126.236.254), then in Clew-docs `make dns-check` → `provision` →
   `sync` → `tls`. Plus the win/linux VM run if those artefacts are to ship.
@@ -191,7 +318,8 @@ The Queries chapter's three Dataview facts are in (`b5a65a9`).
 
 ## 6. The owner works in this tree concurrently
 
-Tree clean after §0's commits; Clew-docs clean. `zeta-assets/` and `mptikz-assets/` are
+Tree DIRTY with §2f and §2e; Clew-docs dirty with the illustration pass
+and the `font=note` section. `zeta-assets/` and `mptikz-assets/` are
 deliberate and gitignored. `out/` holds mac/win/linux artefacts from
 09-02. Never switch THIS tree off main. Live testing flips demo widgets —
 reset `status:`/`done:`/`^motto` baselines, and the foldable embed in
@@ -227,3 +355,8 @@ reset `status:`/`done:`/`^motto` baselines, and the foldable embed in
 - `npm run dev` / `npm run package` re-sync the engine AND the EmbedPDF
   viewer from their masters; packaging also stages mp-tikz-wasm
   (`npm run sync-mptikz`). Run all three + `git status` BEFORE tagging.
+- **A smoke timeout must wrap Electron itself**: `perl -e 'alarm shift;
+  exec @ARGV' N npx electron .` kills npx and ORPHANS Electron (five
+  processes kept the fixture open for ten minutes tonight). Exec
+  `node_modules/electron/dist/Electron.app/Contents/MacOS/Electron .`
+  instead, and `ps -axE | grep <vault>` finds a stray by its env.
