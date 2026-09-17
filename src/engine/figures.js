@@ -205,16 +205,16 @@ export function wrapLatex(source, attrs = {}) {
  * \documentclass) is treated as one — the engine switches to lualatex —
  * rather than failing on `\documentclass` being undefined in plain.
  *
- * `\nopagenumbers` first, always: plain TeX sets the folio in the footline
- * of every page, and the SVG is cropped to the ink, so without it a
- * one-line snippet came out 663pt tall — the text at the top, the page
- * number at the bottom, and the whole page between them (measured). A
- * body that sets its own \footline afterwards still wins.
+ * Nothing else is added — not `\nopagenumbers`, though plain TeX's folio
+ * in the footline makes a one-line snippet's cropped SVG a page tall
+ * (663pt, measured): as with a complete LaTeX document, the page is the
+ * author's (owner's decision 2026-09-17), and the manual says what to
+ * write.
  */
 export function wrapTex(source, attrs = {}) {
 	if (isLatexDocument(source)) return { source, attrs: { engine: 'lualatex', ...attrs } };
 	const body = /\\bye\b/.test(source) ? source : `${source}\n\\bye`;
-	return { source: `\\nopagenumbers\n${body}`, attrs };
+	return { source: body, attrs };
 }
 
 /**

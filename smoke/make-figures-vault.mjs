@@ -134,6 +134,7 @@ AFTER-THE-ARTICLE: this paragraph must sit directly under the list.
 ## Plain TeX on LuaTeX (a \\sqrt: the DVI-rule trap regression)
 
 \`\`\`tex
+\\nopagenumbers
 \\centerline{Plain \\TeX, $\\sqrt{2}$ and all.}
 \`\`\`
 

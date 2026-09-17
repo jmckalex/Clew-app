@@ -235,10 +235,10 @@ test('an explicit engine wins over the kind’s default', () => {
 
 test('plain tex gets its \\bye and plain LuaTeX; a \\documentclass body is LaTeX after all', () => {
 	const html = texFence.renderer(texFence.tokenizer('```tex\n\\centerline{Plain}\n```\n'));
-	assert.match(html, /\n\\nopagenumbers\n\\centerline\{Plain\}\n\\bye\n<\/tikz-diagram>/, 'no folio in the crop, and a \\bye added');
+	assert.match(html, /\n\\centerline\{Plain\}\n\\bye\n<\/tikz-diagram>/, 'a \\bye added, nothing else');
 	assert.match(html, /class="mathjax_ignore clew-doc"/);
 	assert.equal(attrOf(html, 'data-engine'), 'luatex');
-	assert.equal(wrapTex('x\n\\bye', {}).source, '\\nopagenumbers\nx\n\\bye', 'an existing \\bye is kept');
+	assert.equal(wrapTex('x\n\\bye', {}).source, 'x\n\\bye', 'an existing \\bye is kept');
 	const doc = '\\documentclass{article}\\begin{document}x\\end{document}';
 	assert.deepEqual(wrapTex(doc, {}), { source: doc, attrs: { engine: 'lualatex' } });
 	assert.equal(wrapTex(doc, { engine: 'latex' }).attrs.engine, 'latex');

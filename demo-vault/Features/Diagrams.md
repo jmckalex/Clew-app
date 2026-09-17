@@ -257,11 +257,13 @@ Maxwell's equations, in differential form:
 ```
 
 A ` ```tex ` fence is plain TeX — Knuth's, with the e-TeX extensions —
-and gets its `\bye` if it forgot one:
+and gets its `\bye` if it forgot one. It keeps its page number too, so
+a snippet wants `\nopagenumbers`:
 
 ```tex
+\nopagenumbers
 \centerline{\bf Plain \TeX\ still works:
-  $\displaystyle\sum_{n=1}^\infty \frac1{n^2} = \frac{\pi^2}{6}$}
+  $\displaystyle\sum_{n=1}^\infty {1 \over n^2} = {\pi^2 \over 6}$}
 ```
 
 Exports part company here, on purpose. A **LaTeX or PDF export** runs
