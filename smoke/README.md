@@ -6,7 +6,10 @@ committed so sessions stop rewriting them. Always pass
 `CLEW_SMOKE_VAULT`; add `CLEW_SMOKE_LOG=1` to see each scenario's
 `smoke-*:` assertion lines; `CLEW_USER_DATA=<dir>` isolates app settings
 (fresh-install simulation; HOME alone does not isolate Electron on
-macOS). Under `CLEW_SMOKE` settings are never persisted at all
+macOS). A timeout must wrap the Electron BINARY — `perl -e 'alarm shift;
+exec @ARGV' 240 node_modules/electron/dist/Electron.app/Contents/MacOS/Electron .`
+— because one around `npx electron .` kills npx and orphans the app
+(`ps -axE | grep <vault>` finds a stray by its environment). Under `CLEW_SMOKE` settings are never persisted at all
 (settings.js#save no-ops), so scenarios cannot leak vaults or setting
 flips into the user's real app state. Long runs (anything booting
 LibreOffice) belong in the background with output to a file.
@@ -55,3 +58,30 @@ Baseline on the owner's machine (2026-09-02, M-series, 5003 notes):
 cold index 412ms, warm 64ms; search 1–6ms; dashboard first render ~1s;
 save→dashboard-rerender ~1.5s (incl. the 600ms query debounce);
 ~800MB total across processes with a dashboard open.
+
+## `manual/` — the manual's screenshots
+
+The desktop screenshots in `../Clew-docs/site/manual/images/` come from
+these scenarios, one per image, each run over a **scratch copy of the
+demo vault** (`rsync -a --exclude .clew/cache --exclude .clew/history
+demo-vault/ /tmp/demo-vault/`, then delete its `.clew/workspace.json`
+before every run so each shot starts from a single clean pane) with a
+fresh `CLEW_USER_DATA`. Screenshots are 2560×1700 (the 1280×850 window
+at 2×) in the dark theme; every one was eyeballed before it went in.
+The office pair needs the office engine (dev serves the repo's
+`zeta-assets/`) plus a Word file in the vault — `textutil -convert docx
+page.html` makes one, provided the HTML declares `<meta
+charset="utf-8">` (without it an em dash arrives as `â€”`).
+
+| Scenario | Image | Notes |
+| --- | --- | --- |
+| *(no script; no `CLEW_SMOKE_VAULT`, fresh `CLEW_USER_DATA`)* | `welcome-screen.png` | The welcome window itself. Cropped to the centre 1600×1000 (`sips -c 1000 1600`) for the manual. |
+| `welcome-note.js` | `welcome.jpg` (also `site/images/`) | The Welcome note in reading mode. |
+| `embed-frames.js` + `embed-frames-frame.js` | `embed-frames.png` | Links and Embeds guide scrolled to "How much frame an embed draws": the `quiet` and `bare` embeds. |
+| `figures.js` + `figures-show-frame.js` / `figures-latex-frame.js` | `figures-show.png` / `figures-latex.png` | Diagrams note; the frame script waits for `__clewFiguresPending() === 0` (up to 120 s cold) before scrolling to its heading. |
+| `fence-split.js` + `fence-split-frame.js` | `fence-split.png` | Diagrams note split: source (```tikz both, TeX-highlighted) beside reading mode. Splitting re-parents the editor and resets its scroll, so the scenario scrolls the source pane AFTER the split settles and the frame script scrolls the reading pane to the same block. |
+| `completion.js` | `wikilink-completion.png` | Real keystrokes (`__clewSmokeInput`) typing `[[Guide/Link` at the end of a `Draft.md`; right sidebar closed so the popup has room. |
+| `palette-export.js` | `palette-export.png` | Command palette filtered to `export` over the Export guide. |
+| `plugins-settings.js` | `plugins-settings.png` | Settings → This vault scrolled to the plugin rows; run with `CLEW_USER_DATA=<make-global-plugin.mjs dir>/userdata` so a `global` row appears beside the demo vault's three. |
+| `office-tab.js` | `office-tab.png` | `Attachments/Reading Group.docx` in an office tab beside the Welcome tab; waits for the dock frame, then 90 s for LibreOffice. |
+| `office-embed.js` + `office-embed-frame.js` | `office-embed.png` | `Projects/Reading Group.md` embedding the same file as a thumbnail; the frame script waits for `.office-thumb-img` to load (up to 240 s). |
