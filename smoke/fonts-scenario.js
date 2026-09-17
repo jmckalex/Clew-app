@@ -17,5 +17,6 @@
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const { workspaceStore } = window.__clew;
 workspaceStore.openNote('Fonts.md', { defaultMode: 'reading' });
-await sleep(20000);
+// Short: the frame script does the waiting, and times it from the preview's load.
+await sleep(3000);
 console.log('smoke-fonts: frame=' + !!document.querySelector('clew-preview-view iframe'));

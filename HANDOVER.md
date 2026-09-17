@@ -250,6 +250,26 @@ for whoever picks this up:
   opens (verified: cleared on first boot, silent on the second). The
   library-side alternative, `?v=<sha>` in the file URLs, is the
   library owner's call and is noted in their handover.
+- **The 12pt bug** (owner's report, late evening): `\documentclass[12pt]
+  {article}` + font=note failed with `Font \TU/lmr/m/n/12=[lmroman12-
+  regular] … not loadable`. Cause: the LuaLaTeX FORMAT's default family
+  is Latin Modern through TU, size12.clo's `\normalsize` selects it at
+  12pt INSIDE `\documentclass` (probed: the error precedes a `\typeout`
+  placed right after the class line), and the opentype bundle carried
+  LM's 10pt faces only. No Clew-side escape exists — a `\fontsize`
+  bracket around the fontspec load changes nothing, `\RequirePackage
+  {fontspec}` ahead of `\documentclass` fails outright (both probed
+  through the library's Node API) — so nothing was added here; the
+  library moved all 72 LM faces into `opentype` (mp-tikz-wasm 57bbd6d,
+  branch head 1dea1b8, still unreleased). Verified on that build: the
+  fixture's 12pt case `text=3 fontfaces=2`, all six figures ok; cold on
+  a fresh profile the page settles 4.5 s after the preview loads (4.0 s
+  on the twelve-face bundle); the engines fetched 126 opentype files
+  (12.1 MB, all 72 faces among them — luaotfload's name-database scan,
+  once per engine instance, whatever the lookup form) of 483 bundle
+  files. `smoke-asset:` lines from protocol.js under CLEW_SMOKE_LOG are
+  how that was counted (README). The library's prebuilt name database
+  (noted in its handover, not done) would take the scan away.
 - **For the iPad** (briefed the Clew-iOS session in full): the engine
   build needs the bundle and the patch; faces should come from CoreText
   tables (no reading the system .ttc from the sandbox), written as an

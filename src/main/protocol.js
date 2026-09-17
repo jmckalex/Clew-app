@@ -203,6 +203,11 @@ export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDi
 				const extra = root === 'mptikz'
 					? { 'Cache-Control': 'public, max-age=31536000, immutable' }
 					: {};
+				// What a figure actually fetched — the engines run in a Worker,
+				// invisible to the preview document's resource timings, so a
+				// smoke run counts here (smoke/README.md: "what the engines
+				// fetched").
+				if (process.env.CLEW_SMOKE_LOG && root === 'mptikz') console.log(`smoke-asset: ${rest}`);
 				return fileResponse(abs, extra, request.headers.get('range'));
 			}
 			if (pathname.startsWith('__clew_preview__/')) {
