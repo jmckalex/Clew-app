@@ -15,7 +15,9 @@
 // attachments copied alongside and the handful of runtime assets (MathJax,
 // mermaid, leaflet, highlight css, preview.css, site-client) under assets/.
 // Queries and tasks bake to their render-time results — a published
-// dashboard is a snapshot, which is exactly right for a website.
+// dashboard is a snapshot, which is exactly right for a website. TikZ and
+// MetaPost figures bake too (figure-bake.js): the SVG goes into the page, so
+// a published site needs no wasm and no TeX.
 //
 // Workers: same one-shot fork discipline as the render service, with the
 // next worker warming while the current note builds, so an N-note vault
@@ -27,6 +29,7 @@ import { paths } from './paths.js';
 import { toolchainPath } from './render-service.js';
 import { direntKind, shouldRecurse, walkGuard } from './fs-utils.js';
 import { enabledPlugins, previewPluginScripts } from './plugins.js';
+import { bakeFigures, figureEngineAvailable, hasFigures } from './figure-bake.js';
 
 const SITE_MARK = '@@SITE@@';
 const NOTE_EXT = /\.(md|jmd)$/i;
@@ -84,6 +87,9 @@ export async function exportSite({ vaultRoot, engineDir, outDir, distDir, vaultO
 	let standby = spawnWorker();
 	const tmp = path.join(outDir, '.clew-site-tmp.html');
 	const failures = [];
+	// Pages carrying a TikZ/MetaPost figure, typeset after the notes are
+	// written (one engine for the whole export).
+	const figurePages = [];
 	for (let i = 0; i < notes.length; i++) {
 		const rel = notes[i];
 		onProgress({ done: i, total: notes.length, note: rel });
@@ -110,7 +116,9 @@ export async function exportSite({ vaultRoot, engineDir, outDir, distDir, vaultO
 			const html = fs.readFileSync(tmp, 'utf8');
 			const outFile = path.join(outDir, rel.replace(NOTE_EXT, '.html'));
 			fs.mkdirSync(path.dirname(outFile), { recursive: true });
-			fs.writeFileSync(outFile, finishPage(html, rel, vaultRoot, vaultOptions));
+			const page = finishPage(html, rel, vaultRoot, vaultOptions);
+			fs.writeFileSync(outFile, page);
+			if (hasFigures(page)) figurePages.push(outFile);
 		} catch (err) {
 			failures.push({ note: rel, message: String(err.message ?? err) });
 		}
@@ -123,6 +131,30 @@ export async function exportSite({ vaultRoot, engineDir, outDir, distDir, vaultO
 		const target = path.join(outDir, rel);
 		fs.mkdirSync(path.dirname(target), { recursive: true });
 		fs.copyFileSync(path.join(vaultRoot, rel), target);
+	}
+
+	// Figures: typeset once each and written into the pages. A vault with no
+	// figures never loads the engines; a machine with no staged build says so
+	// rather than publishing pages that show their own source as text.
+	if (figurePages.length) {
+		if (figureEngineAvailable(paths.mptikzAssets)) {
+			onProgress({ done: notes.length, total: notes.length, note: 'typesetting figures…' });
+			try {
+				const baked = await bakeFigures(figurePages, paths.mptikzAssets, ({ done, total }) => {
+					onProgress({ done: notes.length, total: notes.length, note: `figure ${done} of ${total}…` });
+				});
+				if (baked.failed) {
+					failures.push({ note: `${baked.failed} figure(s)`, message: 'did not typeset; the page shows the error log instead' });
+				}
+			} catch (err) {
+				failures.push({ note: 'figures', message: `not typeset: ${String(err.message ?? err)}` });
+			}
+		} else {
+			failures.push({
+				note: 'figures',
+				message: `${figurePages.length} page(s) hold a TikZ/MetaPost figure, but no mp-tikz-wasm build is installed to typeset them`,
+			});
+		}
 	}
 
 	copyAssets(outDir, vaultRoot, distDir, vaultOptions);

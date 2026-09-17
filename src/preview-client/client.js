@@ -21,6 +21,7 @@ import { initMetaBind } from './meta-bind.js';
 import { initPdfEmbeds } from './pdf-embed.js';
 import { initExcalidrawEmbeds } from './excalidraw-embed.js';
 import { initOfficeEmbeds } from './office-embed.js';
+import { figureMorph, initFigures, figuresPending } from './figures.js';
 
 const HOST_SOURCE = 'clew-preview-host';
 const post = (msg) => window.parent.postMessage({ source: 'clew-preview', ...msg }, '*');
@@ -94,6 +95,12 @@ function applyRender(html) {
 				// points at a different document.
 				if (fromEl.classList?.contains('office-embed-thumb') && fromEl.dataset.officeRequested
 					&& fromEl.dataset.officePath === toEl.dataset?.officePath) return false;
+				// TikZ/MetaPost figures are custom elements too, but they own
+				// a rendered SVG the incoming HTML does not carry AND must
+				// re-typeset when the figure itself changes — neither of which
+				// the generic rule below can tell apart (figures.js).
+				const figure = figureMorph(fromEl, toEl);
+				if (figure !== null) return figure;
 				// Custom elements (vault scripts / Script: metadata) render
 				// their own content, which the incoming HTML doesn't carry —
 				// morphing their subtree would wipe it. Keep the element and
@@ -159,6 +166,7 @@ function applyRender(html) {
 		enableTaskCheckboxes();
 		initCanvasEmbeds();
 		initLeafletMaps();
+		initFigures();
 		initPdfEmbeds();
 		initExcalidrawEmbeds();
 		initOfficeEmbeds();
@@ -401,6 +409,7 @@ function scrollToLine(line, behavior) {
 enableTaskCheckboxes();
 initCanvasEmbeds();
 initLeafletMaps();
+initFigures();
 initPdfEmbeds();
 initExcalidrawEmbeds();
 initOfficeEmbeds();
@@ -408,4 +417,6 @@ initQueryInteract();
 // Previews start dark until the host says otherwise (preview.css defaults).
 document.documentElement.classList.add('wa-dark');
 initMetaBind();
+// print-pdf.js waits on this the way it waits on MathJax and mermaid.
+window.__clewFiguresPending = figuresPending;
 post({ type: 'ready' });

@@ -305,6 +305,43 @@ img[src*="TiKZ/"], img[src*="MetaPost/"] {
 html[data-theme='light'] img[src*="TiKZ/"], html[data-theme='light'] img[src*="MetaPost/"] {
 	filter: none;
 }
+
+/* Figures typeset IN the page by mp-tikz-wasm (```tikz / ```metapost fences,
+   :::TiKZ and @begin(metapost) — src/engine/figures.js). The two custom
+   elements are the block; the library fills each with a <figure class=
+   "mpw-figure"> holding the SVG. The same inversion as the cached images
+   above, for the same reason: this ink is black by construction. */
+tikz-diagram, metapost-diagram {
+	display: block;
+	margin: 1em auto;
+	text-align: center;
+}
+.mpw-figure svg { filter: invert(1) hue-rotate(180deg); }
+/* A figure asked for a width (`{width='45%'}`): the native path put that on
+   the <img>, so the picture itself was that wide. Here the width is on the
+   element, and the SVG must fill it instead of keeping its natural size. */
+.mpw-sized .mpw-figure, .mpw-sized .mpw-figure svg { width: 100%; height: auto; }
+html[data-theme='light'] .mpw-figure svg { filter: none; }
+
+/* The library injects its own styles for these when it loads — late in the
+   head, so the class alone would lose. Its colours assume a light page. */
+.mpw-figure .mpw-status {
+	font: inherit;
+	font-size: 0.9em;
+	color: #9aa0a6;
+}
+.mpw-figure .mpw-console {
+	color: #f0a0a0;
+	background: #2a1f1f;
+	border: 1px solid #5a3535;
+	text-align: left;
+}
+html[data-theme='light'] .mpw-figure .mpw-status { color: #6b7280; }
+html[data-theme='light'] .mpw-figure .mpw-console {
+	color: #a33;
+	background: #fff5f5;
+	border-color: #f0c0c0;
+}
 .mermaid { text-align: center; }
 
 /* ==highlight== emits span.highlight; the engine's yellow needs dark text

@@ -22,9 +22,15 @@ sequenceDiagram
 
 ## TikZ
 
-TikZ compiles at render time (LaTeX + dvisvgm) and caches an SVG next to
-the note — so a figure of any complexity costs its compile **once**, and
-every render after that is instant. This one is a real figure from a real
+TikZ is typeset **here**, in the preview, by a real LaTeX: pdfTeX,
+LuaTeX, MetaPost and dvisvgm compiled to WebAssembly
+([mp-tikz-wasm](https://github.com/jmckalex/mp-tikz-wasm)). Nothing is
+installed, nothing is shelled out to, and nothing is written into the
+vault — a figure costs its typesetting **once** and every render after
+that comes from a content-addressed cache. Because it is the real
+engine, every PGF/TikZ library works, shadings and gradients included,
+and a figure that asks for a graph-drawing layout gets LuaTeX. This one
+is a real figure from a real
 paper — "The incompleteness of classical mechanics" (*BJPS*) — and it is
 genuinely three-dimensional: the whole scene is drawn in rotated x-y-z
 coordinates, and each ring of point particles (a "gravitationally
@@ -183,6 +189,34 @@ endfig;
 end.
 @end(metapost)
 
-Both need a TeX toolchain installed; the SVGs cache in `TiKZ/` and
-`MetaPost/` folders beside this note, so a vault renders its figures
-even on a machine with no TeX at all.
+## Obsidian's fence, too
+
+An Obsidian vault writes TikZ as a ` ```tikz ` fence (the TikZJax
+plugin's shape), and Clew renders it — bodies in that dialect, with
+their own `\usepackage` lines and `\begin{document}`, included. Declare
+the libraries the picture needs, the way a standalone document would:
+
+```tikz libraries="arrows.meta,positioning"
+\node[draw,circle,fill=blue!15] (a) at (0,0) {$a$};
+\node[draw,circle,fill=orange!25] (b) at (2.4,0) {$b$};
+\draw[-{Stealth[length=3mm]},thick] (a) -- node[above]{$f$} (b);
+```
+
+MetaPost has no Obsidian convention to follow, so Clew gives it the
+matching one — ` ```metapost `, for a figure that wants no TeX at all:
+
+```metapost
+z1 = (0,0); z2 = (60,34); z3 = (120,0);
+z4 = 0.5[z1,z3];                 % a point solved, not placed
+draw z1 .. z2 .. z3 withpen pencircle scaled 1.2 withcolor (0.2,0.35,0.6);
+draw z2 -- z4 dashed evenly;
+dotlabel.bot(btex $z_4$ etex, z4);
+dotlabel.top(btex $z_2$ etex, z2);
+```
+
+Exports part company here, on purpose. A **LaTeX or PDF export** runs
+your own jmarkdown configuration, where `@begin(TiKZ)` becomes a native
+`tikzpicture` in the document — a true vector figure in the document's
+own fonts, which is what a typeset paper wants (and which needs your TeX
+installation). A **website export** bakes every figure to SVG in the
+page, so a published site carries no engine at all.

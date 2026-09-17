@@ -142,6 +142,12 @@ export class RenderService {
 			'Extensions': [
 				`wikiembed, wikilink from ${path.join(engineAssets, 'wikilinks.js')}`,
 				`mermaidFence, leafletFence from ${path.join(engineAssets, 'obsidian-fences.js')}`,
+				// TikZ and MetaPost typeset by wasm in the preview, so a
+				// figure needs no TeX installation: the ```tikz / ```metapost
+				// fences and the :::TiKZ directive. Listed here, i.e. loaded
+				// after the engine's own rules, which is what lets the
+				// directive win — see src/engine/figures.js.
+				`tikzFence, metapostFence, tikzDirective from ${path.join(engineAssets, 'figures.js')}`,
 				`queryFence, tasksFence, kanbanFence from ${path.join(engineAssets, 'query-fences.js')}`,
 				`tableBeforeAnchor, blockAnchorLine, blockAnchor from ${path.join(engineAssets, 'block-refs.js')}`,
 				// Obsidian's Dataview, for vaults that arrive carrying it.
@@ -167,6 +173,15 @@ export class RenderService {
 				`kanbanBoard from ${path.join(engineAssets, 'kanban-board.js')}`,
 				// Enabled vault plugins' engine surfaces (custom syntax).
 				...engineExtensionEntries(this.vaultRoot, this.#vaultOptions, paths.globalPlugins),
+			],
+			// @begin(TiKZ) / @begin(metapost) are block ENVIRONMENTS, not
+			// marked extensions: the engine keys them by name in a registry,
+			// and this line is loaded after its own registrations, so these
+			// handlers replace the ones that shell out to a local TeX. Only
+			// ever in an HTML build — a LaTeX export runs with the user's own
+			// config, where the native handlers still stand (export.js).
+			'Environments': [
+				`TiKZ, metapost from ${path.join(engineAssets, 'figures.js')}`,
 			],
 			...this.#biblifyConfig(),
 			// dvisvgm needs ghostscript to convert MetaPost EPS output (and

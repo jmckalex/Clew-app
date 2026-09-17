@@ -17,9 +17,10 @@
 // clew-preview:// document the reading pane shows, in a hidden window.
 //
 // Rendering is asynchronous in ways a screenshot tool has to respect: MathJax
-// typesets after load, mermaid replaces its blocks with SVG, webfonts arrive
-// when they arrive. printToPDF before any of that finishes captures a
-// half-drawn note, so the window is polled until the page says it is done.
+// typesets after load, mermaid replaces its blocks with SVG, TikZ and
+// MetaPost figures typeset in a wasm TeX, webfonts arrive when they arrive.
+// printToPDF before any of that finishes captures a half-drawn note, so the
+// window is polled until the page says it is done.
 import fs from 'node:fs';
 import path from 'node:path';
 import { BrowserWindow } from 'electron';
@@ -66,6 +67,12 @@ const READY_PROBE = `(() => {
 	for (const el of document.querySelectorAll('.mermaid')) {
 		if (!el.querySelector('svg')) return false;
 	}
+	// TikZ/MetaPost figures take the longest of anything here: the first one
+	// loads the wasm engines and the TeX files it needs. The preview client
+	// counts them for us (preview-client/figures.js#figuresPending) — a
+	// figure element with nothing in it yet counts, so a print cannot start
+	// before the engines have even loaded.
+	if (window.__clewFiguresPending?.() > 0) return false;
 	return true;
 })()`;
 

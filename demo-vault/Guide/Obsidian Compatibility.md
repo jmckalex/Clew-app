@@ -22,7 +22,10 @@ behind a per-vault switch), **Bases** (tables, cards, and map views),
 **Kanban** boards (open [[Project Board]] in reading mode), the
 **Tasks** plugin's query dialect and emoji metadata, **Excalidraw**
 drawings with embedded images, **Charts** (see [[Charts]]),
-`obsidian://` links, GitHub-style `#anchors` — and the three below.
+**TikZJax**'s ` ```tikz ` fences — typeset by a real LaTeX in the
+preview, so every PGF library works and nothing has to be installed
+(see [[Diagrams]]) — `obsidian://` links, GitHub-style `#anchors` — and
+the three below.
 
 ## Admonitions
 
