@@ -113,6 +113,24 @@ inline math $e^{i\\pi} + 1 = 0$ and a display:
 \\end{align}
 \`\`\`
 
+## A complete article (it says \\pagestyle{empty} itself; prose right below)
+
+\`\`\`latex
+\\documentclass[12pt]{article}
+\\usepackage[dvisvgm]{graphicx}
+\\pagestyle{empty}
+\\begin{document}
+The quick brown fox jumped over the lazy dog and then ran out for pizza and beer.
+This is \\rotatebox{45}{rotated text}.
+\\begin{enumerate}
+\\item foo
+\\item bar
+\\end{enumerate}
+\\end{document}
+\`\`\`
+
+AFTER-THE-ARTICLE: this paragraph must sit directly under the list.
+
 ## Plain TeX on LuaTeX (a \\sqrt: the DVI-rule trap regression)
 
 \`\`\`tex

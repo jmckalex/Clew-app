@@ -241,7 +241,9 @@ which is wrapped in a `standalone` document as wide as it needs to be
 (with `amsmath` and `amssymb` loaded), run through LuaLaTeX, and shown
 as the page LaTeX lays out, cropped to the ink. A fence that says
 `\documentclass` is a complete document and is typeset as written, one
-SVG per page.
+SVG per page — page numbers included. The SVG is cropped to the ink, so
+an article's folio at the foot of the page makes every page as tall as
+the paper; a document meant as a snippet wants `\pagestyle{empty}`.
 
 ```latex
 Maxwell's equations, in differential form:

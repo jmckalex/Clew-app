@@ -348,8 +348,28 @@ guarded here as well as there. Lesson filed under §7: my diagnosis
 ("math") was the symptom I happened to test, not the cause — the
 construct matrix upstream found it.
 
+**Page numbers (09-17, later still) — a feature, by the owner's decision.**
+The owner's complete `article` rendered, and the paragraph after it
+"wasn't shown": the SVG was 572pt tall — text at the top, the folio at
+the page foot, dvisvgm's tight crop spanning the two — so the next
+paragraph sat below the fold. I injected `\pagestyle{empty}` at
+\begin{document}; the owner rolled it back: someone wanting pages as
+pages must get them, "this is a feature, not a bug, and the user has to
+learn about it". So a complete document is typeset EXACTLY as written,
+and the manual's LaTeX section teaches the consequence and the
+`\pagestyle{empty}` / `\thispagestyle{empty}` remedy. Measured while it
+was in: 572.8pt → 110pt with the hook; the same with an explicit
+`\pagestyle{empty}`. (Plain TeX's `\nopagenumbers` in wrapTex is the
+analogous tweak and is still in — flagged to the owner.) The smoke
+fixture's article says `\pagestyle{empty}` itself, and the frame script
+reports each document's `next=` and `gap=`.
+
 Gotchas earned here:
 
+- **A tall empty SVG hides the next paragraph below the fold**, and the
+  report reads "text after the block is not shown". An article's folio
+  was this. The frame script now reports the gap to the next element for
+  documents; the behaviour itself is documented, not prevented.
 - **A restored per-vault workspace tab is NAVIGATED in place, mode and
   all** (`tree.js#openPath`): the editor smoke opened `Highlight.md` in
   reading mode because figures-scenario had left a reading tab in the

@@ -213,10 +213,10 @@ test('every library the directives load is one the wasm bundle actually has', (t
 
 // ---- ```latex and ```tex ---------------------------------------------------
 
-test('a complete latex document passes through as written', () => {
+test('a complete latex document passes through as written, page numbers and all', () => {
 	const doc = '\\documentclass{article}\n\\begin{document}\nHi\n\\end{document}';
 	const { source, attrs } = wrapLatex(doc, { packages: 'booktabs', border: '4pt', alt: 'x' });
-	assert.equal(source, doc);
+	assert.equal(source, doc, 'nothing is injected: a document that wants no folio says \\pagestyle{empty} itself');
 	assert.deepEqual(attrs, { alt: 'x' }, 'the wrapper’s attributes are consumed either way; the rest are kept');
 });
 

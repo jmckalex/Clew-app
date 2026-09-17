@@ -173,7 +173,10 @@ const isLatexDocument = (source) => /\\documentclass/.test(source);
 
 /**
  * A ```latex body: a complete document (it says \documentclass) is typeset
- * as written; anything else is a snippet — a paragraph, an align, a table,
+ * as written — page numbers included: an article's folio at the page foot
+ * makes the cropped SVG a page tall, which is the document's business and
+ * the manual's to explain (owner's decision 2026-09-17: someone wanting
+ * pages as pages must get them, so nothing is injected). Anything else is a snippet — a paragraph, an align, a table,
  * a theorem — and is wrapped in a `standalone` document whose page is as
  * wide as the content needs (`varwidth`), so the SVG is the snippet and not
  * a sheet of A4 around it. `packages=`, `preamble=` and `border=` are

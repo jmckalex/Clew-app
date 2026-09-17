@@ -29,6 +29,13 @@ for (const el of document.querySelectorAll('tikz-diagram, metapost-diagram')) {
 		+ ' size=' + (box ? Math.round(box.width) + 'x' + Math.round(box.height) : 'none')
 		// the SVG's own box, in pt: the crop the engines chose, before CSS sizing
 		+ ' viewBox=' + JSON.stringify(svgs[0]?.getAttribute('viewBox') ?? null)
+		// A document is typeset as written, page numbers included, and an
+		// article's folio at the page foot makes its crop a page tall (572pt
+		// for nine lines) with the note's next paragraph below the fold.
+		// Report the gap to whatever follows, so that shape is visible here.
+		+ (el.classList.contains('clew-doc') && el.nextElementSibling
+			? ' next=' + el.nextElementSibling.tagName.toLowerCase() + ' gap=' + Math.round(el.nextElementSibling.getBoundingClientRect().top - (box?.bottom ?? 0))
+			: '')
 		+ ' error=' + JSON.stringify(el.querySelector('.mpw-console')?.textContent.slice(0, 300) ?? null));
 }
 
