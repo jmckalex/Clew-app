@@ -143,13 +143,6 @@
         ]
       },
       {
-        "from": "vendor/libreoffice-icons",
-        "to": "office-icons",
-        "filter": [
-          "images_sifr.zip"
-        ]
-      },
-      {
         "from": "demo-vault",
         "to": "demo-vault",
         "filter": [

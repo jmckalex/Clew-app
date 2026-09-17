@@ -48,9 +48,6 @@ export const paths = app.isPackaged
 		// ZetaOffice wasm bundle: downloaded on demand into userData like
 		// the CJK PDF fonts (zeta-assets.js owns download/verify/remove).
 		zetaAssets: path.join(app.getPath('userData'), 'zeta-assets'),
-		// The vendored Sifr icon theme, spliced over the wasm bundle's
-		// Colibre at serve time (zeta-icons.js).
-		officeIcons: path.join(process.resourcesPath, 'office-icons'),
 		// The bundled demo vault (read-only app payload; main.js copies it
 		// into Documents before opening — a vault must be writable).
 		demoVault: path.join(process.resourcesPath, 'demo-vault'),
@@ -82,7 +79,6 @@ export const paths = app.isPackaged
 		// The override is also what marks the directory writable/removable
 		// (zeta-assets.js#managed): the repo's own zeta-assets/ never is.
 		zetaAssets: process.env.CLEW_ZETA_DIR ?? path.join(rootDir, 'zeta-assets'),
-		officeIcons: path.join(rootDir, 'vendor', 'libreoffice-icons'),
 		// In dev the repo's demo-vault IS the working documentation corpus;
 		// it opens in place, no copy.
 		demoVault: path.join(rootDir, 'demo-vault'),

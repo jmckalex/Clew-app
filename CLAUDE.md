@@ -344,18 +344,17 @@ browser-window-focus).
   thumbnail/live via `nodeStyles[id].office` (the node menu's Office
   row; stored under the clew key). A live embed DIES WITH ITS VIEW (tab
   switch, mode toggle) — guarded on close only; the manual says so.
-- **Icons**: the bundle ships ONLY Colibre, and the wasm build has no
-  runtime theme switch (SymbolStyle is read once at startup; commits
-  before load and after ui_ready are both no-ops; overwriting the
-  packed zip in the Emscripten FS mid-boot dies with a wasm exception —
-  all measured). `main/zeta-icons.js` therefore serves a SPLICED
-  soffice.data: `vendor/libreoffice-icons/images_sifr.zip` (pinned,
-  MPL-2.0, same LO 24.2 line) replaces the packed Colibre entry with
-  the offsets metadata shifted to match; packaged via extraResources →
-  `office-icons/`. Icon SIZE is consulted per toolbar build, so a plain
-  config commit pre-load works — but the keys are UNO shorts and need
-  `zetajs.Any(zetajs.type.short, …)`. Delete the vendored zip to
-  restore Colibre.
+- **Icons**: the bundle ships ONLY Colibre, at LibreOffice's default
+  size, and that is what Clew shows (owner's decision 2026-09-17: the
+  Sifr theme spliced into soffice.data and the 16px toolbar icons —
+  commits fc4b522 and 3bc44bf — were reverted). Facts that survive, for
+  whoever revisits it: the wasm build has no runtime theme switch
+  (SymbolStyle is read once at startup; commits before load and after
+  ui_ready are both no-ops; overwriting the packed zip in the Emscripten
+  FS mid-boot dies with a wasm exception — all measured), so a theme
+  can only be served spliced into the bytes; icon SIZE is consulted per
+  toolbar build, so a plain config commit pre-load works — but the keys
+  are UNO shorts and need `zetajs.Any(zetajs.type.short, …)`.
 - **No engine / instance busy**: the file view offers the download and
   the desktop-LibreOffice rung (`main/office-convert.js`): headless
   PDF conversion into `.clew/cache/office-pdf/` (private

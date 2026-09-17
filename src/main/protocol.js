@@ -33,7 +33,6 @@ import { sessionById } from './session.js';
 import { previewPluginScripts, enabledPlugins } from './plugins.js';
 import { settings } from './settings.js';
 import { fontsDir, fallbackConfig } from './pdf-fonts.js';
-import { themedMetadata, themedSplice, spliceTransform } from './zeta-icons.js';
 
 const MIME = {
 	'.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript',
@@ -69,7 +68,7 @@ export function registerPreviewScheme() {
 const RENDERED_SUFFIX = new RegExp(`(${NOTE_EXTENSIONS.map((e) => e.replace('.', '\\.')).join('|')})\\.html$`, 'i');
 
 /** After app.whenReady(). */
-export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDir, embedpdfDir, mptikzDir, zetaDir, officeIconsDir, globalPluginsDir = null }) {
+export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDir, embedpdfDir, mptikzDir, zetaDir, globalPluginsDir = null }) {
 	const assetRoots = {
 		mathjax: path.join(nodeModulesDir, 'mathjax', 'es5'),
 		mermaid: path.join(nodeModulesDir, 'mermaid', 'dist'),
@@ -185,33 +184,6 @@ export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDi
 					return new Response(JSON.stringify(config), { headers: headers('application/json') });
 				}
 				const [root, ...restParts] = rest.split('/');
-				// The LibreOffice icon-theme swap (zeta-icons.js): when the
-				// vendored Sifr zip is present, soffice.data is served with
-				// Sifr's bytes spliced over the packed Colibre entry, and the
-				// offsets metadata shifted to match. Nothing on disk changes.
-				if (root === 'zeta' && officeIconsDir) {
-					const name = restParts.join('/');
-					if (name === 'soffice.data.js.metadata') {
-						const json = themedMetadata(officeIconsDir, zetaDir);
-						if (json) return new Response(json, { headers: headers('application/json') });
-					} else if (name === 'soffice.data') {
-						const splice = themedSplice(officeIconsDir, zetaDir);
-						const plain = path.join(zetaDir, 'soffice.data');
-						if (splice && fs.existsSync(plain)) {
-							const buf = fs.readFileSync(plain);
-							return new Response(Buffer.concat([
-								buf.subarray(0, splice.start), splice.theme, buf.subarray(splice.end),
-							]), { headers: headers('application/octet-stream') });
-						}
-						if (splice && fs.existsSync(plain + '.br')) {
-							const stream = fs.createReadStream(plain + '.br')
-								.pipe(zlib.createBrotliDecompress())
-								.pipe(spliceTransform(splice));
-							return new Response(Readable.toWeb(stream),
-								{ headers: headers('application/octet-stream') });
-						}
-					}
-				}
 				const base = assetRoots[root];
 				if (!base) return new Response('Unknown asset root', { status: 404, headers: headers('text/plain') });
 				const abs = path.normalize(path.join(base, ...restParts));

@@ -247,7 +247,6 @@ app.whenReady().then(() => {
 		embedpdfDir: paths.embedpdfAssets,
 		mptikzDir: paths.mptikzAssets,
 		zetaDir: paths.zetaAssets,
-		officeIconsDir: paths.officeIcons,
 		globalPluginsDir: paths.globalPlugins,
 	});
 	// No { role: 'close' } anywhere in the menu: Cmd+W belongs to the
