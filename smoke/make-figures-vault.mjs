@@ -238,6 +238,16 @@ Fontspec by hand, \\textbf{bold too}.
 \\end{document}
 \`\`\`
 
+## A 12pt document (fontspec's default face at a size the bundle lacks)
+
+\`\`\`latex font=note
+\\documentclass[12pt]{article}
+\\pagestyle{empty}
+\\begin{document}
+Twelve point, \\textbf{bold}, in the note's face --- and the error-free kind.
+\\end{document}
+\`\`\`
+
 ## A control that keeps its outlines
 
 \`\`\`tikz

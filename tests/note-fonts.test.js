@@ -15,7 +15,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {
 	extractFace, faceExtension, faceNames, faceOffsets, fileChecksum, noteFontFiles,
-	prepareNoteFonts, readNoteFonts, tableDirectory,
+	prepareNoteFonts, readNoteFonts, tableChecksum, tableDirectory,
 } from '../src/main/note-fonts.js';
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'clew-note-fonts-'));
@@ -93,9 +93,18 @@ test('an extracted face is a standalone font: same tables, aligned, summing to t
 	for (const r of dir.records) {
 		const o = original.find((x) => x.tag === r.tag);
 		assert.equal(r.length, o.length);
-		assert.equal(r.checksum, o.checksum, 'per-table checksums carry over — the bytes are the same bytes');
-		if (r.tag !== 'head') assert.deepEqual(bold.subarray(r.offset, r.offset + r.length), ttc.subarray(o.offset, o.offset + o.length));
+		if (r.tag === 'head') {
+			// The spec's value: the table summed with checkSumAdjustment zeroed — not the collection's word.
+			const copy = Buffer.from(bold.subarray(r.offset, r.offset + r.length));
+			copy.writeUInt32BE(0, 8);
+			assert.equal(r.checksum, tableChecksum(copy, 0, copy.length), 'head’s record checksum is recomputed for this file');
+			assert.notEqual(r.checksum, o.checksum, 'and the collection’s word (for its own adjustment) is not what is written');
+		} else {
+			assert.equal(r.checksum, o.checksum, 'per-table checksums carry over — the bytes are the same bytes');
+			assert.deepEqual(bold.subarray(r.offset, r.offset + r.length), ttc.subarray(o.offset, o.offset + o.length));
+		}
 	}
+	assert.equal(tableChecksum(Buffer.from([0, 0, 0, 1, 0, 0, 0, 2, 0xff]), 0, 9), (3 + 0xff000000) >>> 0, 'the tail is zero-padded to a word');
 	assert.equal(fileChecksum(bold), 0xB1B0AFBA, 'head.checkSumAdjustment was recomputed for the new file');
 	assert.deepEqual(faceNames(bold, 0), { family: 'Test Family', subfamily: 'Bold' });
 	assert.equal(faceExtension(bold), '.ttf');
