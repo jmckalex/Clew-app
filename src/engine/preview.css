@@ -322,6 +322,12 @@ tikz-diagram, metapost-diagram {
    element, and the SVG must fill it instead of keeping its natural size. */
 .mpw-sized .mpw-figure, .mpw-sized .mpw-figure svg { width: 100%; height: auto; }
 html[data-theme='light'] .mpw-figure svg { filter: none; }
+/* ```latex / ```tex: a typeset DOCUMENT rather than a picture. Its pages are
+   one SVG each and stack, where a picture's several <svg>s (a MetaPost file
+   with several beginfigs) flow inline. */
+.clew-doc .mpw-figure { display: block; }
+.clew-doc .mpw-figure svg { display: block; margin: 0 auto 0.75em; }
+.clew-doc .mpw-figure svg:last-of-type { margin-bottom: 0; }
 
 /* The library injects its own styles for these when it loads — late in the
    head, so the class alone would lose. Its colours assume a light page. */

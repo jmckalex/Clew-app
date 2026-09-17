@@ -6,7 +6,10 @@ tags: [guide]
 Notes are edited in **source mode** with full jmarkdown-dialect
 highlighting: `/italics/`, `*strong*`, `**intense**`, `==highlights==`,
 directives, `@begin(…)` environments, math, citations, and footnotes all
-get faces (see [[Dialect Demo]] for a tour).
+get faces (see [[Dialect Demo]] for a tour). The fences Clew typesets are
+highlighted in their own languages too — TeX inside ` ```tikz `,
+` ```latex ` and ` ```tex `, MetaPost inside ` ```metapost ` (see
+[[Diagrams]]).
 
 Everything auto-saves about a second after you stop typing, and on
 blur/tab-switch. **Undo history survives navigation** — leave a note and

@@ -16,7 +16,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
 	ENGINE_TIKZ_LIBRARIES, UNBUNDLED_TIKZ_LIBRARIES, TiKZ, metapost,
-	figureElement, metapostFence, parseFigureAttrs, tikzDirective, tikzFence, unwrapTikzJax,
+	figureElement, latexFence, metapostFence, parseFigureAttrs, registerMetapostGrammar, showMode,
+	texFence, tikzDirective, tikzFence, unwrapTikzJax, wrapLatex, wrapTex,
 } from '../src/engine/figures.js';
 import { figureMatches, hasFigures } from '../src/main/figure-bake.js';
 
@@ -165,8 +166,8 @@ test('the environment handlers render the same element, verbatim body', () => {
 	assert.match(html, /^<tikz-diagram /);
 	assert.match(html, /\\draw \(0,0\)--\(1,1\);/);
 	assert.match(attrOf(html, 'style'), /width: 30%/);
-	assert.equal(TiKZ.mode, 'verbatim');
-	assert.equal(metapost.mode, 'verbatim');
+	assert.equal(TiKZ.mode, 'custom');
+	assert.equal(metapost.mode, 'custom');
 	assert.match(metapost.html({ rawText: 'draw fullcircle scaled 20;', attrs: {} }), /^<metapost-diagram /);
 });
 
@@ -208,6 +209,128 @@ test('every library the directives load is one the wasm bundle actually has', (t
 	// bundle lacks MUST be named in UNBUNDLED_TIKZ_LIBRARIES.
 	assert.deepEqual(missing, [...UNBUNDLED_TIKZ_LIBRARIES],
 		'the bundle’s libraries changed: update UNBUNDLED_TIKZ_LIBRARIES in src/engine/figures.js');
+});
+
+// ---- ```latex and ```tex ---------------------------------------------------
+
+test('a latex snippet is wrapped in a varwidth standalone document, on LuaLaTeX', () => {
+	const html = latexFence.renderer(latexFence.tokenizer('```latex\nA snippet with $x^2$.\n```\n'));
+	assert.match(html, /^<tikz-diagram class="mathjax_ignore clew-doc"/);
+	assert.equal(attrOf(html, 'data-engine'), 'lualatex');
+	assert.match(html, /\\documentclass\[varwidth,border=2pt\]\{standalone\}/);
+	assert.match(html, /\\usepackage\{amsmath,amssymb\}/);
+	assert.match(html, /\\begin\{document\}\nA snippet with \$x\^2\$\.\n\\end\{document\}/);
+});
+
+test('a complete latex document passes through as written', () => {
+	const doc = '\\documentclass{article}\n\\begin{document}\nHi\n\\end{document}';
+	const { source, attrs } = wrapLatex(doc, { packages: 'booktabs', border: '4pt', alt: 'x' });
+	assert.equal(source, doc);
+	assert.deepEqual(attrs, { alt: 'x' }, 'the wrapper’s attributes are consumed either way; the rest are kept');
+});
+
+test('packages, preamble and border go into the wrapped document, not onto the element', () => {
+	const html = figureElement('latex', 'x', { packages: 'booktabs, amsmath', preamble: '\\newtheorem{thm}{Theorem}', border: '5pt' });
+	assert.match(html, /border=5pt/);
+	assert.match(html, /\\usepackage\{amsmath,amssymb,booktabs\}/, 'deduplicated, the defaults first');
+	assert.match(html, /\\newtheorem\{thm\}\{Theorem\}\n\\begin\{document\}/);
+	assert.doesNotMatch(html, /data-packages|data-preamble|data-border/);
+});
+
+test('an explicit engine wins over the kind’s default', () => {
+	assert.equal(attrOf(figureElement('latex', 'x', { engine: 'latex' }), 'data-engine'), 'latex');
+	assert.equal(attrOf(figureElement('tex', 'x', { engine: 'luatex' }), 'data-engine'), 'luatex');
+});
+
+test('plain tex gets its \\bye and the plain format; a \\documentclass body is LaTeX after all', () => {
+	const html = texFence.renderer(texFence.tokenizer('```tex\n\\centerline{Plain}\n```\n'));
+	assert.match(html, /\n\\nopagenumbers\n\\centerline\{Plain\}\n\\bye\n<\/tikz-diagram>/, 'no folio in the crop, and a \\bye added');
+	assert.match(html, /class="mathjax_ignore clew-doc"/);
+	assert.equal(attrOf(html, 'data-engine'), 'plain');
+	assert.equal(wrapTex('x\n\\bye', {}).source, '\\nopagenumbers\nx\n\\bye', 'an existing \\bye is kept');
+	const doc = '\\documentclass{article}\\begin{document}x\\end{document}';
+	assert.deepEqual(wrapTex(doc, {}), { source: doc, attrs: { engine: 'lualatex' } });
+	assert.equal(wrapTex(doc, { engine: 'latex' }).attrs.engine, 'latex');
+});
+
+test('the new fences bound their language names', () => {
+	assert.equal(texFence.start('```text\nnot ours\n```\n'), undefined, '```text is somebody else’s');
+	assert.equal(texFence.tokenizer('```text\nnot ours\n```\n'), undefined);
+	assert.equal(latexFence.start('```latexcd\nx\n```\n'), undefined);
+	assert.equal(texFence.start('```tex\nx\n```\n'), 0);
+	assert.equal(latexFence.start('```latex show=code\nx\n```\n'), 0);
+});
+
+// ---- show= -----------------------------------------------------------------
+
+test('show= and its bare shorthands', () => {
+	assert.equal(showMode({}), 'figure');
+	assert.equal(showMode({ show: 'code' }), 'code');
+	assert.equal(showMode({ show: 'BOTH' }), 'both');
+	assert.equal(showMode({ code: 'true' }), 'code');
+	assert.equal(showMode({ both: 'true' }), 'both');
+	assert.equal(showMode({ figure: 'true' }), 'figure');
+	assert.equal(showMode({ show: 'nonsense' }), 'figure');
+});
+
+test('show=code hands marked its own code token, in the language that highlights it', () => {
+	const token = tikzFence.tokenizer('```tikz code\n\\draw (0,0)--(1,1);\n```\n');
+	assert.equal(token.type, 'code');
+	assert.equal(token.lang, 'latex');
+	assert.equal(token.text, '\\draw (0,0)--(1,1);');
+	assert.equal(token.raw, '```tikz code\n\\draw (0,0)--(1,1);\n```\n', 'raw is the block, so the source-line pass finds it');
+	assert.equal(metapostFence.tokenizer('```metapost show=code\ndraw origin;\n```\n').lang, 'metapost');
+	assert.equal(texFence.tokenizer('```tex code\nx\n```\n').lang, 'tex');
+	assert.equal(latexFence.tokenizer('```latex code\nx\n```\n').lang, 'latex');
+	assert.equal(tikzDirective.tokenizer(':::TiKZ{show=code}\n\\draw (0,0);\n:::\n').type, 'code');
+});
+
+test('show=both is the code child, then the figure', () => {
+	const token = latexFence.tokenizer('```latex both\nHello\n```\n');
+	assert.equal(token.type, 'latexFence');
+	assert.equal(token.mode, 'both');
+	assert.equal(token.tokens.length, 1);
+	assert.equal(token.tokens[0].type, 'code');
+	const parser = { parse: (tokens) => `<pre>${tokens[0].text}</pre>` };
+	const html = latexFence.renderer.call({ parser }, token);
+	assert.match(html, /^<pre>Hello<\/pre><tikz-diagram /);
+	const plain = latexFence.tokenizer('```latex\nHello\n```\n');
+	assert.equal(plain.mode, 'figure');
+	assert.deepEqual(plain.tokens, []);
+	assert.match(latexFence.renderer.call({ parser }, plain), /^<tikz-diagram /);
+	const directive = tikzDirective.tokenizer(':::TiKZ{show=both}\n\\draw (0,0);\n:::\n');
+	assert.match(tikzDirective.renderer.call({ parser }, directive), /^<pre>\\draw \(0,0\);<\/pre><tikz-diagram /);
+});
+
+test('the environments take show= through the custom-mode hook', () => {
+	const token = { raw: '@begin(TiKZ){show=both}\nx\n@end(TiKZ)\n', attrs: { show: 'both' } };
+	TiKZ.tokenize('\\draw (0,0);\n', token);
+	assert.equal(token.showMode, 'both');
+	assert.equal(token.tokens[0].type, 'code');
+	assert.equal(token.tokens[0].text, '\\draw (0,0);');
+	const parser = { parse: () => '<pre>CODE</pre>' };
+	assert.match(TiKZ.html({ rawText: '\\draw (0,0);', attrs: token.attrs, token, parser }), /^<pre>CODE<\/pre><tikz-diagram /);
+	const codeOnly = { raw: '', attrs: { show: 'code' } };
+	metapost.tokenize('draw origin;', codeOnly);
+	assert.equal(metapost.html({ rawText: 'draw origin;', attrs: codeOnly.attrs, token: codeOnly, parser }), '<pre>CODE</pre>');
+	const figure = { raw: '', attrs: {} };
+	metapost.tokenize('draw origin;', figure);
+	assert.equal(figure.tokens, undefined, 'no child token for a plain figure');
+	assert.match(metapost.html({ rawText: 'draw origin;', attrs: {}, token: figure, parser }), /^<metapost-diagram /);
+});
+
+test('the MetaPost grammar registers with highlight.js when it can be found', (t) => {
+	const hljs = registerMetapostGrammar();
+	if (!hljs) return t.skip('no highlight.js reachable from here — the preview would fall back to plain text');
+	assert.ok(hljs.getLanguage('metapost'));
+	const out = hljs.highlight('draw fullcircle scaled 2cm withcolor red; % c\nlabel(btex $x$ etex, origin);', { language: 'metapost' }).value;
+	assert.match(out, /<span class="hljs-keyword">draw<\/span>/);
+	assert.match(out, /<span class="hljs-literal">fullcircle<\/span>/);
+	assert.match(out, /<span class="hljs-built_in">scaled<\/span>/);
+	assert.match(out, /<span class="hljs-number">2<\/span><span class="hljs-literal">cm<\/span>/);
+	assert.match(out, /<span class="hljs-comment">% c<\/span>/);
+	assert.match(out, /<span class="hljs-keyword">btex<\/span>/);
+	assert.match(out, /class="language-latex"/, 'a label’s TeX is highlighted as TeX');
 });
 
 // ---- the export bake -------------------------------------------------------

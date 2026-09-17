@@ -20,6 +20,8 @@ for (const el of document.querySelectorAll('tikz-diagram, metapost-diagram')) {
 	const svgs = el.querySelectorAll('svg');
 	const box = svgs[0]?.getBoundingClientRect();
 	console.log('smoke-figures-frame: ' + el.tagName.toLowerCase()
+		+ (el.classList.contains('clew-doc') ? ' doc' : '')
+		+ ' engine=' + (el.dataset.engine ?? 'auto')
 		+ ' key=' + el.dataset.figKey
 		+ ' state=' + (host ? host.className.replace('mpw-figure ', '') : 'NO-HOST')
 		+ ' svgs=' + svgs.length
@@ -28,6 +30,17 @@ for (const el of document.querySelectorAll('tikz-diagram, metapost-diagram')) {
 		// the SVG's own box, in pt: the crop the engines chose, before CSS sizing
 		+ ' viewBox=' + JSON.stringify(svgs[0]?.getAttribute('viewBox') ?? null)
 		+ ' error=' + JSON.stringify(el.querySelector('.mpw-console')?.textContent.slice(0, 300) ?? null));
+}
+
+// show=code / show=both: the code blocks the page holds, with their
+// language class and how many highlight.js spans they got (a MetaPost block
+// with 0 spans means the grammar was not registered in the worker).
+for (const code of document.querySelectorAll('pre > code')) {
+	console.log('smoke-figures-frame: code lang=' + ([...code.classList].find((c) => c.startsWith('language-')) ?? 'none')
+		+ ' spans=' + code.querySelectorAll('span[class^="hljs-"]').length
+		+ ' line=' + (code.parentElement.dataset.sourceLine ?? 'none')
+		+ ' next=' + (code.parentElement.nextElementSibling?.tagName.toLowerCase() ?? 'none')
+		+ ' head=' + JSON.stringify(code.textContent.slice(0, 36)));
 }
 
 // The result cache, probed rather than assumed: the same request twice must

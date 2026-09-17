@@ -160,6 +160,34 @@ browser-window-focus).
   of the block, not the marker) and written by the "Copy Link to Block"
   command (`renderer/editor/block-ids.js`), which imports its idea of a
   legal id from block-refs.js so writer and reader cannot drift.
+- **Figures without a TeX install** (`src/engine/figures.js`): TikZ,
+  MetaPost, LaTeX and plain TeX typeset IN the preview by the owner's
+  mp-tikz-wasm (staged by `scripts/stage-mptikz.js` from the pin in
+  `shared/mptikz-manifest.json`; `paths.js#mptikzAssets`). Six syntaxes —
+  ```tikz / ```metapost (Obsidian's TikZJax shape), ```latex / ```tex
+  (Clew's), `:::TiKZ`, `@begin(TiKZ)` / `@begin(metapost)` — emit
+  `<tikz-diagram>` / `<metapost-diagram>` holding the source as TEXT
+  (`mathjax_ignore`, or MathJax eats it); `preview-client/figures.js`
+  loads the library's `auto.js` and owns the morph guard;
+  `main/figure-bake.js` typesets for site export. The fences and the
+  directive are marked extensions loaded after the engine's own, the
+  environments are `Environments` config entries in 'custom' mode, so a
+  LaTeX export (user's own config) never sees this file. A ```latex
+  snippet is wrapped in `standalone` + `varwidth` and runs on LuaLaTeX; a
+  complete document (`\documentclass`) is typeset as written, one SVG per
+  page. ```tex runs on the plain e-TeX format, NOT plain LuaTeX: the
+  library's dviluatex format traps the wasm module on any math (measured
+  2026-09-17) — `engine=luatex` still selects it. Every block takes
+  `show=figure|code|both` (bare `code`/`both` too): code is marked's OWN
+  `code` token (returned outright, or attached as a child token), so it
+  goes through the same highlight.js pass as any fence; the one addition
+  is a MetaPost grammar, registered on the ENGINE's highlight.js by
+  resolving from the worker script (`process.argv[1]`), with the word
+  lists in `engine/metapost-words.js` — which the editor's
+  `renderer/editor/langs/metapost-mode.js` imports too, so the preview
+  and the source pane cannot drift (`langs/tex-mode.js` is the TeX
+  side; `langs/fence-languages.js` is lang-markdown's `codeLanguages`
+  hook; theme.js maps the lezer tags onto the overlay's jmd-* classes).
 - **Obsidian's own query formats** — for opening other people's vaults,
   alongside (not replacing) Clew's `query`/`tasks`/`kanban` fences:
   `vault-model.js` (the vault as pages: `file.*`, the link graph,

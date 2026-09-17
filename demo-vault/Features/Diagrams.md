@@ -214,9 +214,59 @@ dotlabel.bot(btex $z_4$ etex, z4);
 dotlabel.top(btex $z_2$ etex, z2);
 ```
 
+## Showing the source instead
+
+Every one of these blocks takes `show=` on its opening line. `show=code`
+displays the source as a highlighted code block and typesets nothing —
+for a note *about* TikZ rather than one that draws with it. `show=both`
+shows the source and then the figure, the way a tutorial reads; the
+default is `show=figure`. The bare words `code` and `both` mean the same
+thing, and the same words work on `:::TiKZ{show=code}` and
+`@begin(metapost){show=both}`:
+
+```tikz both
+\draw[thick,fill=blue!10] (0,0) -- (2,0) -- (1,1.5) -- cycle;
+\node at (1,0.5) {$\triangle$};
+```
+
+In source mode the fences are highlighted in their own languages — TeX
+for ` ```tikz `, ` ```latex ` and ` ```tex `, MetaPost for
+` ```metapost ` — so the code reads the same in both panes.
+
+## LaTeX and plain TeX, too
+
+The same engines typeset **any** LaTeX, not just pictures. A ` ```latex `
+fence holds a snippet — a paragraph, an `align`, a table, a theorem —
+which is wrapped in a `standalone` document as wide as it needs to be
+(with `amsmath` and `amssymb` loaded), run through LuaLaTeX, and shown
+as the page LaTeX lays out, cropped to the ink. A fence that says
+`\documentclass` is a complete document and is typeset as written, one
+SVG per page.
+
+```latex
+Maxwell's equations, in differential form:
+\begin{align}
+  \nabla \cdot \mathbf{E} &= \frac{\rho}{\varepsilon_0} &
+  \nabla \times \mathbf{E} &= -\frac{\partial \mathbf{B}}{\partial t} \\
+  \nabla \cdot \mathbf{B} &= 0 &
+  \nabla \times \mathbf{B} &= \mu_0 \mathbf{J}
+    + \mu_0 \varepsilon_0 \frac{\partial \mathbf{E}}{\partial t}
+\end{align}
+```
+
+A ` ```tex ` fence is plain TeX — Knuth's, with the e-TeX extensions —
+and gets its `\bye` if it forgot one:
+
+```tex
+\centerline{\bf Plain \TeX\ still works:
+  $\displaystyle\sum_{n=1}^\infty \frac1{n^2} = \frac{\pi^2}{6}$}
+```
+
 Exports part company here, on purpose. A **LaTeX or PDF export** runs
 your own jmarkdown configuration, where `@begin(TiKZ)` becomes a native
 `tikzpicture` in the document — a true vector figure in the document's
 own fonts, which is what a typeset paper wants (and which needs your TeX
-installation). A **website export** bakes every figure to SVG in the
-page, so a published site carries no engine at all.
+installation); the fences — ` ```tikz `, ` ```latex ` and the rest — are
+Clew's preview syntax and come out as code blocks there. A **website
+export** bakes every figure to SVG in the page, so a published site
+carries no engine at all.

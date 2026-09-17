@@ -142,12 +142,13 @@ export class RenderService {
 			'Extensions': [
 				`wikiembed, wikilink from ${path.join(engineAssets, 'wikilinks.js')}`,
 				`mermaidFence, leafletFence from ${path.join(engineAssets, 'obsidian-fences.js')}`,
-				// TikZ and MetaPost typeset by wasm in the preview, so a
-				// figure needs no TeX installation: the ```tikz / ```metapost
-				// fences and the :::TiKZ directive. Listed here, i.e. loaded
+				// TikZ, MetaPost, LaTeX and plain TeX typeset by wasm in the
+				// preview, so a figure needs no TeX installation: the ```tikz /
+				// ```metapost / ```latex / ```tex fences and the :::TiKZ
+				// directive. Listed here, i.e. loaded
 				// after the engine's own rules, which is what lets the
 				// directive win — see src/engine/figures.js.
-				`tikzFence, metapostFence, tikzDirective from ${path.join(engineAssets, 'figures.js')}`,
+				`tikzFence, metapostFence, latexFence, texFence, tikzDirective from ${path.join(engineAssets, 'figures.js')}`,
 				`queryFence, tasksFence, kanbanFence from ${path.join(engineAssets, 'query-fences.js')}`,
 				`tableBeforeAnchor, blockAnchorLine, blockAnchor from ${path.join(engineAssets, 'block-refs.js')}`,
 				// Obsidian's Dataview, for vaults that arrive carrying it.
