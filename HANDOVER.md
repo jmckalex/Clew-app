@@ -205,6 +205,9 @@ own source changed. The manual (`diagrams.html`) explains the
 classic-tip fact in the TikZ section and says the border is kept in the
 SVG.
 
+**v0.2.1 is now PUBLISHED** (later on 09-17, with the LuaTeX rule fix
+folded in — §2d); the manifest is pinned to the published asset.
+
 **Unverified**: the upgrade from a version-2 IndexedDB in a real,
 already-used profile (the code path is `onupgradeneeded` → delete store
 → recreate; read, not exercised — the smoke profiles were fresh). If
@@ -304,9 +307,7 @@ says whether a fence is typeset or displayed as code. The design:
   the top, folio at the bottom, the crop spanning the page — first smoke
   run, screenshot). A ```tex body saying `\documentclass` is treated as
   LaTeX (engine lualatex) rather than dying on an undefined command.
-  **NOT plain LuaTeX, though that was the ask**: see the library bug
-  below; the plain e-TeX format runs it, `engine=luatex` still selects
-  LuaTeX per fence, and the manual says so.
+  On plain LuaTeX, as asked — after a detour: see the library bug below.
 - **Editor**: `renderer/editor/langs/` — `tex-mode.js` and
   `metapost-mode.js` are pure StreamLanguage specs (tested under node
   with CodeMirror's own StringStream), `fence-languages.js` is
@@ -331,16 +332,21 @@ says whether a fence is typeset or displayed as code. The design:
   prints the spans of five lines. Both runs green, both screenshots
   eyeballed (README rows carry the assertions).
 
-**The library bug, for the owner (mp-tikz-wasm 0.2.1 as staged):**
-`engine: 'luatex'` (the dviluatex format) traps the wasm module with
-"null function or function signature mismatch" on ANY math — `x
-$\sqrt{2}$\bye` alone does it in a fresh instance, `\centerline{Plain}\bye`
-is fine, the same documents under `lualatex` and under `plain` (etex)
-typeset, and no engine ORDER matters (all six sequences tried). Node,
-2026-09-17. The library has no test for plain LuaTeX. Once fixed, flip
-`KINDS.tex.engine` in `src/engine/figures.js` to `'luatex'` (one word,
-the comment above it says why it is not) and re-run
-`figures-scenario.js` — its ```tex figure has math for exactly this.
+**The library bug — FIXED upstream and re-pinned (09-17, later).** What
+Clew saw as "plain LuaTeX traps on any math" was, on the library side
+(commit 5e514df), EVERY DVI rule trapping under BOTH LuaTeX formats: a
+call-arity mismatch in LuaTeX's back-end dispatch table (the DVI rule
+slot takes three arguments, its caller passes four) that native C
+tolerates and wasm's call_indirect does not. `\sqrt` and `\hrule` under
+luatex, `\frac` and `\underline` under lualatex — so the demo's Maxwell
+`\frac` would have failed too. The owner fixed it with the library's
+first luatex patch and published v0.2.1 from it; Clew's manifest is
+re-pinned to the published asset (sha256 5ddff636…, 37,205,263 bytes,
+both confirmed with `gh release view`), ```tex is back on `luatex`, and
+the smoke fixture's LaTeX snippet gained a `\frac` so the rule case is
+guarded here as well as there. Lesson filed under §7: my diagnosis
+("math") was the symptom I happened to test, not the cause — the
+construct matrix upstream found it.
 
 Gotchas earned here:
 
@@ -486,8 +492,7 @@ field` is truthiness, `isnotempty()` is the guard) are in
 
 ## 5. Owner's own actions
 
-**mp-tikz-wasm: plain LuaTeX traps on math** (§2d has the repro) — a
-library fix, then one word here. Also: the GoDaddy DNS change (A records for clew-app.com/.net →
+The GoDaddy DNS change (A records for clew-app.com/.net →
 144.126.236.254), then in Clew-docs `make dns-check` → `provision` →
 `sync` → `tls`. Plus the win/linux VM run if those artefacts are to ship,
 and the Sifr/small-icons verdict (still untried; the two reverts are in
@@ -536,6 +541,10 @@ switch THIS tree off main. Live testing flips demo widgets — reset
   Twice more this session: the unbaked first figure on an exported page,
   and a figure that reported `mpw-ok` with nothing in it, were both
   caught by looking.
+- **A measured symptom is not a cause.** "Plain LuaTeX traps on math"
+  was true of every document tried and wrong as a diagnosis: the trap was
+  every DVI rule, under both formats (§2d). Vary the construct, not just
+  the document, before naming the fault.
 - **Prefer measuring to guessing — and re-measure before believing a
   diagnosis.** A graph-drawing figure "failing" this session was a
   missing entity-decode in the throwaway test script, not in the

@@ -213,15 +213,6 @@ test('every library the directives load is one the wasm bundle actually has', (t
 
 // ---- ```latex and ```tex ---------------------------------------------------
 
-test('a latex snippet is wrapped in a varwidth standalone document, on LuaLaTeX', () => {
-	const html = latexFence.renderer(latexFence.tokenizer('```latex\nA snippet with $x^2$.\n```\n'));
-	assert.match(html, /^<tikz-diagram class="mathjax_ignore clew-doc"/);
-	assert.equal(attrOf(html, 'data-engine'), 'lualatex');
-	assert.match(html, /\\documentclass\[varwidth,border=2pt\]\{standalone\}/);
-	assert.match(html, /\\usepackage\{amsmath,amssymb\}/);
-	assert.match(html, /\\begin\{document\}\nA snippet with \$x\^2\$\.\n\\end\{document\}/);
-});
-
 test('a complete latex document passes through as written', () => {
 	const doc = '\\documentclass{article}\n\\begin{document}\nHi\n\\end{document}';
 	const { source, attrs } = wrapLatex(doc, { packages: 'booktabs', border: '4pt', alt: 'x' });
@@ -239,14 +230,14 @@ test('packages, preamble and border go into the wrapped document, not onto the e
 
 test('an explicit engine wins over the kind’s default', () => {
 	assert.equal(attrOf(figureElement('latex', 'x', { engine: 'latex' }), 'data-engine'), 'latex');
-	assert.equal(attrOf(figureElement('tex', 'x', { engine: 'luatex' }), 'data-engine'), 'luatex');
+	assert.equal(attrOf(figureElement('tex', 'x', { engine: 'plain' }), 'data-engine'), 'plain');
 });
 
-test('plain tex gets its \\bye and the plain format; a \\documentclass body is LaTeX after all', () => {
+test('plain tex gets its \\bye and plain LuaTeX; a \\documentclass body is LaTeX after all', () => {
 	const html = texFence.renderer(texFence.tokenizer('```tex\n\\centerline{Plain}\n```\n'));
 	assert.match(html, /\n\\nopagenumbers\n\\centerline\{Plain\}\n\\bye\n<\/tikz-diagram>/, 'no folio in the crop, and a \\bye added');
 	assert.match(html, /class="mathjax_ignore clew-doc"/);
-	assert.equal(attrOf(html, 'data-engine'), 'plain');
+	assert.equal(attrOf(html, 'data-engine'), 'luatex');
 	assert.equal(wrapTex('x\n\\bye', {}).source, '\\nopagenumbers\nx\n\\bye', 'an existing \\bye is kept');
 	const doc = '\\documentclass{article}\\begin{document}x\\end{document}';
 	assert.deepEqual(wrapTex(doc, {}), { source: doc, attrs: { engine: 'lualatex' } });

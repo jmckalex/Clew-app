@@ -175,9 +175,9 @@ browser-window-focus).
   LaTeX export (user's own config) never sees this file. A ```latex
   snippet is wrapped in `standalone` + `varwidth` and runs on LuaLaTeX; a
   complete document (`\documentclass`) is typeset as written, one SVG per
-  page. ```tex runs on the plain e-TeX format, NOT plain LuaTeX: the
-  library's dviluatex format traps the wasm module on any math (measured
-  2026-09-17) — `engine=luatex` still selects it. Every block takes
+  page; ```tex runs on plain LuaTeX (needs 0.2.1 as PUBLISHED — before
+  its LuaTeX rule fix every DVI rule trapped the wasm module under both
+  LuaTeX formats). Every block takes
   `show=figure|code|both` (bare `code`/`both` too): code is marked's OWN
   `code` token (returned outright, or attached as a child token), so it
   goes through the same highlight.js pass as any fence; the one addition

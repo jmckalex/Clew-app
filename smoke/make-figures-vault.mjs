@@ -108,12 +108,12 @@ border on both sides — well above 4.
 A paragraph long enough to wrap at the standalone class's line width, with
 inline math $e^{i\\pi} + 1 = 0$ and a display:
 \\begin{align}
-  \\nabla \\cdot \\mathbf{E} &= \\rho / \\varepsilon_0 \\\\
+  \\nabla \\cdot \\mathbf{E} &= \\frac{\\rho}{\\varepsilon_0} \\\\
   \\nabla \\cdot \\mathbf{B} &= 0
 \\end{align}
 \`\`\`
 
-## Plain TeX (with math — the plain-LuaTeX trap case)
+## Plain TeX on LuaTeX (a \\sqrt: the DVI-rule trap regression)
 
 \`\`\`tex
 \\centerline{Plain \\TeX, $\\sqrt{2}$ and all.}

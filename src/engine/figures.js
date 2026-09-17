@@ -16,7 +16,7 @@
 //   ```tikz / ```metapost        Obsidian's fence (its TikZJax plugin's
 //                                shape, bodies in that dialect included)
 //   ```latex / ```tex            Clew's own: a LaTeX snippet or document
-//                                (LuaLaTeX), or plain TeX (e-TeX; see KINDS)
+//                                (LuaLaTeX), or plain TeX (LuaTeX)
 //   :::TiKZ … :::                jmarkdown's container directive
 //   @begin(TiKZ) … @end(TiKZ)    and its @-sigil twin
 //   @begin(metapost) … @end(metapost)
@@ -151,18 +151,19 @@ export function unwrapTikzJax(source, attrs) {
  * source is shown in under `show=code`.
  */
 //
-// ```latex runs on LuaLaTeX. ```tex does NOT run on plain LuaTeX, though it
-// was meant to: in mp-tikz-wasm 0.2.1 the dviluatex format traps the wasm
-// module ("null function or function signature mismatch") on any math —
-// `$\sqrt{2}$\bye` alone does it, `\centerline{x}\bye` is fine, and the
-// same document under lualatex or under etex typesets (measured in Node,
-// 2026-09-17). So plain TeX runs on the plain e-TeX format until the library
-// is fixed; `engine=luatex` on the fence still asks for it.
+// ```latex runs on LuaLaTeX and ```tex on plain LuaTeX. That needs the
+// staged mp-tikz-wasm to be 0.2.1 AS PUBLISHED (shared/mptikz-manifest.json):
+// before its LuaTeX rule fix, every DVI rule — \sqrt, \frac, \hrule — trapped
+// the wasm module under both LuaTeX formats (a call-arity mismatch in the
+// engine's back-end dispatch table that native C tolerates and WebAssembly
+// does not), which first showed up here as "plain LuaTeX fails on any math"
+// and briefly had ```tex running on the e-TeX format instead. `engine=` on
+// the fence overrides either default.
 const KINDS = {
 	tikz: { tag: 'tikz-diagram', code: 'latex' },
 	metapost: { tag: 'metapost-diagram', code: 'metapost' },
 	latex: { tag: 'tikz-diagram', code: 'latex', engine: 'lualatex', wrap: wrapLatex },
-	tex: { tag: 'tikz-diagram', code: 'tex', engine: 'plain', wrap: wrapTex },
+	tex: { tag: 'tikz-diagram', code: 'tex', engine: 'luatex', wrap: wrapTex },
 };
 
 /** The packages a wrapped ```latex snippet can count on. */
