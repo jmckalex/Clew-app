@@ -210,7 +210,13 @@ browser-window-focus).
   through `CLEW_NOTE_FONTS`. A site export bakes such figures as OUTLINES
   (`figure-bake.js`), never embedding Apple's or Microsoft's face in a
   published page. The manifest is still pinned to 0.2.1: the feature is
-  live only where the master's `opentype-fonts` build is staged.
+  live only where the master's `opentype-fonts` build is staged. The
+  mptikz root is served IMMUTABLE for a year (protocol.js) and its URLs
+  carry no version, so a restaged or upgraded build would be served
+  stale: `main/asset-stamp.js` stamps the engines + bundle indexes + app
+  version and main.js clears the default session's HTTP cache on a
+  change, before any window — measured 2026-09-17, a profile kept a
+  day-old luaotfload.sty.
 - **Obsidian's own query formats** — for opening other people's vaults,
   alongside (not replacing) Clew's `query`/`tasks`/`kanban` fences:
   `vault-model.js` (the vault as pages: `file.*`, the link graph,

@@ -13,7 +13,7 @@
 // workers); windows/vaults open and close independently. Opening a vault
 // focuses the window that already shows it, fills the current window if it
 // is vaultless (the welcome screen), and otherwise makes a new window.
-import { app, BrowserWindow, clipboard, dialog, shell } from 'electron';
+import { app, BrowserWindow, clipboard, dialog, session as electronSession, shell } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -25,6 +25,7 @@ import { registerPreviewScheme, installPreviewProtocol } from './protocol.js';
 import { VaultSession, focusedSession, sessionForVault } from './session.js';
 import { paths } from './paths.js';
 import { prepareNoteFonts } from './note-fonts.js';
+import { assetStamp, stampChanged } from './asset-stamp.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.dirname(__dirname); // dist/
@@ -238,9 +239,23 @@ function watchRendererDist() {
 	}
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
 	settings.load();
 	registerIpc();
+	// The TeX engines are served immutable (protocol.js), so a restaged or
+	// upgraded build would be answered from Chromium's HTTP cache for a
+	// year; clear it when the build's identity changes (asset-stamp.js),
+	// before any window can fetch. Awaited: a window racing the clear
+	// could refill the cache from the old entries.
+	try {
+		const record = path.join(app.getPath('userData'), 'asset-stamp.txt');
+		if (stampChanged(record, assetStamp(paths.mptikzAssets, app.getVersion()))) {
+			await electronSession.defaultSession.clearCache();
+			console.log('asset cache cleared: the staged TeX engines changed');
+		}
+	} catch (err) {
+		console.error('asset stamp:', err);
+	}
 	// The note's typeface, as files for `font=note` figures (main/
 	// note-fonts.js). Before the protocol and before any vault opens: the
 	// render worker reads the index at spawn, and a preview fetches the
