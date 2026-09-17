@@ -1,0 +1,11 @@
+{
+	"comment": "The mp-tikz-wasm build Clew ships: MetaPost 2.11, pdfTeX, LuaTeX and dvisvgm compiled to WebAssembly, with the TeX bundles their kpathsea reads (74 MB unpacked, ~37 MB as this archive). Unlike the ZetaOffice pins, this one is a VERSIONED GitHub release, so a hash mismatch means the wrong file, not a new upstream build. PROVISIONAL, 2026-09-16: 0.2.1 is built locally (release/mp-tikz-wasm-0.2.1.tar.gz in the master repo; its Release 0.2.1 commit is untagged and unpushed) and this digest is that file's. Once it is published, confirm with `gh release view v0.2.1 --json assets` that the asset has the same sha256 and bytes; if the archive was rebuilt before uploading, re-pin. 0.2.0 (sha256 a7255429800f196b31a92bdf5dc278c467c32974abb6522a089f041c0955be68) lacked spath3 and cropped classic arrowheads. scripts/stage-mptikz.js prefers the owner's local master build (~/Source/mp-tikz-wasm/dist) and falls back to this archive; dist/ inside it is what lands in mptikz-assets/.",
+	"version": "0.2.1",
+	"tag": "v0.2.1",
+	"repo": "jmckalex/mp-tikz-wasm",
+	"archive": "mp-tikz-wasm-0.2.1.tar.gz",
+	"url": "https://github.com/jmckalex/mp-tikz-wasm/releases/download/v0.2.1/mp-tikz-wasm-0.2.1.tar.gz",
+	"sha256": "2c3035392f77cdf0efe36eaa878b3f792d4ac66546ed3ad9f6a2655da0f25302",
+	"bytes": 37203244,
+	"unpackedDir": "mp-tikz-wasm-0.2.1/dist"
+}

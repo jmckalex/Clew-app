@@ -245,6 +245,7 @@ app.whenReady().then(() => {
 		nodeModulesDir: paths.previewAssets,
 		engineAssetsDir: paths.engineAssets,
 		embedpdfDir: paths.embedpdfAssets,
+		mptikzDir: paths.mptikzAssets,
 		zetaDir: paths.zetaAssets,
 		officeIconsDir: paths.officeIcons,
 		globalPluginsDir: paths.globalPlugins,

@@ -16,6 +16,7 @@
     "test": "node --test",
     "sync-engine": "node scripts/vendor-jmarkdown.js",
     "sync-embedpdf": "node scripts/vendor-embedpdf.js",
+    "sync-mptikz": "node scripts/stage-mptikz.js",
     "package": "node scripts/package.js",
     "package:dmg": "node scripts/package.js --dmg",
     "package:dist": "node scripts/package.js --dmg --sign --notarize",
@@ -122,6 +123,16 @@
       {
         "from": "vendor/embedpdf/dist",
         "to": "preview-assets/embedpdf"
+      },
+      {
+        "from": "mptikz-assets",
+        "to": "mptikz",
+        "filter": [
+          "**/*",
+          "!.cache/**",
+          "!**/*.js.map",
+          "!**/.DS_Store"
+        ]
       },
       {
         "from": "node_modules/@excalidraw/excalidraw/dist/prod",

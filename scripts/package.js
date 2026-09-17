@@ -8,7 +8,8 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Packages Clew: sync the engine mirror, build bundles, stage the engine
+// Packages Clew: sync the engine mirror and the wasm figure engines, build
+// bundles, stage the engine
 // with its production dependencies (a plain-node child can't read inside
 // app.asar, so the engine ships unpacked in the resources dir), generate
 // the icon if missing, then run electron-builder. The staged engine tree is
@@ -117,6 +118,9 @@ function developerIdIdentity() {
 
 run('node scripts/vendor-jmarkdown.js');
 run('node scripts/vendor-embedpdf.js');
+// The wasm TikZ/MetaPost engines (74 MB, extraResources → Resources/mptikz).
+// --require: fail here rather than ship an app whose figures cannot render.
+run('node scripts/stage-mptikz.js --require');
 run('node scripts/build.js');
 
 // Stage the engine: mirror + production node_modules, resolvable by the

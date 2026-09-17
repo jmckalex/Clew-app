@@ -69,7 +69,7 @@ export function registerPreviewScheme() {
 const RENDERED_SUFFIX = new RegExp(`(${NOTE_EXTENSIONS.map((e) => e.replace('.', '\\.')).join('|')})\\.html$`, 'i');
 
 /** After app.whenReady(). */
-export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDir, embedpdfDir, zetaDir, officeIconsDir, globalPluginsDir = null }) {
+export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDir, embedpdfDir, mptikzDir, zetaDir, officeIconsDir, globalPluginsDir = null }) {
 	const assetRoots = {
 		mathjax: path.join(nodeModulesDir, 'mathjax', 'es5'),
 		mermaid: path.join(nodeModulesDir, 'mermaid', 'dist'),
@@ -80,6 +80,11 @@ export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDi
 		// The EmbedPDF bundle + pdfium.wasm (the PDF viewer) — the vendored
 		// OCG/layers build (vendor/embedpdf), not the npm package.
 		embedpdf: embedpdfDir,
+		// mp-tikz-wasm: the MetaPost/TikZ engines and their TeX bundles
+		// (paths.js#mptikzAssets). A first figure reads ~90 of these files
+		// through kpathsea, so the whole tree is servable rather than a
+		// closed set — it is read-only app payload, like embedpdf.
+		mptikz: mptikzDir,
 		// Our own PDF viewer page + its bundle (pdf-page.html/.js).
 		clewpdf: path.join(distDir, 'preview-client'),
 		// ZetaOffice (LibreOffice wasm) bundle: soffice.{js,wasm,data,…} +
@@ -213,7 +218,16 @@ export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDi
 				if (!abs.startsWith(base + path.sep)) {
 					return new Response('Forbidden', { status: 403, headers: headers('text/plain') });
 				}
-				return fileResponse(abs, {}, request.headers.get('range'));
+				// Every other asset is served no-store (the default in
+				// headers()), which is right for anything that can change
+				// under the app. The TeX engines are the exception worth
+				// making: a pinned, read-only build whose wasm Chromium can
+				// only code-cache if it is allowed to store it, and whose
+				// bundles a figure re-reads by the dozen.
+				const extra = root === 'mptikz'
+					? { 'Cache-Control': 'public, max-age=31536000, immutable' }
+					: {};
+				return fileResponse(abs, extra, request.headers.get('range'));
 			}
 			if (pathname.startsWith('__clew_preview__/')) {
 				// A closed set: nothing outside dist/preview-client is servable.

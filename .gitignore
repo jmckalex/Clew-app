@@ -15,3 +15,6 @@ first-session-2026-08-21.pdf
 build-engine/
 # ZetaOffice wasm bundle (spike): downloaded, never committed — see HANDOVER.
 zeta-assets/
+# The wasm TikZ/MetaPost engines: 74 MB staged by scripts/stage-mptikz.js,
+# from the master's build or the pinned release. Never committed.
+mptikz-assets/
