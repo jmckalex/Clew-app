@@ -364,6 +364,46 @@ html[data-theme='light'] .mpw-figure .mpw-console {
 .jmarkdown-right { text-align: right; }
 .jmarkdown-center { text-align: center; }
 
+/* Description lists (`Term:: definition`). Same story as the alignment
+   wrappers above: the engine emits a bare <dl><dt>…</dt><dd>…</dd></dl>
+   and nothing in the pipeline styles it, so the browser's default stacked
+   the definition under its term with a 40px indent. A two-column grid puts
+   the definition BESIDE the term, which is what the form is for; the first
+   track is `auto`, so every term in one list shares the width of the
+   widest — that is the alignment. (Sizing each row on its own would be a
+   table's job, not a list's.)
+
+   `min-width: 0` on both tracks because a grid track's implicit minimum is
+   `auto`: one long unbreakable term — a wide MathJax box, a code span, a
+   URL — would otherwise push the definition column off the page instead of
+   letting it wrap. */
+dl {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	column-gap: 1.5em;
+	row-gap: 0.6em;
+	margin: 1em 0;
+}
+dl > dt {
+	grid-column: 1;
+	min-width: 0;
+}
+dl > dd {
+	grid-column: 2;
+	min-width: 0;
+	margin: 0; /* the 40px indent was the browser's; the grid owns it now */
+}
+/* A definition may be several paragraphs — and lists, quotes, fences. They
+   stack inside the one cell, so only the outermost margins need adjusting:
+   the first block has to sit on the term's own line, and the last must not
+   push the next row past the row-gap. */
+dl > dd > :first-child { margin-top: 0; }
+dl > dd > :last-child { margin-bottom: 0; }
+/* A list inside a definition keeps its own indent — that gutter is the
+   list's marker column, not the dd's old margin. */
+dl > dd > ul,
+dl > dd > ol { padding-left: 1.4em; }
+
 /* ---- canvas embeds (![[X.canvas]]) — read-only scene rendered by the
    preview client's canvas-embed.js ------------------------------------- */
 .canvas-embed .canvas-embed-scene {
