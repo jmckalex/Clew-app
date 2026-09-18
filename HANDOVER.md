@@ -19,7 +19,9 @@ through intermediate states, so each commit stands alone. The manual
 hunks went in as one commit in Clew-docs (`1c8d3bc`).
 
 **This session built one feature: TeX fragments** (`3a180c2` here,
-`57a61ea` in Clew-docs) — §2. Nothing is pushed in either repo.
+`57a61ea` in Clew-docs) — §2 — and fixed one bug it turned up on the way
+(`FIXHASH`: the site export never handed its workers the note's
+typeface). Nothing is pushed in either repo.
 
 **571 tests green**; `node scripts/build.js` passes; `make check-links`
 clean in Clew-docs.
@@ -28,8 +30,7 @@ clean in Clew-docs.
 
 Nothing blocked. What waits on the owner is in §5 — the same three
 long-standing items (dev docs, the graphicx driver line, the `font=note`
-re-pin), last session's two offers, and one new one: the site export
-does not hand its workers `CLEW_NOTE_FONTS` (§3).
+re-pin) and last session's two offers.
 
 ## 2. TeX fragments: preamble text a figure asks for by name
 
@@ -120,13 +121,11 @@ demo fragment and the manual both say so now.
 
 New this session:
 
-- **The site export does not pass `CLEW_NOTE_FONTS`** to its workers
-  (`export-site.js`, where `CLEW_TEX_FRAGMENTS` has just been added
-  beside `CLEW_DATAVIEW_JS`). Read from the code, NOT measured: a
-  `font=note` figure in an exported site would then be emitted with
-  `\usepackage{fontspec}` and no `\setmainfont`, so it bakes in Latin
-  Modern — while `figure-bake.js` dutifully stages the face files
-  nothing references. One line, offered in §5.
+- The site export's missing `CLEW_NOTE_FONTS` — found while adding
+  `CLEW_TEX_FRAGMENTS` to the same env block — is FIXED and measured
+  (`FIXHASH`), not residue any more. It had been baking every
+  `font=note` figure in fontspec's own Latin Modern while
+  `figure-bake.js` staged face files nothing referenced.
 - A fragment name containing a comma can never be asked for (the
   attribute is a comma list). The settings row says so; nothing stops
   the name being typed.
@@ -167,10 +166,9 @@ the sixth session's §2e, offered and not yet answered.
 - **Push both repos** (nothing has ever been pushed), and `make sync` in
   Clew-docs to deploy the manual — the site still promises inline fields
   and a TeX installation.
-- Three offers waiting on a yes or no: the stray link face on plain
-  `[text]` brackets; the manual line about `\[ \begin{align*} … \]`
-  rendering in the preview but failing a LaTeX export; and the
-  one-line `CLEW_NOTE_FONTS` fix for the site export (§3).
+- Two offers waiting on a yes or no: the stray link face on plain
+  `[text]` brackets, and the manual line about `\[ \begin{align*} … \]`
+  rendering in the preview but failing a LaTeX export.
 - The GoDaddy DNS change (A records for clew-app.com/.net →
   144.126.236.254), then in Clew-docs `make dns-check` → `provision` →
   `sync` → `tls`. Plus the win/linux VM run if those artefacts are to

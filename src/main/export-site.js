@@ -27,6 +27,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { paths } from './paths.js';
 import { settings } from './settings.js';
+import { readNoteFonts } from './note-fonts.js';
 import { toolchainPath } from './render-service.js';
 import { direntKind, shouldRecurse, walkGuard } from './fs-utils.js';
 import { enabledPlugins, previewPluginScripts } from './plugins.js';
@@ -72,6 +73,16 @@ export async function exportSite({ vaultRoot, engineDir, outDir, distDir, vaultO
 				// The same per-vault gate the live render service passes — an
 				// exported site bakes what the vault's previews show.
 				CLEW_DATAVIEW_JS: vaultOptions.dataviewJs === true ? '1' : '',
+				// The note's typeface, for a `font=note` figure's wrapper
+				// (engine/figures.js#noteFontPreamble): the preamble names the
+				// face BY FILE, so a worker without this emits fontspec with no
+				// \setmainfont and the figure is baked in Latin Modern — while
+				// figure-bake.js dutifully hands the engine face files nothing
+				// references. Measured 2026-09-18 on one exported line: the
+				// baked viewBox was 194.32 x 9.08 without this (fontspec's own
+				// Latin Modern) and 197.51 x 10.04 with it — the same figure
+				// the preview shows.
+				CLEW_NOTE_FONTS: JSON.stringify(readNoteFonts(paths.noteFonts)?.faces ?? {}),
 				// The named TeX fragments a `clew-fragments=` figure asks for,
 				// both scopes, exactly as the live render service passes them:
 				// a figure refused here would bake its refusal into the page.
