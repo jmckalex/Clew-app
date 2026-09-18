@@ -20,7 +20,7 @@ hunks went in as one commit in Clew-docs (`1c8d3bc`).
 
 **This session built one feature: TeX fragments** (`3a180c2` here,
 `57a61ea` in Clew-docs) — §2 — and fixed one bug it turned up on the way
-(`FIXHASH`: the site export never handed its workers the note's
+(`f806d43`: the site export never handed its workers the note's
 typeface). Nothing is pushed in either repo.
 
 **571 tests green**; `node scripts/build.js` passes; `make check-links`
@@ -123,7 +123,7 @@ New this session:
 
 - The site export's missing `CLEW_NOTE_FONTS` — found while adding
   `CLEW_TEX_FRAGMENTS` to the same env block — is FIXED and measured
-  (`FIXHASH`), not residue any more. It had been baking every
+  (`f806d43`), not residue any more. It had been baking every
   `font=note` figure in fontspec's own Latin Modern while
   `figure-bake.js` staged face files nothing referenced.
 - A fragment name containing a comma can never be asked for (the
