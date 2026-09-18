@@ -86,7 +86,11 @@ note API, plugins, and every settings key.
   the office Save/Discard/Cancel dialog without UI),
   `CLEW_SMOKE_CLOSE_WINDOW=1` (drives a real window close; logs
   `smoke-windows: N`), `CLEW_SMOKE_CLIPBOARD=1` (+`__clewSmokeClipboard`
-  preload), and REAL input: a scenario queues `window.__clewSmokeInput =
+  preload), `CLEW_SMOKE_MENU=1` (the application menu as the OS holds it,
+  one `smoke-menu:` line per item with its accelerator and enablement —
+  a native menu is an OS-level window that capturePage cannot see, so
+  this is the only assertion a menu change can carry), and REAL input:
+  a scenario queues `window.__clewSmokeInput =
   [{click:{x,y}} | {tripleClick:{x,y}} | {text:'abc'} |
   {combo:{key,modifiers}} | {wait:ms}]`, dispatched over CDP
   `Input.dispatch*` — `webContents.sendInputEvent` NEVER reaches OOPIFs

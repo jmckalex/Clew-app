@@ -13,7 +13,7 @@
 // workers); windows/vaults open and close independently. Opening a vault
 // focuses the window that already shows it, fills the current window if it
 // is vaultless (the welcome screen), and otherwise makes a new window.
-import { app, BrowserWindow, clipboard, dialog, session as electronSession, shell } from 'electron';
+import { app, BrowserWindow, clipboard, dialog, Menu, session as electronSession, shell } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -436,6 +436,25 @@ if (process.env.CLEW_SMOKE) {
 				}
 				if (process.env.CLEW_SMOKE_CLIPBOARD) {
 					console.log('smoke-clipboard: ' + JSON.stringify(clipboard.readText()));
+				}
+				// CLEW_SMOKE_MENU=1: the application menu as the OS holds it —
+				// every item's trail, accelerator and enablement, one line each.
+				// A native menu is an OS-level window that capturePage cannot
+				// see, so this is the only assertion a menu change can carry.
+				// It reads the REAL menu, so it also proves the template built:
+				// a malformed accelerator throws inside buildFromTemplate.
+				if (process.env.CLEW_SMOKE_MENU) {
+					const walk = (items, trail) => {
+						for (const item of items) {
+							if (item.type === 'separator') continue;
+							const where = [...trail, item.label];
+							console.log('smoke-menu: ' + where.join(' > ')
+								+ (item.accelerator ? ` [${item.accelerator}]` : '')
+								+ (item.enabled === false ? ' (disabled)' : ''));
+							if (item.submenu) walk(item.submenu.items, where);
+						}
+					};
+					walk(Menu.getApplicationMenu()?.items ?? [], []);
 				}
 				// CLEW_SMOKE_CLOSE_WINDOW=1: drive a REAL window close after the
 				// scenario, so close-guard flows (dirty office tab + the

@@ -12,6 +12,7 @@
 // once at boot. Chord notation is CodeMirror's ('Mod-Shift-p').
 import { registerCommand, buildContext, allCommands, isEnabled, effectiveKeymap } from './registry.js';
 import { openSearchPanel } from '@codemirror/search';
+import { deleteGroupForward } from '@codemirror/commands';
 import { registerFormatCommands, activeEditorView, needsEditor } from './format.js';
 import { formatTableAtCursor } from '../editor/tables.js';
 import { fillAtCursor } from '../editor/fill.js';
@@ -133,6 +134,16 @@ export function registerBuiltinCommands() {
 			run: () => {
 				const view = activeEditorView();
 				if (view) fillAtCursor(view, settingsStore.get('fillColumn') ?? 72);
+			} },
+		// The forward twin of mac's own ⌥⌫, on the Emacs letter. A command
+		// rather than a keymap entry so the palette and the hotkey editor
+		// see it — and so the dispatcher claims the chord before CodeMirror
+		// can type the Option character it produces on mac (`∂`).
+		{ id: 'editor:delete-word-forward', name: 'Delete word forward', hotkeys: ['Alt-d'],
+			when: needsEditor,
+			run: () => {
+				const view = activeEditorView();
+				if (view) deleteGroupForward(view);
 			} },
 		{ id: 'file:save', name: 'Save note', hotkeys: ['Mod-s'], when: needsNote,
 			run: (ctx) => editorPool.flush(ctx.activeTab.id) },

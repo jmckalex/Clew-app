@@ -258,6 +258,10 @@ class AppMenu {
 				// the palette alone because an identifier nobody can discover
 				// is an identifier nobody writes.
 				c('editor:copy-block-ref', 'Copy Link to Block', { needs: 'editor' }),
+				// Same reason: ⌥Q is Emacs' M-q and nothing on screen says so
+				// (the owner's ask, 2026-09-18). The gloss is for the word the
+				// hand reaches for; the command's own name stays the manual's.
+				c('editor:fill-paragraph', 'Fill Paragraph (Reflow)', { chord: 'Alt-q', needs: 'editor' }),
 				{ type: 'separator' },
 				c('edit:find-in-note', 'Find in Note', { chord: 'Mod-f', needs: 'editor' }),
 				c('nav:search', 'Search in All Files', { chord: 'Mod-Shift-f', needs: 'vault' }),
