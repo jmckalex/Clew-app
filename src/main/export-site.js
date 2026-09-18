@@ -26,6 +26,7 @@ import { fork } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { paths } from './paths.js';
+import { settings } from './settings.js';
 import { toolchainPath } from './render-service.js';
 import { direntKind, shouldRecurse, walkGuard } from './fs-utils.js';
 import { enabledPlugins, previewPluginScripts } from './plugins.js';
@@ -71,6 +72,13 @@ export async function exportSite({ vaultRoot, engineDir, outDir, distDir, vaultO
 				// The same per-vault gate the live render service passes — an
 				// exported site bakes what the vault's previews show.
 				CLEW_DATAVIEW_JS: vaultOptions.dataviewJs === true ? '1' : '',
+				// The named TeX fragments a `clew-fragments=` figure asks for,
+				// both scopes, exactly as the live render service passes them:
+				// a figure refused here would bake its refusal into the page.
+				CLEW_TEX_FRAGMENTS: JSON.stringify({
+					global: settings.get('texFragments') ?? [],
+					vault: vaultOptions.texFragments ?? [],
+				}),
 			},
 		});
 		child.stdout.on('data', () => {});

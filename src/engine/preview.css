@@ -329,6 +329,22 @@ html[data-theme='light'] .mpw-figure svg { filter: none; }
 .clew-doc .mpw-figure svg { display: block; margin: 0 auto 0.75em; }
 .clew-doc .mpw-figure svg:last-of-type { margin-bottom: 0; }
 
+/* A figure refused BY NAME before it was ever typeset: an undefined
+   clew-fragments name, or the attribute on a MetaPost block (figures.js
+   #figureRefusal). It reads as a note to the author, not as a TeX error —
+   there is no console to show, because no engine ran. */
+.clew-figure-refused {
+	margin: 1em auto;
+	padding: 0.6em 0.9em;
+	border: 1px solid var(--preview-border);
+	border-left: 3px solid var(--preview-danger);
+	border-radius: 4px;
+	background: var(--preview-code-bg);
+	color: var(--preview-text);
+	font-size: 0.92em;
+	text-align: left;
+}
+
 /* The library injects its own styles for these when it loads — late in the
    head, so the class alone would lose. Its colours assume a light page. */
 .mpw-figure .mpw-status {

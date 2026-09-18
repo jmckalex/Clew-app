@@ -17,6 +17,8 @@ import { allCommands, chordOf } from '../../commands/registry.js';
 import { debounce } from '../../lib/debounce.js';
 import { invalidateNoteApiGate } from '../../note-api.js';
 import { ipc, CH } from '../../ipc.js';
+import { createCodeEditor } from '../../editor/mini-editor.js';
+import { fragmentKey } from '../../../engine/tex-fragments.js';
 
 const isMac = navigator.platform.startsWith('Mac');
 
@@ -36,6 +38,10 @@ export function prettyChord(chord) {
 class ClewSettingsView extends ClewElement {
 	#recordingId = null;
 	#filter = '';
+	/** Every mini editor on screen — this component destroys what it made. */
+	#fragmentEditors = [];
+	/** scope → { entries, refresh }, so each group can see the other's names. */
+	#fragmentScopes = new Map();
 
 	subscribe() {
 		this.listen(settingsStore, 'settings-changed', () => {
@@ -45,6 +51,9 @@ class ClewSettingsView extends ClewElement {
 	}
 
 	render() {
+		// A re-render replaces the DOM wholesale; the mini editors in it are
+		// this component's to free (mini-editor.js is not the pool).
+		this.#dropFragmentEditors();
 		this.classList.add('settings-view');
 		this.innerHTML = '<div class="settings-scroll"></div>';
 		const scroll = this.firstElementChild;
@@ -76,6 +85,7 @@ class ClewSettingsView extends ClewElement {
 				this.#textRow('Attachment folder', 'attachmentFolder', 'Attachments'),
 				this.#textRow('Templates folder', 'templatesFolder', 'Templates'),
 			]),
+			this.#texFragmentsSection(),
 			this.#vaultSection(),
 			this.#hotkeysSection(),
 		);
@@ -293,6 +303,192 @@ class ClewSettingsView extends ClewElement {
 				});
 		});
 		return [row, hint];
+	}
+
+	// ---- TeX fragments -----------------------------------------------------
+	// Named preamble text a ```latex / ```tex / ```tikz block asks for by
+	// name — `clew-fragments='math macros, colours'` — instead of carrying
+	// its own copy (src/engine/figures.js#applyTexFragments).
+	//
+	// Two scopes, because both answers to "where should these live" are
+	// right: the GLOBAL list is yours on this machine and offered in every
+	// vault, THIS VAULT's list travels with the vault to another machine or
+	// another person. A vault fragment SHADOWS a global one of the same
+	// name — the plugins arrangement. engine/tex-fragments.js owns that rule
+	// and the worker applies it; this view imports the same fragmentKey so
+	// what it calls a clash is what the worker calls a shadow.
+
+	#texFragmentsSection() {
+		const section = this.#section('TeX fragments', []);
+		const hint = document.createElement('p');
+		hint.className = 'settings-hint';
+		hint.textContent = 'Preamble text your figures can share. Name a fragment here, then '
+			+ 'ask for it on a figure\'s first line — ```latex clew-fragments=\'math macros, '
+			+ 'colours\' — and its text is inserted into that figure\'s preamble, after the '
+			+ '\\documentclass Clew writes. Several names are separated by commas, and are '
+			+ 'inserted in the order you list them. A name nothing here defines is refused by '
+			+ 'name rather than typeset without it. Figures using a fragment re-typeset as '
+			+ 'you edit it.';
+		section.append(hint);
+		section.append(this.#fragmentGroup('global'));
+		if (vaultStore.vault) {
+			section.append(this.#fragmentGroup('vault'));
+		} else {
+			const none = document.createElement('p');
+			none.className = 'settings-hint';
+			none.textContent = 'Open a vault to give it fragments of its own.';
+			section.append(none);
+		}
+		return section;
+	}
+
+	/** Anything stored → the shape the rows edit. */
+	#fragmentEntries(list) {
+		return (Array.isArray(list) ? list : [])
+			.filter((entry) => entry && typeof entry === 'object')
+			.map((entry) => ({ name: String(entry.name ?? ''), text: String(entry.text ?? '') }));
+	}
+
+	/** Repaint every group's per-row notes (a rename in one scope changes the other's). */
+	#refreshFragmentHints() {
+		for (const group of this.#fragmentScopes.values()) group.refresh();
+	}
+
+	#fragmentGroup(scope) {
+		const group = document.createElement('div');
+		group.className = 'tex-fragment-group';
+		const subhead = document.createElement('h3');
+		subhead.className = 'settings-subhead';
+		subhead.textContent = scope === 'global'
+			? 'Global — every vault on this machine'
+			: `This vault (${vaultStore.vault?.name ?? '…'}) — travels with the vault`;
+		const list = document.createElement('div');
+		list.className = 'tex-fragment-list';
+		const add = document.createElement('button');
+		add.className = 'hotkey-button';
+		add.textContent = 'Add fragment';
+		group.append(subhead, list, add);
+
+		const entries = [];
+		const rows = [];
+
+		// Long, because every save respawns the render worker and re-renders
+		// the previews using a fragment: a keystroke is not a change of mind.
+		const persist = debounce(() => {
+			const value = entries.map(({ name, text }) => ({ name, text }));
+			if (scope === 'global') settingsStore.set('texFragments', value);
+			else ipc.invoke(CH.VAULT_SETTINGS_SET, { key: 'texFragments', value }).catch(() => {});
+		}, 900);
+
+		const refresh = () => {
+			const globalEntries = this.#fragmentScopes.get('global')?.entries
+				?? this.#fragmentEntries(settingsStore.get('texFragments'));
+			const shadowed = new Set(globalEntries.map((e) => fragmentKey(e.name)).filter(Boolean));
+			const counts = new Map();
+			for (const { entry } of rows) {
+				const key = fragmentKey(entry.name);
+				if (key) counts.set(key, (counts.get(key) ?? 0) + 1);
+			}
+			for (const { entry, note } of rows) {
+				const key = fragmentKey(entry.name);
+				if (!key) note.textContent = 'Unnamed: a figure cannot ask for it yet.';
+				// The attribute is a comma list, so a comma in a name makes the
+				// fragment unaskable — better said here than discovered as a
+				// refusal on a figure.
+				else if (key.includes(',')) note.textContent = 'A comma in the name: a figure could not ask for this one.';
+				else if (counts.get(key) > 1) note.textContent = 'Named twice here — the last row wins.';
+				else if (scope === 'vault' && shadowed.has(key)) note.textContent = 'Shadows the global fragment of this name.';
+				else note.textContent = '';
+			}
+		};
+		this.#fragmentScopes.set(scope, { entries, refresh, persist });
+
+		const addRow = (entry, { focus = false } = {}) => {
+			const row = document.createElement('div');
+			row.className = 'tex-fragment-row';
+			const side = document.createElement('div');
+			side.className = 'tex-fragment-side';
+			const name = document.createElement('input');
+			name.type = 'text';
+			name.placeholder = 'math macros';
+			name.value = entry.name;
+			const note = document.createElement('p');
+			note.className = 'tex-fragment-note';
+			const del = document.createElement('button');
+			del.className = 'tex-fragment-delete';
+			del.textContent = 'Delete';
+			side.append(name, note, del);
+
+			const host = document.createElement('div');
+			host.className = 'tex-fragment-editor';
+			const editor = createCodeEditor({
+				doc: entry.text,
+				language: 'latex',
+				placeholder: '\\usepackage{mathtools}\n\\newcommand{\\R}{\\mathbb{R}}',
+				onChange: (text) => { entry.text = text; persist(); },
+			});
+			host.append(editor.dom);
+			this.#fragmentEditors.push(editor);
+
+			name.addEventListener('input', () => {
+				entry.name = name.value;
+				this.#refreshFragmentHints();
+				persist();
+			});
+			name.addEventListener('blur', () => persist.flush());
+			editor.view.dom.addEventListener('focusout', () => persist.flush());
+			name.addEventListener('keydown', (e) => e.stopPropagation());
+
+			// Two steps, because a settings row has no undo and a fragment
+			// some note names is not something to lose to a stray click.
+			let armed = null;
+			const disarm = () => {
+				clearTimeout(armed);
+				armed = null;
+				del.textContent = 'Delete';
+				del.classList.remove('is-armed');
+			};
+			del.addEventListener('click', () => {
+				if (!armed && (entry.name.trim() || editor.text().trim())) {
+					del.textContent = 'Delete?';
+					del.classList.add('is-armed');
+					armed = setTimeout(disarm, 4000);
+					return;
+				}
+				disarm();
+				const at = entries.indexOf(entry);
+				if (at >= 0) entries.splice(at, 1);
+				const rowAt = rows.findIndex((r) => r.entry === entry);
+				if (rowAt >= 0) rows.splice(rowAt, 1);
+				this.#fragmentEditors = this.#fragmentEditors.filter((e) => e !== editor);
+				editor.destroy();
+				row.remove();
+				this.#refreshFragmentHints();
+				persist();
+				persist.flush();
+			});
+
+			row.append(side, host);
+			list.append(row);
+			rows.push({ entry, note });
+			if (focus) name.focus();
+		};
+
+		const load = (stored) => {
+			entries.push(...this.#fragmentEntries(stored));
+			for (const entry of entries) addRow(entry);
+			this.#refreshFragmentHints();
+		};
+		if (scope === 'global') load(settingsStore.get('texFragments'));
+		else ipc.invoke(CH.VAULT_SETTINGS_GET).then((vs) => load(vs?.texFragments)).catch(() => {});
+
+		add.addEventListener('click', () => {
+			const entry = { name: '', text: '' };
+			entries.push(entry);
+			addRow(entry, { focus: true });
+			this.#refreshFragmentHints();
+		});
+		return group;
 	}
 
 	#section(title, rows) {
@@ -609,6 +805,16 @@ class ClewSettingsView extends ClewElement {
 
 	cleanup() {
 		this.#recorderCleanup?.();
+		this.#dropFragmentEditors();
+	}
+
+	#dropFragmentEditors() {
+		// A fragment edited in the last 900ms has a save pending; the tab
+		// closing (or the vault changing) must not be what loses it.
+		for (const group of this.#fragmentScopes.values()) group.persist.flush();
+		for (const editor of this.#fragmentEditors) editor.destroy();
+		this.#fragmentEditors = [];
+		this.#fragmentScopes.clear();
 	}
 }
 

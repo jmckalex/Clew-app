@@ -21,7 +21,7 @@ import * as officeThumbs from './office-thumbs.js';
 import { CH } from '../shared/channels.js';
 import { settings } from './settings.js';
 import { appMenu } from './menu.js';
-import { sessionFor } from './session.js';
+import { allSessions, sessionFor } from './session.js';
 import { openVaultAnywhere, openVaultDialog, createVaultDialog, openDemoVault } from './main.js';
 import { propagateRename } from './rename-links.js';
 import { exportNote } from './export.js';
@@ -213,7 +213,15 @@ export function registerIpc() {
 	handle(CH.WORKSPACE_LOAD, (s) => s.vaults.loadState('workspace.json'));
 	handle(CH.WORKSPACE_SAVE, (s, state) => s.vaults.saveState('workspace.json', state));
 	handleGlobal(CH.SETTINGS_GET, () => settings.get());
-	handleGlobal(CH.SETTINGS_SET, ({ key, value }) => settings.set(key, value));
+	handleGlobal(CH.SETTINGS_SET, ({ key, value }) => {
+		settings.set(key, value);
+		// The global TeX fragments are read at worker spawn, and every window
+		// has its own worker — so a change here reconfigures them ALL, not
+		// just the sender's. (Nothing else app-global reaches the engine.)
+		if (key === 'texFragments') {
+			for (const session of allSessions()) session.renderService.reconfigure({});
+		}
+	});
 	handle(CH.VSTATE_LOAD, (s, { name }) => s.vaults.loadState(sanitizeStateName(name)));
 	handle(CH.VSTATE_SAVE, (s, { name, data }) => s.vaults.saveState(sanitizeStateName(name), data));
 
@@ -230,6 +238,10 @@ export function registerIpc() {
 		if (key === 'bibliography' || key === 'bibliographyStyle') {
 			s.renderService.reconfigure({ [key]: value });
 		}
+		// This vault's TeX fragments: the worker reads them at spawn, so the
+		// standby has to go and the open previews re-render (engine/
+		// tex-fragments.js, engine/figures.js#applyTexFragments).
+		if (key === 'texFragments') s.renderService.reconfigure({ texFragments: value });
 		// Plugin toggles change the engine config (engine surfaces) and the
 		// preview injection; re-render open previews with the new set.
 		if (key === 'plugins') s.renderService.reconfigure({ plugins: value });

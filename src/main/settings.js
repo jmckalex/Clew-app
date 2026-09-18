@@ -30,6 +30,11 @@ const DEFAULTS = {
 	// Paper for "Export as PDF (reading view)" — the LaTeX PDF takes its
 	// page size from the document's own class, and is not affected.
 	printPaperSize: 'a4',
+	// Named TeX fragments a figure can ask for with `clew-fragments=`
+	// ([{ name, text }] — src/engine/tex-fragments.js). These are the
+	// GLOBAL ones; a vault's own live in its vault-settings.json and
+	// shadow these where the names meet.
+	texFragments: [],
 };
 
 class Settings {

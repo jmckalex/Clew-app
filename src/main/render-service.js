@@ -24,6 +24,7 @@ import path from 'node:path';
 import { CH } from '../shared/channels.js';
 import { paths } from './paths.js';
 import { readNoteFonts } from './note-fonts.js';
+import { settings } from './settings.js';
 import { engineExtensionEntries } from './plugins.js';
 import { writeFileAtomic } from './fs-utils.js';
 
@@ -257,6 +258,16 @@ export class RenderService {
 				// wrapper (engine/figures.js#noteFontPreamble). App-global
 				// (main/note-fonts.js prepared it before any vault opened).
 				CLEW_NOTE_FONTS: JSON.stringify(readNoteFonts(paths.noteFonts)?.faces ?? {}),
+				// Named TeX fragments for `clew-fragments=` (engine/figures.js):
+				// both scopes as they are stored, because engine/tex-fragments.js
+				// owns the rule that a vault fragment shadows a global one — main
+				// resolving it here would be a second copy of that rule. Editing
+				// either list reconfigures, which is what re-typesets the figures
+				// using it (their source changes, so their fig-key does).
+				CLEW_TEX_FRAGMENTS: JSON.stringify({
+					global: settings.get('texFragments') ?? [],
+					vault: this.#vaultOptions.texFragments ?? [],
+				}),
 				// Engine console chatter goes to the pipes; keep them from filling.
 			},
 		});

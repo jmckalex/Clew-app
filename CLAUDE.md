@@ -221,6 +221,26 @@ browser-window-focus).
   version and main.js clears the default session's HTTP cache on a
   change, before any window — measured 2026-09-17, a profile kept a
   day-old luaotfload.sty.
+  **`clew-fragments='math macros, colours'`** on any TeX block inserts
+  NAMED preamble text, so a note's figures share one copy of the macros:
+  `src/engine/tex-fragments.js` owns the names (matching ignores case and
+  spacing) and the rule that a VAULT fragment shadows a GLOBAL one — the
+  plugins arrangement, global in `clew-settings.json`, per-vault in
+  `vault-settings.json`, both handed to the worker as CLEW_TEX_FRAGMENTS
+  and resolved THERE so main never keeps a second copy of the rule. The
+  renderer imports the same module for the settings rows' shadow hints
+  (the metapost-words.js arrangement). `figures.js#applyTexFragments`
+  places the text exactly where `font=note` places its block — after a
+  complete document's own `\documentclass`, into the `preamble` attribute
+  for a snippet or a tikz body, at the top of a plain-TeX source — but
+  LAST, after the font block and Clew's own packages, because a fragment
+  is the author's code and TeX's rule is that the last definition wins
+  (a `preamble=` on the fence itself still beats it). A name nothing
+  defines, or the attribute on a ```metapost block, is refused BY NAME in
+  place of the figure. Editing a fragment reconfigures (a global edit
+  reconfigures EVERY session); renaming one typesets nothing — identity is
+  the TEXT, not the name — but leaves every figure still asking for the old
+  name showing its refusal.
 - **Obsidian's own query formats** — for opening other people's vaults,
   alongside (not replacing) Clew's `query`/`tasks`/`kanban` fences:
   `vault-model.js` (the vault as pages: `file.*`, the link graph,
@@ -490,8 +510,13 @@ browser-window-focus).
 
 ## Conventions and gotchas
 
-- **Editor ownership:** only `editorPool` creates/destroys EditorViews;
-  components adopt `entry.view.dom`. The pool also owns dirty state,
+- **Editor ownership:** only `editorPool` creates/destroys the NOTE
+  EditorViews; components adopt `entry.view.dom`. A code field that is not
+  a note — the TeX fragment rows in settings — is
+  `renderer/editor/mini-editor.js`, which owns its own view and whose
+  CALLER must destroy it (the settings view does, on re-render and on
+  disconnect); it borrows theme.js's highlighting and fence-languages.js'
+  grammars, so a fragment is coloured exactly as the fence it lands in. The pool also owns dirty state,
   auto-save (1s debounce), a per-path EditorState cache (undo survives
   navigation; discarded when disk content diverges), and conflict state
   (external change + unsaved edits → banner, auto-save paused; the pool
