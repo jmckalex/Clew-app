@@ -32,6 +32,7 @@ import { attachments } from './attachments.js';
 import { citationCompletions } from './complete/citations.js';
 import { jmdOverlay } from './jmd/overlay.js';
 import { jmdFootnotes } from './jmd/footnote-parser.js';
+import { jmdMath } from './jmd/math-parser.js';
 import { jmdFolding } from './jmd/folding.js';
 import { tableKeymap } from './tables.js';
 import { autoFillHandler } from './fill.js';
@@ -60,13 +61,14 @@ export function makeNoteState(doc, handlerRef) {
 				base: markdownLanguage,
 				// jmarkdown has no indented code blocks or setext headings; removing
 				// them also stops the metadata header masquerading as a heading.
-				// jmdFootnotes takes `[^label: …]` / `[fn: …]` away from the
-				// link parser, which would otherwise build a shortcut
-				// reference out of a note and lose its face at a paragraph
-				// break (footnote-parser.js). The dialect overlay paints it.
+				// jmdFootnotes takes `[^label: …]` / `[fn: …]` away from the link
+				// parser, jmdMath takes every `$…$` away from ALL of them —
+				// TeX is full of markdown's punctuation (footnote-parser.js,
+				// math-parser.js). The dialect overlay paints both.
 				extensions: [
 					{ remove: ['IndentedCode', 'SetextHeading'] },
 					jmdFootnotes,
+					jmdMath,
 				],
 				// ```tikz / ```latex / ```tex / ```metapost bodies are parsed
 				// by their own grammars (langs/); every other fence stays text.
