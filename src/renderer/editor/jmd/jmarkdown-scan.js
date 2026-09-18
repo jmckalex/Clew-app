@@ -32,7 +32,9 @@
  *     spans (with `\/` escapes and the mid-word-slash abort)
  *   - embedded JavaScript chains `ident(...).prop(...)`
  *   - `<script>` / `<style>` blocks and block-level HTML runs
- *   - `\cite{…}` family commands and `[^label:`/`[fn:` footnote openers
+ *   - `\cite{…}` family commands and inline footnotes — `[^label: …]`,
+ *     `[fn: …]`, either with a `(group)` — opener, body and closer,
+ *     the body free to span paragraphs as the engine allows
  *
  * Changes in the Clew port (vs jmacs):
  *
@@ -1161,16 +1163,84 @@ function citations(ctx, S) {
 	}
 }
 
-/** Footnote openers: `[^label:` and `[fn:` (the body renders normally). */
+/**
+ * The opener of an inline footnote: `[fn:`, `[^label:`, and either with
+ * an endnote group — `[fn(g):`, `[^label(g):`. The label may not hold a
+ * `]`, whitespace, a colon or a `(`.
+ *
+ * This is the engine's own pair of patterns (OPEN_ANON / OPEN_LABEL in
+ * `vendor/jmarkdown/src/inline-footnotes.js`) written as one regex, and
+ * it is exported so `jmd/footnote-parser.js` — which tells lang-markdown
+ * that these brackets are NOT a link — cannot drift from the scanner
+ * that colours them (the arrangement block-refs.js/block-ids.js use).
+ * Callers add their own flags; the source carries no anchor.
+ */
+export const FOOTNOTE_OPEN = /\[(?:\^[^\]\s:(]+|fn)(?:\([^)\n]*\))?:/;
+
+/**
+ * Inline footnotes — `[^label: body]`, `[fn: body]`, either with a
+ * `(group)` — the WHOLE construct: the opener, the body, the closing
+ * `]`.
+ *
+ * The body carries `jmd-footnote-body` and is left unclaimed, so the
+ * passes that ran before this one (and the base grammar) still paint
+ * italics, wikilinks, maths and the rest inside a note.
+ *
+ * The body may span paragraphs: the engine extracts a note whose body
+ * holds blank lines, dedents it and renders it as its own block
+ * (`preprocessFootnotes`), so a blank line inside the brackets ends
+ * nothing. That is the whole point of this pass — lang-markdown reads
+ * `[…]` as a link, which is what used to colour a note's body, and a
+ * link stops dead at a blank line. The scanner's own face carries
+ * across the break; footnote-parser.js takes the bogus link away.
+ *
+ * The closing bracket is found the engine's way (`findClosingBracket`):
+ * nesting counted, `\]` escaped. Its code-span and maths cases are
+ * already handled here — the scan runs on the masked buffer, where both
+ * are blank. An unclosed opener paints the opener alone.
+ */
 function footnotes(ctx, S) {
-	const re = /\[(\^[^\]\s:]+|fn):/g;
+	const re = new RegExp(FOOTNOTE_OPEN.source, 'g');
 	let m;
 	while ((m = re.exec(S))) {
-		if (isClaimed(ctx, m.index)) continue;
-		cap(ctx, m.index, m.index + m[0].length, 'jmd-footnote');
-		region(ctx, m.index, m.index + m[0].length);
-		claim(ctx, m.index, m.index + m[0].length);
+		const start = m.index;
+		if (isClaimed(ctx, start)) continue;
+		const open = start + m[0].length;
+		cap(ctx, start, open, 'jmd-footnote');
+		region(ctx, start, open);
+		claim(ctx, start, open);
+		const close = footnoteClose(S, open);
+		if (close === -1) continue; // still being typed: the opener alone
+		cap(ctx, open, close, 'jmd-footnote-body');
+		cap(ctx, close, close + 1, 'jmd-footnote');
+		region(ctx, close, close + 1);
+		claim(ctx, close, close + 1);
+		// Past the whole note, as the engine's preprocessor skips it: an
+		// opener inside a body is body text, not a note of its own.
+		re.lastIndex = close + 1;
 	}
+}
+
+/**
+ * The offset of the `]` closing a footnote opened before `from`, or -1
+ * when the brackets never balance.
+ *
+ * @param {string} S - the masked buffer (code and maths already blank)
+ * @param {number} from - the offset just past the opener's colon
+ * @returns {number}
+ */
+function footnoteClose(S, from) {
+	let depth = 1;
+	for (let i = from; i < S.length; i += 1) {
+		const ch = S[i];
+		if (ch === '\\') i += 1;
+		else if (ch === '[') depth += 1;
+		else if (ch === ']') {
+			depth -= 1;
+			if (depth === 0) return i;
+		}
+	}
+	return -1;
 }
 
 /* ── Clew's Obsidian passes: wikilinks and tags ──────────────────────── */

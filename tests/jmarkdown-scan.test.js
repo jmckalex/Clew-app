@@ -293,12 +293,62 @@ test('citations: command, pre/post notes, keys', () => {
 	assert.equal(faceOf(scan, text, 'a, b'), 'jmd-cite-key');
 });
 
-test('footnote openers: labelled and anonymous', () => {
+test('inline footnotes: labelled and anonymous, opener, body and closer', () => {
 	const text = 'A claim.[^note1: The evidence.] And more.[fn: Anonymous.]\n';
 	const scan = scanJmarkdown(text);
 	assert.equal(faceOf(scan, text, '[^note1:'), 'jmd-footnote');
 	assert.equal(faceOf(scan, text, '[fn:'), 'jmd-footnote');
-	assert.equal(faceOf(scan, text, 'The evidence.'), null);
+	assert.equal(faceOf(scan, text, 'The evidence.'), 'jmd-footnote-body');
+	assert.equal(faceOf(scan, text, 'Anonymous.'), 'jmd-footnote-body');
+	assert.equal(faceOf(scan, text, ']'), 'jmd-footnote');
+});
+
+test('inline footnotes: an endnote group is part of the opener', () => {
+	const text = 'A claim.[^n(asides): Aside.] And[fn(asides): another.]\n';
+	const scan = scanJmarkdown(text);
+	assert.equal(faceOf(scan, text, '[^n(asides):'), 'jmd-footnote');
+	assert.equal(faceOf(scan, text, '[fn(asides):'), 'jmd-footnote');
+	assert.equal(faceOf(scan, text, 'Aside.'), 'jmd-footnote-body');
+	assert.equal(faceOf(scan, text, 'another.'), 'jmd-footnote-body');
+});
+
+test('a footnote body carries its face across a paragraph break', () => {
+	// The engine lifts a body holding blank lines out and renders it as
+	// its own block (preprocessFootnotes), so the note does not end at
+	// the break — and neither does the face. This is what stock markdown
+	// gets wrong: it reads the brackets as a link, which cannot leave its
+	// paragraph (see jmd/footnote-parser.js).
+	const text = 'Text[^n: First paragraph.\n\n\tSecond paragraph.] after.\n';
+	const scan = scanJmarkdown(text);
+	assert.equal(faceOf(scan, text, 'First paragraph.'), 'jmd-footnote-body');
+	assert.equal(faceOf(scan, text, 'Second paragraph.'), 'jmd-footnote-body');
+	assert.equal(faceOf(scan, text, ' after.'), null);
+});
+
+test('a footnote body leaves its constructs to the other passes', () => {
+	const text = 'Text[^n: with /italic/, [[Target]] and $x^2$.] after.\n';
+	const scan = scanJmarkdown(text);
+	assert.equal(faceOf(scan, text, 'italic'), 'jmd-italic');
+	assert.equal(faceOf(scan, text, 'Target'), 'jmd-wikilink-target');
+	assert.equal(faceOf(scan, text, '$x^2$'), 'jmd-math');
+	assert.equal(faceOf(scan, text, 'with '), 'jmd-footnote-body');
+});
+
+test('a footnote body ends at its own bracket, nesting counted', () => {
+	const text = 'Text[^n: a [bracket] inside.] after.\n';
+	const scan = scanJmarkdown(text);
+	assert.equal(faceOf(scan, text, 'inside.'), 'jmd-footnote-body');
+	assert.equal(faceOf(scan, text, ' after.'), null);
+});
+
+test('an unclosed footnote paints its opener alone', () => {
+	// What the user sees mid-keystroke; the body would otherwise run to
+	// the end of the document.
+	const text = 'Text[^n: still typing\n\nA later paragraph.\n';
+	const scan = scanJmarkdown(text);
+	assert.equal(faceOf(scan, text, '[^n:'), 'jmd-footnote');
+	assert.equal(faceOf(scan, text, 'still typing'), null);
+	assert.equal(faceOf(scan, text, 'A later paragraph.'), null);
 });
 
 test('a whole-line [[file]] is a wikilink in Clew (no inclusion face)', () => {

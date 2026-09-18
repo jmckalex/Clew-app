@@ -26,7 +26,8 @@
 //   environments      jmd-env-keyword jmd-env-name jmd-env-paren
 //   attributes        jmd-attr-class jmd-attr-id jmd-attr-name jmd-string
 //   inline spans      jmd-punct jmd-mustache jmd-highlight jmd-italic
-//                     jmd-cite jmd-cite-key jmd-footnote jmd-math
+//                     jmd-cite jmd-cite-key jmd-footnote jmd-footnote-body
+//                     jmd-math
 //   obsidian passes   jmd-wikilink-bracket jmd-wikilink-target
 //                     jmd-wikilink-alias jmd-tag
 //   mermaid bodies    jmd-keyword jmd-operator jmd-constant jmd-string

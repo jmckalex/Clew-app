@@ -54,6 +54,10 @@
 .jmd-cite { color: var(--clew-accent); }
 .jmd-cite-key { color: var(--clew-link); }
 .jmd-footnote { color: var(--clew-quote); }
+/* A note's body wears its opener's colour, whether it runs to the end of
+   the line or over several paragraphs; the constructs inside it keep
+   their own faces (they are painted over this one). */
+.jmd-footnote-body { color: var(--clew-quote); }
 .jmd-embedded { opacity: 0.92; }
 
 .jmd-directive-punct, .jmd-env-keyword { color: var(--clew-formatting); font-weight: 600; }
