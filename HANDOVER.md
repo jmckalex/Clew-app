@@ -163,9 +163,15 @@ the sixth session's §2e, offered and not yet answered.
 
 ## 5. Owner's own actions
 
-- **Push both repos** (nothing has ever been pushed), and `make sync` in
-  Clew-docs to deploy the manual — the site still promises inline fields
-  and a TeX installation.
+- **Neither repo has a git REMOTE** (checked 2026-09-19: `git remote -v`
+  is empty in both; `../Clew-iOS` has one, on GitHub). "Nothing pushed"
+  in earlier handovers meant there is nowhere to push — the whole of
+  Clew and ~50k words of manual exist on this machine, in git only.
+  Clew-docs' own HANDOVER §3 carries this as its item 4. Deciding where
+  they live is the one item here that protects everything else.
+- `make sync` in Clew-docs to deploy the manual once the site is live —
+  what is served now still promises inline fields and a TeX
+  installation.
 - Two offers waiting on a yes or no: the stray link face on plain
   `[text]` brackets, and the manual line about `\[ \begin{align*} … \]`
   rendering in the preview but failing a LaTeX export.
