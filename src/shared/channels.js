@@ -98,6 +98,9 @@ export const CH = {
 
 	// events: main → renderer
 	EV_VAULT_OPENED: 'clew:ev-vault-opened',
+	// The watcher hit its descriptor budget: part of the vault is not being
+	// watched, so the explorer and previews can go stale there (vault.js).
+	EV_WATCH_CAPPED: 'clew:ev-watch-capped',
 	EV_TREE_CHANGED: 'clew:ev-tree-changed',
 	EV_FILE_CHANGED: 'clew:ev-file-changed',
 	EV_RENDER_DONE: 'clew:ev-render-done',

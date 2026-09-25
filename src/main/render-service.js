@@ -44,6 +44,28 @@ export function toolchainPath() {
 	return [...current, ...extras.filter((dir) => !current.includes(dir))].join(path.delimiter);
 }
 
+/**
+ * `fork`, with the one failure that needs explaining translated. The render
+ * worker is a fork, and a fork needs descriptors: past ~10,240 held by the
+ * process libuv refuses with EBADF (and with EMFILE at the true ceiling).
+ * The cause is almost always the vault watcher on a vault full of library
+ * files — vault.js keeps a budget to prevent it, so reaching this means
+ * something ELSE is holding descriptors, and "spawn EBADF" in a preview
+ * tells the reader nothing at all.
+ */
+function spawnWorker(workerPath, options) {
+	try {
+		return fork(workerPath, [], options);
+	} catch (err) {
+		if (err?.code === 'EBADF' || err?.code === 'EMFILE') {
+			throw new Error('Clew could not start its render worker: too many files are open '
+				+ `(${err.code}). This usually means a vault with a very large folder in it is `
+				+ 'being watched. Close other vault windows, or move the folder out of the vault.');
+		}
+		throw err;
+	}
+}
+
 export class RenderService {
 	vaultRoot = null;
 	engineDir = null;
@@ -242,7 +264,7 @@ export class RenderService {
 
 	#spawnStandby() {
 		if (!this.vaultRoot) return;
-		const child = fork(WORKER_PATH, [], {
+		const child = spawnWorker(WORKER_PATH, {
 			cwd: this.engineDir,
 			stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
 			env: {

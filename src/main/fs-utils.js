@@ -22,6 +22,74 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+// Never shown in the explorer, never indexed.
+export const IGNORED_DIRS = new Set(['.obsidian', '.clew', '.git', 'node_modules', '.trash']);
+
+// The watcher holds one open descriptor per watched FILE, and the ceiling
+// that matters is a PROCESS one: past ~10,240 open descriptors libuv stops
+// being able to fork at all — measured 2026-09-25 on macOS 15, 10,000 held
+// descriptors → fork OK, 10,240 → `spawn EBADF`. The render worker IS a
+// fork (render-service.js#spawnStandby), so a vault that watches everything
+// does not merely get slow: it stops being able to RENDER, and the error
+// surfaces as an unreadable `spawn EBADF` in the preview.
+//
+// The owner's ph341 vault is how this was found: five presentation folders
+// symlink one 309 MB reveal.js library, and the watcher held 100,169
+// descriptors (99,580 of them under that library, the same real tree
+// watched five times over).
+//
+// So: a budget, shared by every window because the descriptors are, and
+// well under the ceiling — the rest of the app needs descriptors too.
+export const WATCH_BUDGET = 8000;
+
+/**
+ * The watcher's gate: chokidar's `ignored` predicate plus the bookkeeping
+ * behind it. Pure enough to unit-test (tests/watch-filter.test.js) — the
+ * only I/O is the caller's.
+ *
+ * chokidar passes ABSOLUTE paths even when `cwd` is set, and asks about the
+ * same path more than once (with and without a stats object), so the rules
+ * are applied to the vault-RELATIVE path and acceptance is remembered.
+ * Testing segments of the absolute path, as this once did, ignores every
+ * file in a vault that merely lives under a dot-directory (`~/.notes/…`).
+ *
+ * @param {object} options
+ * @param {string} options.root the vault root
+ * @param {Set<string>} [options.duplicates] relative dirs already reached by another path
+ * @param {() => boolean} [options.take] claim one unit of budget; false when spent
+ */
+export function watchFilter({ root, duplicates = new Set(), take = () => true }) {
+	const accepted = new Set();
+	const state = { accepted, skipped: 0, firstSkipped: null };
+	const ignored = (abs) => {
+		const rel = path.relative(root, abs);
+		// The root itself, and the parent chokidar watches to notice the root
+		// being renamed, are its own bookkeeping — leave them alone.
+		if (rel === '' || rel.startsWith('..')) return false;
+		const segments = rel.split(path.sep);
+		if (segments.some((seg) => seg.startsWith('.') || IGNORED_DIRS.has(seg))) return true;
+		// A second way into a tree already watched through another link, or
+		// anything beneath one. chokidar has no cycle guard of its own; the
+		// vault walk's realpath dedupe (shouldRecurse, below) is where these
+		// come from. Checking the ancestors costs a handful of Set lookups
+		// and does not depend on chokidar refusing to descend for us.
+		if (duplicates.size > 0) {
+			for (let i = 1; i <= segments.length; i++) {
+				if (duplicates.has(segments.slice(0, i).join('/'))) return true;
+			}
+		}
+		if (accepted.has(rel)) return false;
+		if (!take()) {
+			state.skipped += 1;
+			state.firstSkipped ??= rel;
+			return true;
+		}
+		accepted.add(rel);
+		return false;
+	};
+	return { ignored, state };
+}
+
 /**
  * What a dirent really is, following symlinks: 'file' | 'dir' | null
  * (null covers sockets, dangling links, and anything unreadable).

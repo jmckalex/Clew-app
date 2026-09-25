@@ -19,11 +19,18 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { settings } from './settings.js';
-import { direntKind, shouldRecurse, walkGuard, writeFileAtomic } from './fs-utils.js';
+import { direntKind, shouldRecurse, walkGuard, writeFileAtomic, IGNORED_DIRS, WATCH_BUDGET, watchFilter } from './fs-utils.js';
 import { snapshotBeforeWrite, renameHistory } from './history.js';
 
-// Never shown in the explorer, never indexed.
-const IGNORED_DIRS = new Set(['.obsidian', '.clew', '.git', 'node_modules', '.trash']);
+// The walk/watch rules (which directories are never shown, and the
+// descriptor budget the watcher lives inside) are in fs-utils.js, with the
+// other symlink-aware walk helpers — and so that they can be unit-tested
+// without electron.
+//
+// The count is HERE, module-level, because the descriptor ceiling is a
+// process one and every window has its own VaultManager: one budget, drawn
+// on by all of them, handed back in close().
+let watchedTotal = 0;
 
 export class VaultManager {
 	/** Absolute path of the open vault, or null. */
@@ -32,6 +39,7 @@ export class VaultManager {
 	 *  can build session-scoped clew-preview:// URLs. */
 	sessionId = null;
 	#watcher = null;
+	#watchState = null;
 	#treeDebounce = null;
 	/** @type {(channel: string, payload: any) => void} */
 	send = () => {};
@@ -57,10 +65,15 @@ export class VaultManager {
 		this.root = abs;
 		fs.mkdirSync(path.join(abs, '.clew'), { recursive: true });
 		settings.rememberVault(abs);
-		this.#startWatcher();
+		// One walk, two uses: the tree the window opens with, and the set of
+		// symlinked directories it skipped as duplicates — which is exactly
+		// what the watcher must not follow a second time.
+		const duplicates = new Set();
+		const tree = this.tree(duplicates);
+		this.#startWatcher(duplicates);
 		this.hooks.onOpen?.(abs);
 		const info = this.info;
-		this.send('clew:ev-vault-opened', { vault: info, tree: this.tree() });
+		this.send('clew:ev-vault-opened', { vault: info, tree });
 		return info;
 	}
 
@@ -68,12 +81,21 @@ export class VaultManager {
 		this.hooks.onClose?.();
 		this.#watcher?.close();
 		this.#watcher = null;
+		// Hand this window's share of the descriptor budget back.
+		watchedTotal = Math.max(0, watchedTotal - (this.#watchState?.accepted.size ?? 0));
+		this.#watchState = null;
 		this.root = null;
 	}
 
 	// ---- tree -------------------------------------------------------------
 
-	tree() {
+	/**
+	 * @param {Set<string>} [duplicates] collects directories skipped because
+	 *   another path already reached the same real directory — the watcher
+	 *   needs them (it follows every symlink separately and would otherwise
+	 *   watch one tree once per link).
+	 */
+	tree(duplicates = null) {
 		if (!this.root) return null;
 		const seen = walkGuard(this.root);
 		const walk = (dir, rel) => {
@@ -84,7 +106,7 @@ export class VaultManager {
 				const kind = direntKind(dir, entry);
 				if (kind === 'dir') {
 					const abs = path.join(dir, entry.name);
-					if (!shouldRecurse(abs, seen)) continue;
+					if (!shouldRecurse(abs, seen)) { duplicates?.add(childRel); continue; }
 					entries.push({ type: 'folder', name: entry.name, path: childRel, children: walk(abs, childRel) });
 				} else if (kind === 'file') {
 					entries.push({ type: 'file', name: entry.name, path: childRel });
@@ -250,11 +272,28 @@ export class VaultManager {
 
 	// ---- watching ---------------------------------------------------------
 
-	#startWatcher() {
-		this.#watcher = chokidar.watch('.', {
-			cwd: this.root,
-			ignored: (p) => p.split('/').some((seg) => seg.startsWith('.') || IGNORED_DIRS.has(seg)),
-			ignoreInitial: true,
+	#startWatcher(duplicates = new Set()) {
+		const { ignored, state } = watchFilter({
+			root: this.root,
+			duplicates,
+			take: () => {
+				if (watchedTotal >= WATCH_BUDGET) return false;
+				watchedTotal += 1;
+				return true;
+			},
+		});
+		this.#watchState = state;
+		this.#watcher = chokidar.watch('.', { cwd: this.root, ignored, ignoreInitial: true });
+		// One line per vault when the budget bit, and a notice in the window:
+		// a partly watched vault is a vault whose explorer and previews can go
+		// stale, and silence about that is worse than the staleness.
+		this.#watcher.once('ready', () => {
+			if (state.skipped === 0) return;
+			console.warn(`clew: watching capped at ${state.accepted.size} paths in ${this.root}`
+				+ ` (${state.skipped}+ skipped, first ${state.firstSkipped})`);
+			this.send('clew:ev-watch-capped', {
+				watched: state.accepted.size, skipped: state.skipped, first: state.firstSkipped,
+			});
 		});
 		this.#watcher.on('all', (event, rel) => {
 			// Individual file content changes matter to open editors and previews…

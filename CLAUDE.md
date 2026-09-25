@@ -123,7 +123,19 @@ browser-window-focus).
 - `src/main/` — `main.js` (windows + vault orchestration, guards, smoke
   hook — captures every window), `session.js` (per-window services),
   `vault.js` (vault manager, chokidar watcher, file ops, attachment saving,
-  `.clew/` state), `indexer.js` (the metadata cache: extractor over every
+  `.clew/` state) — **the watcher lives inside a descriptor BUDGET**
+  (`fs-utils.js#watchFilter`, `WATCH_BUDGET`, process-wide because every
+  window has a watcher and the ceiling is per process): it holds one open
+  descriptor per watched FILE, and past ~10,240 held descriptors libuv
+  cannot fork at all, which kills the render worker with `spawn EBADF`
+  (measured 2026-09-25 on the owner's ph341 vault: five folders symlinking
+  one 309 MB reveal.js tree, 100,169 descriptors, reading mode dead).
+  chokidar has no cycle guard, so the duplicate symlinked dirs the vault
+  walk already skips (`shouldRecurse`) are handed to the filter as well;
+  past the budget it stops and says so — `console.warn` plus
+  `EV_WATCH_CAPPED` → a notice in the window. The rules are applied to the
+  vault-RELATIVE path: testing the absolute one ignored every file in a
+  vault that merely lived under a dot-directory, `indexer.js` (the metadata cache: extractor over every
   note, link resolution, incremental patches, `embeddersOf()` — who
   transcludes a path, transitively), `render-service.js` (one-shot
   warm jmarkdown workers — see below — plus `toolchainPath()`, which extends

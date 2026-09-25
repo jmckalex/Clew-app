@@ -58,6 +58,15 @@ async function applySnippets() {
 }
 
 ipc.on(CH.EV_TREE_CHANGED, ({ tree }) => vaultStore.setTree(tree));
+// The vault was too big to watch whole (a library folder, usually). Say so
+// once, by name: what is not watched does not refresh by itself, and the
+// alternative to the budget is an app that cannot render at all — past
+// ~10,240 open descriptors the render worker cannot even be forked.
+ipc.on(CH.EV_WATCH_CAPPED, ({ watched, skipped, first }) => {
+	import('./plugins.js').then(({ notice }) => notice(
+		`Watching ${watched.toLocaleString()} files in this vault; ${skipped.toLocaleString()}+ more are not watched`
+		+ (first ? ` (from ${first})` : '') + '. Changes there will not refresh on their own.', 9000));
+});
 ipc.on(CH.EV_FILE_CHANGED, ({ path }) => editorPool.externalChange(path));
 ipc.on(CH.EV_INDEX_SNAPSHOT, (snapshot) => vaultStore.setIndex(snapshot));
 ipc.on(CH.EV_INDEX_PATCH, ({ path, entry }) => vaultStore.patchIndex(path, entry));
