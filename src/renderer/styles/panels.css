@@ -56,6 +56,11 @@ clew-file-explorer {
 	padding: 2px 4px 20px;
 	user-select: none;
 }
+/* Windowed rows: the sizer carries the full height of the tree and each
+   row is placed at its index (components/panels/clew-file-explorer.js,
+   lib/tree-window.js). Only the rows on screen exist. */
+.file-tree-sizer { position: relative; }
+.file-tree-sizer > .tree-item { position: absolute; left: 0; right: 0; }
 .tree-item {
 	display: flex;
 	align-items: center;

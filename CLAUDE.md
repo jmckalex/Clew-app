@@ -326,7 +326,13 @@ browser-window-focus).
   relativization per page depth, assets/ copy, queries baked static.
 - `src/renderer/` — `state/` (Emitter stores: vault/workspace/settings/ui/
   bookmarks; the workspace state also carries `collapsedFolders`, the file
-  explorer's closed folders — per vault, absence meaning open),
+  explorer's closed folders — per vault, absence meaning open; the explorer
+  itself is WINDOWED, `lib/tree-window.js` + `clew-file-explorer.js`: the
+  tree is drawn FLAT, depth being padding rather than nesting, so a uniform
+  row height gives an index for any scroll position and only the rows on
+  screen exist — 45 elements instead of 20,503 in the vault that earned it.
+  A live inline rename holds the repaint (`#renaming`), and anything that
+  names a row not currently drawn goes through `#revealRow`),
   `workspace/tree.js` (pure layout model: n-ary splits,
   kind-aware tabs — 'note' | 'file' | 'canvas' | 'graph' | 'settings' |
   'empty' — and per-tab history), `editor/` (`pool.js` owns every
