@@ -44,6 +44,7 @@ The **This vault** section holds per-vault settings (stored in
 | ⌘T ⌘W ⌃Tab | New / close / cycle tabs |
 | ⌘\ ⌘⇧\ | Split right / down |
 | ⌘B ⌘⇧B | Toggle left / right sidebar |
+| ⌃\` | Toggle the shell panel (and put the caret in it) |
 | ⌘G | Graph view |
 | ⌘⇧D | Daily note |
 | ⌘⌥T | Insert template |

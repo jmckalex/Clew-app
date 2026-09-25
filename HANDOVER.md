@@ -281,6 +281,16 @@ New this session:
 - `show=code` never builds a figure, so a bad fragment name in a
   `show=code` block is not refused — by construction, and harmless.
 
+- **The watcher walks in directory order, and the manual used to claim
+  otherwise** ("your own notes are reached first"). Measured on the
+  owner's ph226-426: the budget was spent inside a font icon set after
+  **6 of the vault's 81 notes** — the notes are what went unwatched. The
+  manual now says what actually happens (`vaults-and-files.html#watching`)
+  and points at the exclusion lists as the fix. The OTHER way to make
+  those two agree is code: walk `.md` first and spend the budget on notes
+  before anything else, which would make the old sentence true. Worth
+  offering; not built on my own judgment.
+
 Carried over, still true: `:::TiKZ` / `@begin(…)` BODIES keep the
 overlay's uniform `jmd-embedded` face (only fences got grammars);
 `show=` is the preview's only, a LaTeX export of `show=code` still draws

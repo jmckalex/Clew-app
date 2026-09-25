@@ -180,14 +180,15 @@ class ClewSettingsView extends ClewElement {
 				+ 'them. Plain ```dataview queries always run and need no setting.'),
 			...this.#vaultListRow('unindexed',
 				'Listed but not indexed',
-				'*/libs\n**/node_modules',
+				'**/libs\n**/node_modules',
 				'Folders here stay in the file explorer and open normally, but Clew '
 				+ 'does not index or watch them: no backlinks, tags, search hits or '
 				+ 'quick-switcher entries, and a change made by another program will '
 				+ 'not refresh on its own. This is for the large folders that are not '
 				+ 'notes — a presentation library, a build directory, a font pack. '
 				+ 'One pattern per line: a path means that folder and everything under '
-				+ 'it, * matches within one folder name, ** matches any depth.'),
+				+ 'it, * matches within one folder name, ** matches any depth — '
+				+ 'prefer **/libs over */libs unless you really mean the top level only.'),
 			...this.#vaultListRow('hidden',
 				'Hidden entirely',
 				'Archive/2019',

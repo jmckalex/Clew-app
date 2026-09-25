@@ -41,7 +41,7 @@ open. Two lists in `.clew/vault-settings.json` — also editable at
 
 ```json
 {
-  "unindexed": ["*/libs"],
+  "unindexed": ["**/libs"],
   "hidden": ["Archive/2019", "**/build"]
 }
 ```
@@ -55,11 +55,21 @@ open. Two lists in `.clew/vault-settings.json` — also editable at
   export.
 
 Patterns are relative to the vault root: a plain path means that folder
-and everything under it, `*` matches inside one folder name (so `*/libs`
-catches `chapter-1/libs` and all its siblings at once), and `**` matches
-any depth including none (so `**/node_modules` catches one at the top as
-readily as one buried deep). `.clew`, `.git`, `.obsidian`,
+and everything under it, `*` matches inside one folder name, and `**`
+matches any depth including none. `.clew`, `.git`, `.obsidian`,
 `node_modules`, `.trash` and dotfiles are always skipped anyway.
+
+Reach for `**` first. `*/libs` means *exactly one folder deep* — it
+catches `chapter-1/libs` but not `year-2/chapter-1/libs`, and a vault
+that has grown a level since you wrote the line will quietly keep
+watching the folders you thought you had excluded. `**/libs` catches
+both.
+
+One more, if your library folders are symlinks to a shared copy: Clew
+follows symlinks (Obsidian does not) and counts a tree once however many
+links reach it, so excluding *one* route to a shared folder excludes
+nothing at all — the walk simply arrives by another. Exclude them all,
+which `**/libs` does in one line.
 
 This demo vault is all notes, so both lists are empty here — the example
 above is written out rather than live. A vault that needs them usually
