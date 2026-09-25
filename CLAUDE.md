@@ -64,7 +64,14 @@ note API, plugins, and every settings key.
   dependencies must go through it. `CLEW_USER_DATA` (honored at the top of
   paths.js, the only import-time userData reader) points the app at an
   alternate userData dir — how a fresh install is simulated. Icon: scripts/make-icon.js renders
-  build-resources/icon.svg → icns (committed).
+  build-resources/icon.svg → icns (committed). `--sign` uses the Developer
+  ID identity; `--notarize` implies it and REQUIRES `--dmg` (the ticket
+  staples to the image, and the .app inside is stapled first, so a dragged
+  copy launches offline). A signed build is not proved by `codesign
+  --verify` — boot the PACKAGED binary under CLEW_SMOKE and check a
+  ```latex figure typesets, because the hardened runtime is what breaks the
+  forked worker or the wasm (entitlements.mac.plist says which entitlement
+  carries which).
 - **Tests:** `npm test` (`node --test`, files in `tests/`): workspace tree,
   note-metadata extractor, BibTeX parser, the ported jmarkdown-scan suite,
   canvas model, diary, frontmatter, plugins discovery, query/leaflet/exif

@@ -1,8 +1,8 @@
-# Handover — 2026-09-18, seventh session (tree CLEAN except this file; the sixth session's four blocks and this session's feature are committed, `90a4d95`…`3a180c2`)
+# Handover — 2026-09-25 (tree CLEAN; the 0.9.0 mac artefact is SIGNED, NOTARIZED and STAPLED; the last code work was 09-18, `90a4d95`…`c362a35`)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it; it gained the TeX-fragments paragraph and the
-editor-ownership amendment this session); the original design plan is at
+editor-ownership amendment on 09-18); the original design plan is at
 `~/.claude/plans/groovy-forging-shell.md`. This file is rewritten each
 session — keep it short, and prefer deleting a settled item to explaining
 it again.
@@ -23,7 +23,16 @@ hunks went in as one commit in Clew-docs (`1c8d3bc`).
 (`f806d43`: the site export never handed its workers the note's
 typeface). Nothing is pushed in either repo.
 
-**571 tests green**; `node scripts/build.js` passes; `make check-links`
+**Then 09-25 was a packaging round, no code:** the mac build was made,
+signed with the Developer ID identity, and (by the owner) notarized and
+stapled. `out/Clew-0.9.0-arm64.dmg`, 212 MB, verified both ways —
+`xcrun stapler validate` and `spctl -a -t open` on the IMAGE, and the
+same two plus `codesign -dv` on the `Clew.app` INSIDE it, which carries
+its own ticket and so launches on a machine that has never seen it.
+Nothing in the repo changed: packaging re-synced the jmarkdown and
+EmbedPDF mirrors from their masters and produced no diff.
+
+**572 tests green**; `node scripts/build.js` passes; `make check-links`
 clean in Clew-docs.
 
 ## 1. STILL OPEN
@@ -198,13 +207,23 @@ the sixth session's §2e, offered and not yet answered.
   bundles, engines, staging, timings — and now fragments) — indexed from
   CLAUDE.md, under the same "not finished until it matches" rule as the
   manual.
-- Re-measure the DMG now that ~37 MB of engines ride along.
+- ~~Re-measure the DMG~~ — done 09-25: **212 MB** for arm64, against
+  159 MB on 08-26, so the staged TeX engines and EmbedPDF cost about
+  53 MB compressed (109 MB `mptikz` + 81 MB `engine` + 73 MB
+  `preview-assets` uncompressed in `Resources/`; the .app is 561 MB on
+  disk). A universal image would be roughly double; the 253 MB
+  `Clew-0.9.0-universal.dmg` still in `out/` is the STALE 08-26 one,
+  before the engines — do not reach for it.
+- **If 0.9.0 is to be released, it is ready to go out.** What is not
+  done: the win/linux VM run, and the site (below) that would host it.
 
 ## 6. The owner works in this tree concurrently
 
-Tree clean but for this file. `zeta-assets/` and `mptikz-assets/` are
-deliberate and gitignored. `out/` holds mac/win/linux artefacts from
-09-02. Never switch THIS tree off main. Live testing flips demo widgets
+Tree CLEAN. `zeta-assets/` and `mptikz-assets/` are deliberate and
+gitignored. `out/` now holds: the 09-25 signed+stapled
+`Clew-0.9.0-arm64.dmg` and the signed `mac-arm64/Clew.app` it was cut
+from, the 09-02 win/linux artefacts, and the 08-26 universal dmg (stale
+— see §5). Never switch THIS tree off main. Live testing flips demo widgets
 — reset `status:`/`done:`/`^motto` baselines, and the foldable embed in
 `Guide/Links and Embeds.md`, before committing demo files. This
 session's demo runs left `demo-vault/.clew/workspace.json` with the
@@ -213,6 +232,27 @@ Diagrams tab in reading mode (gitignored; harmless).
 ## 7. Standing session rules (they keep earning their keep)
 
 - **NEVER `git add -A`** — stage explicit paths.
+- **A SIGNED build must be boot-tested, not just verified.** `codesign
+  --verify` proves the signature; it says nothing about whether the app
+  runs. The hardened runtime is exactly what breaks this one — the
+  forked render worker needs `allow-dyld-environment-variables`, the
+  wasm TeX needs `allow-jit` + `allow-unsigned-executable-memory`, the
+  unpacked engine tree needs `disable-library-validation`. Run the
+  PACKAGED binary (`out/mac-arm64/Clew.app/Contents/MacOS/Clew`) under
+  `CLEW_SMOKE` with an isolated `CLEW_USER_DATA` and assert a ```latex
+  figure reaches `mpw-ok` — done 09-25, all four entitlements hold.
+- **`spctl -a -t exec` on a signed-but-unnotarized app says `rejected —
+  source=Unnotarized Developer ID`, and that is fine.** A locally BUILT
+  bundle carries no quarantine flag, so it launches here; Gatekeeper
+  stops only a copy that was TRANSFERRED. Do not chase that "rejected"
+  as a signing fault. After notarizing, both the image and the app
+  inside report `accepted — source=Notarized Developer ID`.
+- **`--notarize` requires `--dmg`** (the ticket staples to the image),
+  and `scripts/package.js` blanks the Apple env for its child unless you
+  ask for it — so a plain `--sign` build never silently notarizes, and a
+  vanished `~/.zshrc` export can never silently stop stapling. Budget
+  ~12 minutes for the signing alone on this bundle: a `--timestamp`
+  round-trip per nested binary, plus hashing 13,819 files.
 - **A smoke run's ENV is the whole safety net.** Launching
   `…/Electron .` without the `CLEW_SMOKE*` variables boots the REAL app
   against the real userData — it restores the owner's vaults and rewrites
