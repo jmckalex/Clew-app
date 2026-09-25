@@ -53,6 +53,15 @@ being copied into three files that had already drifted apart. Changing
 either list reloads the vault in place. `unindexed` is only offerable
 because the explorer is windowed: listing 20,000 files now costs nothing.
 
+Documentation for all three changes is in: the manual's
+`vaults-and-files.html` gained two sections (`#watching` for the budget,
+`#excluding` for the lists) with the settings chapter, the search
+chapter and the `.clew/` table following (`04226e0`, `e5ff600`,
+`72a4549`); the demo vault's Guide notes carry them too (`abd09ef` —
+"Leaving folders alone", and a This-vault list that had drifted to
+naming two options when there are a dozen); CLAUDE.md has the durable
+parts.
+
 **A measurement error worth remembering**: the explorer was first
 reported at 23.5 s, and that was an instrument reading page lifetime —
 the listener had attached after `ev-vault-opened` fired, so `opened`
