@@ -207,7 +207,13 @@ details.internal-embed:not([open]) > summary { margin-bottom: 0; }
 	body {
 		max-width: none;
 		margin: 0;
-		padding: 0;
+		/* Not quite zero on the right: an element flush against the printable
+		   edge loses its rightmost rule to the page clip. Measured 2026-09-25
+		   on A4 at 0.6in margins — a full-width table's right border was drawn
+		   in the PDF (a rule at 611 of a 612-wide table) and sliced off at the
+		   boundary, so the row rules ended in mid-air. A point of inset is
+		   under a third of a millimetre and buys the border back. */
+		padding: 0 1pt 0 0;
 	}
 	pre, table, figure, blockquote,
 	.callout, .internal-embed, .clew-query-group, .mermaid,
