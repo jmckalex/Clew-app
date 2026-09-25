@@ -178,6 +178,23 @@ class ClewSettingsView extends ClewElement {
 				+ 'and dv.view all work. dv.app, dv.io and dv.luxon have no '
 				+ 'equivalent here and say so by name when a block reaches for '
 				+ 'them. Plain ```dataview queries always run and need no setting.'),
+			...this.#vaultListRow('unindexed',
+				'Listed but not indexed',
+				'*/libs\n**/node_modules',
+				'Folders here stay in the file explorer and open normally, but Clew '
+				+ 'does not index or watch them: no backlinks, tags, search hits or '
+				+ 'quick-switcher entries, and a change made by another program will '
+				+ 'not refresh on its own. This is for the large folders that are not '
+				+ 'notes — a presentation library, a build directory, a font pack. '
+				+ 'One pattern per line: a path means that folder and everything under '
+				+ 'it, * matches within one folder name, ** matches any depth.'),
+			...this.#vaultListRow('hidden',
+				'Hidden entirely',
+				'Archive/2019',
+				'As if the folder were not in the vault at all: not listed, not opened, '
+				+ 'not indexed, not watched, and not published by a website export. '
+				+ 'Same pattern syntax. (.clew, .git, .obsidian, node_modules and '
+				+ '.trash are always hidden, whatever these lists say.)'),
 			...this.#vaultToggle('bibliographyPanel',
 				'References panel: show the bibliography in the right sidebar',
 				'Adds a Refs tab beside Links/Out/Tags showing the active note\'s '
@@ -242,6 +259,39 @@ class ClewSettingsView extends ClewElement {
 				}
 			}
 		}).catch(() => {});
+	}
+
+	/**
+	 * A per-vault list, one entry per line — the exclusion globs. A textarea
+	 * rather than a text input because these are lists people grow, and
+	 * because a glob with a comma in it should not have to be escaped.
+	 */
+	#vaultListRow(key, label, placeholder, hintText) {
+		const box = document.createElement('textarea');
+		box.className = 'settings-list-input';
+		box.rows = 3;
+		box.placeholder = placeholder;
+		box.spellcheck = false;
+		box.disabled = true;
+		const row = this.#row(label, box);
+		row.classList.add('settings-row-stacked');
+		const hint = document.createElement('p');
+		hint.className = 'settings-hint';
+		hint.textContent = hintText;
+		ipc.invoke(CH.VAULT_SETTINGS_GET).then((vaultSettings) => {
+			const list = Array.isArray(vaultSettings?.[key]) ? vaultSettings[key] : [];
+			box.value = list.join('\n');
+			box.disabled = false;
+		}).catch(() => {});
+		// Long, because saving re-walks the vault: tree, watcher and index.
+		const save = debounce(() => {
+			const value = box.value.split('\n').map((line) => line.trim()).filter(Boolean);
+			ipc.invoke(CH.VAULT_SETTINGS_SET, { key, value }).catch(() => {});
+		}, 900);
+		box.addEventListener('input', save);
+		box.addEventListener('blur', () => save.flush());
+		box.addEventListener('keydown', (e) => e.stopPropagation());
+		return [row, hint];
 	}
 
 	#vaultTextRow(key, label, placeholder, hintText, suggestions = []) {

@@ -59,7 +59,7 @@ export class VaultSession {
 		this.vaults.hooks = {
 			onOpen: (root) => {
 				this.renderService.openVault(root);
-				this.indexer.openVault(root);
+				this.indexer.openVault(root, this.vaults.excludes);
 				this.kvStore.open(root);
 			},
 			onClose: () => {

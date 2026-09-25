@@ -27,6 +27,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { paths } from './paths.js';
 import { settings } from './settings.js';
+import { compileExcludes } from './vault-excludes.js';
 import { readNoteFonts } from './note-fonts.js';
 import { toolchainPath } from './render-service.js';
 import { direntKind, shouldRecurse, walkGuard } from './fs-utils.js';
@@ -41,13 +42,18 @@ export async function exportSite({ vaultRoot, engineDir, outDir, distDir, vaultO
 	fs.mkdirSync(outDir, { recursive: true });
 
 	// Collect notes + other files with the standard symlink-safe walk.
+	const excludes = compileExcludes(vaultOptions);
 	const notes = [];
 	const files = [];
 	const seen = walkGuard(vaultRoot);
 	const walk = (dir, rel) => {
 		for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-			if (entry.name.startsWith('.') || IGNORED.has(entry.name)) continue;
 			const childRel = rel ? `${rel}/${entry.name}` : entry.name;
+			// What the explorer shows is what gets published: `hidden` is not
+			// in the vault as far as Clew is concerned, while `unindexed` is
+			// listed and openable and so goes out with the rest.
+			if (excludes.isHidden(childRel)) continue;
+			if (entry.name.startsWith('.') || IGNORED.has(entry.name)) continue;
 			const kind = direntKind(dir, entry);
 			if (kind === 'dir') {
 				const abs = path.join(dir, entry.name);

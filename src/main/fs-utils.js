@@ -55,10 +55,14 @@ export const WATCH_BUDGET = 8000;
  *
  * @param {object} options
  * @param {string} options.root the vault root
+ * @param {(rel: string) => boolean} [options.isExcluded] the vault's own rule
+ *   (vault-excludes.js — both lists, since what is not indexed is not
+ *   watched); defaults to the built-ins alone
  * @param {Set<string>} [options.duplicates] relative dirs already reached by another path
  * @param {() => boolean} [options.take] claim one unit of budget; false when spent
  */
-export function watchFilter({ root, duplicates = new Set(), take = () => true }) {
+export function watchFilter({ root, isExcluded = null, duplicates = new Set(), take = () => true }) {
+	const excluded = isExcluded ?? ((rel) => rel.split('/').some((seg) => seg.startsWith('.') || IGNORED_DIRS.has(seg)));
 	const accepted = new Set();
 	const state = { accepted, skipped: 0, firstSkipped: null };
 	const ignored = (abs) => {
@@ -67,7 +71,7 @@ export function watchFilter({ root, duplicates = new Set(), take = () => true })
 		// being renamed, are its own bookkeeping — leave them alone.
 		if (rel === '' || rel.startsWith('..')) return false;
 		const segments = rel.split(path.sep);
-		if (segments.some((seg) => seg.startsWith('.') || IGNORED_DIRS.has(seg))) return true;
+		if (excluded(segments.join('/'))) return true;
 		// A second way into a tree already watched through another link, or
 		// anything beneath one. chokidar has no cycle guard of its own; the
 		// vault walk's realpath dedupe (shouldRecurse, below) is where these

@@ -302,6 +302,21 @@ browser-window-focus).
   (a bracketed `[key:: value]` mid-sentence ate the sentence) — owner's
   decision 2026-09-17, description lists win. Do not reintroduce inline
   fields.
+- **What a vault asks Clew to leave alone** (`src/main/vault-excludes.js`,
+  owner's decision 2026-09-25 — "we can't anticipate all the use-cases"):
+  two lists in `vault-settings.json`, vault-relative globs (`*/libs`,
+  `**/node_modules`, `Archive/2019`; `*` inside a segment, `**` across any
+  number INCLUDING none). `unindexed` stays LISTED and openable but is not
+  indexed and not watched; `hidden` is not there at all — no tree, no
+  index, no watch, no site export, no rename rewrite. Hidden implies
+  unindexed, so a walk that only cares about that asks one question.
+  `unindexed` is only reasonable because the explorer is windowed: 20,000
+  files can be listed for nothing. EVERY vault walk consults this — tree
+  and watcher (vault.js), indexer, rename-links, the `.bib` scan in ipc.js,
+  export-site — and the built-ins (`.clew`, `.git`, `.obsidian`,
+  `node_modules`, `.trash`, dotfiles) live here too, where they used to be
+  copied into three files that could drift. Changing either list reloads
+  the vault in place (`vaults.reloadExcludes()` + a fresh index).
 - **Plugins** (`src/main/plugins.js`, `src/renderer/plugins.js`):
   engine/preview/app surfaces, discovered in TWO roots — the vault's
   `.clew/plugins/<id>/` and the GLOBAL `<userData>/plugins/<id>/`

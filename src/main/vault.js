@@ -19,7 +19,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { settings } from './settings.js';
-import { direntKind, shouldRecurse, walkGuard, writeFileAtomic, IGNORED_DIRS, WATCH_BUDGET, watchFilter } from './fs-utils.js';
+import { direntKind, shouldRecurse, walkGuard, writeFileAtomic, WATCH_BUDGET, watchFilter } from './fs-utils.js';
+import { compileExcludes } from './vault-excludes.js';
 import { snapshotBeforeWrite, renameHistory } from './history.js';
 
 // The walk/watch rules (which directories are never shown, and the
@@ -40,6 +41,11 @@ export class VaultManager {
 	sessionId = null;
 	#watcher = null;
 	#watchState = null;
+	/** What this vault asks Clew to leave alone — vault-excludes.js. Compiled
+	 *  when the vault opens and whenever the two lists change, and consulted
+	 *  by every walk: the tree, the watcher, the indexer, the rename
+	 *  rewriter, the .bib scan and the site export. */
+	excludes = compileExcludes({});
 	#treeDebounce = null;
 	/** @type {(channel: string, payload: any) => void} */
 	send = () => {};
@@ -65,6 +71,7 @@ export class VaultManager {
 		this.root = abs;
 		fs.mkdirSync(path.join(abs, '.clew'), { recursive: true });
 		settings.rememberVault(abs);
+		this.excludes = compileExcludes(this.loadState('vault-settings.json') ?? {});
 		// One walk, two uses: the tree the window opens with, and the set of
 		// symlinked directories it skipped as duplicates — which is exactly
 		// what the watcher must not follow a second time.
@@ -75,6 +82,27 @@ export class VaultManager {
 		const info = this.info;
 		this.send('clew:ev-vault-opened', { vault: info, tree });
 		return info;
+	}
+
+	/**
+	 * The vault's exclusion lists changed. Everything that walked the vault
+	 * under the old rules has to walk again: the tree the window shows, the
+	 * watcher (a folder just excluded must stop costing descriptors, and one
+	 * just admitted must start being watched), and the index behind search
+	 * and backlinks.
+	 */
+	reloadExcludes() {
+		if (!this.root) return;
+		this.excludes = compileExcludes(this.loadState('vault-settings.json') ?? {});
+		this.#watcher?.close();
+		watchedTotal = Math.max(0, watchedTotal - (this.#watchState?.accepted.size ?? 0));
+		this.#watchState = null;
+		const duplicates = new Set();
+		const tree = this.tree(duplicates);
+		this.#startWatcher(duplicates);
+		this.send('clew:ev-tree-changed', { tree });
+		this.hooks.onStructureChanged?.();
+		return tree;
 	}
 
 	close() {
@@ -101,8 +129,11 @@ export class VaultManager {
 		const walk = (dir, rel) => {
 			const entries = [];
 			for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-				if (entry.name.startsWith('.') || IGNORED_DIRS.has(entry.name)) continue;
 				const childRel = rel ? `${rel}/${entry.name}` : entry.name;
+				// `hidden` only: an `unindexed` folder is still listed and still
+				// opens — that is the whole difference between the two lists,
+				// and it is affordable because the explorer is windowed.
+				if (this.excludes.isHidden(childRel)) continue;
 				const kind = direntKind(dir, entry);
 				if (kind === 'dir') {
 					const abs = path.join(dir, entry.name);
@@ -275,6 +306,9 @@ export class VaultManager {
 	#startWatcher(duplicates = new Set()) {
 		const { ignored, state } = watchFilter({
 			root: this.root,
+			// Both lists: what is not indexed is not watched either, which is
+			// the point of `unindexed` — the descriptors are the cost.
+			isExcluded: (rel) => this.excludes.isUnindexed(rel),
 			duplicates,
 			take: () => {
 				if (watchedTotal >= WATCH_BUDGET) return false;

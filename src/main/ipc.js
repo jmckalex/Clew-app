@@ -110,15 +110,18 @@ export function registerIpc() {
 		if (!s.vaults.isOpen) return [];
 		const out = [];
 		const seen = walkGuard(s.vaults.root);
-		const walk = (dir) => {
+		const walk = (dir, rel) => {
 			let entries;
 			try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
 			for (const entry of entries) {
-				if (entry.name.startsWith('.') || ['node_modules', '.trash'].includes(entry.name)) continue;
+				const childRel = rel ? `${rel}/${entry.name}` : entry.name;
+				// A .bib inside a library folder is that library's, not this
+				// vault's: completion should never offer it.
+				if (s.vaults.excludes.isUnindexed(childRel)) continue;
 				const abs = nodePath.join(dir, entry.name);
 				const kind = direntKind(dir, entry);
 				if (kind === 'dir') {
-					if (shouldRecurse(abs, seen)) walk(abs);
+					if (shouldRecurse(abs, seen)) walk(abs, childRel);
 				} else if (kind === 'file' && entry.name.toLowerCase().endsWith('.bib')) {
 					const mtimeMs = fs.statSync(abs).mtimeMs;
 					const cached = bibCache.get(abs);
@@ -131,7 +134,7 @@ export function registerIpc() {
 				}
 			}
 		};
-		walk(s.vaults.root);
+		walk(s.vaults.root, '');
 		return out;
 	});
 
@@ -237,6 +240,12 @@ export function registerIpc() {
 		// Bibliography settings rewrite the engine config the same way.
 		if (key === 'bibliography' || key === 'bibliographyStyle') {
 			s.renderService.reconfigure({ [key]: value });
+		}
+		// The exclusion lists (vault-excludes.js): every walk in the app was
+		// made under the old rules, so tree, watcher and index all go again.
+		if (key === 'hidden' || key === 'unindexed') {
+			s.vaults.reloadExcludes();
+			s.indexer.openVault(s.vaults.root, s.vaults.excludes);
 		}
 		// This vault's TeX fragments: the worker reads them at spawn, so the
 		// standby has to go and the open previews re-render (engine/

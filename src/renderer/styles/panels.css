@@ -624,6 +624,24 @@ clew-search-panel .search-results { flex: 1; }
 }
 .settings-row input[type='checkbox'] { accent-color: var(--clew-accent); }
 
+/* A per-vault list (the exclusion globs): the label sits above a box that
+   grows with the list rather than beside a one-line field. */
+.settings-row-stacked { flex-direction: column; align-items: stretch; gap: 6px; }
+.settings-list-input {
+	font: inherit;
+	font-family: var(--clew-editor-font);
+	font-size: 12.5px;
+	width: 100%;
+	resize: vertical;
+	background: var(--clew-bg-secondary);
+	color: var(--clew-text-normal);
+	border: 1px solid var(--clew-border);
+	border-radius: 6px;
+	padding: 6px 8px;
+	outline: none;
+}
+.settings-list-input:focus { border-color: var(--clew-accent); }
+
 /* ---- TeX fragments (Settings → TeX fragments) ----
    One row per fragment: a narrow column for the name a figure asks for with
    `clew-fragments=`, and the fragment itself in a CodeMirror that grows with
