@@ -102,7 +102,13 @@ note API, plugins, and every settings key.
   {combo:{key,modifiers}} | {wait:ms}]`, dispatched over CDP
   `Input.dispatch*` — `webContents.sendInputEvent` NEVER reaches OOPIFs
   (i.e. every preview iframe), and combos need real modifier keydowns
-  around the letter. Use it for every UI change. Reusable scenarios and
+  around the letter. Each key carries a REAL `keyCode`, because xterm —
+  like anything reading the legacy field rather than `key` — sees nothing
+  otherwise: named keys from a table (Enter 13, arrows, …) and punctuation
+  from its US-layout key, NOT its charCode (`-` is 189; 45 is Insert, which
+  is what the terminal read it as, silently dropping every hyphen typed —
+  measured 2026-09-25). Anything unlisted gets 0, so a library falls
+  through to `key`. Use it for every UI change. Reusable scenarios and
   the big-vault generator live in `smoke/` (its README has the recipes
   and the 5k-note baseline numbers) — extend that folder instead of
   rewriting scenarios in session scratchpads.

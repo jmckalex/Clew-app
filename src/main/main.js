@@ -372,13 +372,33 @@ if (process.env.CLEW_SMOKE) {
 				if (Array.isArray(inputEvents)) {
 					const dbg = primary.webContents.debugger;
 					try { dbg.attach('1.3'); } catch { /* already attached */ }
+					// A named key needs its real keyCode: xterm — and any library
+					// reading the legacy `keyCode` rather than `key` — sees nothing
+					// otherwise, so an Enter dispatched with 0 never reaches a
+					// terminal as a carriage return.
+					const NAMED_KEYS = {
+						Enter: 13, Tab: 9, Backspace: 8, Escape: 27, Delete: 46,
+						ArrowLeft: 37, ArrowUp: 38, ArrowRight: 39, ArrowDown: 40,
+						Home: 36, End: 35, PageUp: 33, PageDown: 34,
+					};
+					// And a punctuation character's keyCode is its US-layout KEY,
+					// not its charCode: `-` is 189, while 45 is Insert — which is
+					// what a terminal read it as, dropping every hyphen typed
+					// (measured 2026-09-25, the shell-panel scenario). Anything
+					// unlisted gets 0, so a library falls through to `key`.
+					const PUNCT_KEYS = {
+						';': 186, '=': 187, ',': 188, '-': 189, '.': 190, '/': 191,
+						'`': 192, '[': 219, '\\': 220, ']': 221, "'": 222,
+					};
 					const keyParams = (key, modifiers = 0) => {
 						const upper = key.length === 1 ? key.toUpperCase() : key;
-						const vk = key.length === 1 ? upper.charCodeAt(0) : 0;
+						const vk = key.length !== 1 ? (NAMED_KEYS[key] ?? 0)
+							: /[a-z0-9 ]/i.test(key) ? upper.charCodeAt(0)
+								: (PUNCT_KEYS[key] ?? 0);
 						return {
 							modifiers,
 							key,
-							code: /^[a-z]$/i.test(key) ? `Key${upper}` : undefined,
+							code: /^[a-z]$/i.test(key) ? `Key${upper}` : (NAMED_KEYS[key] ? key : undefined),
 							windowsVirtualKeyCode: vk,
 							nativeVirtualKeyCode: vk,
 						};
