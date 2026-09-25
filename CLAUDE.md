@@ -77,7 +77,7 @@ note API, plugins, and every settings key.
   canvas model, diary, frontmatter, plugins discovery, query/leaflet/exif
   parsers, Excalidraw round-trip, markdown tables, callouts, block
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
-  embed graph and the embed keyword syntax — 469 tests. DOM/UI work is
+  embed graph and the embed keyword syntax, the shell sessions — 630 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js] [CLEW_SMOKE_VAULT=/path/vault]
@@ -486,6 +486,42 @@ browser-window-focus).
   guard every broadcast (office-slot.js#broadcast is the exemplar). And
   `win.close()` from inside that window's own `ipcMain.handle` callback
   deadlocks Electron — defer with setImmediate (main.js close flow).
+
+### The shell panel
+
+- `⌃\`` (View → Shell Panel) opens a terminal under the workspace:
+  `renderer/components/workspace/clew-shell-panel.js` (xterm.js + the fit
+  addon) over `main/shell-core.js`. One shell per WINDOW, keyed by session
+  id, started at the vault root, kept alive while the panel is hidden —
+  closing the panel is not closing the shell, because the reason to have
+  one is a build that runs while you go back to writing — and reaped by
+  `session.js#dispose`. Owner's decisions 2026-09-25: one per window at
+  the vault root, and NO restrictions on what it runs; it is their shell.
+- **A pty with no native addon**, the mechanism lifted from the owner's
+  jmacs/Godot editor (`apps/desktop/src/shell.js`) at their request:
+  the child is `python3 -c <script>`, and the script calls stdlib
+  `pty.fork()`, execs `$SHELL -i` in the slave and proxies a select loop.
+  node-pty would be a compiled module rebuilt for every Electron version
+  on every platform Clew ships to; this is stdlib everywhere but Windows,
+  which falls back to plain pipes (commands run, no prompt, no colour, and
+  the panel says so). Two load-bearing details, both learned upstream and
+  both silent when they regress: the script resets SIGTERM to `SIG_DFL`
+  BEFORE the fork (a child spawned by Electron can inherit an ignored
+  disposition across exec, which makes `kill()` a no-op and leaks the pty),
+  and resizing rides a SIDECHANNEL on fd 3 — lines of `<cols>:<rows>` →
+  `TIOCSWINSZ` → SIGWINCH — never down the pty, where it would be typed
+  input.
+- The grid must be MONOSPACE (`--clew-mono-font`, not `--clew-editor-font`,
+  which is Avenir Next): xterm sizes one cell from the font and puts every
+  character in its own cell, so a proportional face leaves a gap around
+  each letter — the owner's report the day it was built. xterm's own
+  stylesheet is copied out of node_modules by scripts/build.js to
+  `dist/renderer/vendor/xterm.css` and `<link>`ed from index.html; CSS
+  here is never compiled.
+- The panel's open state and height live in the WORKSPACE (per vault, in
+  `.clew/workspace.json`), so a scenario over a reused fixture must set a
+  known state before driving the chord — the second run otherwise opens
+  with the panel already showing and the chord closes it.
 
 ### Note API (scripts in rendered notes)
 

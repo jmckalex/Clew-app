@@ -53,6 +53,9 @@ export function createInitialState() {
 			left: { open: true, width: 260, activeTool: 'files' },
 			right: { open: true, width: 290, activeTool: 'backlinks' },
 		},
+		// The shell panel under the workspace: closed until asked for, its
+		// height remembered per vault the way a sidebar's width is.
+		shell: { open: false, height: 220 },
 		// File-explorer folders the user has closed. Absence means open, so a
 		// vault seen for the first time greets you fully expanded.
 		collapsedFolders: [],
@@ -450,6 +453,9 @@ export function deserialize(json, { noteExists = () => true } = {}) {
 	state.sidebars.left ??= { open: true, width: 260, activeTool: 'files' };
 	state.sidebars.left.activeTool ??= 'files';
 	state.sidebars.right ??= { open: true, width: 290, activeTool: 'backlinks' };
+	// The shell panel under the workspace: closed until asked for, and its
+	// height remembered per vault like a sidebar's width.
+	state.shell ??= { open: false, height: 220 };
 	// Workspaces saved before folder state was remembered simply have none.
 	// Paths for folders that have since gone are KEPT, not pruned: a folder
 	// restored from the Trash (or arriving with a git checkout) should come

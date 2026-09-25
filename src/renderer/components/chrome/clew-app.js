@@ -16,6 +16,7 @@ import { vaultStore } from '../../state/vault-store.js';
 import { workspaceStore } from '../../state/workspace-store.js';
 import { ipc, CH } from '../../ipc.js';
 import '../workspace/clew-workspace.js';
+import '../workspace/clew-shell-panel.js';
 import '../workspace/clew-split.js';
 import '../workspace/clew-tab-group.js';
 import '../panels/clew-file-explorer.js';
@@ -63,6 +64,7 @@ class ClewApp extends ClewElement {
 		this.listen({ on: (ev, cb) => { window.addEventListener(ev, cb); return () => window.removeEventListener(ev, cb); } },
 			'clew:vault-settings-changed', () => this.#refreshVaultTools());
 		this.listen(workspaceStore, 'sidebar-changed', () => this.#applySidebars());
+		this.listen(workspaceStore, 'shell-changed', () => this.#applyShell());
 		this.listen(workspaceStore, 'active-changed', () => this.#updateTitle());
 		this.listen(workspaceStore, 'layout-changed', () => this.#updateTitle());
 	}
@@ -80,7 +82,11 @@ class ClewApp extends ClewElement {
 					<div class="tool-body" data-side="left"></div>
 				</div>
 				<div class="sidebar-resizer" data-side="left"></div>
-				<clew-workspace></clew-workspace>
+				<div class="center-column">
+					<clew-workspace></clew-workspace>
+					<div class="shell-resizer"></div>
+					<clew-shell-panel></clew-shell-panel>
+				</div>
 				<div class="sidebar-resizer" data-side="right"></div>
 				<div class="sidebar sidebar-right">
 					<div class="tool-tabs" data-side="right"></div>
@@ -95,6 +101,45 @@ class ClewApp extends ClewElement {
 		this.#updateTitle();
 		this.#wireSidebarResize('left');
 		this.#wireSidebarResize('right');
+		this.#applyShell();
+		this.#wireShellResize();
+	}
+
+	/** The shell panel's height and whether it is showing at all. */
+	#applyShell() {
+		const { open, height } = workspaceStore.shell;
+		const panel = this.querySelector('clew-shell-panel');
+		const resizer = this.querySelector('.shell-resizer');
+		if (!panel) return;
+		panel.style.height = `${Math.max(80, height)}px`;
+		panel.classList.toggle('is-open', open);
+		if (resizer) resizer.style.display = open ? '' : 'none';
+	}
+
+	/** Drag the seam between the workspace and the shell. */
+	#wireShellResize() {
+		const resizer = this.querySelector('.shell-resizer');
+		const panel = this.querySelector('clew-shell-panel');
+		if (!resizer || !panel) return;
+		resizer.addEventListener('pointerdown', (event) => {
+			event.preventDefault();
+			const startY = event.clientY;
+			const startHeight = panel.getBoundingClientRect().height;
+			resizer.setPointerCapture(event.pointerId);
+			const onMove = (move) => {
+				// Up is bigger: the panel grows from its top edge.
+				const next = Math.min(Math.max(80, startHeight - (move.clientY - startY)),
+					Math.max(120, window.innerHeight - 200));
+				panel.style.height = `${Math.round(next)}px`;
+			};
+			const onUp = () => {
+				resizer.removeEventListener('pointermove', onMove);
+				resizer.removeEventListener('pointerup', onUp);
+				workspaceStore.setShell({ height: Math.round(panel.getBoundingClientRect().height) });
+			};
+			resizer.addEventListener('pointermove', onMove);
+			resizer.addEventListener('pointerup', onUp);
+		});
 	}
 
 	/** Re-fetch vault settings and re-render conditional right-bar tools. */

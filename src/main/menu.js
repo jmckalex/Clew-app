@@ -60,6 +60,7 @@ const defaultState = () => ({
 	bookmarked: false,
 	leftSidebar: true,
 	rightSidebar: true,
+	shellOpen: false,
 	theme: 'dark',
 	/** command id → CM chord or null, from the renderer's effective keymap */
 	hotkeys: {},
@@ -298,6 +299,7 @@ class AppMenu {
 				{ type: 'separator' },
 				c('workspace:toggle-left-sidebar', 'Left Sidebar', { chord: 'Mod-b', type: 'checkbox', checked: s.leftSidebar }),
 				c('workspace:toggle-right-sidebar', 'Right Sidebar', { chord: 'Mod-Shift-b', type: 'checkbox', checked: s.rightSidebar }),
+				c('shell:toggle', 'Shell Panel', { chord: 'Ctrl-`', needs: 'vault', type: 'checkbox', checked: s.shellOpen }),
 				{ type: 'separator' },
 				{ role: 'resetZoom' },
 				{ role: 'zoomIn' },

@@ -137,6 +137,12 @@ export const staticDirs = [
 	{ from: path.join(root, 'src/preview-client/zeta-page.html'), to: path.join(root, 'dist/preview-client/zeta-page.html') },
 	{ from: path.join(root, 'src/preview-client/zeta-thread.js'), to: path.join(root, 'dist/preview-client/zeta-thread.js') },
 	{ from: path.join(root, 'src/renderer/styles'), to: path.join(root, 'dist/renderer/styles') },
+	// xterm's own stylesheet for the shell panel, copied out of node_modules
+	// rather than imported from JS: CSS is not compiled here, and a <link> in
+	// index.html keeps the one rule that matters — the grid's metrics — where
+	// a reader can see it. Clew's colours are applied as an xterm theme
+	// object, not by overriding this file (clew-shell-panel.js).
+	{ from: path.join(root, 'node_modules/@xterm/xterm/css/xterm.css'), to: path.join(root, 'dist/renderer/vendor/xterm.css') },
 	{ from: path.join(root, 'src/engine'), to: path.join(root, 'dist/engine') },
 ];
 

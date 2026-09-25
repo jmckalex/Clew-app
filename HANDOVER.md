@@ -1,4 +1,4 @@
-# Handover — 2026-09-25 (tree CLEAN; the 0.9.0 mac artefact is signed, notarized and stapled; the day's code work is the ph341 watcher bug, `5330e1a`…`81c3e0b`)
+# Handover — 2026-09-25 (the 0.9.0 mac artefact is signed, notarized and stapled; the day's code work runs `5330e1a`…the shell panel)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it; it gained the TeX-fragments paragraph and the
@@ -102,12 +102,18 @@ its own ticket and so launches on a machine that has never seen it.
 Nothing in the repo changed: packaging re-synced the jmarkdown and
 EmbedPDF mirrors from their masters and produced no diff.
 
-**613 tests green**; `node scripts/build.js` passes; `make check-links`
+**And the eighth ask: a shell panel** (§3) — `⌃\`` opens a real terminal,
+under a real pty, at the vault root, pinned under the workspace. Built
+from the mechanism the owner pointed at in their own editor. It turned up
+two harness bugs older than itself (fake keyCodes for punctuation and for
+named keys) and one wrong assumption of mine about fixtures.
+
+**630 tests green**; `node scripts/build.js` passes; `make check-links`
 clean in Clew-docs.
 
 ## 1. STILL OPEN
 
-Nothing blocked. What waits on the owner is in §5 — the same three
+Nothing blocked. What waits on the owner is in §6 — the same three
 long-standing items (dev docs, the graphicx driver line, the `font=note`
 re-pin) and last session's two offers.
 
@@ -196,7 +202,71 @@ expanding to `\mathbb{R}` works in the snippet and is an undefined
 control sequence in the picture, reported at the line that USES it. The
 demo fragment and the manual both say so now.
 
-## 3. Small residue (none blocks anything)
+## 3. The shell panel: a terminal pinned under the workspace
+
+The owner's ask, and their two decisions on it: **one shell per window,
+at the vault root**, and **no restrictions — it is their shell**. `⌃\``
+(View → Shell Panel) opens it; drag the seam to resize; the height and
+the open flag live in the workspace, per vault.
+
+They also named the mechanism to copy: their own Godot/jmacs editor,
+`~/Source/jmacs/main/apps/desktop/src/shell.js` (not `~/Source/Godot`,
+which is the engine). It is worth having copied. **A pty with no native
+addon**: the child is `python3 -c <script>` and the script calls stdlib
+`pty.fork()`, execs `$SHELL -i`, and proxies a select loop. node-pty
+would be a compiled module rebuilt for every Electron version on every
+platform Clew ships to; python3 is stdlib on macOS and every Linux, and
+Windows (no pty) falls back to plain pipes, saying so in the grid.
+
+Two details in that script are load-bearing, both learned upstream, both
+SILENT when they regress — `tests/shell-core.test.js` pins each:
+
+- it resets SIGTERM to `SIG_DFL` **before** the fork. A child spawned by
+  Electron can inherit an ignored disposition across exec, which makes
+  `kill()` a no-op: the helper then sits in `select()` for ever and the
+  pty, with the shell in it, leaks;
+- resizing rides a **sidechannel on fd 3** (`<cols>:<rows>` lines →
+  `TIOCSWINSZ` → SIGWINCH), never down the pty, where it would be typed
+  input.
+
+Shape here: `main/shell-core.js` (electron-free, unit-tested — 17 tests,
+one of which runs a REAL pty and asserts the double echo), six
+`clew:shell-*` channels, handlers in ipc.js keyed on the session id,
+`session.js#dispose` reaping the shell with its window, and
+`renderer/components/workspace/clew-shell-panel.js` (xterm.js + fit
+addon) inside a new `.center-column` in clew-app.js. The session
+deliberately OUTLIVES the panel being hidden — a build that runs while
+you go back to writing is the whole reason to have one — so hiding is
+`display: none`, not a teardown, and reopening reattaches (the
+scrollback, which lives in the grid, does not survive, and the panel
+says so).
+
+Three things the build taught, all now in CLAUDE.md:
+
+1. **The grid must be monospace.** It was wired to `--clew-editor-font`,
+   which is Avenir Next; xterm sizes one cell from the font and puts every
+   character in its own cell, so a proportional face leaves a visible gap
+   around each letter. The owner spotted it in the first screenshot.
+   `--clew-mono-font` fixed it — and the fit went from 61 columns to 92 in
+   the same box, which is the same fact seen from the other side.
+2. **The harness was dispatching fake keyCodes.** `{text:'…'}` derived
+   `windowsVirtualKeyCode` from the CHARACTER code, so `-` arrived as 45,
+   which is Insert — xterm read it as such and dropped every hyphen
+   typed. Named keys had 0, so `Enter` never reached the shell as a
+   carriage return. Both fixed in main.js (`NAMED_KEYS`, `PUNCT_KEYS`);
+   every scenario that types punctuation was affected and nobody had
+   noticed.
+3. **A scenario must not assume a fresh workspace.** The panel's open
+   state is per vault in `.clew/workspace.json`, so the second run over a
+   reused fixture began with it already open and the opening chord closed
+   it — which reads exactly like a broken chord, and cost a round of
+   wrong theories before the trace showed `setShell {"open":false}` as the
+   FIRST call. `smoke/shell-panel-scenario.js` now sets a known state
+   first, and waits on conditions rather than on a clock (input starts
+   only after the scenario returns; how long the boot before it took is
+   not ours to know).
+
+## 4. Small residue (none blocks anything)
 
 New this session:
 
@@ -226,7 +296,7 @@ LibreOffice keyboard/clipboard and office-convert unverifiable here;
 kanban card drag write path; warm-cache query renders emit no
 EV_RENDER_DONE.
 
-## 4. The manual (`../Clew-docs`) — committed, not pushed
+## 5. The manual (`../Clew-docs`) — committed, not pushed
 
 `1c8d3bc` carried the sixth session's four chapters (footnotes,
 description lists, ⌥Q/⌥D, the money case). `57a61ea` carries TeX
@@ -240,7 +310,7 @@ each scope) and `texFragments` in both reference rows. `make check-links`
 clean. Still not written: the preview-lenient / export-strict line from
 the sixth session's §2e, offered and not yet answered.
 
-## 5. Owner's own actions
+## 6. Owner's own actions
 
 - **Neither repo has a git REMOTE** (checked 2026-09-19: `git remote -v`
   is empty in both; `../Clew-iOS` has one, on GitHub). "Nothing pushed"
@@ -287,7 +357,7 @@ the sixth session's §2e, offered and not yet answered.
 - **If 0.9.0 is to be released, it is ready to go out.** What is not
   done: the win/linux VM run, and the site (below) that would host it.
 
-## 6. The owner works in this tree concurrently
+## 7. The owner works in this tree concurrently
 
 Tree CLEAN. `zeta-assets/` and `mptikz-assets/` are deliberate and
 gitignored. `out/` now holds: the 09-25 signed+stapled
@@ -299,7 +369,7 @@ from, the 09-02 win/linux artefacts, and the 08-26 universal dmg (stale
 session's demo runs left `demo-vault/.clew/workspace.json` with the
 Diagrams tab in reading mode (gitignored; harmless).
 
-## 7. Standing session rules (they keep earning their keep)
+## 8. Standing session rules (they keep earning their keep)
 
 - **NEVER `git add -A`** — stage explicit paths.
 - **A SIGNED build must be boot-tested, not just verified.** `codesign

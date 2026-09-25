@@ -226,6 +226,16 @@ class WorkspaceStore extends Emitter {
 		this.#persist();
 	}
 
+	/** The shell panel's state — open/closed and its height. */
+	get shell() {
+		return this.state.shell ?? { open: false, height: 220 };
+	}
+
+	setShell(patch) {
+		this.state.shell = { ...this.shell, ...patch };
+		this.#commit('shell-changed');
+	}
+
 	setSidebar(side, patch) {
 		Object.assign(this.state.sidebars[side], patch);
 		this.#commit('sidebar-changed', side);

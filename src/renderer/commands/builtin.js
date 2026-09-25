@@ -212,6 +212,18 @@ export function registerBuiltinCommands() {
 			run: () => actions.closeOtherPane() },
 		{ id: 'workspace:toggle-mode', name: 'Toggle reading mode', hotkeys: ['Mod-e'], when: needsNote,
 			run: () => actions.toggleReadingMode() },
+		// The shell panel. Ctrl-` is every editor's terminal chord, and it is
+		// free here — Clew's own chords are all Mod-based.
+		{ id: 'shell:toggle', name: 'Toggle shell panel', hotkeys: ['Ctrl-`'], when: needsVault,
+			run: () => {
+				const open = !workspaceStore.shell.open;
+				workspaceStore.setShell({ open });
+				if (open) {
+					// Opening it should put the caret in it; nobody toggles a
+					// terminal open in order to keep typing somewhere else.
+					requestAnimationFrame(() => document.querySelector('clew-shell-panel')?.focusTerminal());
+				}
+			} },
 		{ id: 'workspace:toggle-left-sidebar', name: 'Toggle left sidebar', hotkeys: ['Mod-b'],
 			run: () => toggleSidebar('left') },
 		{ id: 'workspace:toggle-right-sidebar', name: 'Toggle right sidebar', hotkeys: ['Mod-Shift-b'],

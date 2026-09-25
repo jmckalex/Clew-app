@@ -30,6 +30,7 @@ import { parseBib } from '../shared/bib.js';
 import { direntKind, shouldRecurse, walkGuard, writeFileAtomic } from './fs-utils.js';
 import { listSnapshots, readSnapshot } from './history.js';
 import { listPlugins } from './plugins.js';
+import { ShellSessions } from './shell-core.js';
 import { paths } from './paths.js';
 import { planOpen, pathFromFileUrl } from './open-file.js';
 import fs from 'node:fs';
@@ -42,6 +43,9 @@ const sanitizeStateName = (name) => {
 	if (!/^[\w-]+\.json$/.test(name)) throw new Error(`Bad state name: ${name}`);
 	return name;
 };
+
+/** Every window's shell, keyed by session id (main/shell-core.js). */
+export const shells = new ShellSessions();
 
 export function registerIpc() {
 	// Session-scoped handler: fn(session, payload, event).
@@ -256,6 +260,25 @@ export function registerIpc() {
 		if (key === 'plugins') s.renderService.reconfigure({ plugins: value });
 		return current;
 	});
+
+	// ---- the shell panel ---------------------------------------------------
+	// Keyed by the window's session id, so a shell belongs to its window and
+	// is reaped when the window goes. It starts at the vault root and stays
+	// alive while the panel is hidden — a build running behind a closed
+	// panel is the whole point of keeping it.
+	handle(CH.SHELL_OPEN, (s) => {
+		if (!s.vaults.isOpen) return { ok: false, error: 'no vault open' };
+		if (shells.has(s.id)) return { ok: true, running: true };
+		const info = shells.open(s.id, {
+			cwd: s.vaults.root,
+			onData: (data) => s.send(CH.EV_SHELL_DATA, { data }),
+			onExit: (end) => s.send(CH.EV_SHELL_EXIT, end),
+		});
+		return { ok: true, running: false, ...info };
+	});
+	handle(CH.SHELL_WRITE, (s, { data }) => ({ ok: shells.write(s.id, String(data ?? '')) }));
+	handle(CH.SHELL_RESIZE, (s, { cols, rows }) => ({ ok: shells.resize(s.id, cols, rows) }));
+	handle(CH.SHELL_CLOSE, (s) => ({ ok: shells.close(s.id) }));
 
 	handle(CH.PLUGINS_LIST, (s) => {
 		if (!s.vaults.isOpen) return { plugins: [], enabled: [], globalDir: paths.globalPlugins };

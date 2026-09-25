@@ -40,12 +40,13 @@ export function installMenuBridge() {
 			bookmarked: ctx.notePath !== null && bookmarkStore.has(ctx.notePath),
 			leftSidebar: !!workspaceStore.state.sidebars.left?.open,
 			rightSidebar: !!workspaceStore.state.sidebars.right?.open,
+			shellOpen: !!workspaceStore.shell.open,
 			theme: settingsStore.get('theme') ?? 'dark',
 			hotkeys,
 		}).catch(() => {});
 	}, 50);
 
-	for (const event of ['layout-changed', 'active-changed', 'sidebar-changed']) {
+	for (const event of ['layout-changed', 'active-changed', 'sidebar-changed', 'shell-changed']) {
 		workspaceStore.on(event, push);
 	}
 	vaultStore.on('vault-changed', push);
