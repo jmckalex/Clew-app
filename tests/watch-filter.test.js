@@ -118,6 +118,41 @@ test('a spent budget must not blind the watcher to NEW files', () => {
 	assert.ok(state.accepted.has('Untitled.md'));
 });
 
+test('with a plan, the scan holds exactly what was planned', () => {
+	// The order is decided before chokidar walks (watchPlan), so the gate's
+	// job during the scan is simply to honour it. Asking the budget here as
+	// well would let chokidar's own walk order spend what the plan reserved
+	// for notes deeper down — which is the bug the plan exists to fix.
+	const admit = new Set(['Note.md', 'Folder', 'Folder/Deep.md']);
+	const { ignored } = watchFilter({ root, admit, take: () => true });
+	assert.equal(ignored(abs('Note.md')), false);
+	assert.equal(ignored(abs('Folder/Deep.md')), false);
+	assert.equal(ignored(abs('libs/icons/a.svg')), true, 'not planned, not watched');
+});
+
+test('once the scan has settled the plan is spent and new files are judged on budget', () => {
+	// A note the user creates after the vault opened is not in any plan, and
+	// refusing it is how a capped vault stopped showing new notes at all.
+	let settled = false;
+	const admit = new Set(['Note.md']);
+	const { ignored, state } = watchFilter({ root, admit, settled: () => settled, take: () => true });
+	assert.equal(ignored(abs('Untitled.md')), true);
+	settled = true;
+	assert.equal(ignored(abs('Untitled.md')), false, 'a file created in the session must be watched');
+	assert.ok(state.accepted.has('Untitled.md'));
+	assert.ok(state.accepted.has('Note.md'), 'what the plan bought is already ours');
+});
+
+test('the exclusion rules outrank the plan', () => {
+	// A plan is built from the vault walk, which applies `hidden`; the
+	// watcher also applies `unindexed`, and chokidar asks about paths the
+	// walk never saw. The rules stay the first question.
+	const admit = new Set(['.git/HEAD', 'node_modules/x.js']);
+	const { ignored } = watchFilter({ root, admit });
+	assert.equal(ignored(abs('.git/HEAD')), true);
+	assert.equal(ignored(abs('node_modules/x.js')), true);
+});
+
 test('the ceiling is above the budget and still clear of the fork limit', () => {
 	assert.ok(WATCH_CEILING > WATCH_BUDGET, 'the session needs room the scan did not take');
 	assert.ok(WATCH_CEILING <= 9500, `ceiling ${WATCH_CEILING} is too close to the 10,240 where fork() fails`);

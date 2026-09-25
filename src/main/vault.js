@@ -19,7 +19,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { settings } from './settings.js';
-import { direntKind, shouldRecurse, walkGuard, writeFileAtomic, WATCH_BUDGET, WATCH_CEILING, watchFilter } from './fs-utils.js';
+import { direntKind, shouldRecurse, walkGuard, writeFileAtomic, WATCH_BUDGET, WATCH_CEILING, watchFilter, watchPlan } from './fs-utils.js';
 import { compileExcludes } from './vault-excludes.js';
 import { snapshotBeforeWrite, renameHistory } from './history.js';
 
@@ -41,6 +41,7 @@ export class VaultManager {
 	sessionId = null;
 	#watcher = null;
 	#watchState = null;
+	#watchCap = null;
 	/** What this vault asks Clew to leave alone — vault-excludes.js. Compiled
 	 *  when the vault opens and whenever the two lists change, and consulted
 	 *  by every walk: the tree, the watcher, the indexer, the rename
@@ -56,7 +57,15 @@ export class VaultManager {
 
 	get info() {
 		return this.root
-			? { path: this.root, name: path.basename(this.root), sessionId: this.sessionId }
+			? {
+				path: this.root, name: path.basename(this.root), sessionId: this.sessionId,
+				// What the watcher could not take on. Broadcast when it happens
+				// (EV_WATCH_CAPPED) and carried here as well for the window that
+				// was not there to hear it: a reload re-runs the renderer's boot
+				// handshake long after the scan settled, and a vault half-watched
+				// is exactly the thing a fresh window should still be told about.
+				watchCap: this.#watchCap,
+			}
 			: null;
 	}
 
@@ -76,8 +85,9 @@ export class VaultManager {
 		// symlinked directories it skipped as duplicates — which is exactly
 		// what the watcher must not follow a second time.
 		const duplicates = new Set();
-		const tree = this.tree(duplicates);
-		this.#startWatcher(duplicates);
+		const files = [];
+		const tree = this.tree(duplicates, files);
+		this.#startWatcher(duplicates, files);
 		this.hooks.onOpen?.(abs);
 		const info = this.info;
 		this.send('clew:ev-vault-opened', { vault: info, tree });
@@ -112,8 +122,9 @@ export class VaultManager {
 		watchedTotal = Math.max(0, watchedTotal - (this.#watchState?.accepted.size ?? 0));
 		this.#watchState = null;
 		const duplicates = new Set();
-		const tree = this.tree(duplicates);
-		this.#startWatcher(duplicates);
+		const files = [];
+		const tree = this.tree(duplicates, files);
+		this.#startWatcher(duplicates, files);
 		this.send('clew:ev-tree-changed', { tree });
 		this.hooks.onStructureChanged?.();
 		return tree;
@@ -136,8 +147,12 @@ export class VaultManager {
 	 *   another path already reached the same real directory — the watcher
 	 *   needs them (it follows every symlink separately and would otherwise
 	 *   watch one tree once per link).
+	 * @param {string[]} [files] collects every listed file, so the watcher can
+	 *   decide what to spend its budget on BEFORE chokidar walks (fs-utils.js
+	 *   #watchPlan). The walk is happening anyway; the order is the only
+	 *   thing the watcher could not work out for itself.
 	 */
-	tree(duplicates = null) {
+	tree(duplicates = null, files = null) {
 		if (!this.root) return null;
 		const seen = walkGuard(this.root);
 		const walk = (dir, rel) => {
@@ -155,6 +170,7 @@ export class VaultManager {
 					entries.push({ type: 'folder', name: entry.name, path: childRel, children: walk(abs, childRel) });
 				} else if (kind === 'file') {
 					entries.push({ type: 'file', name: entry.name, path: childRel });
+					files?.push(childRel);
 				}
 			}
 			// Folders first, then files, each alphabetically (Obsidian's default).
@@ -321,7 +337,7 @@ export class VaultManager {
 
 	// ---- watching ---------------------------------------------------------
 
-	#startWatcher(duplicates = new Set()) {
+	#startWatcher(duplicates = new Set(), files = null) {
 		// The budget exists to bound the INITIAL SCAN — that is what turned
 		// into 100,169 descriptors. Once chokidar has finished walking, the
 		// paths that arrive are the ones the user is working on: a note just
@@ -331,19 +347,37 @@ export class VaultManager {
 		// So after 'ready' the gate opens again, up to a ceiling that still
 		// keeps the process clear of the ~10,240 where fork() dies.
 		let settled = false;
+		const take = () => {
+			if (watchedTotal >= (settled ? WATCH_CEILING : WATCH_BUDGET)) return false;
+			watchedTotal += 1;
+			return true;
+		};
+		// WHAT the budget buys, decided before chokidar walks: notes first,
+		// then the documents Clew edits, then everything else breadth-first
+		// (fs-utils.js#watchOrder). Without this the order is chokidar's, and
+		// a vendored library that sorts early takes the lot — measured on
+		// ph226-426, where six of eighty-one notes were watched and the rest
+		// of the budget went to a font icon set. The tree walk above has
+		// already enumerated the files; only the order was missing.
+		const plan = files
+			? watchPlan(files.filter((rel) => !this.excludes.isUnindexed(rel)), take)
+			: null;
 		const { ignored, state } = watchFilter({
 			root: this.root,
 			// Both lists: what is not indexed is not watched either, which is
 			// the point of `unindexed` — the descriptors are the cost.
 			isExcluded: (rel) => this.excludes.isUnindexed(rel),
 			duplicates,
-			take: () => {
-				if (watchedTotal >= (settled ? WATCH_CEILING : WATCH_BUDGET)) return false;
-				watchedTotal += 1;
-				return true;
-			},
+			take,
+			admit: plan?.admit ?? null,
+			settled: () => settled,
 		});
+		if (plan) {
+			state.skipped = plan.skipped;
+			state.firstSkipped = plan.firstSkipped;
+		}
 		this.#watchState = state;
+		this.#watchCap = null;
 		this.#watcher = chokidar.watch('.', { cwd: this.root, ignored, ignoreInitial: true });
 		// One line per vault when the budget bit, and a notice in the window:
 		// a partly watched vault is a vault whose explorer and previews can go
@@ -353,9 +387,10 @@ export class VaultManager {
 			if (state.skipped === 0) return;
 			console.warn(`clew: watching capped at ${state.accepted.size} paths in ${this.root}`
 				+ ` (${state.skipped}+ skipped, first ${state.firstSkipped})`);
-			this.send('clew:ev-watch-capped', {
+			this.#watchCap = {
 				watched: state.accepted.size, skipped: state.skipped, first: state.firstSkipped,
-			});
+			};
+			this.send('clew:ev-watch-capped', this.#watchCap);
 		});
 		this.#watcher.on('all', (event, rel) => {
 			// Individual file content changes matter to open editors and previews…

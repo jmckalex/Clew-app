@@ -266,6 +266,63 @@ Three things the build taught, all now in CLAUDE.md:
    only after the scenario returns; how long the boot before it took is
    not ours to know).
 
+## 3a. And then the budget was taught where to go
+
+The manual used to claim "your own notes are reached first". It was
+false, and measurably so: chokidar takes what it meets, so on the
+owner's ph226-426 the budget was spent inside a font icon set after
+**6 of the vault's 81 notes**. I documented the truth; the owner chose
+the other repair — "watch all the markdown documents first, then develop
+a heuristic for the other document types that need to be watched, and
+then do everything else on a breadth-first-search policy."
+
+`fs-utils.js#watchOrder`/`#watchPlan` decide what the budget buys BEFORE
+chokidar walks, which is only possible because Clew already walks the
+vault for the tree; `tree()` now collects the file list on the way past,
+and the order is the only thing the watcher could not have worked out
+for itself. Tiers: notes (`.md`/`.jmd`), then documents Clew EDITS
+(canvas, base, bib, pdf, office, excalidraw), then everything else
+breadth-first.
+
+**The heuristic worth remembering is the one about what is NOT a tier.**
+Giving every image a high tier hands the budget straight back to the
+font icon set that caused the problem — 20,000 `.svg` files are 20,000
+images. Depth answers it instead: a vault's own attachments sit beside
+its notes, a vendored library is five or six folders down, so
+breadth-first reaches `Attachments/photo.png` long before
+`x/libs/fontawesome6/svgs/regular/*.svg` without either being named. At
+equal depth, a file Clew has a use for goes first.
+
+Measured, same vaults, same budget:
+
+| vault | walk order | planned |
+| --- | --- | --- |
+| ph226-426 (41,318 files) | 6/81 notes, 1/288 documents | **81/81, 288/288** |
+| ph341 (40,350 files) | 15/42 notes, 6/151 documents | **42/42, 151/151** |
+| demo-vault (61 files) | everything | everything (nothing to pay) |
+
+Two implementation notes. The plan claims each file WITH its ancestor
+directories, because chokidar cannot descend into a directory it was
+told to ignore — a planned file whose parents were not bought would
+never be watched. And the plan governs the SCAN only: after `ready` the
+budget alone applies, or a file created during the session would be in
+no plan and never watched (the regression from earlier today, which
+`smoke/watch-order-scenario.js` now pins along with the rest).
+
+`renderer/lib/file-types.js` moved to `src/shared/` (re-exported from its
+old path, so no caller changed): main cannot import a renderer module,
+and two copies of "what is an image" would drift.
+
+One false trail, recorded because the instrument lied the same way twice
+today: the scenario reported the watch-capped EVENT as never arriving,
+and I "fixed" it by queueing early sends in `session.js#send`. The event
+was arriving — the renderer registers its listener at module load,
+before a smoke script is injected, so the notice was already in the DOM.
+The queue is reverted. What survives is `vaults.info.watchCap`, for the
+case that IS real: a window RELOAD re-runs the boot handshake long after
+the scan settled, and would otherwise never learn the vault is half
+watched.
+
 ## 4. Small residue (none blocks anything)
 
 New this session:
@@ -280,16 +337,6 @@ New this session:
   the name being typed.
 - `show=code` never builds a figure, so a bad fragment name in a
   `show=code` block is not refused — by construction, and harmless.
-
-- **The watcher walks in directory order, and the manual used to claim
-  otherwise** ("your own notes are reached first"). Measured on the
-  owner's ph226-426: the budget was spent inside a font icon set after
-  **6 of the vault's 81 notes** — the notes are what went unwatched. The
-  manual now says what actually happens (`vaults-and-files.html#watching`)
-  and points at the exclusion lists as the fix. The OTHER way to make
-  those two agree is code: walk `.md` first and spend the budget on notes
-  before anything else, which would make the old sentence true. Worth
-  offering; not built on my own judgment.
 
 Carried over, still true: `:::TiKZ` / `@begin(…)` BODIES keep the
 overlay's uniform `jmd-embedded` face (only fences got grammars);

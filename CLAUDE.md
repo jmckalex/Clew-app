@@ -77,7 +77,7 @@ note API, plugins, and every settings key.
   canvas model, diary, frontmatter, plugins discovery, query/leaflet/exif
   parsers, Excalidraw round-trip, markdown tables, callouts, block
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
-  embed graph and the embed keyword syntax, the shell sessions — 630 tests. DOM/UI work is
+  embed graph and the embed keyword syntax, the shell sessions, the watch order — 644 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js] [CLEW_SMOKE_VAULT=/path/vault]
@@ -139,7 +139,22 @@ browser-window-focus).
   chokidar has no cycle guard, so the duplicate symlinked dirs the vault
   walk already skips (`shouldRecurse`) are handed to the filter as well;
   past the budget it stops and says so — `console.warn` plus
-  `EV_WATCH_CAPPED` → a notice in the window. The budget bounds the INITIAL
+  `EV_WATCH_CAPPED` → a notice in the window (and `vaults.info.watchCap`,
+  for the window that reloads after the scan settled). **WHAT the budget
+  buys is decided before chokidar walks** (`watchOrder`/`watchPlan`, owner's
+  policy 2026-09-25), because the budget alone was not enough: chokidar
+  takes what it meets, so ph226-426 watched SIX of its 81 notes and spent
+  the rest inside a font icon set. Three tiers — notes (`.md`/`.jmd`), then
+  the documents Clew EDITS (canvas/base/bib/pdf/office/excalidraw, via
+  `shared/file-types.js`, which moved out of `renderer/lib/` so main and the
+  renderer share one idea of what a file is), then everything else
+  breadth-first. Images are deliberately NOT a tier: 20,000 icon `.svg`s are
+  20,000 images, and depth already tells a vault's own attachments
+  (`Attachments/x.png`) from a vendored library (`x/libs/…/svgs/…`). The
+  plan claims each file WITH its ancestor dirs (chokidar cannot descend into
+  an ignored dir), and `watchFilter` honours it during the scan only —
+  after `ready` the budget alone applies, or a file created in the session
+  would be in no plan and never watched. The budget bounds the INITIAL
   SCAN only: after chokidar's `ready` the gate reopens to `WATCH_CEILING`,
   because a spent budget otherwise makes the watcher blind to every NEW
   file for the life of the session — which is how a capped vault stopped
