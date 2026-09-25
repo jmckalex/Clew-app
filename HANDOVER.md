@@ -1,4 +1,4 @@
-# Handover — 2026-09-25 (the 0.9.0 mac artefact is signed, notarized and stapled; the day's code work runs `5330e1a`…the shell panel)
+# Handover — 2026-09-25 (0.10.0 cut: signed, notarized, stapled, and the PACKAGED binary verified typesetting; the day's code work runs `5330e1a`…the watch order)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it; it gained the TeX-fragments paragraph and the
@@ -108,7 +108,27 @@ from the mechanism the owner pointed at in their own editor. It turned up
 two harness bugs older than itself (fake keyCodes for punctuation and for
 named keys) and one wrong assumption of mine about fixtures.
 
-**630 tests green**; `node scripts/build.js` passes; `make check-links`
+**0.10.0 is cut** — `out/Clew-0.10.0-arm64.dmg`, 213 MB, signed with the
+Developer ID identity, notarized and stapled by `npm run package:dist` in
+one pass (the env credential path again; the keychain profile was left
+alone). Verified four ways: `stapler validate` and `spctl -a -t open` on
+the IMAGE, the same two plus `codesign -dv` on the `Clew.app` INSIDE it
+(so a dragged copy launches offline), the four entitlements present with
+`flags=0x10000(runtime)`, and — the one that actually matters — the
+PACKAGED binary booted under `CLEW_SMOKE` over the figures fixture: 13
+figures all `mpw-ok`, the ```latex snippet on LuaLaTeX at the 343pt
+varwidth line, the complete article, the ```tex plain-TeX one on LuaTeX,
+`pending=0`, and the classic-arrow-tip crop still `61.87 x 5.18`. The
+hardened runtime is what breaks the forked worker or the wasm, and
+`codesign --verify` cannot see that.
+
+The version bump is package.json ONLY. `../Clew-docs` still says 0.9.0 in
+its Makefile (`VERSION`), its README and the landing page's four download
+links — deliberately, because changing those before the binaries are
+staged and synced would point the live site at files that are not there.
+The site also advertises a UNIVERSAL dmg; this build is arm64.
+
+**644 tests green**; `node scripts/build.js` passes; `make check-links`
 clean in Clew-docs.
 
 ## 1. STILL OPEN
