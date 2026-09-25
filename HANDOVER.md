@@ -1,4 +1,4 @@
-# Handover — 2026-09-25 (tree CLEAN; the 0.9.0 mac artefact is SIGNED, NOTARIZED and STAPLED; the last code work was 09-18, `90a4d95`…`c362a35`)
+# Handover — 2026-09-25 (tree CLEAN; the 0.9.0 mac artefact is signed, notarized and stapled; the day's code work is the ph341 watcher bug, `5330e1a`…`81c3e0b`)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it; it gained the TeX-fragments paragraph and the
@@ -23,7 +23,34 @@ hunks went in as one commit in Clew-docs (`1c8d3bc`).
 (`f806d43`: the site export never handed its workers the note's
 typeface). Nothing is pushed in either repo.
 
-**Then 09-25 was a packaging round, no code:** the mac build was made,
+**09-25, part two: the ph341 bug — one cause, two symptoms.** The owner
+opened `~/Sites/jmckalex/prez/teaching/ph341` as a vault: the app was
+"amazingly slow" at the start, and reading mode failed with `spawn
+EBADF`. Five presentation folders there symlink one 309 MB reveal.js
+library; chokidar has no cycle guard, so it watched that tree five times
+and held **100,169 descriptors** — and past **10,240** held descriptors
+libuv cannot fork, which is how a watcher killed the RENDER worker
+(measured: 10,000 → fork OK, 10,240 → EBADF; it is not the 256 launchd
+limit, and not EMFILE exhaustion — both tested and excluded).
+
+`5330e1a` gives the watcher a process-wide budget (8,000 paths,
+`fs-utils.js#watchFilter`), hands it the duplicate symlinks the vault
+walk already skips, applies the ignore rules to the vault-RELATIVE path
+(the old absolute test ignored every file in a vault under a
+dot-directory), and says so when the budget bites — `console.warn`,
+`EV_WATCH_CAPPED`, a notice in the window. `81c3e0b` windows the file
+explorer (`lib/tree-window.js`): 45 DOM rows instead of 20,503. The
+manual has it in `vaults-and-files.html#watching` (`04226e0`).
+
+**A measurement error worth remembering**: the explorer was first
+reported at 23.5 s, and that was an instrument reading page lifetime —
+the listener had attached after `ev-vault-opened` fired, so `opened`
+stayed null and the arithmetic subtracted zero. The true figure is
+4.19 s with the library against 4.14 s without it. The windowing is
+still right, but the SLOWNESS was the watcher, not the DOM. Check what a
+zero baseline means before believing a number that large.
+
+**Then 09-25 part one was a packaging round, no code:** the mac build was made,
 signed with the Developer ID identity, and (by the owner) notarized and
 stapled. `out/Clew-0.9.0-arm64.dmg`, 212 MB, verified both ways —
 `xcrun stapler validate` and `spctl -a -t open` on the IMAGE, and the
@@ -32,7 +59,7 @@ its own ticket and so launches on a machine that has never seen it.
 Nothing in the repo changed: packaging re-synced the jmarkdown and
 EmbedPDF mirrors from their masters and produced no diff.
 
-**572 tests green**; `node scripts/build.js` passes; `make check-links`
+**586 tests green**; `node scripts/build.js` passes; `make check-links`
 clean in Clew-docs.
 
 ## 1. STILL OPEN
@@ -253,6 +280,17 @@ Diagrams tab in reading mode (gitignored; harmless).
   vanished `~/.zshrc` export can never silently stop stapling. Budget
   ~12 minutes for the signing alone on this bundle: a `--timestamp`
   round-trip per nested binary, plus hashing 13,819 files.
+- **A vault is whatever folder the user points at**, and some of them
+  contain libraries. Anything that walks or watches a vault needs a
+  bound: the descriptor ceiling (~10,240 held, then `fork` fails with
+  EBADF) turns "slow" into "cannot render", and the DOM has the same
+  shape of problem. Both bounds now exist — `WATCH_BUDGET` in
+  fs-utils.js, windowing in the explorer — and anything new that
+  enumerates a vault should ask which bound it lives inside.
+- **Check the baseline before believing a timing.** A `performance.now()`
+  difference against a variable that was never set subtracts zero and
+  reports the age of the page. The ph341 explorer "took 23.5 s"; it took
+  neither that nor anything like it.
 - **A smoke run's ENV is the whole safety net.** Launching
   `…/Electron .` without the `CLEW_SMOKE*` variables boots the REAL app
   against the real userData — it restores the owner's vaults and rewrites
