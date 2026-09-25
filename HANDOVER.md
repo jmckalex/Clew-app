@@ -62,6 +62,17 @@ chapter and the `.clew/` table following (`04226e0`, `e5ff600`,
 naming two options when there are a dozen); CLAUDE.md has the durable
 parts.
 
+**Then two more asks, both landed**: the print CSS keeps a full-width
+table's right border off the page clip (`d00f642` — it rendered at mean
+grey 240 against 213 for every other rule, which is what "the border is
+missing" looked like when measured), and **`@reveal[…]`** embeds a
+presentation in a note (`a48b0ce`, manual `72a4549`'s sibling in
+links-and-embeds). The reveal work turned up a dialect fact worth
+carrying: **the engine's attribute grammar severs unquoted units** —
+`height=300px` arrives as two attributes, `aspect=16/9` throws and costs
+the whole set — so any new directive taking CSS-ish attributes needs the
+same gluing `reveal-embed.js#attrsOf` does.
+
 **A measurement error worth remembering**: the explorer was first
 reported at 23.5 s, and that was an instrument reading page lifetime —
 the listener had attached after `ev-vault-opened` fired, so `opened`
@@ -79,7 +90,7 @@ its own ticket and so launches on a machine that has never seen it.
 Nothing in the repo changed: packaging re-synced the jmarkdown and
 EmbedPDF mirrors from their masters and produced no diff.
 
-**596 tests green**; `node scripts/build.js` passes; `make check-links`
+**611 tests green**; `node scripts/build.js` passes; `make check-links`
 clean in Clew-docs.
 
 ## 1. STILL OPEN
