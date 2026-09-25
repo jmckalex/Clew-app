@@ -108,7 +108,26 @@ from the mechanism the owner pointed at in their own editor. It turned up
 two harness bugs older than itself (fake keyCodes for punctuation and for
 named keys) and one wrong assumption of mine about fixtures.
 
-**0.10.0 is cut** — `out/Clew-0.10.0-arm64.dmg`, 213 MB, signed with the
+**0.10.0 is cut for all four targets** (owner's ask): the mac UNIVERSAL
+dmg signed/notarized/stapled, plus Windows NSIS x64, AppImage and deb —
+`Clew-0.10.0-universal.dmg` (307 MB, x86_64 + arm64 in every binary
+including the four helpers and the Electron framework), `Clew Setup
+0.10.0.exe` (183 MB), `Clew-0.10.0.AppImage` (214 MB),
+`clew_0.10.0_amd64.deb` (169 MB). The arm64-only dmg below was the first
+cut of the evening and is superseded by the universal one; win/linux are
+cross-built from macOS and still untested at runtime.
+
+**A caveat the verification earned.** The packaged universal binary FAILED
+the figures check on its first run — eight figures `mpw-pending`, five
+`mpw-error: latex made no progress for 20000 ms`. It was not the build. The
+run came straight after three back-to-back packaging runs with the load
+average at ~20, and mp-tikz-wasm's watchdog is 20 s of no progress from a
+worker; the arm64 control passed 13/13 at load ~6, and the SAME universal
+binary went 13/13 `mpw-ok`, `pending=0`, ten minutes later at load ~4. The
+rule is now in smoke/README: a figures timeout is a claim about the machine
+until a quiet re-run agrees with it.
+
+**The first cut** — `out/Clew-0.10.0-arm64.dmg`, 213 MB, signed with the
 Developer ID identity, notarized and stapled by `npm run package:dist` in
 one pass (the env credential path again; the keychain profile was left
 alone). Verified four ways: `stapler validate` and `spctl -a -t open` on

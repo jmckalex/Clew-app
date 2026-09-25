@@ -19,7 +19,14 @@ for a run; the 72 `.otf` faces in it are luaotfload's name-database
 scan, paid once per engine instance. Under `CLEW_SMOKE` settings are never persisted at all
 (settings.js#save no-ops), so scenarios cannot leak vaults or setting
 flips into the user's real app state. Long runs (anything booting
-LibreOffice) belong in the background with output to a file.
+LibreOffice) belong in the background with output to a file. **Do not run the
+figures scenarios on a busy machine**: mp-tikz-wasm's watchdog fires after
+20 s with no progress from a wasm worker, so running them straight after a
+packaging run (load average ~20, measured 2026-09-25) reports
+`mpw-error: … made no progress for 20000 ms` on figures that are perfectly
+fine — the same binary went 13/13 `mpw-ok` ten minutes later at load ~4.
+A timeout there is a claim about the machine until a quiet re-run agrees
+with it.
 
 | Scenario | What it drives | Vault it expects |
 | --- | --- | --- |
