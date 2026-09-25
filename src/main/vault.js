@@ -19,7 +19,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { settings } from './settings.js';
-import { direntKind, shouldRecurse, walkGuard, writeFileAtomic, WATCH_BUDGET, watchFilter } from './fs-utils.js';
+import { direntKind, shouldRecurse, walkGuard, writeFileAtomic, WATCH_BUDGET, WATCH_CEILING, watchFilter } from './fs-utils.js';
 import { compileExcludes } from './vault-excludes.js';
 import { snapshotBeforeWrite, renameHistory } from './history.js';
 
@@ -82,6 +82,20 @@ export class VaultManager {
 		const info = this.info;
 		this.send('clew:ev-vault-opened', { vault: info, tree });
 		return info;
+	}
+
+	/**
+	 * Push a fresh tree to the window now. Clew's own file operations know
+	 * exactly when they changed the vault, and waiting for the watcher to
+	 * tell us is both slower (a 300ms debounce) and, in a vault whose watch
+	 * budget is spent, a message that never comes.
+	 */
+	refreshTree() {
+		if (!this.root) return null;
+		const tree = this.tree();
+		this.send('clew:ev-tree-changed', { tree });
+		this.hooks.onStructureChanged?.();
+		return tree;
 	}
 
 	/**
@@ -225,11 +239,13 @@ export class VaultManager {
 		}
 		fs.mkdirSync(dir, { recursive: true });
 		fs.writeFileSync(candidate, '');
+		this.refreshTree();
 		return path.relative(this.root, candidate);
 	}
 
 	createFolder(rel) {
 		fs.mkdirSync(this.resolve(rel), { recursive: true });
+		this.refreshTree();
 	}
 
 	/**
@@ -275,10 +291,12 @@ export class VaultManager {
 		fs.mkdirSync(path.dirname(to), { recursive: true });
 		fs.renameSync(from, to);
 		renameHistory(this.root, rel, newRel);
+		this.refreshTree();
 	}
 
 	async trash(rel) {
 		await shell.trashItem(this.resolve(rel));
+		this.refreshTree();
 	}
 
 	reveal(rel) {
@@ -304,6 +322,15 @@ export class VaultManager {
 	// ---- watching ---------------------------------------------------------
 
 	#startWatcher(duplicates = new Set()) {
+		// The budget exists to bound the INITIAL SCAN — that is what turned
+		// into 100,169 descriptors. Once chokidar has finished walking, the
+		// paths that arrive are the ones the user is working on: a note just
+		// created, a file dropped in. Refusing those is how a capped vault
+		// stopped showing new notes in its explorer at all (the owner's
+		// ph226-426, 2026-09-25 — the note was on disk and nowhere on screen).
+		// So after 'ready' the gate opens again, up to a ceiling that still
+		// keeps the process clear of the ~10,240 where fork() dies.
+		let settled = false;
 		const { ignored, state } = watchFilter({
 			root: this.root,
 			// Both lists: what is not indexed is not watched either, which is
@@ -311,7 +338,7 @@ export class VaultManager {
 			isExcluded: (rel) => this.excludes.isUnindexed(rel),
 			duplicates,
 			take: () => {
-				if (watchedTotal >= WATCH_BUDGET) return false;
+				if (watchedTotal >= (settled ? WATCH_CEILING : WATCH_BUDGET)) return false;
 				watchedTotal += 1;
 				return true;
 			},
@@ -322,6 +349,7 @@ export class VaultManager {
 		// a partly watched vault is a vault whose explorer and previews can go
 		// stale, and silence about that is worse than the staleness.
 		this.#watcher.once('ready', () => {
+			settled = true;
 			if (state.skipped === 0) return;
 			console.warn(`clew: watching capped at ${state.accepted.size} paths in ${this.root}`
 				+ ` (${state.skipped}+ skipped, first ${state.firstSkipped})`);

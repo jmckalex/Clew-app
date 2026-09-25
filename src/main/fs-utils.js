@@ -41,6 +41,10 @@ export const IGNORED_DIRS = new Set(['.obsidian', '.clew', '.git', 'node_modules
 // So: a budget, shared by every window because the descriptors are, and
 // well under the ceiling — the rest of the app needs descriptors too.
 export const WATCH_BUDGET = 8000;
+// What the watcher may grow to AFTER the initial scan, for the files a
+// session actually creates. The budget bounds the walk; this bounds the
+// drift, and both stay clear of the ~10,240 descriptors where fork() dies.
+export const WATCH_CEILING = 9000;
 
 /**
  * The watcher's gate: chokidar's `ignored` predicate plus the bookkeeping

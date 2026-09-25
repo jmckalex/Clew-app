@@ -133,7 +133,14 @@ browser-window-focus).
   chokidar has no cycle guard, so the duplicate symlinked dirs the vault
   walk already skips (`shouldRecurse`) are handed to the filter as well;
   past the budget it stops and says so — `console.warn` plus
-  `EV_WATCH_CAPPED` → a notice in the window. The rules are applied to the
+  `EV_WATCH_CAPPED` → a notice in the window. The budget bounds the INITIAL
+  SCAN only: after chokidar's `ready` the gate reopens to `WATCH_CEILING`,
+  because a spent budget otherwise makes the watcher blind to every NEW
+  file for the life of the session — which is how a capped vault stopped
+  showing notes the user had just created (2026-09-25). And Clew's own file
+  operations never wait for the watcher at all: createNote/createFolder/
+  rename/trash call `vaults.refreshTree()`, which is both immediate and
+  immune to a spent budget. The rules are applied to the
   vault-RELATIVE path: testing the absolute one ignored every file in a
   vault that merely lived under a dot-directory, `indexer.js` (the metadata cache: extractor over every
   note, link resolution, incremental patches, `embeddersOf()` — who

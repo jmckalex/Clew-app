@@ -19,7 +19,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
-import { watchFilter, WATCH_BUDGET } from '../src/main/fs-utils.js';
+import { watchFilter, WATCH_BUDGET, WATCH_CEILING } from '../src/main/fs-utils.js';
 
 const root = '/vault';
 const abs = (rel) => path.join(root, rel);
@@ -99,6 +99,28 @@ test('an ignored path is not charged at all', () => {
 	ignored(abs('.git/objects/ab/cdef'));
 	assert.equal(charged, 0);
 	assert.equal(state.skipped, 0); // ignored by rule is not "skipped for budget"
+});
+
+test('a spent budget must not blind the watcher to NEW files', () => {
+	// The regression this pins, 2026-09-25: the budget was applied to every
+	// path for the life of the session, so once a big vault had spent it, a
+	// note the user created was never seen — it sat on disk while the
+	// explorer refused to show it. vault.js reopens the gate (a higher
+	// ceiling) once chokidar's initial scan is done; what the filter has to
+	// guarantee is simply that it ASKS every time rather than remembering a
+	// refusal.
+	let allow = false;              // the scan has spent the budget…
+	const { ignored, state } = watchFilter({ root, take: () => allow });
+	assert.equal(ignored(abs('Untitled.md')), true);
+	assert.equal(state.skipped, 1);
+	allow = true;                   // …and then the vault settles
+	assert.equal(ignored(abs('Untitled.md')), false, 'a later ask must be honoured');
+	assert.ok(state.accepted.has('Untitled.md'));
+});
+
+test('the ceiling is above the budget and still clear of the fork limit', () => {
+	assert.ok(WATCH_CEILING > WATCH_BUDGET, 'the session needs room the scan did not take');
+	assert.ok(WATCH_CEILING <= 9500, `ceiling ${WATCH_CEILING} is too close to the 10,240 where fork() fails`);
 });
 
 test('the shipped budget leaves room under the fork ceiling', () => {
