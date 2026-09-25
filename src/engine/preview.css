@@ -245,6 +245,30 @@ details.internal-embed:not([open]) > summary { margin-bottom: 0; }
 	overflow-y: auto;
 }
 
+/* @reveal[…] — a presentation embedded as a live frame (reveal-embed.js).
+   Sized by the directive (width/height/aspect); what is fixed here is that
+   it reads as a block on the page rather than as a word in a sentence,
+   since the directive is inline and can be written mid-paragraph. */
+.reveal-embed {
+	display: block;
+	margin: 1em auto;
+	border: 1px solid var(--preview-border);
+	border-radius: 6px;
+	background: var(--preview-bg);
+}
+/* A target Clew will not embed, said in the note rather than left blank —
+   a missing path, a .php that needs its server, a javascript: URL. */
+.clew-embed-refused {
+	display: block;
+	margin: 1em 0;
+	padding: 0.6em 0.9em;
+	border: 1px solid var(--preview-border);
+	border-left: 3px solid var(--preview-danger);
+	border-radius: 4px;
+	background: var(--preview-code-bg);
+	font-size: 0.92em;
+}
+
 /* Media embeds (![[img.png]], ![[paper.pdf]], …) */
 .internal-media { max-width: 100%; border-radius: 6px; }
 audio.internal-media { width: 100%; }

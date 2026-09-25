@@ -207,6 +207,9 @@ export class RenderService {
 			// config, where the native handlers still stand (export.js).
 			'Environments': [
 				`TiKZ, metapost from ${path.join(engineAssets, 'figures.js')}`,
+				// @reveal[…] — a presentation in an iframe. One registry entry
+				// serves the inline, block and @begin forms (reveal-embed.js).
+				`reveal from ${path.join(engineAssets, 'reveal-embed.js')}`,
 			],
 			...this.#biblifyConfig(),
 			// dvisvgm needs ghostscript to convert MetaPost EPS output (and

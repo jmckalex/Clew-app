@@ -260,6 +260,20 @@ browser-window-focus).
   reconfigures EVERY session); renaming one typesets nothing — identity is
   the TEXT, not the name — but leaves every figure still asking for the old
   name showing its refusal.
+- **`@reveal[…]`** (`src/engine/reveal-embed.js`, owner's ask 2026-09-25):
+  a presentation as a live iframe. Registered as a named ENVIRONMENT in the
+  config, which is why one entry serves `@reveal[…]`, `@reveal+[…]` and
+  `@begin(reveal)` (begin-end-core.js). Two target kinds: an http(s) URL —
+  the only thing that works for a deck a server GENERATES (the owner's are
+  index.php behind a local Apache; a .php served from the vault would be its
+  source) — and a vault path to an HTML file or a folder holding index.html,
+  which goes through wikilinks.js#sitePath so it carries the session id and
+  survives a site export. Anything else is refused BY NAME. Deliberately
+  unsandboxed, for the reason the preview is. **The engine's attribute
+  grammar severs unquoted units** — `height=300px` arrives as `{height: 300,
+  px: 'px'}`, `aspect=16/9` THROWS and the engine then loses every attribute
+  (measured) — so `attrsOf` glues orphaned units back and a bare number means
+  px; anything with a slash must be quoted, which the manual says.
 - **Obsidian's own query formats** — for opening other people's vaults,
   alongside (not replacing) Clew's `query`/`tasks`/`kanban` fences:
   `vault-model.js` (the vault as pages: `file.*`, the link graph,
