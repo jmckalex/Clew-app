@@ -42,6 +42,17 @@ dot-directory), and says so when the budget bites — `console.warn`,
 explorer (`lib/tree-window.js`): 45 DOM rows instead of 20,503. The
 manual has it in `vaults-and-files.html#watching` (`04226e0`).
 
+**And then the feature the bug earned** (`1747269`, manual `e5ff600`): a
+vault can now say which parts of itself Clew should leave alone, in two
+forms the owner distinguished — `unindexed` (listed in the explorer and
+openable, but not indexed and not watched) and `hidden` (not there at
+all). Vault-relative globs in `vault-settings.json`, editable by hand or
+at Settings → This vault, applied by EVERY vault walk through
+`src/main/vault-excludes.js` — which also ends the built-in ignore list
+being copied into three files that had already drifted apart. Changing
+either list reloads the vault in place. `unindexed` is only offerable
+because the explorer is windowed: listing 20,000 files now costs nothing.
+
 **A measurement error worth remembering**: the explorer was first
 reported at 23.5 s, and that was an instrument reading page lifetime —
 the listener had attached after `ev-vault-opened` fired, so `opened`
@@ -59,7 +70,7 @@ its own ticket and so launches on a machine that has never seen it.
 Nothing in the repo changed: packaging re-synced the jmarkdown and
 EmbedPDF mirrors from their masters and produced no diff.
 
-**586 tests green**; `node scripts/build.js` passes; `make check-links`
+**596 tests green**; `node scripts/build.js` passes; `make check-links`
 clean in Clew-docs.
 
 ## 1. STILL OPEN
@@ -281,7 +292,9 @@ Diagrams tab in reading mode (gitignored; harmless).
   ~12 minutes for the signing alone on this bundle: a `--timestamp`
   round-trip per nested binary, plus hashing 13,819 files.
 - **A vault is whatever folder the user points at**, and some of them
-  contain libraries. Anything that walks or watches a vault needs a
+  contain libraries. It can now SAY so (`vault-excludes.js`, two lists),
+  and every walk must consult it — a new walk that forgets is a walk that
+  indexes a font pack. Anything that walks or watches a vault also needs a
   bound: the descriptor ceiling (~10,240 held, then `fork` fails with
   EBADF) turns "slow" into "cannot render", and the DOM has the same
   shape of problem. Both bounds now exist — `WATCH_BUDGET` in
