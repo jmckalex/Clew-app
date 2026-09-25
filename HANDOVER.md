@@ -73,6 +73,18 @@ carrying: **the engine's attribute grammar severs unquoted units** —
 the whole set — so any new directive taking CSS-ish attributes needs the
 same gluing `reveal-embed.js#attrsOf` does.
 
+**And a regression of my own, found by the owner and fixed** (`a86936b`):
+the watch budget was applied for the life of the session, so a vault that
+spent it on its initial scan went blind to every NEW file — a note
+created with the explorer's button landed on disk and never appeared.
+The budget now bounds the SCAN only (the gate reopens to `WATCH_CEILING`
+once chokidar is ready), and Clew's own create/rename/trash call
+`vaults.refreshTree()` rather than waiting for a watcher echo that may
+never come. The lesson generalises: **a resource cap must not become a
+correctness cap** — bound the expensive bulk operation, not the whole
+session, and never make the app's own actions depend on hearing about
+themselves from the outside.
+
 **A measurement error worth remembering**: the explorer was first
 reported at 23.5 s, and that was an instrument reading page lifetime —
 the listener had attached after `ev-vault-opened` fired, so `opened`
@@ -90,7 +102,7 @@ its own ticket and so launches on a machine that has never seen it.
 Nothing in the repo changed: packaging re-synced the jmarkdown and
 EmbedPDF mirrors from their masters and produced no diff.
 
-**611 tests green**; `node scripts/build.js` passes; `make check-links`
+**613 tests green**; `node scripts/build.js` passes; `make check-links`
 clean in Clew-docs.
 
 ## 1. STILL OPEN
