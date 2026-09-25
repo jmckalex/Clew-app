@@ -14,16 +14,23 @@ shows current bindings.
 ## This vault
 
 The **This vault** section holds per-vault settings (stored in
-`.clew/vault-settings.json`). Current options: **Standard
-Markdown syntax** — disables the jmarkdown inline dialect so `*italic*`
-and `**bold**` behave like everywhere else, while keeping math,
-citations, diagrams, and theorems (renders *and* exports honor it; the
-editor's dialect highlighting doesn't adapt yet). And **jmarkdown
-project** — for vaults that are jmarkdown manuscripts, it re-enables
-the engine's own-line `[[file.md]]` inclusion, so reading mode
-transcludes chapters exactly the way the CLI build does. The trade-off:
-a wikilink alone on its own line stops being a plain link while it's
-on. Open previews re-render as soon as the box is toggled.
+`.clew/vault-settings.json`, so they travel with the vault). Among them:
+
+- **Standard Markdown syntax** — disables the jmarkdown inline dialect so
+  `*italic*` and `**bold**` behave like everywhere else, while keeping
+  math, citations, diagrams, and theorems (renders *and* exports honor
+  it; the editor's dialect highlighting doesn't adapt yet).
+- **jmarkdown project** — for vaults that are jmarkdown manuscripts, it
+  re-enables the engine's own-line `[[file.md]]` inclusion, so reading
+  mode transcludes chapters exactly the way the CLI build does. The
+  trade-off: a wikilink alone on its own line stops being a plain link
+  while it's on. Open previews re-render as soon as the box is toggled.
+- **Note history**, the **Note API** gate, the **bibliography** file and
+  style, **dataviewjs**, and this vault's **TeX fragments** (see
+  [[Diagrams]]).
+- **Listed but not indexed** and **Hidden entirely** — the two ways to
+  tell Clew that part of a folder tree isn't notes. See
+  [[Vaults and Files]].
 
 ## Default hotkeys
 

@@ -32,6 +32,40 @@ so external edits to linked files reload like any other. Link cycles are
 detected and walked once; dangling links are skipped quietly. (This is a
 deliberate improvement over Obsidian, which largely ignores symlinks.)
 
+## Leaving folders alone
+
+A vault is just a folder, and folders collect things that aren't notes: a
+presentation library, a build directory, a font pack, an archive you never
+open. Two lists in `.clew/vault-settings.json` — also editable at
+**Settings → This vault** — say what to do about them:
+
+```json
+{
+  "unindexed": ["*/libs"],
+  "hidden": ["Archive/2019", "**/build"]
+}
+```
+
+- **`unindexed`** keeps the folder in the explorer and its files open and
+  edit normally, but Clew doesn't index or watch them: no backlinks, no
+  tags, no search hits, no quick-switcher entries, and a change made by
+  another program won't refresh on its own.
+- **`hidden`** treats the folder as though it weren't in the vault at
+  all — not listed, not indexed, not watched, not published by a website
+  export.
+
+Patterns are relative to the vault root: a plain path means that folder
+and everything under it, `*` matches inside one folder name (so `*/libs`
+catches `chapter-1/libs` and all its siblings at once), and `**` matches
+any depth including none (so `**/node_modules` catches one at the top as
+readily as one buried deep). `.clew`, `.git`, `.obsidian`,
+`node_modules`, `.trash` and dotfiles are always skipped anyway.
+
+This demo vault is all notes, so both lists are empty here — the example
+above is written out rather than live. A vault that needs them usually
+announces itself: opening it feels slow, or Clew tells you it has stopped
+watching part of it.
+
 ## Editing alongside other apps
 
 Clew watches the vault. Files edited in another app reload in place when
