@@ -173,11 +173,14 @@ class ClewApp extends ClewElement {
 		}
 	}
 
-	/** Open the search tool (left sidebar) and focus its input. */
-	openSearch() {
+	/** Open the search tool (left sidebar) and focus its input — with a
+	 *  query already in it when one is given (live edit's tag clicks). */
+	openSearch(query) {
 		workspaceStore.setSidebar('left', { open: true, activeTool: 'search' });
 		requestAnimationFrame(() => {
-			this.querySelector('clew-search-panel')?.focusInput();
+			const panel = this.querySelector('clew-search-panel');
+			if (typeof query === 'string') panel?.setQuery(query);
+			panel?.focusInput();
 		});
 	}
 

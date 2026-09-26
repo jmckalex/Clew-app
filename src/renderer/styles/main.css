@@ -14,6 +14,7 @@
 @import './themes/light.css';
 @import './layout.css';
 @import './editor.css';
+@import './live-edit.css';
 @import './panels.css';
 @import './canvas.css';
 

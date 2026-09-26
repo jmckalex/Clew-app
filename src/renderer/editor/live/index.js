@@ -19,6 +19,9 @@
 import { Compartment } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { liveConfigFacet } from './config.js';
+import { liveStateField } from './reveal-field.js';
+import { inlineLayer } from './inline-layer.js';
+import { liveEvents } from './events.js';
 
 /** The compartment every note state carries (empty in source mode). */
 export const liveCompartment = new Compartment();
@@ -34,5 +37,8 @@ export function liveEdit(config) {
 		liveConfigFacet.of(config),
 		// The one marker source-mode CSS and scenarios key on.
 		EditorView.editorAttributes.of({ class: 'cm-live' }),
+		liveStateField,
+		inlineLayer,
+		liveEvents,
 	];
 }

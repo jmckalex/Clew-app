@@ -1,0 +1,72 @@
+/* Clew — live edit (docs/dev/live-edit-plan.md). Structure classes `le-*`;
+   every colour is a --clew-* variable. What a REVEALED construct looks like
+   is source mode's business (editor.css): nothing here applies to it except
+   line-level classes, which must hold in both states — entering a line
+   never changes its height (plan §5.10). */
+
+/* ---- inline constructs, concealed ---- */
+.le-strong { font-weight: 650; }
+.le-intense { font-weight: 700; font-variant: small-caps; letter-spacing: 0.02em; }
+.le-italic { font-style: italic; }
+.le-underline { text-decoration: underline; text-underline-offset: 0.15em; }
+.le-highlight { background: var(--clew-search-match); border-radius: 2px; }
+.le-strike { text-decoration: line-through; color: var(--clew-text-muted); }
+.le-sub, .le-sup { font-size: 0.75em; line-height: 0; }
+.le-sub { vertical-align: sub; }
+.le-sup { vertical-align: super; }
+.le-code {
+	font-family: var(--clew-mono-font);
+	font-size: 0.875em;
+	background: var(--clew-bg-tertiary);
+	border-radius: 4px;
+	padding: 0.1em 0.3em;
+	color: var(--clew-code);
+}
+.le-link, .le-wikilink, .le-ref {
+	color: var(--clew-link);
+	text-decoration: underline;
+	text-decoration-color: color-mix(in srgb, var(--clew-link) 45%, transparent);
+	text-underline-offset: 0.18em;
+	cursor: pointer;
+}
+.le-wikilink.le-unresolved { opacity: 0.65; text-decoration-style: dashed; }
+.le-tag { cursor: pointer; }
+.le-directive { text-decoration: underline dotted var(--clew-formatting); text-underline-offset: 0.2em; }
+.le-tex-only { opacity: 0.55; }
+
+/* ---- stand-ins for replaced constructs ---- */
+.le-chip {
+	font-family: var(--clew-ui-font);
+	font-size: 0.8em;
+	border-radius: 6px;
+	padding: 0 5px;
+	background: var(--clew-active-item);
+	color: var(--clew-accent);
+	cursor: pointer;
+	white-space: nowrap;
+}
+.le-fn {
+	background: none;
+	padding: 0 1px;
+	font-size: 0.72em;
+	font-weight: 600;
+	vertical-align: super;
+	line-height: 0;
+}
+.le-cite { color: var(--clew-link); }
+.le-var { font-family: var(--clew-mono-font); }
+.le-label, .le-today, .le-directive-chip, .le-embed-chip { color: var(--clew-text-muted); background: var(--clew-bg-tertiary); }
+.le-block-id { background: none; color: var(--clew-text-faint); margin-left: 0.3em; }
+.le-block-id:hover { color: var(--clew-accent); }
+
+/* ---- math ---- */
+.le-math { cursor: pointer; }
+.le-math mjx-container { margin: 0 !important; }
+.le-math-display:not(.le-math-block) mjx-container { display: inline-block !important; }
+.le-math-pending { color: var(--clew-code); font-family: var(--clew-mono-font); font-size: 0.9em; opacity: 0.7; }
+.le-math-error {
+	color: var(--clew-code);
+	font-family: var(--clew-mono-font);
+	font-size: 0.9em;
+	text-decoration: underline wavy var(--clew-danger);
+}
