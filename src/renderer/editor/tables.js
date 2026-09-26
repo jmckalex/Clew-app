@@ -136,6 +136,92 @@ export function formatTable(table) {
 	});
 }
 
+// ---- structural edits (live edit's in-place tables, docs/dev/live-edit.md
+// §5.5c). Pure: each takes the object tableAround returns and gives back a
+// new one; formatTable then writes it. Rows are indices into `table.rows`,
+// the delimiter row included — the callers translate from logical rows.
+
+const columnCount = (table) => Math.max(...table.rows.map((r) => r.length));
+const cloneTable = (table) => ({
+	...table,
+	rows: table.rows.map((r) => [...r]),
+	align: [...table.align],
+});
+
+/** An empty row inserted at `at` (never above the header). */
+export function insertRow(table, at) {
+	const next = cloneTable(table);
+	const where = Math.max(1, Math.min(at, next.rows.length));
+	next.rows.splice(where, 0, Array.from({ length: columnCount(table) }, () => ''));
+	if (next.delimiterRow >= where) next.delimiterRow += 1;
+	return next;
+}
+
+/** Row `at` removed — never the header or the delimiter row. */
+export function deleteRow(table, at) {
+	if (at <= 0 || at === table.delimiterRow || at >= table.rows.length) return table;
+	const next = cloneTable(table);
+	next.rows.splice(at, 1);
+	if (next.delimiterRow > at) next.delimiterRow -= 1;
+	return next;
+}
+
+/** An empty column inserted before column `at` (unaligned). */
+export function insertColumn(table, at) {
+	const next = cloneTable(table);
+	const where = Math.max(0, Math.min(at, columnCount(table)));
+	next.rows.forEach((row, r) => {
+		while (row.length < where) row.push(r === next.delimiterRow ? '---' : '');
+		row.splice(where, 0, r === next.delimiterRow ? '---' : '');
+	});
+	while (next.align.length < where) next.align.push(null);
+	next.align.splice(where, 0, null);
+	return next;
+}
+
+/** Column `at` removed — the last column never is (a table needs one). */
+export function deleteColumn(table, at) {
+	if (columnCount(table) <= 1 || at < 0 || at >= columnCount(table)) return table;
+	const next = cloneTable(table);
+	for (const row of next.rows) if (row.length > at) row.splice(at, 1);
+	if (next.align.length > at) next.align.splice(at, 1);
+	return next;
+}
+
+/** Body row `from` moved to index `to` (header and delimiter stay put). */
+export function moveRow(table, from, to) {
+	const body = (i) => i > 0 && i !== table.delimiterRow && i < table.rows.length;
+	if (!body(from) || !body(to) || from === to) return table;
+	const next = cloneTable(table);
+	const [row] = next.rows.splice(from, 1);
+	next.rows.splice(to, 0, row);
+	return next;
+}
+
+/** Column `from` moved to index `to`, alignment with it. */
+export function moveColumn(table, from, to) {
+	const count = columnCount(table);
+	if (from < 0 || to < 0 || from >= count || to >= count || from === to) return table;
+	const next = cloneTable(table);
+	for (const row of next.rows) {
+		while (row.length < count) row.push('');
+		const [cell] = row.splice(from, 1);
+		row.splice(to, 0, cell);
+	}
+	while (next.align.length < count) next.align.push(null);
+	const [a] = next.align.splice(from, 1);
+	next.align.splice(to, 0, a);
+	return next;
+}
+
+/** Column `col`'s alignment: 'left' | 'center' | 'right' | null. */
+export function setAlignment(table, col, align) {
+	const next = cloneTable(table);
+	while (next.align.length <= col) next.align.push(null);
+	next.align[col] = align;
+	return next;
+}
+
 /** A blank row matching the table's shape. */
 export function blankRow(columnCount) {
 	return `|${' '.repeat(1)}${Array.from({ length: columnCount }, () => '   ').join(' | ')} |`

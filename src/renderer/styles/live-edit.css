@@ -257,3 +257,35 @@ body[data-theme='light'] .le-frame { color-scheme: light; }
    strong face is the dialect's INTENSE (small caps). Concealed, `__x__` is
    an underline and nothing else — whichever way the two spans nest. */
 .le-underline, .le-underline .cmt-strong { font-variant: normal; letter-spacing: normal; font-weight: inherit; }
+
+/* ---- tables edited in place (docs/dev/live-edit.md §5.5c) ---- */
+.le-table [data-le-active] {
+	outline: 2px solid var(--clew-accent);
+	outline-offset: -2px;
+	background: var(--clew-bg-primary);
+	cursor: text;
+}
+/* The cell editor sits INSIDE the note's editor, and CodeMirror's theme
+   rules are descendant selectors under the note editor's theme class — so
+   the note's `.cm-content { padding: 24px 0 40vh }` and `.cm-line`
+   padding reach the nested editor too (measured: a one-line cell stood
+   ~40vh tall). These win back the cell's own box. */
+.le-table .le-cell-editor.cm-editor { height: auto; font: inherit; color: inherit; min-width: 2em; background: transparent; }
+.le-table .le-cell-editor .cm-scroller { font-family: inherit; line-height: inherit; overflow: visible; }
+.le-table .le-cell-editor .cm-content {
+	padding: 0 !important;
+	margin: 0 !important;
+	max-width: none !important;
+	font-family: inherit;
+	font-size: inherit;
+	line-height: inherit;
+}
+.le-table .le-cell-editor .cm-line { padding: 0 !important; }
+.le-table .le-cell-editor .cm-activeLine { background: transparent; }
+.le-table-note {
+	font-family: var(--clew-ui-font);
+	font-size: 0.75em;
+	color: var(--clew-text-faint);
+	margin-bottom: 4px;
+	cursor: pointer;
+}

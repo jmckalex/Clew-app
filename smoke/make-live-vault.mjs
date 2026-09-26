@@ -106,3 +106,14 @@ Paragraph between the frames and the rest.
 ${extra}
 Last line.
 `);
+
+// Cells.md (live-table-edit-scenario.js): a plain table to edit in place.
+writeFileSync(join(dir, 'Cells.md'), `# Cells
+
+| A | B | C |
+| --- | --- | --- |
+| a1 | b1 | c1 |
+| a2 | b2 | c2 |
+
+Last line.
+`);

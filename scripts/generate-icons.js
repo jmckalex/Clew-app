@@ -76,6 +76,15 @@ const ICONS = {
 	'intense': 'solid/text-height',
 	'row-below': 'solid/arrow-down-short-wide',
 	'format': 'solid/align-left',
+	// In-place table editing (docs/dev/live-edit.md §5.5c).
+	'row-above': 'solid/arrow-up-long',
+	'row-delete': 'solid/delete-left',
+	'col-left': 'solid/arrow-left-long',
+	'col-right': 'solid/arrow-right-long',
+	'col-delete': 'solid/square-minus',
+	'align-left': 'solid/align-left',
+	'align-center': 'solid/align-center',
+	'align-right': 'solid/align-right',
 };
 
 const version = JSON.parse(fs.readFileSync(path.join(faDir, 'package.json'), 'utf8')).version;

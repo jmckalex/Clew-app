@@ -25,6 +25,7 @@ import { blockField, calloutFoldField } from './block-field.js';
 import { frameHeightField } from './frames.js';
 import { frameLayer } from './frame-layer.js';
 import { liveEvents } from './events.js';
+import { tableEditing } from './table-cell-editor.js';
 
 /** The compartment every note state carries (empty in source mode). */
 export const liveCompartment = new Compartment();
@@ -40,6 +41,8 @@ export function liveEdit(config) {
 		liveConfigFacet.of(config),
 		// The one marker source-mode CSS and scenarios key on.
 		EditorView.editorAttributes.of({ class: 'cm-live' }),
+		// Before liveStateField: the reveal rule reads the active cell.
+		tableEditing,
 		liveStateField,
 		calloutFoldField,
 		frameHeightField,

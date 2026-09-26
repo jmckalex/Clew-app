@@ -23,6 +23,7 @@ import { syntaxTree } from '@codemirror/language';
 import { liveModel } from './model.js';
 import { revealSet } from './reveal.js';
 import { liveConfigFacet } from './config.js';
+import { activeCellField, activeCellOf } from './active-cell.js';
 
 /**
  * @typedef {object} LiveState
@@ -36,10 +37,15 @@ import { liveConfigFacet } from './config.js';
 function compute(state, previous) {
 	const config = state.facet(liveConfigFacet);
 	const model = liveModel(state, config);
-	const { ids, signature } = revealSet(model, state.selection.ranges, config.reveal);
+	// A table with a cell being edited in place stays concealed although the
+	// selection is inside it (docs/dev/live-edit.md §5.5c).
+	const cell = activeCellOf(state);
+	const pinned = cell ? model.find((c) => c.kind === 'table' && c.from <= cell.from && c.to >= cell.to)?.id : null;
+	const { ids, signature } = revealSet(model, state.selection.ranges, config.reveal, pinned);
+	const cellKey = cell ? `${cell.row}:${cell.col}:${cell.from}` : '';
 	if (previous && previous.model === model && previous.signature === signature
-		&& previous.config === config) return previous;
-	return { model, revealed: ids, signature, config };
+		&& previous.config === config && previous.cellKey === cellKey) return previous;
+	return { model, revealed: ids, signature, config, cellKey, cell };
 }
 
 export const liveStateField = StateField.define({
@@ -47,7 +53,8 @@ export const liveStateField = StateField.define({
 	update(value, tr) {
 		const treeMoved = syntaxTree(tr.state) !== syntaxTree(tr.startState);
 		const configMoved = tr.state.facet(liveConfigFacet) !== tr.startState.facet(liveConfigFacet);
-		if (!tr.docChanged && !tr.selection && !treeMoved && !configMoved) return value;
+		const cellMoved = tr.state.field(activeCellField, false) !== tr.startState.field(activeCellField, false);
+		if (!tr.docChanged && !tr.selection && !treeMoved && !configMoved && !cellMoved) return value;
 		return compute(tr.state, value);
 	},
 });

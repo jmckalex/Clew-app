@@ -595,6 +595,13 @@ except where the selection touches a construct. The durable design is
   Block reuse `shared/format-spec.js`), and `<clew-selection-bubble>`.
   `editor/toggle-wrap.js` unwraps from a bare cursor inside a construct.
   Plugin API 2: `clew.toolbar.addButton`.
+- **Tables are edited in place** (live edit §5.5a): the active cell is note
+  state (`live/active-cell.js`, pinned concealed by the reveal rule), and a
+  nested cell editor (`live/table-cell-editor.js`) mounted in its `<td>`
+  forwards every keystroke to the note — one document, one undo history; the
+  widget's `updateDOM` never touches that cell, and leaving reflows once. The
+  note editor's theme rules reach nested editors (descendant selectors) —
+  override them for anything mounted inside it.
 - Settings: `defaultEditMode`, `liveReveal`, `liveRender{Math,Fences,Embeds}`,
   `liveFrameCap`, `editorToolbar(+Prev)`, `editorToolbarGroups`,
   `selectionBubble`; `newTabMode` accepts `live`. Documents over 500 KB

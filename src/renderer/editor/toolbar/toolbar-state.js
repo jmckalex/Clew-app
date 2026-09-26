@@ -26,7 +26,7 @@ const INLINE = {
  * @param {object[]} model - liveModel(state)
  * @param {{ mode?: string, normalSyntax?: boolean }} [options]
  */
-export function deriveState(state, model, { mode = 'source', normalSyntax = false } = {}) {
+export function deriveState(state, model, { mode = 'source', normalSyntax = false, inCell = false } = {}) {
 	const { from, to, head } = state.selection.main;
 	const line = state.doc.lineAt(head);
 	const contains = (c) => c.from <= from && c.to >= to;
@@ -65,6 +65,8 @@ export function deriveState(state, model, { mode = 'source', normalSyntax = fals
 		inList: Boolean(list),
 		listDepth: list?.depth ?? 0,
 		inTable: blockType === 'table',
+		// A table cell is being edited in place (docs/dev/live-edit.md §5.5c).
+		inCell,
 		selectionEmpty: from === to,
 		multiLine: state.doc.lineAt(from).number !== state.doc.lineAt(to).number,
 	};

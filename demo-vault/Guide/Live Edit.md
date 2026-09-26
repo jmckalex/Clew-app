@@ -60,9 +60,18 @@ Term:: a description-list term is set in bold.
 
 | Construct | In live edit | Try |
 | :--- | :---: | ---: |
-| *table* | a real table | click a cell |
+| *table* | a real table | click a cell and type |
 | `$$…$$` | typeset | click it |
 | mermaid | drawn by the engine | click the strip above it |
+
+A table stays a table while you edit it: click a cell and type, *Tab* and
+*Enter* walk the cells (and add a row at the end), right-click for rows,
+columns and alignment, *Esc* for the source. Practise here:
+
+| Fruit | Colour | Count |
+| --- | --- | --- |
+| apple | red | 3 |
+| pear | green | 5 |
 
 $$
 \newcommand{\half}{\tfrac{1}{2}}

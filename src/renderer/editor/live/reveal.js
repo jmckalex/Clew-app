@@ -52,10 +52,12 @@ export function revealed(construct, ranges, mode = 'construct') {
  * @param {object[]} model - liveModel(state)
  * @param {readonly {from: number, to: number}[]} ranges
  * @param {'construct'|'line'} [mode]
+ * @param {string|null} [pinned] - a construct id never revealed (a table
+ *   whose cell is being edited in place stays drawn)
  * @returns {{ ids: Set<string>, signature: string }}
  */
-export function revealSet(model, ranges, mode = 'construct') {
+export function revealSet(model, ranges, mode = 'construct', pinned = null) {
 	const ids = new Set();
-	for (const c of model) if (revealed(c, ranges, mode)) ids.add(c.id);
+	for (const c of model) if (c.id !== pinned && revealed(c, ranges, mode)) ids.add(c.id);
 	return { ids, signature: [...ids].join(' ') };
 }

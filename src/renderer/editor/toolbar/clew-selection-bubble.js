@@ -23,6 +23,7 @@ import { settingsStore } from '../../state/settings-store.js';
 import { vaultSettingsStore } from '../../state/vault-settings-store.js';
 import { liveModel } from '../live/model.js';
 import { deriveState } from './toolbar-state.js';
+import { activeCellOf } from '../live/active-cell.js';
 import { TOOLBAR_GROUPS, BUBBLE_GROUPS, BUBBLE_EXTRA, labelOf } from './toolbar-spec.js';
 import { openPopover, popoverOpen } from './popover.js';
 import { buildPopover } from './popovers.js';
@@ -93,7 +94,9 @@ class ClewSelectionBubble extends HTMLElement {
 		if (settingsStore.get('selectionBubble') === false || popoverOpen()) return;
 		const tab = workspaceStore.activeTab();
 		const view = editorPool.get(tab?.id)?.view;
-		if (!view || tab.view.mode === 'reading' || !view.hasFocus) { this.hide(); return; }
+		// A table cell being edited in place has the toolbar's text styles and
+		// no room above it for a bubble; the bubble stays out of cells.
+		if (!view || tab.view.mode === 'reading' || !view.hasFocus || activeCellOf(view.state)) { this.hide(); return; }
 		const sel = view.state.selection.main;
 		if (sel.empty) { this.hide(); return; }
 		const start = view.coordsAtPos(sel.from);

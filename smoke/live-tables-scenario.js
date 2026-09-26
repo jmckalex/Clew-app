@@ -7,11 +7,12 @@
 // <strong>), `math-cell=svg`, `link-cell="a link"`, `code-cell=code`;
 // `images=3 loaded=3` — the sized wikilink (`width=120`), the markdown path,
 // the inline one; `remote-chip=true`, `missing-chip="Image not found: nowhere.png"`.
-// Then REAL input: click the cell holding `two` → `revealed=table
-// cursor-line="| two | ..."`; Tab → `after-tab cell="[[Blocks\|a link"`
-// (the table keymap walks to the next cell; the 16 characters after the
-// cursor are shown). The fixture escapes the pipe inside the wikilink, as a
-// GFM table requires — a bare one splits the cell, in Obsidian too.
+// Then REAL input: click the cell holding `two` → it is edited IN PLACE
+// (`in-place=true active=2,0 cursor-line="| two | ..."` — the table stays
+// drawn; live-table-edit-scenario.js covers editing in depth); Tab →
+// `after-tab active=2,1 cell="[[Blocks\|a link]]"` (the note's text of the
+// cell now being edited). The fixture escapes the pipe inside the wikilink,
+// as a GFM table requires — a bare one splits the cell, in Obsidian too.
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const { workspaceStore, editorPool } = window.__clew;
 const log = (s) => console.log('smoke-lt: ' + s);
@@ -46,8 +47,10 @@ window.__clewSmokeInput = [
 	{ wait: 800 },
 ];
 const cursorLine = () => view.state.doc.lineAt(view.state.selection.main.head).text;
-setTimeout(() => log(`revealed=${q('.le-table') ? 'widget' : 'table'} cursor-line=${JSON.stringify(cursorLine())}`), 600);
+const activeCell = () => { const a = q('[data-le-active]'); return a ? `${a.dataset.leRow},${a.dataset.leCol}` : 'none'; };
+setTimeout(() => log(`in-place=${Boolean(q('.le-table') && q('.le-cell-editor'))} active=${activeCell()} cursor-line=${JSON.stringify(cursorLine())}`), 600);
 setTimeout(() => {
 	const head = view.state.selection.main;
-	log(`after-tab cell=${JSON.stringify(view.state.sliceDoc(head.from, head.to) || cursorLine().slice(head.head - view.state.doc.lineAt(head.head).from, head.head - view.state.doc.lineAt(head.head).from + 16))}`);
+	const cell = window.__clew.activeCellView(view)?.state.doc.toString();
+	log(`after-tab active=${activeCell()} cell=${JSON.stringify(cell)}`);
 }, 1500);

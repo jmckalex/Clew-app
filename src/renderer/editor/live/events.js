@@ -25,6 +25,8 @@ import { openExternal } from '../../lib/external-links.js';
 import { runCommand } from '../../commands/registry.js';
 import { setCalloutFold, calloutFolded } from './block-field.js';
 import { liveStateField } from './reveal-field.js';
+import { activateCell } from './table-cell-editor.js';
+import { openTableMenu } from '../toolbar/popovers.js';
 
 const TARGETS = '[data-le-cell],[data-le-task],[data-le-fold],[data-le-copy],[data-le-goto],[data-le-command],[data-le-href],[data-le-target],[data-le-tag],[data-le-ref],[data-le-blockid],.le-reveal-on-click';
 
@@ -42,17 +44,23 @@ export const liveEvents = Prec.high(EditorView.domEventHandlers({
 		const el = event.target.closest?.(TARGETS);
 		if (!el || !view.contentDOM.contains(el)) return false;
 		const revealOnly = el.classList.contains('le-reveal-on-click');
+		if (el.dataset.leCell !== undefined) {
+			event.preventDefault();
+			const wrap = el.closest('.le-table-wrap');
+			if (wrap.dataset.editable === 'true' && !event.altKey) {
+				// Edit this cell in place (§5.5c): the table stays drawn.
+				editCell(view, el);
+				return true;
+			}
+			// ⌥-click, or a table edited as source: the cursor to that cell's
+			// text, which reveals the table (the widget sits at its first line).
+			placeCursor(view, view.posAtDOM(wrap) + Number(el.dataset.leCell));
+			return true;
+		}
 		// ⌥-click edits: CodeMirror places the cursor, the construct reveals.
 		if (event.altKey && !revealOnly) return false;
 		event.preventDefault();
 
-		if (el.dataset.leCell !== undefined) {
-			// A table cell: the cursor to that cell's text, which reveals the
-			// table as source (the widget sits at the table's first line).
-			const table = el.closest('.le-table-wrap');
-			placeCursor(view, view.posAtDOM(table) + Number(el.dataset.leCell));
-			return true;
-		}
 		if (el.dataset.leTask) {
 			// The checkbox replaces `[ ]` / `[x]`: flip that one character.
 			const pos = view.posAtDOM(el);
@@ -122,4 +130,26 @@ export const liveEvents = Prec.high(EditorView.domEventHandlers({
 		placeCursor(view, view.posAtDOM(el));
 		return true;
 	},
+
+	// Right-click on a table cell: the table menu (rows, columns, alignment).
+	contextmenu(event, view) {
+		const td = event.target.closest?.('.le-table-wrap [data-le-cell]');
+		if (!td || !view.contentDOM.contains(td)) return false;
+		const wrap = td.closest('.le-table-wrap');
+		if (wrap.dataset.editable !== 'true') return false;
+		event.preventDefault();
+		if (td.dataset.leActive === undefined) editCell(view, td);
+		openTableMenu(event.clientX, event.clientY);
+		return true;
+	},
 }));
+
+/** Make a rendered cell the one being edited. */
+function editCell(view, td) {
+	const wrap = td.closest('.le-table-wrap');
+	const doc = view.state.doc;
+	const first = doc.lineAt(view.posAtDOM(wrap)).number;
+	const rows = wrap.querySelectorAll('tr').length;
+	// The table's lines: its rows plus the delimiter line.
+	activateCell(view, first, first + rows, Number(td.dataset.leRow), Number(td.dataset.leCol), 'end');
+}

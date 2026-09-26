@@ -17,7 +17,9 @@ import { prettifyChord } from '../../commands/builtin.js';
 import { FORMAT_MENU } from '../../../shared/format-spec.js';
 import { CALLOUT_TYPES, calloutIcon } from '../../../engine/callouts.js';
 import { fenceLanguage } from '../langs/fence-languages.js';
-import { menuItem, menuSeparator, menuHeading } from './popover.js';
+import { menuItem, menuSeparator, menuHeading, openPopover } from './popover.js';
+import { TABLE_ITEMS, TABLE_MENU_EXTRA } from './toolbar-spec.js';
+import { icon } from '../../lib/icons.js';
 
 const chordFor = (id) => {
 	for (const [chord, mapped] of effectiveKeymap()) if (mapped === id) return prettifyChord(chord);
@@ -199,4 +201,29 @@ const BUILDERS = {
 /** Build a popover's content. */
 export function buildPopover(kind, close, state) {
 	return BUILDERS[kind]?.(close, state) ?? list([menuHeading(`No ${kind} popover`)]);
+}
+
+/**
+ * The right-click menu on a table cell, at the pointer: the toolbar's
+ * table tools plus moving rows and columns.
+ */
+export function openTableMenu(x, y) {
+	const anchor = document.createElement('div');
+	anchor.style.cssText = `position:fixed;left:${x}px;top:${y}px;width:1px;height:1px`;
+	document.body.append(anchor);
+	openPopover({
+		anchor,
+		className: 'table-menu',
+		focusFirst: false,
+		onClose: () => anchor.remove(),
+		build: (close) => list([
+			...TABLE_ITEMS.filter((item) => item.command !== 'editor:table-source' && item.command !== 'editor:format-table')
+				.map((item) => menuItem(item.label, run(close, item.command), { icon: icon(item.icon), chord: chordFor(item.command) })),
+			menuSeparator(),
+			...TABLE_MENU_EXTRA.map((item) => menuItem(item.label, run(close, item.command), { chord: chordFor(item.command) })),
+			menuSeparator(),
+			menuItem('Format table', run(close, 'editor:format-table'), { chord: chordFor('editor:format-table') }),
+			menuItem('Edit table as source', run(close, 'editor:table-source')),
+		]),
+	});
 }

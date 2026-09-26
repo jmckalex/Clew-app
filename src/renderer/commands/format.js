@@ -19,15 +19,35 @@ import { toggleWrapSpec } from '../editor/toggle-wrap.js';
 import { vaultSettingsStore } from '../state/vault-settings-store.js';
 import { saveAndInsert } from '../editor/attachments.js';
 import { CALLOUT_TYPES } from '../../engine/callouts.js';
+import {
+	activeCellView, applyStructure, leaveCell, tableTarget, activateCell, rowIndex,
+} from '../editor/live/table-cell-editor.js';
+import { activeCellOf } from '../editor/live/active-cell.js';
+import { cellAt } from '../editor/live/table-cell-model.js';
+import {
+	insertRow, deleteRow, insertColumn, deleteColumn, moveRow, moveColumn, setAlignment,
+} from '../editor/tables.js';
+import { notice } from '../plugins.js';
 import { registerCommand, buildContext } from './registry.js';
 import { editorPool } from '../editor/pool.js';
 
 export const needsEditor = (ctx) =>
 	ctx.notePath !== null && ctx.activeTab?.view?.mode !== 'reading';
 
-export function activeEditorView() {
+/** The active tab's NOTE editor (the pooled view). */
+export function activeMainView() {
 	const ctx = buildContext();
 	return editorPool.get(ctx.activeTab?.id)?.view ?? null;
+}
+
+/**
+ * The editor a formatting command acts on: the table cell being edited in
+ * place when there is one (its changes forward to the note like typing),
+ * else the note's editor. Plugins' commands inherit the routing.
+ */
+export function activeEditorView() {
+	const main = activeMainView();
+	return activeCellView(main) ?? main;
 }
 
 // ---- inline helpers --------------------------------------------------------
@@ -229,6 +249,68 @@ function insertTableRow(view) {
 	view.focus();
 }
 
+/** What a table cell being edited in place accepts: inline formatting. */
+const CELL_SAFE = new Set([
+	'edit:format-strong', 'edit:format-intense', 'edit:format-italic', 'format:underline',
+	'edit:format-highlight', 'edit:format-strike', 'format:subscript', 'format:superscript',
+	'edit:format-code', 'edit:format-math', 'edit:insert-wikilink', 'format:insert-link',
+	'format:footnote', 'format:citation', 'format:label', 'format:reference', 'format:today',
+]);
+
+/** Focus what was being edited: the cell editor, or the note. */
+function refocus(main) {
+	(activeCellView(main) ?? main).focus();
+}
+
+/**
+ * A structural table operation on the table under the active cell or the
+ * cursor (tables.js does the work; table-cell-editor.js#applyStructure
+ * writes it and lands in the right cell). Rows are LOGICAL (header 0).
+ */
+function tableOp(view, op) {
+	const t = tableTarget(view);
+	if (!t) return false;
+	const rows = t.ranges.rows.length;
+	const { row, col } = t;
+	const at = (table, r) => rowIndex(table, r);
+	const ops = {
+		'row-above': [(tb) => insertRow(tb, row === 0 ? tb.delimiterRow + 1 : at(tb, row)), () => ({ row: Math.max(1, row), col })],
+		'row-below': [(tb) => insertRow(tb, row === 0 ? tb.delimiterRow + 1 : at(tb, row) + 1), () => ({ row: row + 1, col })],
+		'delete-row': [(tb) => (row === 0 ? tb : deleteRow(tb, at(tb, row))), () => ({ row: Math.min(row, rows - 2), col })],
+		'col-left': [(tb) => insertColumn(tb, col), () => ({ row, col })],
+		'col-right': [(tb) => insertColumn(tb, col + 1), () => ({ row, col: col + 1 })],
+		'delete-col': [(tb) => deleteColumn(tb, col), () => ({ row, col: Math.max(0, col - 1) })],
+		'row-up': [(tb) => (row < 2 ? tb : moveRow(tb, at(tb, row), at(tb, row - 1))), () => ({ row: row - 1, col })],
+		'row-down': [(tb) => (row < 1 || row >= rows - 1 ? tb : moveRow(tb, at(tb, row), at(tb, row + 1))), () => ({ row: row + 1, col })],
+		'col-move-left': [(tb) => moveColumn(tb, col, col - 1), () => ({ row, col: col - 1 })],
+		'col-move-right': [(tb) => moveColumn(tb, col, col + 1), () => ({ row, col: col + 1 })],
+		'align-left': [(tb) => setAlignment(tb, col, 'left'), () => ({ row, col })],
+		'align-center': [(tb) => setAlignment(tb, col, 'center'), () => ({ row, col })],
+		'align-right': [(tb) => setAlignment(tb, col, 'right'), () => ({ row, col })],
+		'align-none': [(tb) => setAlignment(tb, col, null), () => ({ row, col })],
+		// A reflow that keeps the cell: format the table in place.
+		format: [(tb) => ({ ...tb }), () => ({ row, col })],
+	};
+	const [fn, to] = ops[op];
+	return applyStructure(view, fn, to);
+}
+
+/** Reflow the table of the cell being edited in place, and keep editing it. */
+export function formatTableKeepingCell(view) {
+	return Boolean(activeCellOf(view.state)) && tableOp(view, 'format');
+}
+
+/** Live edit, cursor in a table's source: edit the cell under it in place. */
+function editCellAtCursor(view) {
+	if (activeCellOf(view.state)) return;
+	const t = tableTarget(view);
+	if (!t) { notice('Put the cursor in a table first'); return; }
+	const pos = view.state.selection.main.head;
+	const cell = cellAt(t.ranges, pos) ?? { row: t.row, col: t.col };
+	const range = t.ranges.rows[cell.row][cell.col];
+	activateCell(view, t.first, t.last, cell.row, cell.col, Math.max(0, pos - range.from));
+}
+
 /** `[text](url)` at the selection; the text is the selection when none given. */
 function insertLink(view, url, text) {
 	const range = view.state.selection.main;
@@ -307,10 +389,19 @@ function toggleTask(view) {
 // ---- the commands ----------------------------------------------------------
 
 export function registerFormatCommands() {
-	const run = (fn) => (ctx, args) => {
+	const run = (fn, id) => (ctx, args) => {
 		const view = activeEditorView();
-		if (view) fn(view, args ?? {});
+		if (!view) return;
+		// Inside a table cell only inline formatting makes sense: a heading
+		// or a list in a cell is not a thing GFM can hold.
+		if (view !== activeMainView() && !CELL_SAFE.has(id)) {
+			notice('Not inside a table cell — press Esc to edit the table as source');
+			return;
+		}
+		fn(view, args ?? {});
 	};
+	// Commands that act on the NOTE's editor and the table as a whole.
+	const main = (fn) => () => { const view = activeMainView(); if (view) fn(view); };
 	const commands = [
 		// Inline styles (legacy edit:* ids kept for existing rebindings).
 		// Under the vault's normalSyntax the same commands write standard
@@ -357,7 +448,8 @@ export function registerFormatCommands() {
 		{ id: 'format:table-2', name: 'Insert table (2×2)', fn: (v) => insertTable(v, 2, 2) },
 		{ id: 'format:table-3', name: 'Insert table (3×3)', fn: (v) => insertTable(v, 3, 3) },
 		{ id: 'format:table-4', name: 'Insert table (4 rows × 3 columns)', fn: (v) => insertTable(v, 4, 3) },
-		{ id: 'format:table-row', name: 'Insert table row below', fn: (v) => insertTableRow(v) },
+		{ id: 'format:table-row', name: 'Insert table row below',
+			main: (v) => tableOp(v, 'row-below') || insertTableRow(v) },
 
 		// Insert.
 		{ id: 'edit:insert-wikilink', name: 'Insert wikilink', hotkeys: ['Mod-k'], fn: (v) => insertWikilink(v) },
@@ -403,8 +495,8 @@ export function registerFormatCommands() {
 			fn: (v) => wrapContainer(v, ':::name', ':::', 'Content') },
 		// Live edit's toolbar (docs/dev/live-edit.md §6.2); every one
 		// works in source mode too. Args come from the toolbar's popovers.
-		{ id: 'edit:undo', name: 'Undo', fn: (v) => { undo(v); v.focus(); } },
-		{ id: 'edit:redo', name: 'Redo', fn: (v) => { redo(v); v.focus(); } },
+		{ id: 'edit:undo', name: 'Undo', main: (v) => { undo(v); refocus(v); } },
+		{ id: 'edit:redo', name: 'Redo', main: (v) => { redo(v); refocus(v); } },
 		{ id: 'format:insert-link', name: 'Insert link ([text](url))',
 			fn: (v, { url = '', text } = {}) => insertLink(v, url, text) },
 		{ id: 'format:insert-attachment', name: 'Insert attachment…', fn: (v) => pickAttachment(v) },
@@ -424,13 +516,30 @@ export function registerFormatCommands() {
 			fn: (v, { kind = 'mermaid', show = '' } = {}) => insertFigure(v, kind, show) },
 		{ id: 'format:env', name: 'Insert environment…',
 			fn: (v, { name = 'theorem' } = {}) => wrapEnvironment(v, name) },
+		// Tables, whole (docs/dev/live-edit.md §5.5c): in a cell being edited
+		// in place, or with the cursor in a table's source.
+		{ id: 'format:table-row-above', name: 'Table: insert row above', main: (v) => tableOp(v, 'row-above') },
+		{ id: 'format:table-delete-row', name: 'Table: delete row', main: (v) => tableOp(v, 'delete-row') },
+		{ id: 'format:table-col-left', name: 'Table: insert column left', main: (v) => tableOp(v, 'col-left') },
+		{ id: 'format:table-col-right', name: 'Table: insert column right', main: (v) => tableOp(v, 'col-right') },
+		{ id: 'format:table-delete-col', name: 'Table: delete column', main: (v) => tableOp(v, 'delete-col') },
+		{ id: 'format:table-move-row-up', name: 'Table: move row up', main: (v) => tableOp(v, 'row-up') },
+		{ id: 'format:table-move-row-down', name: 'Table: move row down', main: (v) => tableOp(v, 'row-down') },
+		{ id: 'format:table-move-col-left', name: 'Table: move column left', main: (v) => tableOp(v, 'col-move-left') },
+		{ id: 'format:table-move-col-right', name: 'Table: move column right', main: (v) => tableOp(v, 'col-move-right') },
+		...['left', 'center', 'right', 'none'].map((align) => ({
+			id: `format:table-align-${align}`, name: `Table: align column ${align === 'none' ? '(default)' : align}`,
+			main: (v) => tableOp(v, `align-${align}`),
+		})),
+		{ id: 'editor:table-source', name: 'Table: edit as source', main: (v) => leaveCell(v) },
+		{ id: 'editor:table-edit-cell', name: 'Table: edit the cell in place', main: (v) => editCellAtCursor(v) },
 		// Lists (live edit's toolbar; they work in source mode too).
 		{ id: 'format:indent', name: 'Indent list item / lines', fn: (v) => indentMore(v) },
 		{ id: 'format:outdent', name: 'Outdent list item / lines', fn: (v) => indentLess(v) },
 		{ id: 'editor:toggle-task', name: 'Toggle task checkbox', hotkeys: ['Mod-Enter'], fn: (v) => toggleTask(v) },
 	];
 
-	for (const { id, name, hotkeys, fn } of commands) {
-		registerCommand({ id, name, hotkeys, when: needsEditor, run: run(fn) });
+	for (const { id, name, hotkeys, fn, main: onMain } of commands) {
+		registerCommand({ id, name, hotkeys, when: needsEditor, run: onMain ? main(onMain) : run(fn, id) });
 	}
 }

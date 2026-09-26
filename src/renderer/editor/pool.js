@@ -23,6 +23,8 @@ import { noteMarkdown } from './jmd/markdown-config.js';
 import { vaultSettingsStore } from '../state/vault-settings-store.js';
 import { settingsStore } from '../state/settings-store.js';
 import { liveCompartment, liveEdit } from './live/index.js';
+import { destroyCellEditor } from './live/table-cell-editor.js';
+import { minimalChange } from './minimal-change.js';
 import { readLiveConfig } from './live/config.js';
 
 /** Live edit refuses documents above this size (plan §9); source mode
@@ -247,11 +249,10 @@ class EditorPool extends Emitter {
 
 	#reload(tabId, entry, content) {
 		const { view } = entry;
-		const selection = view.state.selection;
-		view.dispatch({
-			changes: { from: 0, to: view.state.doc.length, insert: content },
-			selection: selection.main.anchor <= content.length ? selection : undefined,
-		});
+		// The smallest change, not a wholesale replace: the cursor, and a
+		// table cell being edited in place, map through it and survive.
+		const change = minimalChange(view.state.doc.toString(), content);
+		if (change) view.dispatch({ changes: change });
 		entry.lastWrittenText = content;
 		entry.save.cancel();
 		this.#setDirty(tabId, false);
@@ -302,6 +303,7 @@ class EditorPool extends Emitter {
 		entry.save.flush();
 		entry.save.cancel();
 		this.#cacheState(entry);
+		if (entry.view) destroyCellEditor(entry.view);
 		entry.view?.destroy();
 		this.#entries.delete(tabId);
 	}

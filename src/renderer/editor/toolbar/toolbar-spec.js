@@ -28,6 +28,34 @@ export const BLOCK_LABELS = {
 
 export const blockLabel = (s) => (s.blockType === 'env' ? `Env: ${s.envName ?? '…'}` : BLOCK_LABELS[s.blockType] ?? 'Paragraph');
 
+/**
+ * The table's own tools (docs/dev/live-edit.md §5.5c): the toolbar's Table
+ * group while the cursor or a cell being edited is in a table, and the
+ * right-click menu on a cell — one list, so the two offer the same things.
+ */
+export const TABLE_ITEMS = [
+	{ kind: 'button', icon: 'row-above', label: 'Insert row above', command: 'format:table-row-above' },
+	{ kind: 'button', icon: 'row-below', label: 'Insert row below', command: 'format:table-row' },
+	{ kind: 'button', icon: 'row-delete', label: 'Delete row', command: 'format:table-delete-row' },
+	{ kind: 'button', icon: 'col-left', label: 'Insert column left', command: 'format:table-col-left' },
+	{ kind: 'button', icon: 'col-right', label: 'Insert column right', command: 'format:table-col-right' },
+	{ kind: 'button', icon: 'col-delete', label: 'Delete column', command: 'format:table-delete-col' },
+	{ kind: 'button', icon: 'align-left', label: 'Align column left', command: 'format:table-align-left' },
+	{ kind: 'button', icon: 'align-center', label: 'Align column centre', command: 'format:table-align-center' },
+	{ kind: 'button', icon: 'align-right', label: 'Align column right', command: 'format:table-align-right' },
+	{ kind: 'button', icon: 'format', label: 'Format table', command: 'editor:format-table' },
+	{ kind: 'button', icon: 'code', label: 'Edit table as source', command: 'editor:table-source', when: (s) => s.inCell },
+];
+
+/** The table menu's extra rows (the toolbar keeps these in its overflow). */
+export const TABLE_MENU_EXTRA = [
+	{ label: 'Move row up', command: 'format:table-move-row-up' },
+	{ label: 'Move row down', command: 'format:table-move-row-down' },
+	{ label: 'Move column left', command: 'format:table-move-col-left' },
+	{ label: 'Move column right', command: 'format:table-move-col-right' },
+	{ label: 'Column alignment: default', command: 'format:table-align-none' },
+];
+
 /** Items: { kind: 'button'|'toggle'|'dropdown'|'segmented', … }. */
 export const TOOLBAR_GROUPS = [
 	{ id: 'history', label: 'History', priority: 10, items: [
@@ -79,8 +107,7 @@ export const TOOLBAR_GROUPS = [
 		{ kind: 'dropdown', icon: 'box', label: 'Block…', popover: 'block' },
 	] },
 	{ id: 'table-tools', label: 'Table', priority: 60, when: (s) => s.inTable, items: [
-		{ kind: 'button', icon: 'row-below', label: 'Insert row below', command: 'format:table-row' },
-		{ kind: 'button', icon: 'format', label: 'Format table', command: 'editor:format-table' },
+		...TABLE_ITEMS,
 	] },
 	{ id: 'mode', label: 'Mode', priority: Infinity, align: 'end', items: [
 		{ kind: 'segmented', id: 'view-mode', label: 'View mode', options: [

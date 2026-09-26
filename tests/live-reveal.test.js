@@ -103,3 +103,10 @@ test('revealSet: the ids touched, and a signature that only changes when they do
 	assert.ok(c.ids.has(find('strong').id));
 	assert.notEqual(c.signature, a.signature);
 });
+
+test('a pinned construct is never revealed (a table with a cell being edited in place)', () => {
+	const math = find('math');
+	const touching = at(pos('E'));
+	assert.ok(revealSet(model, touching).ids.has(math.id));
+	assert.ok(!revealSet(model, touching, 'construct', math.id).ids.has(math.id));
+});

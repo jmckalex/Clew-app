@@ -21,6 +21,7 @@ import { settingsStore } from '../../state/settings-store.js';
 import { vaultSettingsStore } from '../../state/vault-settings-store.js';
 import { liveModel } from '../../editor/live/model.js';
 import { deriveState } from '../../editor/toolbar/toolbar-state.js';
+import { activeCellOf } from '../../editor/live/active-cell.js';
 import '../../editor/toolbar/clew-editor-toolbar.js';
 
 /** Is the formatting bar shown in this mode, under the setting? */
@@ -142,7 +143,9 @@ class ClewEditorView extends ClewElement {
 			if (!this.#toolbar || !entry?.view || !tab) return;
 			const normalSyntax = vaultSettingsStore.get('normalSyntax') === true;
 			const model = liveModel(entry.view.state, { normalSyntax });
-			this.#toolbar.setState(deriveState(entry.view.state, model, { mode: tab.view.mode, normalSyntax }));
+			this.#toolbar.setState(deriveState(entry.view.state, model, {
+				mode: tab.view.mode, normalSyntax, inCell: Boolean(activeCellOf(entry.view.state)),
+			}));
 		});
 	}
 

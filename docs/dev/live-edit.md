@@ -534,16 +534,96 @@ Nested lists inside quotes/callouts compose (the line classes stack).
 | `![[Note]]` `![[Note#H]]` `![[Note#^id]]` `![[x.pdf]]` `![[x.docx]]` `![[x.canvas]]` `![[x.excalidraw]]` `![[x.mp4]]` `![[x.base#View]]` alone on a line | Tier C frame | source | — |
 | kanban board note (frontmatter `kanban-plugin`) | a top banner "This note is a Kanban board — boards render in reading mode"; otherwise Tier A only | — | banner button → reading mode |
 
-#### 5.5a TableWidget
+#### 5.5a Tables — drawn, and edited in place
 
-Built from the lezer `Table` node: `TableHeader`/`TableRow`/`TableCell`
-ranges; alignment from the `TableDelimiter` row via `tables.js#splitRow`
-(export an `alignmentOf(delimiterRowText)` from tables.js). Cells rendered
-with `renderInline`. `eq()` compares the table's source text. Column widths
-are the browser's. Click a cell → `view.dispatch({selection:{anchor:
-cell.from}})` → the block reveals as source; the existing `tableKeymap`
-takes over (Tab/Enter). A table with a trailing `^block-id` line keeps the
-badge below the widget.
+A table is drawn as a `<table>` (`widgets/table.js`): alignment from the
+delimiter row (`tables.js#alignmentOf`), each cell's inline markdown through
+`inline-dom.js`. It stays drawn WHILE YOU TYPE IN IT — designed by the
+planning session (the design text is the source of this section) and built
+as follows; the one sentence: the cell being edited holds a small nested
+CodeMirror view whose document is a projection of that cell's text in the
+note, and every keystroke lands in the pooled EditorView's document, which
+stays the only model and the only undo history.
+
+- **Cells come from the TEXT** (`live/table-cell-model.js#cellRanges`:
+  unescaped pipes, padding trimmed; an empty cell is the empty range after
+  its first space), not from lezer's `TableCell` — lezer emits no node for
+  an empty cell, and an empty cell must be editable. Rows are logical
+  (header 0, the delimiter line skipped). Pure and tested
+  (`tests/table-cell.test.js`), with `cellAt`, `neighbour` (wrap across
+  rows; `{edge}` leaving the table), `escapeCellText`, `forwardChanges`
+  and `isExtendedTable`.
+- **The active cell** is note state (`live/active-cell.js`):
+  `{row, col, from, to, tableFrom}`, mapped through every change (a change
+  that swallows the cell's edges clears it). `revealSet(…, pinned)` never
+  reveals the table holding it, so the table stays concealed although the
+  note's selection is inside its lines. The field must come BEFORE
+  `liveStateField` in the bundle — the reveal rule reads its new value.
+- **The widget only draws** and marks the active `<td>` (`data-le-active`,
+  left empty). Each keystroke changes the table's text, so CodeMirror hands
+  it a new widget per keystroke: `updateDOM` patches the changed cells in
+  place and never touches the active one. **Measured: CodeMirror does call
+  `updateDOM` here** — the cell editor is the same element across typing
+  (`same-node=true`), so the design's fallbacks (re-mount and refocus per
+  keystroke; a floating editor in a layer) were not needed.
+- **The cell editor** (`live/table-cell-editor.js`): one per note editor
+  (a WeakMap keyed by the note's view, destroyed with the tab), its state
+  REBUILT on each mount — it has no history of its own to keep. It carries
+  the note's grammar, highlighting, the dialect overlay, the live INLINE
+  layer (so `*x*` conceals in a cell), completions, closeBrackets, and the
+  cell keymap. A mounter ViewPlugin in the note puts it in the active `<td>`
+  after every layout. Its changes and selection are forwarded to the note
+  (`cellEdit` annotation, userEvent kept, so history groups typing as in
+  prose); any OTHER note change touching the cell (undo, a reload from disk)
+  is projected back (`cellSync`). A `transactionFilter` escapes on the way
+  in: a bare `|` → `\|` (not after a backslash), a newline → `<br>`.
+- **Measured: the note editor's theme reaches the cell editor.** CodeMirror
+  theme rules are descendant selectors under the note editor's theme class,
+  and the cell editor sits inside it — the note's `.cm-content` padding
+  (`… 40vh`) made a one-line cell ~40vh tall. live-edit.css wins the cell's
+  box back; `cell-height-ok` pins it.
+- **Keys** (cell keymap, highest precedence): Tab / Shift-Tab across cells
+  and rows, Tab past the last cell appends a row; Enter down a column,
+  appending at the bottom; Shift-Enter `<br>`; Escape leaves with the table
+  as source at the caret; arrows at a cell's edge move to the neighbour, and
+  out of the table at its top/bottom; ⌘Z / ⌘⇧Z / ⌘Y are the NOTE's
+  undo/redo.
+- **Leaving** (Escape, a click elsewhere, arrowing out, a search) reflows
+  that table ONCE (`formatTable`, one isolated undo step, nothing when
+  already aligned) — never per keystroke, so a one-cell edit is a one-row
+  diff until you leave. The reflow rewrites the lines wholesale, so a caret
+  that was in the cell is put back into the same cell after (measured: it
+  mapped to the table's edge).
+- **Structure** — pure helpers in tables.js beside `formatTable`:
+  `insertRow`, `deleteRow`, `insertColumn`, `deleteColumn`, `moveRow`,
+  `moveColumn`, `setAlignment`; registry commands `format:table-row-above`,
+  `format:table-row` (below), `format:table-delete-row`,
+  `format:table-col-left/right`, `format:table-delete-col`,
+  `format:table-move-row-up/down`, `format:table-move-col-left/right`,
+  `format:table-align-left/center/right/none`, `editor:table-source`,
+  `editor:table-edit-cell` (live edit only: the source-mode editor carries no
+  active-cell state); `editor:format-table` keeps the cell. They work on the
+  active cell or on the table under the cursor in source. Inserting "above
+  the header" lands below it; the header and the delimiter row are never
+  deleted or moved. Surfaces: the toolbar's Table group and a right-click
+  menu on a cell (`popovers.js#openTableMenu`), one item list
+  (`toolbar-spec.js#TABLE_ITEMS`). No default hotkeys beyond Tab/Enter.
+- **Formatting commands inside a cell** route to the cell editor
+  (`format.js#activeEditorView`); only inline ones are allowed there (a
+  heading in a cell is refused with a notice). The selection bubble stays out
+  of cells (the toolbar has the same styles).
+- **A reload from disk** is now the smallest change (`editor/minimal-change.js`,
+  used by `pool.js#reload`), so an edit made elsewhere maps through and a cell
+  being edited in place re-syncs instead of ending.
+- **Edited as source, refused by name** in a strip above the table: an
+  EXTENDED table (the engine's colspan `| a || b |`, rowspan cell ending in
+  `^`, widths `|---30%---|` — read from marked-extended-tables-headerless),
+  which `formatTable` would square away; and a table over 200 rows or 40
+  columns. Headerless tables have no lezer Table node and stay prose.
+- Clicking: a plain click edits the cell in place; ⌥-click reveals the source
+  at that cell (⌥ means "the source" everywhere in live edit).
+- Scenario: `smoke/live-table-edit-scenario.js` (ten steps, real input for
+  typing, undo, Tab, escaping, Escape).
 
 #### 5.5b ImageWidget
 
@@ -1270,10 +1350,10 @@ still prefer, and changing one is a small, local edit.
 | New tabs | open in source (`newTabMode`) | live, as Obsidian does |
 | `\|live` office embeds | a thumbnail in live edit | a pinned LibreOffice frame |
 | MathJax macros | one page-wide MathJax: macros leak across notes (documented) | a per-note InputJax |
-| Tables | rendered; edited as source on activation | in-place cell editing |
+| Tables | edited in place on a click; Esc, ⌥-click or "Edit as source" for the source; reflow once on leaving | reveal source on click; never reflow automatically |
 | Reading mode's bar | a slim bar with the mode switch | none |
 
-Follow-ons deliberately left out: slash commands; in-place table cells;
+Follow-ons deliberately left out: slash commands; table drag handles, multi-cell selection and pasting a grid into cells;
 multi-line footnote concealment; Meta Bind widgets in prose; plugin-declared
 rich fence names; persisting frame heights across reopenings; drag handles
 for blocks; a focus mode.

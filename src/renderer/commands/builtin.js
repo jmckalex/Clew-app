@@ -13,7 +13,7 @@
 import { registerCommand, buildContext, allCommands, isEnabled, effectiveKeymap } from './registry.js';
 import { openSearchPanel } from '@codemirror/search';
 import { deleteGroupForward } from '@codemirror/commands';
-import { registerFormatCommands, activeEditorView, needsEditor } from './format.js';
+import { registerFormatCommands, activeEditorView, activeMainView, formatTableKeepingCell, needsEditor } from './format.js';
 import { formatTableAtCursor } from '../editor/tables.js';
 import { fillAtCursor } from '../editor/fill.js';
 import { blockRefEdit, blockRefLink } from '../editor/block-ids.js';
@@ -126,8 +126,10 @@ export function registerBuiltinCommands() {
 			run: () => copyBlockReference() },
 		{ id: 'editor:format-table', name: 'Format table at cursor', when: needsEditor,
 			run: () => {
-				const view = activeEditorView();
-				if (view) formatTableAtCursor(view);
+				// The note's editor, not a cell being edited in place — a
+				// reflow is a whole-table change (and keeps editing the cell).
+				const view = activeMainView();
+				if (view && !formatTableKeepingCell(view)) formatTableAtCursor(view);
 			} },
 		{ id: 'editor:fill-paragraph', name: 'Fill paragraph (hard-wrap)', hotkeys: ['Alt-q'],
 			when: needsEditor,

@@ -22,7 +22,6 @@
 // edits nothing (calloutFoldField).
 import { StateField, StateEffect } from '@codemirror/state';
 import { EditorView, Decoration } from '@codemirror/view';
-import { syntaxTree } from '@codemirror/language';
 import { liveStateField } from './reveal-field.js';
 import { MathWidget } from './widgets/math.js';
 import { HrWidget, TocWidget, BannerWidget, PropertiesWidget } from './widgets/blocks.js';
@@ -34,6 +33,8 @@ import {
 } from './frames.js';
 import { inlineTokens } from './inline-dom.js';
 import { splitRow, alignmentOf } from '../tables.js';
+import { cellRanges, isExtendedTable, CELL_EDIT_LIMITS } from './table-cell-model.js';
+import { activeCellOf } from './active-cell.js';
 
 /** Toggle a foldable callout: `{ id, folded }`. */
 export const setCalloutFold = StateEffect.define();
@@ -150,32 +151,39 @@ export const blockField = StateField.define({
 	provide: (field) => EditorView.decorations.from(field, (value) => value.deco),
 });
 
-/** A table construct's widget, from the lezer rows and cells. */
+/**
+ * A table construct's widget. Cells come from the table's TEXT
+ * (live/table-cell-model.js#cellRanges — lezer has no node for an empty
+ * cell, and an empty cell must be editable); each cell's inline markdown is
+ * tokenised from the model. An extended table (colspan/rowspan/widths) or a
+ * very large one is drawn but edited as source (§5.5c).
+ */
 function tableWidget(state, c, model) {
 	const doc = state.doc;
-	const rows = [];
-	let delimiter = null;
-	syntaxTree(state).iterate({
-		from: c.from,
-		to: c.to,
-		enter(node) {
-			if (node.name === 'TableHeader' || node.name === 'TableRow') {
-				const cells = [];
-				for (let cell = node.node.firstChild; cell; cell = cell.nextSibling) {
-					if (cell.name !== 'TableCell') continue;
-					cells.push({ tokens: inlineTokens(doc, cell.from, cell.to, model), offset: cell.from - c.lineFrom });
-				}
-				rows.push({ header: node.name === 'TableHeader', cells });
-				return false;
-			}
-			if (node.name === 'TableDelimiter' && delimiter === null && doc.lineAt(node.from).number === doc.lineAt(c.from).number + 1) {
-				delimiter = doc.lineAt(node.from).text;
-			}
-			return node.name === 'Table' || node.name === 'Document';
-		},
+	const first = doc.lineAt(c.from).number;
+	const last = doc.lineAt(c.to).number;
+	const ranges = cellRanges(doc, first, last);
+	const rows = ranges.rows.map((row, r) => ({
+		header: r === 0,
+		cells: row.map((cell) => ({
+			tokens: inlineTokens(doc, cell.from, cell.to, model),
+			offset: cell.from - c.lineFrom,
+		})),
+	}));
+	const align = ranges.delimiterLine ? splitRow(doc.line(ranges.delimiterLine).text).map(alignmentOf) : [];
+	const lines = [];
+	for (let n = first; n <= last; n += 1) lines.push(doc.line(n).text);
+	const cols = Math.max(0, ...ranges.rows.map((r) => r.length));
+	const extended = isExtendedTable(lines);
+	const tooBig = ranges.rows.length > CELL_EDIT_LIMITS.rows || cols > CELL_EDIT_LIMITS.cols;
+	const cell = activeCellOf(state);
+	const active = cell && cell.from >= c.from && cell.to <= c.to ? { row: cell.row, col: cell.col } : null;
+	return new TableWidget(doc.sliceString(c.from, c.to), rows, align, {
+		editable: !extended && !tooBig && Boolean(ranges.delimiterLine),
+		reason: extended ? 'Extended table (merged cells or widths) — edited as source'
+			: tooBig ? `Large table (over ${CELL_EDIT_LIMITS.rows} rows or ${CELL_EDIT_LIMITS.cols} columns) — edited as source` : '',
+		active,
 	});
-	const align = delimiter ? splitRow(delimiter).map(alignmentOf) : [];
-	return new TableWidget(doc.sliceString(c.from, c.to), rows, align);
 }
 
 function hasFoldedCallouts(state) {

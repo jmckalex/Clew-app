@@ -115,6 +115,8 @@ officeDock.init();
 document.body.append(document.createElement('clew-selection-bubble'));
 
 window.__clew = { workspaceStore, vaultStore, vaultSettingsStore, editorPool, settingsStore, ipc, actions, officeDock };
+// Live edit's in-place table cells, for scenarios (smoke/live-table-edit-scenario.js).
+import('./editor/live/table-cell-editor.js').then((m) => { window.__clew.activeCellView = m.activeCellView; });
 import('./commands/registry.js').then((registry) => { window.__clew.registry = registry; });
 
 // ---- boot -----------------------------------------------------------------
