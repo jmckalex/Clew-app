@@ -394,6 +394,27 @@ bullet, numbered, task, hr, table, htmlBlock, escape, hardBreak, math (from
 blockId (from §4.2), paragraph. Scanner-derived kinds: the §4.1 table.
 Where both know a construct (math, footnotes) the tree wins and the scanner
 entry is dropped (positions are identical by construction — assert in dev).
+**As built (Phase 0): the SCANNER's record is used** — it carries the
+delimiters and parts the tree node lacks, and the grammar claims exactly the
+scanner's segments. HTML blocks likewise come from the scanner (its block
+list knows custom elements); the tree's `HTMLBlock` is ignored. The scanner's
+block constructs also mark OPAQUE ranges (frontmatter, Tier C blocks, math
+environments, `:::TeX`/`:::HTML`/`@begin(TeX)` bodies, HTML/script/style)
+inside which neither the tree nor the scanner's inline passes contribute.
+Every record carries `extents` and `lineExtents` — the ranges a selection
+must touch to reveal it — so the §4.5 rules are decided in the model and
+`revealed()` is a range test. Quote/callout/alignment markers are ONE
+construct PER LINE (`quote` carries `depth` and, inside a callout, its
+`callout` type); list items are one construct per item whose extent is the
+marker line. Kinds as built: heading strong intense italic underline
+highlight strike sub sup code escape hardBreak link autolink image
+wikilink embed embedChip tag cite footnote mustache toc math frontmatter
+directive environment directiveInline directiveAt richBlock html codeFence
+hr table quote callout align bullet numbered task blockId term.
+Measured (node, cold, 2026-09-26): 6.7 ms for the demo vault's largest note
+(Features/Diagrams.md, 12 KB, including its parse); on a 207 KB document the
+model's own work is 4.2 ms over a 23.6 ms parse and a 12.8 ms scan that the
+editor has already paid for the overlay.
 
 Alignment lines (`>> text <<`, `>> text`) are detected by regex on the
 line BEFORE the Blockquote nodes on that line are considered, and win.
@@ -515,7 +536,7 @@ prefer the latter).
 | `1. ` numbered | keep the number text, hide nothing; same hanging indent with `min-width` | — |
 | `- [ ]` / `- [x]` task | bullet hidden; `TaskMarker` replaced by **TaskWidget** (`<input type=checkbox>`), checked → line class `le-done` (muted, line-through the text) | click toggles: dispatch `[ ]`↔`[x]` at the marker (never rewrite anything else; goes through auto-save like any edit) |
 | `> ` quote | hide `QuoteMark`+space; line class `le-quote le-quote-<depth>` (left border `--clew-quote`, padding) | — |
-| `> [!type]±  Title` callout | first line replaced by **CalloutWidget** (block-level? No — it is one line: a line-level replace of the `> [!type]± ` marks with an inline widget: icon + `renderInline(title)`; empty title → the type's display name); every line of the quote gets `le-callout le-callout-<type>` (background/border/icon colour per type from `live-edit.css`, mirroring `engine/preview.css` and `callouts.js`'s table — **export `CALLOUT_TYPES` (canonical → {aliases, icon path, colour token}) from `src/engine/callouts.js`** so the editor, the toolbar popover and the engine share one table); `type` normalised through the aliases, unknown types render as `note` with the raw name as title (engine behaviour) | click on the chevron of a foldable (`+`/`-`) toggles the body fold: a `foldStateField` (per construct id, seeded from `-`/`+`) makes `blockField` replace the body lines with nothing (`Decoration.replace({block:true})` over `[secondLine.from, lastLine.to]`); folding does not edit the file (the `+`/`-` in the source is the *initial* state, as in reading mode) |
+| `> [!type]±  Title` callout | first line replaced by **CalloutWidget** (block-level? No — it is one line: a line-level replace of the `> [!type]± ` marks with an inline widget: icon + `renderInline(title)`; empty title → the type's display name); every line of the quote gets `le-callout le-callout-<type>` (background/border/icon colour per type from `live-edit.css`, mirroring `engine/preview.css` and `callouts.js`'s table — **export `CALLOUT_TYPES` (canonical → {aliases, icon path, colour token}) from `src/engine/callouts.js`** so the editor, the toolbar popover and the engine share one table); `type` normalised through the aliases; an unknown type is a plain quote (the engine's `calloutBlock` returns nothing for it and marked renders a blockquote — plan said "renders as note", measured otherwise in Phase 0) | click on the chevron of a foldable (`+`/`-`) toggles the body fold: a `foldStateField` (per construct id, seeded from `-`/`+`) makes `blockField` replace the body lines with nothing (`Decoration.replace({block:true})` over `[secondLine.from, lastLine.to]`); folding does not edit the file (the `+`/`-` in the source is the *initial* state, as in reading mode) |
 | admonition fences ```` ```ad-type ```` | Tier C (engine) | — |
 
 Nested lists inside quotes/callouts compose (the line classes stack).
@@ -530,7 +551,7 @@ Nested lists inside quotes/callouts compose (the line classes stack).
 | table | block **TableWidget** (§5.5a) | source, formatted by nothing (never rewrite on reveal) | click on a cell → cursor to that cell's source start |
 | image alone on a line (`![alt](src)`, `![[img.png\|320x60]]`) | block **ImageWidget** (§5.5b) | source | click → reveals; ⌥-click opens the file |
 | code fence | NEVER concealed body: `CodeText` stays source with fence-language highlighting; opener line replaced by **FenceHead** (language badge + copy button; `CodeInfo` text hidden), closer by **FenceFoot** (thin rule); lines get `le-fence` (mono, background) | opener/closer shown | copy button copies `CodeText` |
-| rich fences (`mermaid tikz latex tex metapost leaflet query tasks kanban dataview dataviewjs base ad-* meta-bind` + any language a plugin's engine surface registers — the list lives in `live/rich-fences.js`, imported by the toolbar too) | Tier C frame (§7) when `liveRenderFences`; else as code fence | source | — |
+| rich fences (`mermaid tikz latex tex metapost leaflet query tasks kanban dataview dataviewjs base ad-* meta-bind(-button/-embed/-js/-js-view)` + any language a plugin's engine surface registers — the list lives in `live/rich-fences.js`, imported by the toolbar too. Plugins do NOT declare fence names today (the Charts manifest has only `surfaces`); the model takes `richFences` as config, and how a plugin supplies it — a manifest `fences` key? — is Phase 5's question) | Tier C frame (§7) when `liveRenderFences`; else as code fence | source | — |
 | `:::name` … `:::` (generic: theorem, abstract, title-box, comment, HTML, custom) | opener line → **EnvHead** widget (`name` + attrs summary as a caption, left rule), closer → **EnvFoot**; body lines `le-env le-env-<name>` (left rule `--clew-accent`); `:::TeX` body additionally `le-tex-only` (dimmed, head says "LaTeX only"); `:::comment` dimmed; nesting via `data-depth` from colon count | source | — |
 | `@begin(name)`…`@end(name)` | same as above; `@begin(equation\|align\|…)` (the `MATH_ENVIRONMENT_NAMES`) → display MathWidget wrapping the body in `\begin{name}…\end{name}` | source | — |
 | `:::mermaid`, `:::TiKZ`, `@begin(TiKZ\|metapost\|mermaid\|reveal)`, `:::game`, `:::Mathematica`, `:::markdown-demo`, `@reveal[…]`, `@name+[…]` for a name the engine renders richly | Tier C frame | source | — |
