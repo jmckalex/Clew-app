@@ -60,10 +60,11 @@ test('headings: numbered only under Headings: numeric, h1 included', () => {
 	assert.equal(commandForDepth(1, { documentClass: 'book' }), 'chapter');
 });
 
-test('a plain label has no number; a footnote label takes the note’s; a label in a theorem its number', () => {
+test('a plain label has no number, nor a footnote label (as the engine behaves); a label in a theorem its number', () => {
 	const n = num('Loose @label[loose].\n\nA note[fn: see @label[fnl]] and another[fn: two].\n\n@begin(theorem)\nBody @label[inthm]\n@end(theorem)\n');
 	assert.equal(refDisplay(n, 'loose', 'ref').text, '??');
-	assert.equal(n.labels.get('fnl').number, '1');
+	assert.equal(refDisplay(n, 'fnl', 'ref').text, '??', 'measured: the engine prints ?? for a footnote label');
+	assert.match(refDisplay(n, 'fnl', 'ref').tip, /footnote/);
 	assert.equal(n.labels.get('inthm').number, '1');
 	assert.equal(n.labels.get('inthm').type, 'theorem');
 });

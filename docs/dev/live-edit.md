@@ -948,7 +948,10 @@ design's reading was right except where marked ◆):
   theorems (ONE counter over `.theorem-env`), equations (`div.equation`,
   from `@begin(equation)` only), custom `.jmd-env` per counter group; then
   `process_crossrefs`: a `.xref-label` takes its footnote's number
-  (`closest('[id^="footnote-"]')`), else the innermost
+  (`closest('[id^="footnote-"]')` — a branch that NEVER runs ◆: the
+  endnotes carry `id="fn-…"`, so a footnote label's reference prints `??`,
+  measured 2026-09-27 and mirrored, the crossref fixture asserting it; an
+  engine bug for upstream), else the innermost
   `[data-xref-number]`, else `prevAll('.xref')` — the heading's own number
   span, so only a label IN a numbered heading — else '' (a reference then
   prints `??`). A trailing '.' is stripped. Duplicate keys: the later wins.
@@ -964,6 +967,10 @@ design's reading was right except where marked ◆):
   book).
 - Clew's engine config sets `Header style: fenced`, so `Headings: numeric`
   must sit in `---` frontmatter.
+- A note with footnotes gets a generated `<h1>Endnotes</h1>`, which numeric
+  headings number too ◆ — at the end it shifts nothing; where `@endnotes`
+  places it mid-note, every later heading is one more in the export than
+  Clew shows (a known gap, not mirrored).
 
 **As built:**
 

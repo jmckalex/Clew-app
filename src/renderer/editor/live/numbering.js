@@ -22,9 +22,13 @@
 //   - `@begin(equation)` only — `$$…$$` and `\[…\]` are unnumbered;
 //   - environments a plugin declares numbered: a counter per group;
 //   - a label: `{#key}` / `{id=key}` on a numbered opener takes its number;
-//     `@label[key]` takes, in the post-processor's order, its footnote's
-//     number, else the innermost numbered construct's, else its heading's
-//     (numeric headings only), else NONE — and a reference to it prints `??`.
+//     `@label[key]` takes the innermost numbered construct's, else its
+//     heading's (numeric headings only), else NONE — and a reference to it
+//     prints `??`. A label in a FOOTNOTE gets none either: the
+//     post-processor's footnote branch looks for `[id^="footnote-"]`, but the
+//     engine's endnotes carry `id="fn-…"`, so the branch never runs and such
+//     a reference prints `??` (measured 2026-09-27; an engine bug, reported
+//     upstream, mirrored here until it is fixed there).
 //
 // Pure over the note's TEXT, so live edit, source-mode completion and the
 // hover preview share one pass; keyed by LINE (an environment's opener, a
@@ -228,7 +232,8 @@ function compute(text, numbered) {
 			const note = notes.filter((n) => n.at < col && !line.slice(n.at, col).includes(']')).pop();
 			const hostEnv = [...envs].reverse().find((e) => e.numbered);
 			let info;
-			if (note) info = { number: `${note.number}`, type: 'footnote', kind: 'footnote', title: '', status: 'ok' };
+			// The engine's own behaviour, not its intent: no number (see above).
+			if (note) info = { number: '', type: 'footnote', kind: 'footnote', title: '', status: 'numberless' };
 			else if (hostEnv) info = { number: hostEnv.number, type: hostEnv.type, kind: hostEnv.name, title: hostEnv.title, status: 'ok' };
 			else if (heading) info = { number: headingNumber, type: headingType, kind: 'heading', title: heading[2].replace(/[@:]label\[[^\]]*\]/g, '').trim(), status: headingNumber ? 'ok' : 'numberless' };
 			else info = { number: '', type: undefined, kind: 'plain', title: '', status: 'numberless' };
@@ -258,7 +263,9 @@ export function refDisplay(numbering, key, form) {
 	if (target.status !== 'ok' || !target.number) {
 		const tip = target.kind === 'heading'
 			? `“${key}” labels a heading, and headings are numbered only under “Headings: numeric”`
-			: `“${key}” labels something with no number — the engine prints ??`;
+			: target.kind === 'footnote'
+				? `“${key}” is inside a footnote, and the engine does not number footnote labels (it prints ??)`
+				: `“${key}” labels something with no number — the engine prints ??`;
 		return { text: '??', state: 'numberless', tip, target };
 	}
 	const text = form === 'ref' ? target.number : typedRefText(target.type, target.number, form === 'Cref');
