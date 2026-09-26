@@ -18,7 +18,12 @@ import { EditorView } from '@codemirror/view';
 import { Emitter } from '../lib/emitter.js';
 import { debounce } from '../lib/debounce.js';
 import { ipc, CH } from '../ipc.js';
-import { makeNoteState } from './editor.js';
+import { makeNoteState, markdownCompartment } from './editor.js';
+import { noteMarkdown } from './jmd/markdown-config.js';
+import { vaultSettingsStore } from '../state/vault-settings-store.js';
+
+/** The vault's dialect switch, as the grammar wants it. */
+const normalSyntax = () => vaultSettingsStore.get('normalSyntax') === true;
 
 const AUTOSAVE_MS = 1000;
 const STATE_CACHE_LIMIT = 25;
@@ -30,6 +35,19 @@ class EditorPool extends Emitter {
 	/** Undo history across navigation: path -> {state, handlerRef}. The cached
 	 *  state is only reused when the file's content still matches it. */
 	#stateCache = new Map();
+
+	constructor() {
+		super();
+		// A normalSyntax flip changes the grammar: reconfigure every open
+		// editor in place (undo history survives — it is a Compartment), and
+		// drop the banked states, which hold the old grammar.
+		vaultSettingsStore.on('vault-settings-changed', (key) => {
+			if (key !== 'normalSyntax') return;
+			const effects = markdownCompartment.reconfigure(noteMarkdown({ normalSyntax: normalSyntax() }));
+			for (const entry of this.#entries.values()) entry.view?.dispatch({ effects });
+			this.#stateCache.clear();
+		});
+	}
 
 	/**
 	 * Get (creating or re-pointing as needed) the editor for a note tab.
@@ -56,7 +74,10 @@ class EditorPool extends Emitter {
 
 		const generation = entry.generation;
 		entry.path = path;
-		const content = await ipc.invoke(CH.NOTE_READ, { path }).catch(() => '');
+		const [content] = await Promise.all([
+			ipc.invoke(CH.NOTE_READ, { path }).catch(() => ''),
+			vaultSettingsStore.ready(),
+		]);
 		// The tab may have navigated again (or closed) while we read.
 		if (this.#entries.get(tabId) !== entry || entry.generation !== generation) return entry;
 
@@ -70,7 +91,7 @@ class EditorPool extends Emitter {
 			this.#stateCache.delete(path); // it's live again
 		} else {
 			handlerRef = { fn: null };
-			state = makeNoteState(content, handlerRef);
+			state = makeNoteState(content, handlerRef, { normalSyntax: normalSyntax() });
 		}
 		handlerRef.fn = (update) => {
 			if (!update.docChanged) return;

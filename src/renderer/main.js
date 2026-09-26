@@ -14,6 +14,7 @@ import { ipc, CH } from './ipc.js';
 import { vaultStore } from './state/vault-store.js';
 import { workspaceStore } from './state/workspace-store.js';
 import { settingsStore } from './state/settings-store.js';
+import { vaultSettingsStore } from './state/vault-settings-store.js';
 import { bookmarkStore } from './state/bookmark-store.js';
 import { editorPool } from './editor/pool.js';
 import * as actions from './commands/actions.js';
@@ -30,6 +31,9 @@ import './components/chrome/clew-app.js';
 
 ipc.on(CH.EV_VAULT_OPENED, async ({ vault, tree }) => {
 	editorPool.flushAll();
+	// Before the workspace restores: the editors it opens await this (the
+	// grammar depends on the vault's normalSyntax).
+	vaultSettingsStore.load();
 	setPreviewSession(vault?.sessionId);
 	vaultStore.setVault(vault);
 	vaultStore.setTree(tree);
@@ -106,7 +110,7 @@ officeDock.init();
 // ---- dev hook -------------------------------------------------------------
 
 // Exposed for dev-tools poking and the CLEW_SMOKE scenario scripts.
-window.__clew = { workspaceStore, vaultStore, editorPool, settingsStore, ipc, actions, officeDock };
+window.__clew = { workspaceStore, vaultStore, vaultSettingsStore, editorPool, settingsStore, ipc, actions, officeDock };
 import('./commands/registry.js').then((registry) => { window.__clew.registry = registry; });
 
 // ---- boot -----------------------------------------------------------------

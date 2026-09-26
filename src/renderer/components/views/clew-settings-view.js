@@ -13,6 +13,7 @@
 import { ClewElement } from '../base/clew-element.js';
 import { settingsStore } from '../../state/settings-store.js';
 import { vaultStore } from '../../state/vault-store.js';
+import { vaultSettingsStore } from '../../state/vault-settings-store.js';
 import { allCommands, chordOf } from '../../commands/registry.js';
 import { debounce } from '../../lib/debounce.js';
 import { invalidateNoteApiGate } from '../../note-api.js';
@@ -248,7 +249,7 @@ class ClewSettingsView extends ClewElement {
 					if (box.checked) enabledSet.add(plugin.id);
 					else enabledSet.delete(plugin.id);
 					box.disabled = true;
-					ipc.invoke(CH.VAULT_SETTINGS_SET, { key: 'plugins', value: [...enabledSet] })
+					vaultSettingsStore.set('plugins', [...enabledSet])
 						.finally(() => { box.disabled = false; });
 				});
 				section.append(row);
@@ -287,7 +288,7 @@ class ClewSettingsView extends ClewElement {
 		// Long, because saving re-walks the vault: tree, watcher and index.
 		const save = debounce(() => {
 			const value = box.value.split('\n').map((line) => line.trim()).filter(Boolean);
-			ipc.invoke(CH.VAULT_SETTINGS_SET, { key, value }).catch(() => {});
+			vaultSettingsStore.set(key, value).catch(() => {});
 		}, 900);
 		box.addEventListener('input', save);
 		box.addEventListener('blur', () => save.flush());
@@ -320,9 +321,7 @@ class ClewSettingsView extends ClewElement {
 			input.disabled = false;
 		}).catch(() => {});
 		const save = debounce(() => {
-			ipc.invoke(CH.VAULT_SETTINGS_SET, { key, value: input.value.trim() }).finally(() => {
-				window.dispatchEvent(new CustomEvent('clew:vault-settings-changed', { detail: { key } }));
-			});
+			vaultSettingsStore.set(key, input.value.trim()).catch(() => {});
 		}, 500);
 		input.addEventListener('input', save);
 		input.addEventListener('blur', () => save.flush());
@@ -346,11 +345,11 @@ class ClewSettingsView extends ClewElement {
 		}).catch(() => {});
 		box.addEventListener('change', () => {
 			box.disabled = true;
-			ipc.invoke(CH.VAULT_SETTINGS_SET, { key, value: box.checked })
+			vaultSettingsStore.set(key, box.checked)
+				.catch(() => {})
 				.finally(() => {
 					box.disabled = false;
 					invalidateNoteApiGate();
-					window.dispatchEvent(new CustomEvent('clew:vault-settings-changed', { detail: { key } }));
 				});
 		});
 		return [row, hint];
@@ -428,7 +427,7 @@ class ClewSettingsView extends ClewElement {
 		const persist = debounce(() => {
 			const value = entries.map(({ name, text }) => ({ name, text }));
 			if (scope === 'global') settingsStore.set('texFragments', value);
-			else ipc.invoke(CH.VAULT_SETTINGS_SET, { key: 'texFragments', value }).catch(() => {});
+			else vaultSettingsStore.set('texFragments', value).catch(() => {});
 		}, 900);
 
 		const refresh = () => {
