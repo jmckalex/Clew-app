@@ -46,13 +46,17 @@ Nothing blocked in the code. Two things wait on the owner and gate
 everything downstream — and one build waits on a session:
 
 - **Live edit mode is BUILT and UNMERGED**: `feat/live-edit` in
-  `../Clew-app-live-edit` (25 commits to `64fb7b2`, 791 tests green, build
-  green — the mode, the toolbar, in-place table editing, the `//` menu and
-  link hover previews, the last three designed by the planning session on
-  the owner's ask and built the same evening) and `feat/live-edit` in
-  `../Clew-docs-live-edit` (the manual: a new `live-edit.html`, three
-  screenshots, editing/reading-mode/settings/plugins pages, the `//` menu
-  and hover previews). Merge both TOGETHER — the manual must not describe an unmerged
+  `../Clew-app-live-edit` (34 commits to `8ed451b`, 821 tests green, build
+  green — the mode, the toolbar, in-place tables, the `//` menu, link hover
+  previews, and the OVERNIGHT run of 2026-09-26/27: the live preview pane,
+  cross-references, multi-paragraph footnotes, citations as objects, PDF
+  annotations → note, sidenotes — each designed by the planning session,
+  built by the build session, verified commit by commit) and
+  `feat/live-edit` in `../Clew-docs-live-edit` (the manual: 11 commits,
+  eight screenshots). **Read the morning report at the top of the branch's
+  HANDOVER.md first** — five findings for the owner, one an engine bug
+  for upstream and one a pre-existing PDF-annotation data-loss window.
+  `smoke/live-sweep.sh` re-runs every live-edit scenario (~15 min). Merge both TOGETHER — the manual must not describe an unmerged
   feature — then `git worktree remove` both. The branch's own
   `HANDOVER.md` carries the QA list and the decisions to exercise (§10).
 
@@ -450,8 +454,15 @@ cursor) and **link hover previews** (`64fb7b2`, design in
 as `![[path#…|bare]]` through the block endpoint, in one popover per
 window that never takes focus, in source, live and reading mode; setting
 `linkPreview: hover | mod | off`; the smoke harness gained `{move:{x,y}}`.
-Both branches were pushed at the end of the tenth session (§6). The rest
-of this section is the plan's history.
+Both branches were pushed at the end of the tenth session (§6). Then the
+**overnight run** (2026-09-26/27, the owner's approval after reading the
+brief): §5.12 preview pane `818cf32`, §5.13 cross-references `bb3c94a` +
+`a477326` (parity with the engine's own numbers asserted, not assumed),
+multi-paragraph footnotes `91819ed`, §5.14 citations `b52b9e1`, §5.15 PDF
+annotations `55a5cbb`, §5.16 sidenotes `cbd973c`, the morning report
+`245be68`, `smoke/live-sweep.sh` `8ed451b`. Every phase's scenario passed
+with real input; nothing stashed or skipped. The rest of this section is
+the plan's history.
 
 The owner asked (2026-09-26) for a plan for an Obsidian-style **live edit
 mode** — syntax concealed and rendered in place except under the cursor —
