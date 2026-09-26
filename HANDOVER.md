@@ -1,3 +1,155 @@
+# Morning report — the night of 2026-09-26/27 (read this first)
+
+**Everything in the overnight brief shipped, in order, each phase with its
+acceptance met: nothing was stashed or skipped.** Both worktrees are clean.
+Nothing is pushed or merged. The rest of this file is the running record
+below this report.
+
+## What shipped
+
+| Phase | Clew-app | Manual (Clew-docs) | Scenario (last line) |
+| --- | --- | --- | --- |
+| §5.12 live preview pane | `818cf32` | `9db33b9` | preview-pane: `smoke-pp-frame …: has-Added=true has-Zed=true svg-has-Zed=true` |
+| §5.13 cross-references | `bb3c94a`, fix `a477326` | `462d47a`, `e40f633` | crossref: `numbers-match=true` |
+| multi-paragraph footnotes (amendment) | `91819ed` | `b5325a0` | live-footnotes: `concealed=true title-updated=true` |
+| §5.14 citations as objects | `b52b9e1` | `a2a297f` | citations: `pandoc cited-in=[2,1,2]`; citations-fullcite: the engine's formatted entry |
+| §5.15 PDF annotations → note | `55a5cbb` | `0b89d07` | pdf-annotations: `smoke-pa-frame: page=3 annotations=4` |
+| §5.16 sidenotes | `cbd973c` | `5d3c47f` | sidenotes: `narrow sidenotes=0 end-list-visible=true` |
+
+Before the night, and still unmerged: the `//` menu (`2c7d8a8`) and link
+hover previews (`64fb7b2`); manual `8e5981e` and `e334eb3`.
+
+Each phase's design is written "as built" in `docs/dev/live-edit.md`, in
+§5.12–§5.16. Deviations are marked ◆, and new decisions have rows in §12.
+
+- **Tests:** 821 green. `node scripts/build.js` green.
+- **The live sweep:** every live-edit scenario unchanged; `live-perf` at
+  baseline — 3.1 ms median per keystroke on Diagrams.md and 14.7 ms on the
+  207 KB note in live edit, against 3.5 and 14.4 when the branch began.
+
+## Re-run everything
+
+```
+cd ../Clew-app-live-edit && node scripts/build.js && smoke/live-sweep.sh
+```
+
+That is about 15 minutes: 16 scenarios on fresh fixtures, then the
+cross-reference parity verdict. Compare each scenario's lines with its row in
+`smoke/README.md`.
+
+## Screenshots to look at
+
+All are in `../Clew-docs-live-edit/site/manual/images/`:
+
+- `live-preview-pane.png`
+- `crossref-preview.png`
+- `citations-library.png`
+- `pdf-annotations.png`
+- `sidenotes-live.png`
+- `sidenotes-reading.png`
+
+From before the night: `link-preview.png` and `live-edit-slash.png`.
+
+## Found tonight, and not built by me — decide or file
+
+1. **PDF annotations can be lost (older than tonight).** The PDF viewer
+   autosaves after a 2.5 s pause, and a document that unloads loses its
+   pending save. So a highlight made within 2.5 s of switching away from
+   its tab is gone; I measured the viewer holding 3 of 4. The new
+   extraction command flushes first, so its notes never name a lost
+   annotation. The general fix is yours to choose: flush on
+   `visibilitychange`/`pagehide` (a write started from an unload isn't
+   guaranteed), keep PDF frames alive like the office dock, or shorten the
+   debounce.
+2. **Engine bug, for upstream.** A reference to an `@label` inside a
+   footnote prints `??`. The post-processor's footnote branch looks for
+   `[id^="footnote-"]`, but endnotes carry `id="fn-…"`, so the branch
+   never runs. Clew mirrors the engine as it behaves, and the crossref
+   fixture asserts it, so a fix upstream will show there as a failure to
+   update.
+3. **Engine behaviour worth knowing.** Under `Headings: numeric`, the
+   generated `<h1>Endnotes</h1>` is numbered too. At the end of a note that
+   changes nothing. Where `@endnotes` places it mid-note, every later
+   heading is one higher in the export than Clew shows. This isn't
+   mirrored; it's a known gap, recorded in §5.13.
+4. **The manual was wrong, and is fixed.** It said `@ref` on an equation
+   reads "(2)"; the engine prints the bare "2". The demo's Math and
+   Theorems note named its theorem with `title="…"`, which the engine
+   ignores; it now uses `[…]`.
+5. **A live-edit gap, fixed.** Arrow keys jumped clean over every block
+   widget (display maths, a frame, a table), so none of them could be
+   reached from the keyboard. `live/keys.js` fixes it (§5.12). The §5.9
+   claim that arrow keys "need nothing special" held for inline constructs
+   only.
+6. **Older than the branch.** `figures-edit-scenario` phase 3 fails
+   identically at `c6f3169`: an edited ```tikz in reading mode keeps its
+   old picture. Not investigated.
+
+## Decisions taken by default (the alternatives are in §12)
+
+- **Preview pane:**
+  - it sits below its block, at the text column's width;
+  - inline maths shows above its line;
+  - it redraws on a 150 / 400 / 700 ms typing pause (maths / mermaid / TeX);
+  - query, Dataview and Bases blocks are not previewed;
+  - Escape hides it until the cursor leaves that construct;
+  - it works in source mode too.
+- **Cross-references:**
+  - Clew writes the `@` forms; there's no sigil setting;
+  - completion lists this note's labels only;
+  - an unknown or unnumbered reference shows `??` in red, as the engine
+    prints it;
+  - custom environments are numbered only when a plugin manifest declares
+    them (`numbered`), and are otherwise shown as "?".
+- **Citations:**
+  - the Refs panel is always present — the Library always, "This note"
+    only behind `bibliographyPanel`;
+  - Library search matches substring terms, not fuzzy (fuzzy found "alex"
+    inside "LaTeX");
+  - without a bibliography named in vault settings, a citation's hover
+    shows the `.bib` fields on a card. A note's own `Bibliography:` header
+    isn't seen by the fragment render.
+- **PDF annotations:** each entry is one blockquote (text, comment, page
+  link, block id) so its `^pdf-` id names all of it, with plain quotes and
+  no colours. The design had the comment as a separate paragraph.
+- **Sidenotes:** `auto` means a pane ≥ 960 px wide with ≥ 220 px of margin.
+  A site export is untouched.
+
+## Also changed, beyond the letter of the brief
+
+- **Plugin manifests.** A plugin's engine surface may declare `fences` and
+  `numbered`; the demo's Charts plugin declares `"fences": ["chart"]`.
+- **Back after a jump.** A cross-reference jump leaves a Back entry that the
+  editor honours: `recordAnchorJump(…, {editor: true})` stores a
+  `pendingLine`.
+- **The References panel** is always in the right sidebar.
+- **The index cache** is at version 3, so existing vaults re-scan once, to
+  pick up labels and citations.
+- **`window.__clew`** now also exposes `numbering`, `pdfAnnotations`,
+  `linkPreview` and `previewPane`, for scenarios.
+
+## How to merge
+
+Merge both branches together:
+
+1. In `../Clew-app`, on `main`: `git merge --no-ff feat/live-edit`.
+2. In `../Clew-docs`, on `main`: `git merge --no-ff feat/live-edit`. Mind
+   your uncommitted edits to `HANDOVER.md`, `Makefile` and `README.md`
+   there; commit or stash them first.
+3. `git worktree remove ../Clew-app-live-edit ../Clew-docs-live-edit`.
+
+Then run `npm test`, `node scripts/build.js`, and the sweep above on `main`.
+
+## State at the end of the night
+
+- **Clew-app** `feat/live-edit`: clean. HEAD is the commit holding this
+  report.
+- **Clew-docs** `feat/live-edit`: clean, at `5d3c47f`.
+- **Stashes:** none left. One was used briefly, to verify §5.14 without
+  §5.15's work in progress, and was dropped.
+
+---
+
 # Handover — 2026-09-26, `feat/live-edit` (live edit BUILT — phases 0–7, plus tables edited in place; unmerged; the manual on a matching docs branch)
 
 Session-rollover state for the live-edit branch, in the worktree
