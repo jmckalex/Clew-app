@@ -18,7 +18,9 @@
 //                           `appended rows=4 active=3,0` (a row added)
 //   5. type a|b, ⇧⏎, c   → `escaped cell="a\\|b<br>c"` in the note
 //   6. Esc               → `escaped-out revealed=true cursor-in-cell=true`
-//                           (the table as source, the caret where it was)
+//                           (the table as source, the caret where it was); drawn
+//                           again, that cell RENDERS its escapes:
+//                           `rendered-cell="a|b\nc" br-elements=1 no-backslash=true`
 // Then by command:
 //   7. edit the cell under the cursor in place; Table: delete row →
 //      `deleted rows=3 still-editing=true`
@@ -96,6 +98,15 @@ setTimeout(async () => { try {
 	const head = view.state.selection.main.head;
 	const line = view.state.doc.lineAt(head).text;
 	log(`escaped-out revealed=${!document.querySelector('.le-table')} cursor-in-cell=${line.includes('a\\|b')}`);
+
+	// 6b. Drawn again (the selection below the table), the cell must RENDER
+	// its escapes: `\|` as `|`, `<br>` as a line break — not their source.
+	const cmv = editorPool.get(tab.id).view;
+	cmv.dispatch({ selection: { anchor: cmv.state.doc.length } });
+	await sleep(500);
+	const drawn = [...document.querySelectorAll('.le-table td')].find((t) => t.textContent.includes('a|b'));
+	log(`rendered-cell=${JSON.stringify(drawn?.innerText)} br-elements=${drawn?.querySelectorAll('br').length ?? 0} no-backslash=${Boolean(drawn) && !drawn.textContent.includes('\\')}`);
+	cmv.dispatch({ selection: { anchor: doc().indexOf('a\\|b') + 1 } });
 
 	// 7. Back into the cell by command, then delete its row.
 	registry.runCommand('editor:table-edit-cell');

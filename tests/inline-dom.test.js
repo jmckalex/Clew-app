@@ -25,6 +25,7 @@ function tokens(text) {
 /** A compact string form: kind(children) / "text". */
 const show = (ts) => ts.map((t) => {
 	if (t.type === 'text') return JSON.stringify(t.text);
+	if (t.type === 'break') return 'BR';
 	if (t.children) return `${t.type}(${show(t.children)})`;
 	return `${t.type}[${t.text ?? t.tex ?? t.name}]`;
 }).join(' ');
@@ -52,4 +53,13 @@ test('escapes drop the backslash', () => {
 
 test('what it does not render comes out as source', () => {
 	assert.equal(show(tokens('A \\cite{k} and [fn: note] here')), '"A " "\\\\cite{k}" " and " "[fn: note]" " here"');
+});
+
+test('a literal <br> is a line break (a table cell writes its breaks so)', () => {
+	assert.equal(show(tokens('one<br>two<BR/>three<br />four')), '"one" BR "two" BR "three" BR "four"');
+	assert.equal(show(tokens('*a<br>b*')), 'strong("a" BR "b")');
+});
+
+test('an escaped pipe shows as a pipe', () => {
+	assert.equal(show(tokens('a\\|b')), '"a" "|" "b"');
 });

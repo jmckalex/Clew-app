@@ -576,7 +576,11 @@ stays the only model and the only undo history.
   (`cellEdit` annotation, userEvent kept, so history groups typing as in
   prose); any OTHER note change touching the cell (undo, a reload from disk)
   is projected back (`cellSync`). A `transactionFilter` escapes on the way
-  in: a bare `|` → `\|` (not after a backslash), a newline → `<br>`.
+  in: a bare `|` → `\|` (not after a backslash), a newline → `<br>`. The
+  drawn cell renders them back: `inline-dom.js` reads a literal `<br>` as a
+  break token (everywhere — the engine renders it so in prose too) and an
+  escaped `\|` as `|` (found in review: the cell first showed the text
+  `<br>`; the scenario now asserts the RENDERED cell).
 - **Measured: the note editor's theme reaches the cell editor.** CodeMirror
   theme rules are descendant selectors under the note editor's theme class,
   and the cell editor sits inside it — the note's `.cm-content` padding

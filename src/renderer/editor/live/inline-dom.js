@@ -37,6 +37,16 @@ export function inlineTokens(doc, from, to, model) {
 	const inside = model.filter((c) => c.level === 'inline' && c.tier !== 'C' && c.from >= from && c.to <= to);
 	return walk(from, to);
 
+	/** Text, with each literal `<br>` a break (the engine renders it so; a
+	 *  table cell writes its line breaks this way — table-cell-model.js). */
+	function pushText(out, text) {
+		const parts = text.split(/<br\s*\/?>/i);
+		parts.forEach((part, i) => {
+			if (i > 0) out.push({ type: 'break' });
+			if (part) out.push({ type: 'text', text: part });
+		});
+	}
+
 	function walk(a, b) {
 		const out = [];
 		let at = a;
@@ -44,12 +54,12 @@ export function inlineTokens(doc, from, to, model) {
 		let last = -1;
 		for (const c of inside) {
 			if (c.from < at || c.to > b || c.from < last) continue;
-			if (c.from > at) out.push({ type: 'text', text: doc.sliceString(at, c.from) });
+			if (c.from > at) pushText(out, doc.sliceString(at, c.from));
 			out.push(token(c));
 			at = c.to;
 			last = c.to;
 		}
-		if (at < b) out.push({ type: 'text', text: doc.sliceString(at, b) });
+		if (at < b) pushText(out, doc.sliceString(at, b));
 		return out;
 	}
 
@@ -102,6 +112,7 @@ export function tokensToDom(tokens, renderMath) {
 
 function nodeFor(t, renderMath) {
 	if (t.type === 'text') return document.createTextNode(t.text);
+	if (t.type === 'break') return document.createElement('br');
 	if (t.type === 'code') {
 		const el = document.createElement('code');
 		el.className = 'le-code';
