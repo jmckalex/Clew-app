@@ -148,6 +148,19 @@ export function attrLabel(attrs) {
 	return hash ? hash[1] : null;
 }
 
+// ---- citations (docs/dev/live-edit.md §5.14) -------------------------------
+
+/** `\cite`, `\citep`, `\citet`, `\fullcite`, `\parencite`, … — any command
+ *  with "cite" in its name — starred, with up to two `[…]` notes. */
+const CITE_RE = /\\([a-zA-Z]*cite[a-zA-Z]*)\*?(?:\[[^\]\n]*\]){0,2}\{([^}\n]*)\}/g;
+/** Pandoc's bracketed `[@key]` / `[see @a, p. 3; @b]`. */
+const PANDOC_BRACKET_RE = /\[[^\[\]\n]*@[^\[\]\n]*\]/g;
+const PANDOC_KEY_RE = /(^|[^\w@])-?@([A-Za-z0-9_][\w:.#$%&+?<>~/-]*)/g;
+/** A bare `@key` in prose — never a directive (`@begin(`, `@label[`) and
+ *  never an address (a word character before the @). */
+const PANDOC_BARE_RE = /(^|[^\w@\\[])@([A-Za-z0-9_][\w:.#$%&+?<>~/-]*)(?![\w(\[])/g;
+const trimKey = (k) => k.replace(/[.:,;?!]+$/, '');
+
 /**
  * Extract index metadata from a note's text.
  * Lines are 1-based. `links` includes embeds (flagged `embed: true`).
@@ -162,6 +175,7 @@ export function extractNoteMetadata(text) {
 	const links = [];
 	const blocks = [];
 	const labels = [];
+	const citations = [];
 	/** Open environments, innermost last: {name, kind, line, title, labels}. */
 	const envs = [];
 	const tags = new Map(); // tag -> [lines]
@@ -188,6 +202,30 @@ export function extractNoteMetadata(text) {
 		const heading = HEADING_RE.exec(rawLines[i] ?? '');
 		if (heading && HEADING_RE.test(line)) {
 			headings.push({ level: heading[1].length, text: heading[2].trim(), line: lineNo });
+		}
+
+		// Citations: the \cite family, then pandoc's forms (flagged — the
+		// vault's pandocCitations switch decides whether they count).
+		CITE_RE.lastIndex = 0;
+		for (let cm; (cm = CITE_RE.exec(line));) {
+			for (const key of cm[2].split(',').map((k) => k.trim()).filter(Boolean)) {
+				citations.push({ key, line: lineNo, command: cm[1], pandoc: false });
+			}
+		}
+		const bracketed = [];
+		PANDOC_BRACKET_RE.lastIndex = 0;
+		for (let bm; (bm = PANDOC_BRACKET_RE.exec(line));) {
+			bracketed.push([bm.index, bm.index + bm[0].length]);
+			PANDOC_KEY_RE.lastIndex = 0;
+			for (let km; (km = PANDOC_KEY_RE.exec(bm[0]));) {
+				citations.push({ key: trimKey(km[2]), line: lineNo, command: '[@]', pandoc: true });
+			}
+		}
+		PANDOC_BARE_RE.lastIndex = 0;
+		for (let pm; (pm = PANDOC_BARE_RE.exec(line));) {
+			const at = pm.index + pm[1].length;
+			if (bracketed.some(([a, b]) => at >= a && at < b)) continue;
+			citations.push({ key: trimKey(pm[2]), line: lineNo, command: '@', pandoc: true });
 		}
 
 		// Cross-reference labels: environment openers and closers first
@@ -295,6 +333,7 @@ export function extractNoteMetadata(text) {
 		headings,
 		blocks,
 		labels,
+		citations,
 		links,
 		tags: [...tags.entries()].map(([tag, lineNos]) => ({ tag, lines: lineNos })),
 	};

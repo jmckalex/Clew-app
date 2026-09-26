@@ -44,8 +44,9 @@ const TOOLS = {
 		{ id: 'outgoing', label: 'Out', element: 'clew-outgoing-links' },
 		{ id: 'tags', label: 'Tags', element: 'clew-tag-pane' },
 		{ id: 'outline', label: 'Outline', element: 'clew-outline' },
-		// Gated on the vault's bibliographyPanel setting (see #refreshVaultTools).
-		{ id: 'bibliography', label: 'Refs', element: 'clew-bibliography', when: (vs) => vs?.bibliographyPanel === true },
+		// Always there (§5.14): its Library needs no render; its "This note"
+		// mode stays behind the vault's bibliographyPanel setting.
+		{ id: 'bibliography', label: 'Refs', element: 'clew-bibliography' },
 		{ id: 'props', label: 'Props', element: 'clew-properties' },
 		{
 			id: 'graph', label: 'Graph', element: 'clew-graph-view',

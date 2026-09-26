@@ -55,6 +55,12 @@ export function citationLabel(key) {
 	return { label, title: entry.title ?? '' };
 }
 
+/** Every entry in the vault's .bib files (the References panel's Library,
+ *  §5.14), from the same cache completion uses. */
+export function allBibEntries() {
+	return bibEntries();
+}
+
 export async function citationCompletions(context) {
 	const line = context.state.doc.lineAt(context.pos);
 	const before = line.text.slice(0, context.pos - line.from);

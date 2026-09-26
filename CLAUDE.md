@@ -638,9 +638,15 @@ except where the selection touches a construct. The durable design is
   (`numbers-match=true`), never assumed — change a rule only with the
   engine's source open. Plugins declare `fences`/`numbered` in their
   engine surface for the editor to see.
+- **Citations as objects** (§5.14): the index holds `citations` (pandoc
+  forms flagged — `citedBy` honours pandocCitations); the Refs panel's
+  Library lists every .bib entry with who cites it and Insert/Copy/PDF/DOI;
+  a cite chip opens it; hovering previews `\fullcite` (engine-formatted when
+  the vault names a bibliography). BIB_ENTRIES entries carry `bib` (their
+  .bib) and `pdf` (the resolved `file` field) — `file` is BibTeX's own.
 - Settings: `defaultEditMode`, `liveReveal`, `liveRender{Math,Fences,Embeds}`,
   `liveFrameCap`, `editorToolbar(+Prev)`, `editorToolbarGroups`,
-  `selectionBubble`, `slashCommands`, `linkPreview`, `previewPane`; `newTabMode` accepts `live`. Documents over 500 KB
+  `selectionBubble`, `slashCommands`, `linkPreview`, `previewPane`, `graphReferences`; `newTabMode` accepts `live`. Documents over 500 KB
   fall back to source with a banner. Scenarios: `live-*` in smoke/ (README).
 
 ### Note API (scripts in rendered notes)

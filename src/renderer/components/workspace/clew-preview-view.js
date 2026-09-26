@@ -205,7 +205,10 @@ class ClewPreviewView extends ClewElement {
 				const frame = this.#iframe.getBoundingClientRect();
 				const r = msg.rect;
 				const rect = { left: frame.left + r.left, right: frame.left + r.right, top: frame.top + r.top, bottom: frame.top + r.bottom };
-				linkPreview().hover(previewSpec(parseTarget(msg.target), vaultResolvers(this.path)), rect, this.path, { now: mode === 'mod' });
+				const link = msg.cite
+					? { kind: 'cite', command: 'cite', keys: String(msg.cite).split(/[,;]\s*/).filter(Boolean), from: 0, to: 0 }
+					: parseTarget(msg.target);
+				linkPreview().hover(previewSpec(link, vaultResolvers(this.path)), rect, this.path, { now: mode === 'mod' });
 				break;
 			}
 			case 'link-unhover':

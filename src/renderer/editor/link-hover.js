@@ -24,9 +24,11 @@ import { linkPreview } from './link-preview.js';
 import { vaultStore } from '../state/vault-store.js';
 import { settingsStore } from '../state/settings-store.js';
 import { labelPreview } from './live/numbering.js';
+import { citationLabel } from './complete/citations.js';
+import { vaultSettingsStore } from '../state/vault-settings-store.js';
 
 /** What is drawn as a link, in either mode. */
-const LINK_SELECTOR = '.le-link, .le-wikilink, .le-embed-chip, .le-ref, .jmd-wikilink-bracket, .jmd-wikilink-target, .jmd-wikilink-alias, .cmt-link, .cmt-url, .jmd-directive-name, .jmd-directive-bracket, .jmd-directive-punct';
+const LINK_SELECTOR = '.le-link, .le-wikilink, .le-embed-chip, .le-ref, .le-cite, .jmd-cite, .jmd-cite-key, .jmd-wikilink-bracket, .jmd-wikilink-target, .jmd-wikilink-alias, .cmt-link, .cmt-url, .jmd-directive-name, .jmd-directive-bracket, .jmd-directive-punct';
 const MOD_KEYS = new Set(['Meta', 'Control']);
 
 /** `'hover' | 'mod' | 'off'`. */
@@ -39,6 +41,9 @@ export const vaultResolvers = (current, doc = null) => ({
 	current,
 	// A reference's label lives in the note being edited (v1: per note).
 	label: (key) => (doc ? labelPreview(doc, key, current) : null),
+	// A citation's entry, from the .bib cache completion keeps (§5.14).
+	cite: (key) => citationLabel(key),
+	fullcite: Boolean(String(vaultSettingsStore.get('bibliography') ?? '').trim()),
 });
 
 /** Which note each view shows — the pool says (pool.js), since a state

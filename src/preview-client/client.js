@@ -447,11 +447,13 @@ function reportSize() {
 function reportLinkHovers() {
 	let current = null;
 	let mod = false;
-	const linkOf = (el) => el?.closest?.('a.internal-link');
+	// A vault link, or a resolved citation (Biblify's spans carry their keys
+	// in data-bibtex — §5.14).
+	const linkOf = (el) => el?.closest?.('a.internal-link, [data-bibtex]:not(.biblify-nocite)');
 	const send = (link, withMod) => {
 		const r = link.getBoundingClientRect();
 		post({
-			type: 'link-hover', target: link.dataset.href ?? '', mod: withMod,
+			type: 'link-hover', target: link.dataset.href ?? '', cite: link.dataset.bibtex ?? null, mod: withMod,
 			rect: { left: r.left, top: r.top, right: r.right, bottom: r.bottom },
 		});
 	};

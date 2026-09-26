@@ -1033,6 +1033,62 @@ design's reading was right except where marked ◆):
   above the others (`numbers-match=true`). The demo's Math and Theorems
   note matched too.
 
+### 5.14 Citations as objects
+
+A `\cite{key}` is a link to a work: index it, show who cites it, preview
+it, open its PDF. Designed by the planning session; built overnight.
+
+**As built** (deviations ◆):
+
+- **Index**: `shared/note-metadata.js` `citations: [{key, line, command,
+  pandoc}]` — any `\…cite…` command (starred, up to two `[…]` notes, comma
+  lists) and pandoc's `[@a; @b]` / bare `@key` flagged `pandoc: true` (a bare
+  `@key` never after a word character — addresses — and never followed by
+  `(`/`[` — `@begin(`, `@label[`); code, maths and fences masked. Cache
+  version 3. `vaultStore.citationsOf(path)`, `citedBy(key, {pandoc})`
+  (pandoc forms count only under the vault's `pandocCitations`).
+- **Bib fields**: `shared/bib.js` exposes `file`, `url`, `doi` (the doi
+  without a resolver prefix) and `bibFilePath(value)` — Zotero/JabRef's
+  `Description:path:mime`, `;`-joined, `\:`-escaped; the first PDF wins.
+  The BIB_ENTRIES scan (ipc.js) now names the source `.bib` `bib` ◆ (it was
+  `file`, which the BibTeX field now is) and adds `pdf: {path, inVault,
+  exists}`, resolved against the .bib's folder, then the vault root.
+- **The panel**: `clew-bibliography.js` gains "This note | Library". The
+  Refs tool is now ALWAYS in the right sidebar ◆ (it was gated on
+  `bibliographyPanel`): the Library renders nothing, so only "This note"
+  (which renders the note) stays behind the setting, and it says so when
+  off. Library rows: author-year, key, title, "Cited in N notes" (disclosure
+  → notes, each opening at the citation's line), Insert (`\cite{key}`, or
+  `[@key]` under pandocCitations, at the caret of `activeEditorView()`),
+  Copy key, PDF (in-vault → a Clew PDF tab; outside → the OS via
+  `SHELL_OPEN_PATH` with a `file://` url, the open-file guard's route;
+  missing → a notice naming it), DOI/URL. Search is SUBSTRING terms over
+  key/authors/title/year, ranked by the key ◆ — the design's fuzzy match
+  found "alex" in the letters of "LaTeX" (measured).
+- **Live edit**: the cite chip (`reveal: false`, `data-le-cite`) opens the
+  right sidebar on Refs → Library at the entry, highlighted
+  (`events.js#showCitation`); ⌥-click edits.
+- **Hover**: `linkAt` recognises the `\cite` family (`kind: 'cite'`);
+  `previewSpec` renders `\fullcite{key}` per key through the block endpoint
+  when the vault names a `bibliography` (Biblify resolves only then —
+  render-service.js#biblifyConfig; measured: "Alexander, J. McKenzie. 2023.
+  The Structural Evolution of Morality."), else a card with the .bib's
+  author-year and title ◆; an unknown key a card refusing it by name. A
+  note's OWN `Bibliography:` header is not seen: the fragment is rendered
+  alone, without the note's metadata (the demo's Citations note is such a
+  note — its hovers show the card).
+  Reading mode: the client reports `[data-bibtex]` spans (Biblify's
+  resolved citations) as `link-hover {cite}`; the view hovers the same
+  spec ◆ — built, but NOT asserted by a scenario (a reading frame's
+  citation coordinates cannot be measured from the app page).
+- **Graph**: a "References" switch on the graph (`graphReferences`, app
+  setting): a square node per cited key (`--clew-graph-reference`), an edge
+  from each citing note, pandoc forms per the vault setting; clicking one
+  opens its Library entry. The host exposes `data-nodes`/`data-links`.
+- **Smoke**: `citations-scenario.js` over `make-citations-vault.mjs` (real
+  input throughout) and `citations-fullcite-scenario.js` (the formatted
+  hover, with a bibliography named).
+
 ## 6. The toolbar
 
 ### 6.1 Principles
@@ -1677,6 +1733,9 @@ still prefer, and changing one is a small, local edit.
 | MathJax macros | one page-wide MathJax: macros leak across notes (documented) | a per-note InputJax |
 | Tables | edited in place on a click; Esc, ⌥-click or "Edit as source" for the source; reflow once on leaving | reveal source on click; never reflow automatically |
 | Reading mode's bar | a slim bar with the mode switch | none |
+| The Refs panel | always present; Library always, "This note" behind bibliographyPanel | gated as before |
+| Library search | every term a substring | fuzzy |
+| Citation hover without a named bibliography | the .bib's author-year and title on a card | nothing |
 | What the insert commands write | `@label` / `@ref` / `@cref` | a per-vault sigil setting |
 | Cross-reference completion scope | this note | the whole vault, detailed by note |
 | Unknown or numberless reference | `??` in the danger colour, reason in the tooltip | hide the chip, show the source |

@@ -79,6 +79,7 @@ clew-link-preview .link-preview-card {
 	cursor: pointer;
 }
 clew-link-preview .link-preview-card:disabled { cursor: default; }
+clew-link-preview .link-preview-card-title { white-space: pre-line; }
 clew-link-preview .link-preview-card-hint { font-size: 12px; color: var(--clew-text-muted); }
 clew-link-preview .link-preview-card:not(:disabled):hover .link-preview-card-hint { color: var(--clew-accent); }
 clew-link-preview [hidden] { display: none !important; }

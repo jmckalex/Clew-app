@@ -161,6 +161,9 @@ function build(view) {
 					cls: 'le-cite',
 					text: (c.command === 'cite' ? '' : `${c.command} `) + (labels.map((l, i) => l?.label ?? c.keys[i]).join('; ') || '?'),
 					title: labels.map((l, i) => (l ? `${l.label}: ${l.title}` : c.keys[i])).join('\n'),
+					// A click opens the References panel's Library at the
+					// entry (events.js); ⌥-click edits (§5.14).
+					reveal: false, data: { leCite: c.keys.join(',') },
 				}));
 				break;
 			}

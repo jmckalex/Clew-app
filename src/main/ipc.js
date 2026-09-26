@@ -26,7 +26,7 @@ import { openVaultAnywhere, openVaultDialog, createVaultDialog, openDemoVault } 
 import { propagateRename } from './rename-links.js';
 import { exportNote } from './export.js';
 import { exportSite } from './export-site.js';
-import { parseBib } from '../shared/bib.js';
+import { parseBib, bibFilePath } from '../shared/bib.js';
 import { direntKind, shouldRecurse, walkGuard, writeFileAtomic } from './fs-utils.js';
 import { listSnapshots, readSnapshot } from './history.js';
 import { listPlugins } from './plugins.js';
@@ -46,6 +46,24 @@ const sanitizeStateName = (name) => {
 
 /** Every window's shell, keyed by session id (main/shell-core.js). */
 export const shells = new ShellSessions();
+
+/**
+ * Where an entry's BibTeX `file` field points (§5.14): relative to its .bib's
+ * folder first, then the vault root; `inVault` paths are vault-relative (a
+ * Clew PDF tab), others absolute (the OS, through the open-file guard).
+ *
+ * @returns {{ path: string, inVault: boolean, exists: boolean } | null}
+ */
+function resolveBibFile(value, bibDir, root) {
+	const raw = bibFilePath(value);
+	if (!raw) return null;
+	const candidates = nodePath.isAbsolute(raw) ? [raw] : [nodePath.join(bibDir, raw), nodePath.join(root, raw)];
+	const found = candidates.find((p) => { try { return fs.statSync(p).isFile(); } catch { return false; } });
+	const abs = found ?? candidates[0];
+	const rel = nodePath.relative(root, abs);
+	const inVault = !rel.startsWith('..') && !nodePath.isAbsolute(rel);
+	return { path: inVault ? rel.split(nodePath.sep).join('/') : abs, inVault, exists: Boolean(found) };
+}
 
 export function registerIpc() {
 	// Session-scoped handler: fn(session, payload, event).
@@ -134,7 +152,7 @@ export function registerIpc() {
 						: parseBib(fs.readFileSync(abs, 'utf8'));
 					bibCache.set(abs, { mtimeMs, entries: parsed });
 					const rel = nodePath.relative(s.vaults.root, abs);
-					out.push(...parsed.map((e) => ({ ...e, file: rel })));
+					out.push(...parsed.map((e) => ({ ...e, bib: rel, pdf: resolveBibFile(e.file, dir, s.vaults.root) })));
 				}
 			}
 		};

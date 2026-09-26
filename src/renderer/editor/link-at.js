@@ -22,6 +22,9 @@ const MDLINK = /(!?)\[([^\]\n]*)\]\(\s*(?:<([^>\n]+)>|([^\s()]+(?:\([^\s()]*\))?
 /** `@ref[key]` and its kin, `@` or `:` (§5.13). */
 const XREF = /(^|[^\w@:\\])([@:])(ref|cref|Cref)\[([^\]\n]+)\]/g;
 
+/** `\cite{a, b}` and its family (§5.14). */
+const CITE = /\\([a-zA-Z]*cite[a-zA-Z]*)\*?(?:\[[^\]\n]*\]){0,2}\{([^}\n]*)\}/g;
+
 /** The column ranges of the line's code spans (backtick runs of equal
  *  length) — a link inside one is text. */
 function codeSpans(text) {
@@ -51,7 +54,8 @@ const hasExternal = (alias) => (alias ?? '').split('|').some((p) => p.trim().toL
  * @returns {null | {kind: 'wikilink', embed: boolean, target: string, heading: string,
  *   alias: string, external: boolean, from: number, to: number}
  *   | {kind: 'markdown', embed: boolean, url: string, text: string, from: number, to: number}
- *   | {kind: 'xref', form: 'ref'|'cref'|'Cref', key: string, from: number, to: number}}
+ *   | {kind: 'xref', form: 'ref'|'cref'|'Cref', key: string, from: number, to: number}
+ *   | {kind: 'cite', command: string, keys: string[], from: number, to: number}}
  */
 export function linkAt(lineText, column) {
 	const inCode = codeSpans(lineText).some(([a, b]) => column >= a && column < b);
@@ -66,6 +70,14 @@ export function linkAt(lineText, column) {
 			kind: 'wikilink', embed: m[1] === '!', target: m[2].trim(), heading: (m[3] ?? '').trim(),
 			alias: m[4] ?? '', external: hasExternal(m[4]), from, to,
 		};
+	}
+	CITE.lastIndex = 0;
+	while ((m = CITE.exec(lineText))) {
+		const from = m.index;
+		const to = from + m[0].length;
+		if (column < from || column > to) continue;
+		const keys = m[2].split(',').map((k) => k.trim()).filter(Boolean);
+		if (keys.length) return { kind: 'cite', command: m[1], keys, from, to };
 	}
 	XREF.lastIndex = 0;
 	while ((m = XREF.exec(lineText))) {
@@ -107,7 +119,8 @@ const safeDecode = (s) => { try { return decodeURI(s); } catch { return s; } };
  *
  * @param {ReturnType<typeof linkAt>} link
  * @param {{ note: (name: string) => string|null, file: (name: string) => string|null,
- *   current: string|null, label?: (key: string) => ({text: string, label: string}|null) }} resolve
+ *   current: string|null, label?: (key: string) => ({text: string, label: string}|null),
+ *   cite?: (key: string) => ({label: string, title: string}|null), fullcite?: boolean }} resolve
  *   - the vault's resolvers, the note being edited (a same-note `#Heading`
  *   previews that note's section), and — for a reference — what its label's
  *   host renders as (live/numbering.js#labelPreview)
@@ -120,6 +133,21 @@ const safeDecode = (s) => { try { return decodeURI(s); } catch { return s; } };
  */
 export function previewSpec(link, resolve) {
 	if (!link) return null;
+	if (link.kind === 'cite') {
+		// A citation (§5.14): the engine formats `\fullcite{key}` in the
+		// vault's style when the vault names a bibliography; without one, the
+		// .bib's own fields on a card. An unknown key is refused by name.
+		const found = link.keys.map((key) => ({ key, entry: resolve.cite?.(key) ?? null }));
+		const known = found.filter((f) => f.entry);
+		if (!known.length) {
+			return { kind: 'unresolved', name: link.keys[0], label: link.keys.join('; '), message: `No entry “${link.keys[0]}” in the vault’s .bib files`, hint: 'Citation completion lists the keys there are' };
+		}
+		const label = known.map((f) => f.entry.label).join('; ');
+		if (resolve.fullcite) {
+			return { kind: 'block', path: resolve.current, text: known.map((f) => `\\fullcite{${f.key}}`).join('\n\n'), label };
+		}
+		return { kind: 'unresolved', name: link.keys[0], label, message: known.map((f) => `${f.entry.label} — ${f.entry.title}`).join('\n'), hint: 'Name a bibliography in this vault’s settings to see it formatted' };
+	}
 	if (link.kind === 'xref') {
 		const host = resolve.label?.(link.key) ?? null;
 		if (!host) return { kind: 'unresolved', name: link.key, label: link.key, message: `No label “${link.key}” in this note` };

@@ -30,7 +30,7 @@ import { openTableMenu } from '../toolbar/popovers.js';
 import { numberDocument } from './numbering.js';
 import { workspaceStore } from '../../state/workspace-store.js';
 
-const TARGETS = '[data-le-cell],[data-le-task],[data-le-fold],[data-le-copy],[data-le-goto],[data-le-command],[data-le-href],[data-le-target],[data-le-tag],[data-le-ref],[data-le-blockid],.le-reveal-on-click';
+const TARGETS = '[data-le-cite],[data-le-cell],[data-le-task],[data-le-fold],[data-le-copy],[data-le-goto],[data-le-command],[data-le-href],[data-le-target],[data-le-tag],[data-le-ref],[data-le-blockid],.le-reveal-on-click';
 
 /** Put the cursor at `pos` (revealing whatever is there) and focus. */
 function placeCursor(view, pos) {
@@ -122,6 +122,10 @@ export const liveEvents = Prec.high(EditorView.domEventHandlers({
 			document.querySelector('clew-app')?.openSearch?.(`tag:#${el.dataset.leTag}`);
 			return true;
 		}
+		if (el.dataset.leCite) {
+			showCitation(el.dataset.leCite.split(',')[0]);
+			return true;
+		}
 		if (el.dataset.leRef) {
 			// Jump to what the reference names (numbering.js knows where
 			// every label is), leaving a Back entry, as a TOC jump does.
@@ -160,4 +164,13 @@ function editCell(view, td) {
 	const rows = wrap.querySelectorAll('tr').length;
 	// The table's lines: its rows plus the delimiter line.
 	activateCell(view, first, first + rows, Number(td.dataset.leRow), Number(td.dataset.leCol), 'end');
+}
+
+/**
+ * A citation chip's click (§5.14): the right sidebar on the References
+ * panel, in its Library, at the entry — highlighted.
+ */
+export function showCitation(key) {
+	workspaceStore.setSidebar('right', { open: true, activeTool: 'bibliography' });
+	requestAnimationFrame(() => document.querySelector('clew-bibliography')?.showEntry?.(key));
 }

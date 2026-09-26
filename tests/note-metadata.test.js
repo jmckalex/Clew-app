@@ -90,3 +90,15 @@ test('labels: every source form, their hosts, and what is not a label', () => {
 	assert.equal(by.loose.kind, 'plain');
 	assert.equal(by.fnl.kind, 'footnote');
 });
+
+test('citations: the \\cite family, multi-key, pandoc forms flagged, and what is not one', () => {
+	const text = 'A \\cite{alexander2023} and \\citep[p. 3][]{knuth84, lamport94} and \\fullcite*{x}.\n\n'
+		+ 'Pandoc [see @smith2020, p. 4; @jones] and bare @doe2019. but me@example.com is mail.\n\n'
+		+ '@begin(theorem)\nx\n@end(theorem) and @label[k] are directives.\n\n'
+		+ '`\\cite{incode}` and $\\cite{inmath}$\n\n```\n\\cite{fenced}\n```\n';
+	const cites = extractNoteMetadata(text).citations;
+	const keys = cites.map((c) => `${c.key}${c.pandoc ? '*' : ''}`);
+	assert.deepEqual(keys, ['alexander2023', 'knuth84', 'lamport94', 'x', 'smith2020*', 'jones*', 'doe2019*']);
+	assert.equal(cites.find((c) => c.key === 'knuth84').command, 'citep');
+	assert.equal(cites.find((c) => c.key === 'x').command, 'fullcite');
+});

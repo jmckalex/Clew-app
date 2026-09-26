@@ -40,6 +40,8 @@ const DEFAULTS = {
 	linkPreview: 'hover',
 	// The live preview pane (editor/preview-pane.js): 'on' | 'off'.
 	previewPane: 'on',
+	// The graph's References toggle (clew-graph-view.js, §5.14).
+	graphReferences: false,
 	explorerOpenMode: 'new-tab', // how newly created note tabs open ('source'|'reading')
 	diaryMode: 'files', // 'files' = one note per day, 'log' = single log note
 	diaryLogFile: 'Diary.md',

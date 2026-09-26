@@ -62,6 +62,11 @@ intended guide-note changes, committed (runs used scratch copies).
   block field; nothing inside drawn while concealed; numbered once in the
   model. `live-footnotes-scenario.js`. The §1.1 non-goal and the §5.2 row
   are corrected.
+- **Citations as objects** (§5.14): citations indexed, the Refs panel's
+  Library (who cites what, Insert/Copy/PDF/DOI), chip click → the entry,
+  hover → `\fullcite` or the .bib's fields, the graph's References switch.
+  The Refs tab is no longer gated (only its "This note" mode is).
+  Reading-mode citation hover is built but not scenario-asserted.
 - **Pre-existing, not a regression**: `figures-edit-scenario` phase 3
   (`key-changed=false` — an edited ```tikz in READING mode keeps its old
   picture) fails identically at `c6f3169`, before this session's work
