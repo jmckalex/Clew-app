@@ -34,6 +34,8 @@ const DEFAULTS = {
 	editorToolbarPrev: 'live',
 	editorToolbarGroups: null,
 	selectionBubble: true,
+	// The `//` menu (editor/complete/slash-commands.js).
+	slashCommands: true,
 	explorerOpenMode: 'new-tab', // how newly created note tabs open ('source'|'reading')
 	diaryMode: 'files', // 'files' = one note per day, 'log' = single log note
 	diaryLogFile: 'Diary.md',

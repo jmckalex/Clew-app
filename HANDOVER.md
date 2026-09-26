@@ -35,6 +35,11 @@ intended guide-note changes, committed (runs used scratch copies).
   deviations from the design. `live-table-edit-scenario.js` (ten steps, real
   input) passes, and so does the sweep of the earlier scenarios. Manual:
   `60162dd` on the docs branch (a Tables section, a screenshot).
+- **The `//` menu** (owner's request, 2026-09-26): Obsidian's slash
+  commands, triggered by `//` because `/` is the dialect's italic — design
+  in `docs/dev/live-edit.md` §6.9, decision row in §12.
+  `slash-menu-scenario.js` passes all eight steps; 783 tests. Manual: the
+  docs branch's live-edit chapter gains a section and a screenshot.
 
 ## 1. STILL OPEN
 
@@ -55,8 +60,9 @@ intended guide-note changes, committed (runs used scratch copies).
   exercised by the owner yet: plain click follows a concealed link (⌥-click
   edits, ⌘-click new tab); remote images not loaded in the editor; ⌘⇧E;
   new tabs still source; `|live` office embeds as thumbnails; MathJax macros
-  shared across notes; tables edit as source; reading mode's slim bar.
-- **Follow-ons deliberately left out** (same §12): slash commands, table
+  shared across notes; tables edited in place; reading mode's slim bar; the
+  `//` trigger.
+- **Follow-ons deliberately left out** (same §12): table
   drag handles, multi-cell selection and pasting a grid into cells,
   multi-line footnote concealment, Meta Bind widgets in prose,
   plugin-declared rich fence names (the Charts plugin's ```chart stays a

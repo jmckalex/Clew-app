@@ -26,6 +26,7 @@ import { search, searchKeymap } from '@codemirror/search';
 import { markdownKeymap } from '@codemirror/lang-markdown';
 import { clewEditorTheme, clewHighlighting } from './theme.js';
 import { wikilinkCompletions } from './complete/wikilinks.js';
+import { slashCompletions } from './complete/slash-commands.js';
 import { tagCompletions } from './complete/tags.js';
 import { wikilinkClick } from './wikilink-click.js';
 import { attachments } from './attachments.js';
@@ -78,7 +79,7 @@ export function makeNoteState(doc, handlerRef, { normalSyntax = false } = {}) {
 			clewEditorTheme,
 			jmdOverlay(),
 			jmdFolding(),
-			autocompletion({ override: [wikilinkCompletions, tagCompletions, citationCompletions] }),
+			autocompletion({ override: [wikilinkCompletions, tagCompletions, citationCompletions, slashCompletions] }),
 			wikilinkClick(),
 			attachments(),
 			// Reads the settings per keystroke: the toggle applies live and

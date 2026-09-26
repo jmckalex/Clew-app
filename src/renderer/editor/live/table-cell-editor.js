@@ -39,6 +39,7 @@ import { noteMarkdown } from '../jmd/markdown-config.js';
 import { clewHighlighting } from '../theme.js';
 import { jmdOverlay } from '../jmd/overlay.js';
 import { wikilinkCompletions } from '../complete/wikilinks.js';
+import { slashCellCompletions } from '../complete/slash-commands.js';
 import { tagCompletions } from '../complete/tags.js';
 import { citationCompletions } from '../complete/citations.js';
 import { liveConfigFacet } from './config.js';
@@ -120,7 +121,7 @@ function cellState(main, text, head) {
 			liveConfigFacet.of(config),
 			liveStateField,
 			inlineLayer,
-			autocompletion({ override: [wikilinkCompletions, tagCompletions, citationCompletions] }),
+			autocompletion({ override: [wikilinkCompletions, tagCompletions, citationCompletions, slashCellCompletions] }),
 			closeBrackets(),
 			escapeFilter,
 			Prec.highest(keymap.of(cellKeys(main))),

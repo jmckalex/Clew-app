@@ -126,3 +126,16 @@ export const FORMAT_MENU = [
 		],
 	},
 ];
+
+/**
+ * The commands that make sense inside a table cell edited in place (live
+ * edit): inline formatting and inline inserts — a heading or a list in a
+ * cell is not a thing GFM can hold. The rest refuse there with a notice,
+ * and the `//` menu leaves them out.
+ */
+export const CELL_SAFE_COMMANDS = new Set([
+	'edit:format-strong', 'edit:format-intense', 'edit:format-italic', 'format:underline',
+	'edit:format-highlight', 'edit:format-strike', 'format:subscript', 'format:superscript',
+	'edit:format-code', 'edit:format-math', 'edit:insert-wikilink', 'format:insert-link',
+	'format:footnote', 'format:citation', 'format:label', 'format:reference', 'format:today',
+]);

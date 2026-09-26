@@ -62,7 +62,7 @@ settings-driven layout, and a selection bubble variant.
 - Meta Bind widgets rendered live in prose (`INPUT[…]` shows as a chip;
   the frame path renders the fences). §5.4.
 - Live rendering of `|live` office embeds (thumbnail in live edit; §7.6).
-- Slash commands (`/` menu). A follow-on (§12).
+- Slash commands — built after v1 as the `//` menu (§6.9).
 - Multi-paragraph inline footnotes concealed (single-line ones are; §5.2).
 - Obsidian `%%comments%%` (the engine does not render them; nothing to
   mirror).
@@ -975,6 +975,48 @@ or when the setting `selectionBubble` is off. It reuses `setState`.
   command })` — appended to the named group (default `insert`); unwound on
   vault change with the plugin's other registrations.
 
+### 6.9 The `//` menu (`complete/slash-spec.js`, `complete/slash-commands.js`)
+
+Obsidian's slash commands, built after v1 at the owner's request. **The
+trigger is `//`, not `/`**: a single slash opens the dialect's italic
+(`/text/`), and a menu popping up at the start of every italic would be
+noise. `//` can never be an italic — the engine's rule
+(`syntax-modifications.js#italics`, `^\/([^\/.?!]+[.?!]?)\/`) needs a
+character that is not a slash between the two, and the scanner's opener
+(`(^|\s)\/(?=[^\s/])`) agrees — so the double slash costs the dialect
+nothing.
+
+- **When it fires** (`slashQuery`, pure): `//` at the start of a line or
+  after whitespace, then a query of words separated by single spaces
+  (`//heading 2`). `https://`, `a//b`, `///`, `// comment` (a space right
+  after the slashes) and two spaces in a row do not fire. Not inside code
+  (fenced or inline), maths, raw HTML or the metadata header — the lezer
+  node at the cursor and the scanner's `metaHeader` decide.
+- **What it offers** (`slashItems`, pure): the Format menu
+  (`shared/format-spec.js`), section by section, plus Link and Attachment
+  from the toolbar's Insert group — so the menu bar, the palette, the hotkey
+  editor and this menu cannot drift. Labels split at ` — ` into a name and
+  the syntax it writes (shown as the detail). "Insert Row Below" is left
+  out (it needs a table). Under `normalSyntax` intense, underline and
+  highlight are hidden and strong/italic relabel as bold/italic, as the
+  toolbar does. In a table cell edited in place only
+  `CELL_SAFE_COMMANDS` (moved to format-spec.js; format.js refuses the
+  rest in a cell with the same list).
+- **How it shows**: a CodeMirror completion source beside the wikilink,
+  tag and citation sources, in the note editor AND the cell editor, so
+  source mode and live edit alike. With nothing typed after `//` the items
+  carry the menu's sections, ranked in menu order; once a query is typed
+  they drop the sections and rank by the fuzzy match, as a palette does
+  (CodeMirror always ranks sections above scores, so a sectioned list
+  would put a poor match in Text Style above a perfect one in Block). No
+  `validFor`: the source is asked on every keystroke, which is what
+  switches between the two shapes.
+- **Accepting** deletes `//` and the query, then runs the item's command
+  on the next tick (after the completion closes — Wikilink opens a
+  completion of its own). Escape closes the menu and leaves `//` as text.
+- Setting `slashCommands` (default on; Settings → Editor toolbar).
+- Smoke: `slash-menu-scenario.js` (real typing; README).
+
 ---
 
 ## 7. Tier C: engine-rendered block frames
@@ -1356,8 +1398,9 @@ still prefer, and changing one is a small, local edit.
 | MathJax macros | one page-wide MathJax: macros leak across notes (documented) | a per-note InputJax |
 | Tables | edited in place on a click; Esc, ⌥-click or "Edit as source" for the source; reflow once on leaving | reveal source on click; never reflow automatically |
 | Reading mode's bar | a slim bar with the mode switch | none |
+| Slash-command trigger | `//` at a line start or after whitespace (a single `/` is the dialect's italic) | `/` at a line start only, accepting a menu over every line that opens with an italic |
 
-Follow-ons deliberately left out: slash commands; table drag handles, multi-cell selection and pasting a grid into cells;
+Follow-ons deliberately left out: table drag handles, multi-cell selection and pasting a grid into cells;
 multi-line footnote concealment; Meta Bind widgets in prose; plugin-declared
 rich fence names; persisting frame heights across reopenings; drag handles
 for blocks; a focus mode.

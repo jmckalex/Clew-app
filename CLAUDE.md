@@ -79,7 +79,7 @@ note API, plugins, and every settings key.
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
   dialect scanner's constructs and grammar, live edit's model, reveal rule,
-  inline renderer and toolbar state/layout, format toggling — 756 tests. DOM/UI work is
+  inline renderer and toolbar state/layout, format toggling, the `//` menu — 783 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
@@ -602,9 +602,17 @@ except where the selection touches a construct. The durable design is
   widget's `updateDOM` never touches that cell, and leaving reflows once. The
   note editor's theme rules reach nested editors (descendant selectors) —
   override them for anything mounted inside it.
+- **The `//` menu** (`editor/complete/slash-spec.js` pure +
+  `slash-commands.js`, a completion source in the note AND cell editors,
+  so source mode too): Obsidian's slash commands, triggered by `//` at a
+  line start or after whitespace because `/` is the dialect's italic
+  (`//` never is — the engine's italic needs a non-slash between). It
+  offers the Format menu (`shared/format-spec.js`) and nothing else, so
+  menu, palette and this cannot drift; accepting deletes what was typed
+  and runs the command. `CELL_SAFE_COMMANDS` lives in format-spec.js.
 - Settings: `defaultEditMode`, `liveReveal`, `liveRender{Math,Fences,Embeds}`,
   `liveFrameCap`, `editorToolbar(+Prev)`, `editorToolbarGroups`,
-  `selectionBubble`; `newTabMode` accepts `live`. Documents over 500 KB
+  `selectionBubble`, `slashCommands`; `newTabMode` accepts `live`. Documents over 500 KB
   fall back to source with a banner. Scenarios: `live-*` in smoke/ (README).
 
 ### Note API (scripts in rendered notes)

@@ -19,6 +19,7 @@ import { toggleWrapSpec } from '../editor/toggle-wrap.js';
 import { vaultSettingsStore } from '../state/vault-settings-store.js';
 import { saveAndInsert } from '../editor/attachments.js';
 import { CALLOUT_TYPES } from '../../engine/callouts.js';
+import { CELL_SAFE_COMMANDS } from '../../shared/format-spec.js';
 import {
 	activeCellView, applyStructure, leaveCell, tableTarget, activateCell, rowIndex,
 } from '../editor/live/table-cell-editor.js';
@@ -249,14 +250,6 @@ function insertTableRow(view) {
 	view.focus();
 }
 
-/** What a table cell being edited in place accepts: inline formatting. */
-const CELL_SAFE = new Set([
-	'edit:format-strong', 'edit:format-intense', 'edit:format-italic', 'format:underline',
-	'edit:format-highlight', 'edit:format-strike', 'format:subscript', 'format:superscript',
-	'edit:format-code', 'edit:format-math', 'edit:insert-wikilink', 'format:insert-link',
-	'format:footnote', 'format:citation', 'format:label', 'format:reference', 'format:today',
-]);
-
 /** Focus what was being edited: the cell editor, or the note. */
 function refocus(main) {
 	(activeCellView(main) ?? main).focus();
@@ -394,7 +387,7 @@ export function registerFormatCommands() {
 		if (!view) return;
 		// Inside a table cell only inline formatting makes sense: a heading
 		// or a list in a cell is not a thing GFM can hold.
-		if (view !== activeMainView() && !CELL_SAFE.has(id)) {
+		if (view !== activeMainView() && !CELL_SAFE_COMMANDS.has(id)) {
 			notice('Not inside a table cell — press Esc to edit the table as source');
 			return;
 		}

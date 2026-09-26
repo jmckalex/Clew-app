@@ -120,4 +120,13 @@ reaches it from the keyboard. Select some text and a smaller bubble
 offers the text styles. Settings → Editor toolbar decides when it shows
 and which groups it holds.
 
+## The // menu
+
+Type `//` at the start of a line, or after a space, and the Format menu
+drops down: keep typing to filter it (`//head 2`), *Enter* to apply,
+*Esc* to leave the slashes as text. It works in source mode and in a
+table cell too (inline styles only there). Two slashes because one is
+the dialect's italic; `https://` and code never open it. Settings →
+Editor toolbar turns it off.
+
 See also: [[Editing]], [[Reading Mode]], [[Settings and Hotkeys]].

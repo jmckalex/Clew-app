@@ -107,6 +107,22 @@ ${extra}
 Last line.
 `);
 
+// Slash.md (slash-menu-scenario.js): prose, a code fence, a table.
+writeFileSync(join(dir, 'Slash.md'), `# Slash
+
+Some prose here.
+
+\`\`\`js
+const x = 1;
+\`\`\`
+
+| A | B |
+| --- | --- |
+| a1 | b1 |
+
+Last line.
+`);
+
 // Cells.md (live-table-edit-scenario.js): a plain table to edit in place.
 writeFileSync(join(dir, 'Cells.md'), `# Cells
 

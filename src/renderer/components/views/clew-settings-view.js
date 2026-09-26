@@ -87,6 +87,7 @@ class ClewSettingsView extends ClewElement {
 				this.#selectRow('Show the toolbar', 'editorToolbar',
 					[['live', 'In live edit'], ['always', 'In live edit and source mode'], ['never', 'Never']]),
 				this.#checkRow('Selection bubble over selected text', 'selectionBubble'),
+				this.#checkRow('// menu: type // for the Format menu', 'slashCommands'),
 				this.#toolbarGroupsRow(),
 			]),
 			this.#section('Diary', [
