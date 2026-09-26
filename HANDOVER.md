@@ -1,123 +1,148 @@
-# Handover — 2026-09-26, `feat/live-edit` (live edit Phase 0 DONE — foundations, nothing visible; Phase 1 next)
+# Handover — 2026-09-26, `feat/live-edit` (live edit BUILT — phases 0–7 done, unmerged; the manual on a matching docs branch)
 
-Session-rollover state for the live-edit BRANCH, in the worktree
-`../Clew-app-live-edit`. Durable architecture lives in **CLAUDE.md**; the
-design is `docs/dev/live-edit-plan.md` (kept true to what was built — each
-phase's deviations are recorded in it, marked "As built"); the brief for a
-build session is `docs/dev/live-edit-kickoff.md`. What `main` was doing when
-this branch left it (0.10.0, the website, DNS) is in `git show
-ed2aabc:HANDOVER.md` and is summarised in §4 — this branch changed none of it.
+Session-rollover state for the live-edit branch, in the worktree
+`../Clew-app-live-edit`. The durable design is `docs/dev/live-edit.md`
+(the plan, turned into the design as built; its §12 lists the decisions in
+force); the short form is CLAUDE.md's "Live edit" subsection. What `main`
+was doing when the branch left it is in `git show ed2aabc:HANDOVER.md`
+(summarised in §5) — this branch changed none of it.
 
 ## 0. Where things stand
 
-721 tests green (644 at the branch point), `node scripts/build.js` passes,
-every smoke scenario named below passes. Demo and study vaults untouched.
+**The feature is complete** against the plan's phases 0–7: 756 tests green
+(644 at the branch point), `node scripts/build.js` passes, and every
+scenario in §3's sweep passes at `647de91`. Demo and study vaults: only the
+intended guide-note changes, committed (runs used scratch copies).
 
-**Phase 0 of plan §12 is complete** — six commits after the docs commit:
-
-| commit | what |
-| --- | --- |
-| `87cc541` | the scanner records structured `constructs` beside its captures; `jmd/scan-cache.js` — one memoised scan shared by overlay and folding |
-| `0bc4d63` | `jmd/subsup-parser.js`: `_c` `_{…}` `^c` `^{…}` and `^block-id` in the lezer tree as the engine reads them; the markdown config is now `jmd/markdown-config.js#noteMarkdown`, installed in `editor.js#markdownCompartment` |
-| `51f7858` | `state/vault-settings-store.js`; a `normalSyntax` flip reconfigures open editors in place |
-| `2cc7cb6` | `editor/live/model.js` (the one construct list), `live/reveal.js` (the rule, a pure range test), `live/rich-fences.js` |
-| `2e2cbab` | `__clew_block__` POST/GET (full engine documents), `wrapPreviewDocument`, `fragment-deps.js`, the client's block mode + size reporting, `CLEW_SMOKE_FRAME_MATCH` |
-
-The one change a user could see: in the SOURCE pane `_x_` no longer paints
-italic and `^x^` no longer as GFM superscript — correctly, the engine
-renders neither. No manual page describes the old faces, so the manual
-needs nothing yet; it becomes due at Phase 1 (plan §11).
+- **Clew-app `feat/live-edit`** — 19 commits over `main` (`bf5c853` …
+  `647de91`), not merged, not pushed. `git log --oneline main..feat/live-edit`
+  reads as the build history, one phase per commit or two, plus fixes the
+  review and the docs turned up.
+- **Clew-docs `feat/live-edit`** — in a SECOND worktree,
+  `../Clew-docs-live-edit` (the owner's own `../Clew-docs` checkout, with
+  its uncommitted HANDOVER/Makefile/README edits, was left on main and
+  untouched): `e8065a5` adds the chapter *Live edit and the toolbar*
+  (`site/manual/live-edit.html`, two screenshots) and updates the editor,
+  reading-mode, settings-and-hotkeys and plugins chapters. `make og-tags`
+  run; `make check-links` clean except the four `downloads/` binaries that
+  are never staged in a fresh tree.
+- The planning session reviewed phase 5 and found one real gap (frames
+  never re-rendered after an engine reconfigure); fixed in `e0a5f44`, with
+  a second bug it hid (§2).
 
 ## 1. STILL OPEN
 
-- **Phase 1 — the mode** (plan §3.3 in full, §12): `tab.view.mode: 'live'`
-  + `editMode`, `editorPool.setMode` with an empty live bundle, the
-  commands (⌘⇧E), menu items, settings keys + rows, and
-  `live-mode-persistence-scenario.js`. Start by reading §3.3's table
-  against the files it names — it was written at `ed2aabc` and those files
-  have not moved since.
-- The engine change (plan Appendix D, `currentFile`) — Phase 5 only.
-  `render-service` already PASSES `currentFile`; the engine ignores it.
-- Everything in §4 (main's own open items) is unchanged.
+- **Merging** is the owner's call: `feat/live-edit` → `main` in Clew-app,
+  and the docs branch → `main` in Clew-docs, together (the manual must not
+  describe an unmerged feature, nor the app ship one the manual does not
+  describe). Then `git worktree remove` both worktrees.
+- **The owner's QA pass** (not automatable; the plan's list): typing feel at
+  speed in a long note; ⌘Z across a conceal/reveal; ⌘F over concealed text
+  (matches inside widgets do not highlight — moving the selection reveals
+  them); copy/paste of concealed ranges yields source; IME composition in a
+  concealed word; zoom levels; a live pane beside a reading pane in sync;
+  drag-and-drop of an image into a live note; the properties panel and the
+  properties widget editing the same note.
+- **Decisions in force** (`docs/dev/live-edit.md` §12) — none has been
+  exercised by the owner yet: plain click follows a concealed link (⌥-click
+  edits, ⌘-click new tab); remote images not loaded in the editor; ⌘⇧E;
+  new tabs still source; `|live` office embeds as thumbnails; MathJax macros
+  shared across notes; tables edit as source; reading mode's slim bar.
+- **Follow-ons deliberately left out** (same §12): slash commands, in-place
+  table cells, multi-line footnote concealment, Meta Bind widgets in prose,
+  plugin-declared rich fence names (the Charts plugin's ```chart stays a
+  code fence in live edit — plugins declare no fence names; a manifest
+  `fences` key is the obvious shape), persisting frame heights across
+  reopenings, block drag handles, a focus mode.
 
-## 2. What Phase 0 taught (measured)
+## 2. What the build taught (measured)
 
-- **`documentElement.scrollHeight` never drops below the frame's
-  viewport.** The plan had the block client report it; an 84 px mermaid
-  block in a 240 px frame reported 236, so frames could only ever grow. The
-  client reports the BODY's box; `block-endpoint-scenario` pins
-  `size == content` (79 == 79) in a frame first given 240.
-- **A block document is a full engine build**, not fragment HTML in a
-  copied head: the head then comes from `clew-template.html` exactly as a
-  note's does, and cannot drift. The client's `render` morph already takes
-  a whole document.
-- **A block frame's mermaid does not run until the host answers `ready`
-  with a `theme`** — the client starts mermaid from the theme message. The
-  frame layer (Phase 5) must post it; a scenario standing in for a host
-  must too (the first run reported `mermaid-svg=false` for exactly this).
-- **An unknown callout type is a plain quote**, not `note` as the plan
-  said: the engine's `calloutBlock` returns nothing and marked renders a
-  blockquote.
-- **Plugins declare no fence names** (the Charts manifest has only
-  `surfaces`), so `liveModel` takes `richFences` as config; how a plugin
-  supplies it is Phase 5's question.
-- Model cost (node, cold): 6.7 ms for the demo vault's largest note
-  including its parse; on 207 KB the model's own work is 4.2 ms over a
-  23.6 ms parse and a 12.8 ms scan the editor has already paid for.
-- The engine's block-id rule is end of PARAGRAPH (`$` without `m`), not end
-  of line; the grammar mirrors it (end of the inline section).
-- Scanner byte-identity was proven by diffing captures/regions/folds/
-  injections over all 67 notes in demo-vault, study-vault and smoke/
-  before and after — the snapshot script is trivial to recreate (walk,
-  `scanJmarkdown`, `JSON.stringify` minus `constructs`, `cmp`).
+- `documentElement.scrollHeight` never drops below an iframe's viewport: a
+  block frame must report its BODY's height (84px block in a 240px frame
+  said 236).
+- A block document's MathJax/mermaid config comes free by building it as a
+  FULL engine document; a client only starts mermaid once the host answers
+  `ready` with a `theme`.
+- An iframe element's `color-scheme` must match its document's, or Chromium
+  paints an opaque slab behind a transparent page.
+- CodeMirror's `cm-widgetBuffer` images (1em, `text-top`) lifted a concealed
+  heading 1px; tamed in live-edit.css.
+- MathJax's `tex2svg` does not install its stylesheet — without it the
+  assistive MathML shows and every formula reads twice.
+- CodeMirror's drawn margin can hold more small frames than the cap (17 at
+  80px); eviction must include drawn-but-off-screen frames, and "pinned
+  within three screens" needs the height map (`lineBlockAt`), not the DOM.
+- After `renderService.reconfigure()` the same text kept the same fragment
+  hash; every fragment key now carries a configuration generation.
+- Every reader of `global.current_file` is Clew's own code, so a fragment's
+  note travels in a `<key>.source` sidecar — no engine change, which also
+  kept clear of the owner's uncommitted edits in the master's `index.js`.
+- A plain `|` inside a wikilink in a GFM table splits the cell (Obsidian too;
+  write `[[Note\|alias]]`); the table keymap then reformats around the split.
+- Cost per keystroke: live adds ~0.4 ms (12 KB note) and ~2.2 ms (207 KB)
+  over source's 3.1 / 12.2 ms; 16 block frames ≈ 22 MB each over reading
+  mode. Numbers and methods in `smoke/README.md`.
+- An unknown callout type is a plain quote, not `note`; source mode's
+  ⌘-click handler outranked live edit's until given `Prec.high`.
 
 ## 3. Running things in THIS worktree
 
-- `npm install` here did NOT fetch Electron's binary (`node_modules/
-  electron/dist` absent; the harness then exits 0 with no output at all).
-  `node node_modules/electron/install.js` fixes it.
-- The smoke command that works, all env in one go (fixtures in the
-  session scratchpad, never a real vault):
+- `npm install` here did not fetch Electron's binary; `node
+  node_modules/electron/install.js` fixed it.
+- The smoke command, all env in one go (fixtures in a scratchpad):
 
   ```sh
   CLEW_SMOKE_LOG=1 CLEW_USER_DATA=$S/ud CLEW_SMOKE=$S/out.png \
-    CLEW_SMOKE_SCRIPT=smoke/math-highlight-scenario.js CLEW_SMOKE_VAULT=$S/math-vault \
+    CLEW_SMOKE_SCRIPT=smoke/live-edit-scenario.js CLEW_SMOKE_VAULT=$S/vault \
     perl -e 'alarm shift; exec @ARGV' 120 \
     node_modules/electron/dist/Electron.app/Contents/MacOS/Electron . > $S/out.log 2>&1
   ```
 
-- Scenarios re-run clean at the end of Phase 0: `math-highlight`,
+- The sweep that passed at `647de91`: `live-edit`, `live-lines`,
+  `live-tables`, `live-blocks` (+frame, `CLEW_SMOKE_FRAME_MATCH=__clew_block__`),
+  `live-toolbar` (`CLEW_SMOKE_MENU=1`), `live-mode-persistence` ×2,
+  `normal-syntax`, `block-endpoint` (+frame), `math-highlight`,
   `footnote-highlight`, `fence-highlight`, `editor-hotkeys`,
-  `reading-scroll`, `embed-refresh`, plus the two new ones
-  (`normal-syntax`, `block-endpoint` + frame with
-  `CLEW_SMOKE_FRAME_MATCH=__clew_block__`). `reading-scroll` wants a
-  `Long.md` far taller than the window (60 `## Section N` headings).
+  `reading-scroll`, `embed-refresh`; `embed-collapse` and `live-perf` ran
+  clean earlier in the session. Every recipe is in `smoke/README.md` or the
+  scenario's header (`make-live-vault.mjs` builds the live fixtures).
+- A scenario can only queue input ONCE (read after it returns): take every
+  point in the layout the clicks will meet, and order clicks so no earlier
+  one moves a later target.
 
-## 4. Main's own open items (unchanged by this branch; full text in `git show ed2aabc:HANDOVER.md`)
+## 4. Small residue
+
+- `fence-highlight-scenario.js`'s header expects `jmd-string` > 0; it is 0
+  at `ed2aabc` too (the fixture's only quotes are on a fence INFO line).
+  Stale expectation.
+- A ⌘-click (inverse search) on the GAP between two paragraphs in reading
+  mode does nothing — the client wants a stamped ancestor. Pre-existing; the
+  persistence scenario tripped on it (§3's last bullet).
+- An embedding canvas card is now keyed by the file epoch (re-renders after
+  any file change) — a behaviour change for canvas, an improvement.
+- Source mode's dialect colouring still does not fully follow the vault's
+  normalSyntax (the grammar does; the overlay does not).
+- `smoke/live-lines-scenario.js`'s header claims `height-stable` in prose
+  only; the README row carries the 1px story.
+
+## 5. Main's own open items (unchanged by this branch; full text in `git show ed2aabc:HANDOVER.md`)
 
 - The GoDaddy DNS change — the website is NOT live until it lands.
 - `main` is 20 commits ahead of `origin` and not tracking it; Clew-docs has
-  no remote at all. The owner's to sort out; this branch never pushes.
+  no remote at all. The owner's to sort out; this branch never pushed.
 - Offers awaiting a yes/no: the link face on plain `[text]`; a manual line
   on `\[ \begin{align*} … \]` in LaTeX export. `font=note` waits on
-  mp-tikz-wasm 0.3.0 (re-pin the manifest). The graphicx driver line for
-  mp-tikz-wasm. The three dev docs. Win/linux artefacts untested at
-  runtime.
+  mp-tikz-wasm 0.3.0. The graphicx driver line for mp-tikz-wasm. The three
+  dev docs (`docs/dev/live-edit.md` is now a fourth). Win/linux artefacts
+  untested at runtime.
 
-## 5. Owner's own actions / small residue
+## 6. Owner's own actions
 
-- The eight defaults in plan §13 still stand; none has been exercised yet
-  (they bite from Phase 2 on).
-- `fence-highlight-scenario.js`'s header lists `jmd-string` among the
-  counts that should be > 0; it is 0 at `ed2aabc` too (the fixture's only
-  quotes sit on a fence INFO line, which nothing paints). A stale
-  expectation, not a regression — fix the header or the fixture.
-- `renderFragment` now treats an embedding canvas card as dependent (keyed
-  by the file epoch), so such a card re-renders after any file change
-  instead of showing stale content. An improvement, but a behaviour change
-  for canvas; the plan records it.
+- Try live edit on a real vault (⌘⇧E; the demo's `Guide/Live Edit`), run
+  the QA list in §1, and decide the §12 defaults.
+- Merge both branches together, then remove the two worktrees.
 
-## 6. Standing session rules (they keep earning their keep)
+## 7. Standing session rules (they keep earning their keep)
 
 - **NEVER `git add -A`** — stage explicit paths. (Broken repeatedly this
   session. The commits are clean because the tree happened to be, which is
