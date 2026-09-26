@@ -80,12 +80,15 @@ note API, plugins, and every settings key.
   embed graph and the embed keyword syntax, the shell sessions, the watch order — 644 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
-  [CLEW_SMOKE_FRAME_SCRIPT=frame.js] [CLEW_SMOKE_VAULT=/path/vault]
-  electron .` — SMOKE_VAULT opens exactly that vault, never touching the
+  [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
+  [CLEW_SMOKE_VAULT=/path/vault] electron .` — SMOKE_VAULT opens exactly that vault, never touching the
   user's restored vault set (always pass it). Boots the app, runs the
   scenario in the renderer (dev hook `window.__clew` exposes the stores,
   registry, ipc), optionally drives the preview iframe's document via
-  webFrameMain, screenshots, and exits HARD (`app.exit` after flushing
+  webFrameMain (with FRAME_MATCH: EVERY clew-preview frame whose URL
+  contains the substring, in turn — live edit's `__clew_block__` frames —
+  the script seeing `SMOKE_FRAME`, the URL's last segment, to tag its
+  lines), screenshots, and exits HARD (`app.exit` after flushing
   editors — the office close guards would otherwise hang the harness on
   their own success). More knobs, all documented in main.js:
   `CLEW_SMOKE_LOG=1` (every console line), `CLEW_SMOKE_METRICS=/p.json`

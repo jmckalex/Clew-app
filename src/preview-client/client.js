@@ -25,6 +25,11 @@ import { figureMorph, initFigures, figuresPending } from './figures.js';
 
 const HOST_SOURCE = 'clew-preview-host';
 const post = (msg) => window.parent.postMessage({ source: 'clew-preview', ...msg }, '*');
+// A live-edit BLOCK document (protocol.js `__clew_block__`): one rendered
+// block in a frame sized to its content, inside the editor. It has no scroll
+// of its own and no source lines worth reporting, so the reading-mode
+// behaviours below stand down; instead it reports its height.
+const BLOCK = document.documentElement.dataset.clewBlock === '1';
 
 // ---- inbound: host → preview ---------------------------------------------
 
@@ -254,7 +259,7 @@ function showError(message) {
 // document can navigate the iframe away.
 document.addEventListener('click', (e) => {
 	// Cmd/Ctrl+click anywhere = inverse search (jump the editor to this line).
-	if (e.metaKey || e.ctrlKey) {
+	if ((e.metaKey || e.ctrlKey) && !BLOCK) {
 		const stamped = e.target.closest?.('[data-source-line]');
 		if (stamped && !e.target.closest('a')) {
 			e.preventDefault();
@@ -279,6 +284,8 @@ document.addEventListener('click', (e) => {
 	if (/^[a-z][a-z0-9+.-]*:/i.test(href) && !href.startsWith('clew-preview:')) {
 		e.preventDefault();
 		post({ type: 'external-link', url: href });
+	} else if (href.startsWith('#') && BLOCK) {
+		e.preventDefault(); // a block has no document to jump around in
 	} else if (href.startsWith('#')) {
 		// In-document anchor. The wild writes GitHub-style hashes
 		// (#deep-work) while the engine ids headings toc-<slug>; resolve
@@ -373,7 +380,7 @@ function lineOf(el) {
 // Report scroll position (topmost stamped block + fraction) for scroll-sync.
 let scrollTicking = false;
 window.addEventListener('scroll', () => {
-	if (scrollTicking) return;
+	if (scrollTicking || BLOCK) return;
 	scrollTicking = true;
 	requestAnimationFrame(() => {
 		scrollTicking = false;
@@ -406,6 +413,34 @@ function scrollToLine(line, behavior) {
 	target.el.scrollIntoView({ behavior, block: 'start' });
 }
 
+// Block documents report their height: the frame layer sizes the frame and
+// the editor's placeholder to it. Rendered content resizes late and on its
+// own (MathJax, mermaid, figures, maps, images, fonts), so every change is
+// watched and settled for 50ms before one `size` goes out — only when it
+// moved by a pixel or more.
+function reportSize() {
+	let last = -1;
+	let timer = null;
+	const send = () => {
+		timer = null;
+		// The BODY's box, not documentElement.scrollHeight: the latter is
+		// never less than the frame's own viewport, so a block would only
+		// ever report the height it was given and could never shrink to fit
+		// (measured: an 84px mermaid block in a 240px frame reported 236).
+		const height = Math.ceil(document.body.getBoundingClientRect().height);
+		if (Math.abs(height - last) < 1) return;
+		last = height;
+		post({ type: 'size', height });
+	};
+	const soon = () => { if (!timer) timer = setTimeout(send, 50); };
+	new ResizeObserver(soon).observe(document.body);
+	new MutationObserver(soon).observe(document.body, { childList: true, subtree: true, attributes: true, characterData: true });
+	document.fonts?.ready.then(soon);
+	window.addEventListener('load', soon);
+	soon();
+}
+
+if (BLOCK) reportSize();
 enableTaskCheckboxes();
 initCanvasEmbeds();
 initLeafletMaps();

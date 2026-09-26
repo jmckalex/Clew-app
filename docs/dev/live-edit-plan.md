@@ -952,6 +952,27 @@ renderFragment(text, { sourcePath = null, dependent = false } = {})
   (cache bounded/evicted) → 404, and the layer re-POSTs.
 - `Cache-Control: no-store` on both (block content is not immutable).
 
+As built (Phase 0), three differences, each measured or forced:
+
+- **The block document is a FULL engine build**, not fragment HTML wrapped
+  in a copied head: `renderService.renderBlock(text, {sourcePath})` runs the
+  worker with `fragment: false`, so the head (MathJax config, mermaid,
+  highlight, CSS, jQuery) comes from `clew-template.html` exactly as a
+  note's does. protocol.js's shared part is `wrapPreviewDocument(html,
+  {session, sid, block})` — the api/client/vault-script/plugin injection
+  both kinds of document get — which also puts `data-clew-block="1"` on a
+  block's `<html>`. The client's `render` morph already takes a full
+  document, so the re-render path needs nothing new. Blocks share the
+  fragment cache (bounded 500) under a distinct key.
+- `isDependentFragment` lives in `src/main/fragment-deps.js` (render-service
+  cannot load outside Electron, and the test runs under node); it also
+  counts ```leaflet. `renderFragment` itself now uses it by default, so a
+  canvas card that embeds a note stops being served stale too. The key
+  carries `#fragmentEpoch`, bumped by `onFileChanged` and `reconfigure`.
+- A `sourcePath` escaping the vault is a 403; malformed JSON a 400.
+- `currentFile` is already passed to the worker; the engine ignores it
+  until Appendix D lands.
+
 ### 7.3 The frame layer (`live/frame-layer.js`)
 
 A ViewPlugin owning `<div class="le-frames">` inside `view.scrollDOM`
@@ -1045,9 +1066,12 @@ Same file, one switch on `document.documentElement.dataset.clewBlock`:
   anchor-jump history, TOC scroll.
 - Add: **size reporting** — a `ResizeObserver` on `document.body` plus a
   `MutationObserver` (debounced 50ms; MathJax/mermaid/figures/leaflet
-  resize asynchronously) posting `{type:'size', height:
-  document.documentElement.scrollHeight}` when it changes by ≥1px; the
-  final `size` after fonts load (`document.fonts.ready`).
+  resize asynchronously) posting `{type:'size', height}` when it changes by
+  ≥1px; the final `size` after fonts load (`document.fonts.ready`).
+  **The height is the BODY's box**, not `documentElement.scrollHeight` as
+  first planned: scrollHeight never drops below the frame's viewport, so a
+  block could only grow (measured in Phase 0: an 84px mermaid block in a
+  240px frame reported 236).
 - Keep everything else: morph on `render`, checkbox enabling, kv events,
   theme, chord forwarding, `focused`, the note API.
 

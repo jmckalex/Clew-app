@@ -69,6 +69,16 @@ export function fragmentUrl() {
 	return `clew-preview://vault/${sessionId}/__clew_fragment__`;
 }
 
+/** Live edit's block frames: POST `{text, sourcePath}` here for `{hash}`… */
+export function blockUrl() {
+	return `clew-preview://vault/${sessionId}/__clew_block__`;
+}
+
+/** …then frame the rendered block document at this URL. */
+export function blockDocumentUrl(hash) {
+	return `clew-preview://vault/${sessionId}/__clew_block__/${hash}`;
+}
+
 /** Base URL of the preview origin (rewrites root-relative asset paths). */
 export function previewOrigin() {
 	return 'clew-preview://vault';

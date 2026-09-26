@@ -859,3 +859,13 @@ details.callout[open] > summary::after { transform: rotate(45deg); }
 /* The engine's own alert styling assumes a light page and would otherwise
    fight the tint above; ours is the one that applies. */
 .callout.markdown-alert { border-top: 0; border-right: 0; border-bottom: 0; }
+
+/* Live edit's block documents (protocol.js `__clew_block__`): one rendered
+   block in a frame inside the editor, sized by its content (client.js
+   reports the height). Never scrollable — a wheel over it must chain to the
+   editor — and no page chrome: the editor supplies the margins and the
+   background. */
+html[data-clew-block], html[data-clew-block] body { overflow: hidden; background: transparent; }
+html[data-clew-block] body { max-width: none; margin: 0; padding: 0; }
+html[data-clew-block] body > :first-child { margin-top: 0; }
+html[data-clew-block] body > :last-child { margin-bottom: 0; }

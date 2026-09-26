@@ -487,12 +487,26 @@ if (process.env.CLEW_SMOKE) {
 				}
 				// Optionally drive the preview iframe's document (cross-origin from
 				// the app, but reachable from main via webFrameMain).
+				// CLEW_SMOKE_FRAME_MATCH=<substring>: run it in EVERY
+				// clew-preview:// frame whose URL contains the substring (live
+				// edit's block frames, `__clew_block__`), one after another; the
+				// script sees `SMOKE_FRAME` — the URL's last path segment — to
+				// prefix its lines with.
 				if (process.env.CLEW_SMOKE_FRAME_SCRIPT) {
 					const frameScript = fs.readFileSync(process.env.CLEW_SMOKE_FRAME_SCRIPT, 'utf8');
-					const frame = primary.webContents.mainFrame.frames
-						.find((f) => f.url.startsWith('clew-preview:'));
-					if (frame) await frame.executeJavaScript(`(async () => { ${frameScript} })()`);
-					else console.error('smoke: no preview frame found');
+					const match = process.env.CLEW_SMOKE_FRAME_MATCH;
+					const previews = primary.webContents.mainFrame.framesInSubtree
+						.filter((f) => f.url.startsWith('clew-preview:'));
+					const frames = match
+						? previews.filter((f) => f.url.includes(match))
+						: previews.filter((f) => f.parent === primary.webContents.mainFrame).slice(0, 1);
+					if (frames.length === 0) console.error('smoke: no preview frame found');
+					if (match) console.log(`smoke-frames: ${frames.length} matching ${match}`);
+					for (const frame of frames) {
+						const tag = new URL(frame.url).pathname.split('/').filter(Boolean).pop() ?? '';
+						await frame.executeJavaScript(
+							`(async () => { const SMOKE_FRAME = ${JSON.stringify(tag)}; ${frameScript} })()`);
+					}
 					await new Promise((r) => setTimeout(r, 1500));
 				}
 				await new Promise((r) => setTimeout(r, 800));
