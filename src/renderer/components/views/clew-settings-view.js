@@ -74,6 +74,8 @@ class ClewSettingsView extends ClewElement {
 					[['hover', 'Always'], ['mod', navigator.platform.startsWith('Mac') ? 'With ⌘ held' : 'With Ctrl held'], ['off', 'Off']]),
 				this.#selectRow('Live preview of maths and diagrams while editing', 'previewPane',
 					[['on', 'On'], ['off', 'Off']]),
+				this.#selectRow('Footnotes in the margin (sidenotes)', 'sidenotes',
+					[['auto', 'When the pane is wide enough'], ['on', 'Always'], ['off', 'Never']]),
 				this.#selectRow('PDF paper size (reading-view export)', 'printPaperSize',
 					[['a4', 'A4'], ['letter', 'US Letter'], ['legal', 'US Legal'], ['tabloid', 'Tabloid']]),
 			]),

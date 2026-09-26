@@ -305,3 +305,12 @@ body[data-theme='light'] .le-frame { color-scheme: light; }
 	position: absolute; right: 0.5em; top: 50%; transform: translateY(-50%);
 	color: var(--clew-text-normal);
 }
+
+/* Sidenotes (§5.16): concealed footnotes' bodies in the right margin. */
+.le-sidenotes { position: absolute; top: 0; left: 0; width: 0; height: 0; pointer-events: none; }
+.le-sidenotes[hidden] { display: none; }
+.le-sidenote {
+	position: absolute; box-sizing: border-box; font-family: var(--clew-editor-font); font-size: 0.8em; line-height: 1.45;
+	color: var(--clew-text-muted); border-left: 2px solid var(--clew-accent); padding-left: 8px; pointer-events: auto;
+}
+.le-sidenote-number { font-weight: 600; color: var(--clew-accent); }

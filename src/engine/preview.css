@@ -869,3 +869,14 @@ html[data-clew-block], html[data-clew-block] body { overflow: hidden; background
 html[data-clew-block] body { max-width: none; margin: 0; padding: 0; }
 html[data-clew-block] body > :first-child { margin-top: 0; }
 html[data-clew-block] body > :last-child { margin-bottom: 0; }
+
+/* Sidenotes (Clew, docs/dev/live-edit.md §5.16): footnote bodies in the right
+   margin of a wide page; the end list hidden while they show. */
+body.clew-sidenotes-on section.footnotes, body.clew-sidenotes-on .jmd-endnotes { display: none; }
+.clew-sidenotes { position: absolute; top: 0; left: 0; width: 0; height: 0; }
+.clew-sidenote {
+	position: absolute; box-sizing: border-box; font-size: 0.8em; line-height: 1.45;
+	color: var(--preview-text); opacity: 0.85; border-left: 2px solid var(--preview-accent); padding-left: 8px;
+}
+.clew-sidenote p { margin: 0 0 0.4em; }
+.clew-sidenote-number { font-weight: 600; color: var(--preview-accent); }

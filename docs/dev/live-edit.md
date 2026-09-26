@@ -1151,6 +1151,45 @@ and re-run. Designed by the planning session; built overnight.
   four-page PDF written by hand (the demo's sample.pdf has one page, and a
   two-page one could not scroll page 2 to the top).
 
+### 5.16 Sidenotes
+
+When the pane is wide, footnotes sit in the margin beside the text that
+cites them, in reading mode and in live edit. Designed by the planning
+session; built overnight, after the multi-paragraph footnote correction
+(§5.2) it builds on.
+
+**As built** (deviations ◆):
+
+- **Setting** `sidenotes: 'auto' | 'on' | 'off'`, default `auto` — a pane
+  ≥ 960 px wide with ≥ 220 px of margin right of the text; Settings →
+  Appearance.
+- **Reading mode** (`preview-client/client.js#layoutSidenotes`): the engine's
+  references are `sup.footnote-ref a[href^="#fn-"]` and its endnotes
+  `li#fn-<label>` in `section.footnotes` (inline-footnotes.js — the design
+  guessed `#footnote-` ◆). Each note is a CLONE of its endnote (the backref
+  removed, the number run into its first paragraph) in a `.clew-sidenotes`
+  layer carrying `data-clew-keep`, absolutely placed at its reference's
+  height beside the body, pushed below the previous note's bottom + 8 px on
+  a collision; laid out again after every `clew:render`, on resize, on
+  load and when fonts are ready. The end list (and placed `.jmd-endnotes`)
+  is hidden by a body class, so print and export are untouched. The host
+  sends the setting (`sidenotes` message) on `ready` and on change. Site
+  export: untouched in v1.
+- **Live edit** (`live/sidenotes.js`, in the live bundle): a `.le-sidenotes`
+  layer inside the scroller (the frame layer's arrangement), measured
+  through `requestMeasure` on doc/viewport/geometry/reveal changes. Each
+  CONCEALED note's badge (`.le-fn`, one-line and multi-line alike) gets its
+  body — the first paragraph, through the inline subset renderer, "…" when
+  there is more — at the badge's height; a revealed note has none (its
+  source is on screen). A body opening with a fence or a table stays the
+  badge's tooltip. Built nodes are cached by content, so typing elsewhere
+  rebuilds nothing.
+- **Smoke** `sidenotes-scenario.js` + `sidenotes-frame.js`: live edit and
+  reading mode both measured — top alignment within 2 px, the collision
+  resolved, the end list hidden; the narrow case is made inside the
+  reading document by widening its body ◆ (a frame script runs once, at the
+  end of a run).
+
 ## 6. The toolbar
 
 ### 6.1 Principles
@@ -1678,6 +1717,8 @@ Child embed's `*styled*` became `<em>` (`strong` with the listener removed).
 | `slashCommands` | bool | true | Toolbar — "// menu: type // for the Format menu" (§6.9) |
 | `linkPreview` | `hover` \| `mod` \| `off` | `hover` | Appearance — "Link previews on hover" (§5.11) |
 | `previewPane` | `on` \| `off` | `on` | Appearance — "Live preview of maths and diagrams while editing" (§5.12) |
+| `sidenotes` | `auto` \| `on` \| `off` | `auto` | Appearance — "Footnotes in the margin" (§5.16) |
+| `graphReferences` | bool | false | the graph's own switch (§5.14) |
 
 Per-vault: nothing new; `normalSyntax` is read (§4.3). Every key goes into
 `main/settings.js` DEFAULTS, the settings view, and the manual's settings

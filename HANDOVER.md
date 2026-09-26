@@ -73,6 +73,8 @@ intended guide-note changes, committed (runs used scratch copies).
   dropped when its document unloads — an annotation made just before its
   tab is switched away is LOST (measured). The command flushes first; the
   general fix (flush on hide, or a shorter debounce) is the owner's call.
+- **Sidenotes** (§5.16): footnotes in the right margin of a wide pane, in
+  reading mode and live edit; setting `sidenotes` (auto/on/off).
 - **Pre-existing, not a regression**: `figures-edit-scenario` phase 3
   (`key-changed=false` — an edited ```tikz in READING mode keeps its old
   picture) fails identically at `c6f3169`, before this session's work

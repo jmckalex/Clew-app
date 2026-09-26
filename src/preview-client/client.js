@@ -47,6 +47,7 @@ window.addEventListener('message', (event) => {
 		broadcastThemeToNested(msg.theme);
 	}
 	else if (msg.type === 'canvas-changed') refreshCanvasEmbeds(msg.path);
+	else if (msg.type === 'sidenotes') { sidenoteMode = msg.mode ?? 'auto'; layoutSidenotes(); }
 	else if (msg.type === 'app-chords') appChords = new Set(msg.chords ?? []);
 	else if (msg.type === 'error') showError(msg.message);
 	else if (msg.type === 'clear-error') showError(null);
@@ -440,6 +441,60 @@ function reportSize() {
 	soon();
 }
 
+// Sidenotes (docs/dev/live-edit.md §5.16): when the page is wide enough,
+// each footnote's body sits in the right margin beside the text that cites
+// it. The engine's endnote list stays in the document (print and export are
+// untouched) and is hidden by a body class; the notes are CLONES in a layer
+// the morph keeps (data-clew-keep), laid out again after every render and
+// on resize. `auto`: a page ≥ 960 px wide with ≥ 220 px of margin.
+let sidenoteMode = 'auto';
+const SIDENOTE_GAP = 24;
+function layoutSidenotes() {
+	let layer = document.querySelector('.clew-sidenotes');
+	const refs = [...document.querySelectorAll('sup.footnote-ref a[href^="#fn-"]')];
+	const body = document.body.getBoundingClientRect();
+	const margin = window.innerWidth - body.right;
+	const on = refs.length > 0 && sidenoteMode !== 'off'
+		&& (sidenoteMode === 'on' || (window.innerWidth >= 960 && margin >= 220));
+	document.body.classList.toggle('clew-sidenotes-on', on);
+	if (!on) { layer?.remove(); return; }
+	if (!layer) {
+		layer = document.createElement('div');
+		layer.className = 'clew-sidenotes';
+		layer.setAttribute('data-clew-keep', '');
+		document.body.append(layer);
+	}
+	const left = body.right + window.scrollX + SIDENOTE_GAP;
+	const width = Math.max(140, Math.min(300, margin - SIDENOTE_GAP * 2));
+	const notes = [];
+	for (const a of refs) {
+		const item = document.getElementById(a.getAttribute('href').slice(1));
+		if (!item) continue;
+		const note = document.createElement('aside');
+		note.className = 'clew-sidenote';
+		note.dataset.for = a.getAttribute('href').slice(1);
+		const number = document.createElement('span');
+		number.className = 'clew-sidenote-number';
+		number.textContent = a.textContent;
+		for (const child of item.childNodes) note.append(child.cloneNode(true));
+		note.querySelectorAll('.footnote-backref').forEach((b) => b.remove());
+		// The number runs into the note's first paragraph, as a sidenote's does.
+		const first = note.querySelector('p') ?? note;
+		first.prepend(number, ' ');
+		notes.push({ note, top: a.getBoundingClientRect().top + window.scrollY });
+	}
+	layer.replaceChildren(...notes.map((n) => n.note));
+	// Collisions: a note never starts above the previous one's bottom + 8.
+	let floor = -Infinity;
+	for (const { note, top } of notes) {
+		Object.assign(note.style, { left: `${left}px`, width: `${width}px` });
+		const at = Math.max(top, floor);
+		note.style.top = `${at}px`;
+		note.dataset.shift = String(Math.round(at - top));
+		floor = at + note.getBoundingClientRect().height + 8;
+	}
+}
+
 // Link hover previews (docs/dev/live-edit.md §5.11): reading mode tells the
 // host which vault link is under the pointer, and where; the host owns the
 // popover and its timing. Not from block documents — a live edit frame, or
@@ -479,6 +534,12 @@ function reportLinkHovers() {
 
 if (BLOCK) reportSize();
 if (!BLOCK) reportLinkHovers();
+if (!BLOCK) {
+	document.addEventListener('clew:render', () => layoutSidenotes());
+	window.addEventListener('resize', () => layoutSidenotes());
+	window.addEventListener('load', () => layoutSidenotes());
+	document.fonts?.ready.then(() => layoutSidenotes());
+}
 enableTaskCheckboxes();
 initCanvasEmbeds();
 initLeafletMaps();

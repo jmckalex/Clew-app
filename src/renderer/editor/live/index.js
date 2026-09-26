@@ -27,6 +27,7 @@ import { frameLayer } from './frame-layer.js';
 import { liveEvents } from './events.js';
 import { tableEditing } from './table-cell-editor.js';
 import { liveKeys } from './keys.js';
+import { sidenotes } from './sidenotes.js';
 
 /** The compartment every note state carries (empty in source mode). */
 export const liveCompartment = new Compartment();
@@ -52,5 +53,6 @@ export function liveEdit(config) {
 		inlineLayer,
 		liveEvents,
 		liveKeys,
+		sidenotes,
 	];
 }

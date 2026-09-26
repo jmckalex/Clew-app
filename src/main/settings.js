@@ -42,6 +42,8 @@ const DEFAULTS = {
 	previewPane: 'on',
 	// The graph's References toggle (clew-graph-view.js, §5.14).
 	graphReferences: false,
+	// Footnotes in the margin (§5.16): 'auto' (a wide pane with room) | 'on' | 'off'.
+	sidenotes: 'auto',
 	explorerOpenMode: 'new-tab', // how newly created note tabs open ('source'|'reading')
 	diaryMode: 'files', // 'files' = one note per day, 'log' = single log note
 	diaryLogFile: 'Diary.md',

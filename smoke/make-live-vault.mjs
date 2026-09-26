@@ -145,6 +145,17 @@ The third paragraph.] and a last one[fn: Trailing.] ends the sentence.
 Last line.
 `);
 
+// Sidenotes.md (sidenotes-scenario.js): three notes, two on one line so their
+// sidenotes collide.
+writeFileSync(join(dir, 'Sidenotes.md'), `# Sidenotes
+
+First paragraph with a note.[fn: The first note.] More text follows here to fill the line out a little.
+
+Second paragraph holds two notes on one line.[fn: The second note, which runs long enough to wrap onto a second line in the margin, and then some.] And another.[fn: The third note.]
+
+Last line.
+`);
+
 // Slash.md (slash-menu-scenario.js): prose, a code fence, a table.
 writeFileSync(join(dir, 'Slash.md'), `# Slash
 

@@ -63,6 +63,7 @@ class ClewPreviewView extends ClewElement {
 		this.listen(settingsStore, 'settings-changed', (key) => {
 			this.#post({ type: 'theme', theme: document.body.dataset.theme ?? 'dark' });
 			if (key === 'editorToolbar') this.#syncModeBar();
+			if (key === 'sidenotes') this.#post({ type: 'sidenotes', mode: settingsStore.get('sidenotes') ?? 'auto' });
 		});
 		// Back/Forward over anchor jumps restore a same-path entry, which the
 		// tab group deliberately does not rebuild — scroll the live document.
@@ -153,6 +154,7 @@ class ClewPreviewView extends ClewElement {
 				// never reaches the app window's dispatcher on its own.
 				// (Rebinding hotkeys mid-session refreshes on next reload.)
 				this.#post({ type: 'app-chords', chords: effectiveChords() });
+				this.#post({ type: 'sidenotes', mode: settingsStore.get('sidenotes') ?? 'auto' });
 				// Land where the editor's cursor was when reading mode opened.
 				const cursorLine = workspaceStore.findTab(this.tabId)?.tab.view.cursorLine;
 				this.#lastCursorLine = Number.isFinite(cursorLine) ? cursorLine : null;

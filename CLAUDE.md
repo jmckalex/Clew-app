@@ -651,9 +651,14 @@ except where the selection touches a construct. The durable design is
   write or MERGE `<pdf> — Annotations.md` (never deleting). The viewer's
   autosave is a 2.5 s debounce that an unloading document drops — flush it
   before relying on an annotation. `[[x.pdf#page=N]]` opens a PDF tab there.
+- **Sidenotes** (§5.16): footnotes in the margin when the pane is wide —
+  reading mode clones the engine's endnotes into a `data-clew-keep` layer
+  (the end list hidden by a body class; print/export untouched), live edit
+  draws concealed notes' first paragraphs in a scroller layer
+  (`live/sidenotes.js`). Setting `sidenotes`.
 - Settings: `defaultEditMode`, `liveReveal`, `liveRender{Math,Fences,Embeds}`,
   `liveFrameCap`, `editorToolbar(+Prev)`, `editorToolbarGroups`,
-  `selectionBubble`, `slashCommands`, `linkPreview`, `previewPane`, `graphReferences`; `newTabMode` accepts `live`. Documents over 500 KB
+  `selectionBubble`, `slashCommands`, `linkPreview`, `previewPane`, `graphReferences`, `sidenotes`; `newTabMode` accepts `live`. Documents over 500 KB
   fall back to source with a banner. Scenarios: `live-*` in smoke/ (README).
 
 ### Note API (scripts in rendered notes)

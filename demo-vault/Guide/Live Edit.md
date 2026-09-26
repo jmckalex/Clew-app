@@ -38,7 +38,7 @@ search. A footnote becomes its number,[fn: Hover the number to read it.] however
 - It can hold a list,
 - or maths, $e^{i\pi} = -1$.
 
-Click its number to open it all.]
+Click its number to open it all.] On a wide pane both notes also sit in the margin beside this paragraph, in reading mode too.
 a citation its author and year
 \cite{alexander2023}, and a `{{…}}` variable a chip: {{title}}. Today is :today. A block id
 becomes a small badge — click it to copy a link to its block. ^live-inline
