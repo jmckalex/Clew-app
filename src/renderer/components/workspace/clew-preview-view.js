@@ -16,9 +16,8 @@ import { workspaceStore } from '../../state/workspace-store.js';
 import { settingsStore } from '../../state/settings-store.js';
 import { ipc, CH } from '../../ipc.js';
 import * as actions from '../../commands/actions.js';
-import { effectiveChords, runChord } from '../../commands/registry.js';
-import { openExternal } from '../../lib/external-links.js';
-import { handleApiRequest } from '../../note-api.js';
+import { effectiveChords } from '../../commands/registry.js';
+import { handlePreviewMessage } from '../../editor/live/frame-host.js';
 import { scrollSyncBus, makeSuppressor } from '../../preview/scroll-sync.js';
 import { previewUrl } from '../../lib/preview-url.js';
 
@@ -141,15 +140,6 @@ class ClewPreviewView extends ClewElement {
 				for (const queued of this.#pending.splice(0)) this.#post(queued);
 				break;
 			}
-			case 'link-click':
-				actions.openWikilink(msg.target, { newTab: msg.newTab, mode: 'reading' });
-				break;
-			case 'external-link':
-				openExternal(msg.url);
-				break;
-			case 'open-external-file':
-				actions.openFileExternally(msg.path);
-				break;
 			case 'anchor-jump':
 				// A TOC click is browser-style navigation: the spot you left
 				// becomes a history entry, so Back returns you to it.
@@ -166,50 +156,6 @@ class ClewPreviewView extends ClewElement {
 				}
 				break;
 			}
-			case 'embed-collapse':
-				// A disclosable embed was folded or unfolded — the state
-				// belongs in the note, on the line it was rendered from.
-				actions.setEmbedCollapsed(this.path, msg.line, msg.collapsed);
-				break;
-			case 'checkbox-toggle':
-				actions.toggleTaskLine(this.path, msg.line, msg.checked);
-				break;
-			case 'task-toggle':
-				// A ```tasks fence item — the toggle belongs to its source note.
-				actions.toggleTaskLine(msg.path, msg.line, msg.checked);
-				break;
-			case 'field-edit':
-				// Editable query cell / kanban drag → write the source note.
-				actions.editNoteField(msg.path, msg.field, msg.value, msg.fieldSource);
-				break;
-			case 'api-request':
-				handleApiRequest(msg, { sourcePath: this.path })
-					.then((response) => this.#post(response));
-				break;
-			case 'focused':
-				// A click inside the iframe never reaches the app's pane
-				// focus tracking — treat it like clicking into an editor.
-				workspaceStore.activateTab(this.tabId);
-				break;
-			case 'chord': {
-				// Chords forwarded from this iframe must act on THIS pane,
-				// not whichever group the app last saw a pointerdown in.
-				workspaceStore.activateTab(this.tabId);
-				const key = msg.key;
-				if (key === 'e') actions.toggleReadingMode();
-				else if (key === 'w' && msg.shift) actions.closeCurrentPane();
-				else if (key === 'w') actions.closeActiveTab();
-				else if (key === 't') actions.newTab();
-				else if (key === '\\') actions.splitActive(msg.shift ? 'bottom' : 'right');
-				break;
-			}
-			case 'app-chord':
-				// The general forwarding path: any registered chord, run
-				// through the registry with its usual gates — same as if the
-				// keydown had happened in the app window, acting on this pane.
-				workspaceStore.activateTab(this.tabId);
-				runChord(msg.chord);
-				break;
 			case 'morph-failed':
 				this.#clientReady = false;
 				if (this.#iframe) this.#iframe.src = previewUrl(this.path) + '?t=' + Date.now();
@@ -228,6 +174,11 @@ class ClewPreviewView extends ClewElement {
 					scrollSyncBus.emit('scroll', { path: this.path, line: msg.line, from: 'preview' });
 				}
 				break;
+			default:
+				// Everything a block document shares (live/frame-host.js).
+				handlePreviewMessage(msg, {
+					mode: 'note', tabId: this.tabId, path: this.path, post: (m) => this.#post(m),
+				});
 		}
 	};
 }

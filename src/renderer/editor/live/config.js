@@ -25,6 +25,7 @@ import { Facet } from '@codemirror/state';
  * @property {number} frameCap        live block documents per editor
  * @property {string[]} richFences    extra fence names plugins render
  * @property {string|null} notePath   the note this editor holds (vault-relative)
+ * @property {string|null} tabId      the tab it is in (frames act on this pane)
  */
 
 /** @type {LiveConfig} */
@@ -37,6 +38,7 @@ export const DEFAULT_LIVE_CONFIG = Object.freeze({
 	frameCap: 16,
 	richFences: [],
 	notePath: null,
+	tabId: null,
 });
 
 export const liveConfigFacet = Facet.define({
@@ -61,5 +63,6 @@ export function readLiveConfig(settings, vaultSettings) {
 		frameCap: Number.isFinite(cap) ? Math.min(64, Math.max(4, Math.round(cap))) : 16,
 		richFences: [],
 		notePath: null,
+		tabId: null,
 	};
 }

@@ -76,3 +76,33 @@ Text with an inline ![[pic.png|20]] image.
 
 Last line.
 `);
+
+// Frames.md (live-blocks-scenario.js): Tier C — engine-rendered frames.
+copyFileSync(new URL('../demo-vault/Attachments/sample.pdf', import.meta.url), join(dir, 'Attachments', 'sample.pdf'));
+writeFileSync(join(dir, 'Child.md'), '# Child\n\nORIGINAL child text.\n');
+mkdirSync(join(dir, 'Projects'), { recursive: true });
+writeFileSync(join(dir, 'Projects', 'Alpha.md'), '---\nstatus: open\npriority: 1\n---\n# Alpha\n');
+const extra = Array.from({ length: 20 }, (_, i) => `\`\`\`mermaid\ngraph LR\n  N${i}A --> N${i}B\n\`\`\`\n`).join('\n');
+writeFileSync(join(dir, 'Frames.md'), `# Frames
+
+\`\`\`mermaid
+graph TD
+  A[Start] --> B[End]
+\`\`\`
+
+\`\`\`query
+table: status, priority
+from: Projects
+\`\`\`
+
+![[Child]]
+
+@reveal[Nothing/]
+
+![[sample.pdf]]
+
+Paragraph between the frames and the rest.
+
+${extra}
+Last line.
+`);

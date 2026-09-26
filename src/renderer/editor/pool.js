@@ -79,7 +79,7 @@ class EditorPool extends Emitter {
 		if (entry.mode !== effective) {
 			entry.mode = effective;
 			entry.view.dispatch({
-				effects: liveCompartment.reconfigure(effective === 'live' ? liveEdit({ ...liveConfig(), notePath: entry.path }) : []),
+				effects: liveCompartment.reconfigure(effective === 'live' ? liveEdit({ ...liveConfig(), notePath: entry.path, tabId }) : []),
 			});
 			this.emit('mode-changed', { tabId, mode: effective });
 		}
@@ -94,9 +94,9 @@ class EditorPool extends Emitter {
 	/** Live settings changed: rebuild every live editor's bundle. */
 	reconfigureLive() {
 		const config = liveConfig();
-		for (const entry of this.#entries.values()) {
+		for (const [tabId, entry] of this.#entries) {
 			if (entry.mode === 'live' && entry.view) {
-				entry.view.dispatch({ effects: liveCompartment.reconfigure(liveEdit({ ...config, notePath: entry.path })) });
+				entry.view.dispatch({ effects: liveCompartment.reconfigure(liveEdit({ ...config, notePath: entry.path, tabId })) });
 			}
 		}
 	}

@@ -27,7 +27,7 @@ import { readNoteFonts } from './note-fonts.js';
 import { settings } from './settings.js';
 import { engineExtensionEntries } from './plugins.js';
 import { writeFileAtomic } from './fs-utils.js';
-import { isDependentFragment } from './fragment-deps.js';
+import { isDependentFragment } from '../shared/fragment-deps.js';
 
 const WORKER_PATH = paths.engineWorker;
 
@@ -417,10 +417,9 @@ export class RenderService {
 	 * epoch so any file change retires it.
 	 *
 	 * `sourcePath` (vault-relative) is the note the snippet belongs to. It is
-	 * part of the key and is handed to the worker as `currentFile`; until the
-	 * engine honours that option (plan Appendix D) a snippet renders with the
-	 * temp file as its current file, which only Dataview `this` and
-	 * `![[#Heading]]` self-embeds can see.
+	 * part of the key and is left beside the temp file as `<key>.source`,
+	 * which engine/vault-model.js#currentFilePath reads — so Dataview `this`,
+	 * Bases' `this.file`, Meta Bind and a kanban board see the note.
 	 *
 	 * @param {string} text
 	 * @param {{ sourcePath?: string|null, dependent?: boolean }} [options]
@@ -479,7 +478,11 @@ export class RenderService {
 		fs.mkdirSync(dir, { recursive: true });
 		const mdFile = path.join(dir, `${key}.md`);
 		const htmlFile = path.join(dir, `${key}.html`);
+		const sourceFile = path.join(dir, `${key}.source`);
 		fs.writeFileSync(mdFile, text);
+		// Which note the snippet belongs to: engine/vault-model.js#currentFilePath
+		// reads this, so Dataview `this` & co. see the note, not the temp file.
+		if (sourcePath) fs.writeFileSync(sourceFile, sourcePath);
 
 		const standby = this.#takeStandby();
 		const child = await standby.ready;
@@ -498,7 +501,6 @@ export class RenderService {
 					output: htmlFile,
 					fragment: !document,
 					normalSyntax: this.#vaultOptions.normalSyntax === true,
-					...(sourcePath ? { currentFile: path.join(this.vaultRoot, sourcePath) } : {}),
 				},
 			});
 		});
@@ -508,6 +510,7 @@ export class RenderService {
 		const html = fs.readFileSync(htmlFile, 'utf8');
 		fs.rmSync(mdFile, { force: true });
 		fs.rmSync(htmlFile, { force: true });
+		fs.rmSync(sourceFile, { force: true });
 		// Bounded cache: drop the oldest half when it grows past 500 entries.
 		if (this.#fragments.size > 500) {
 			const keys = [...this.#fragments.keys()].slice(0, 250);

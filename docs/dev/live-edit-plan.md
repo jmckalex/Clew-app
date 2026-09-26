@@ -990,7 +990,7 @@ As built (Phase 0), three differences, each measured or forced:
   block's `<html>`. The client's `render` morph already takes a full
   document, so the re-render path needs nothing new. Blocks share the
   fragment cache (bounded 500) under a distinct key.
-- `isDependentFragment` lives in `src/main/fragment-deps.js` (render-service
+- `isDependentFragment` lives in `src/shared/fragment-deps.js` (render-service
   cannot load outside Electron, and the test runs under node); it also
   counts ```leaflet. `renderFragment` itself now uses it by default, so a
   canvas card that embeds a note stops being served stale too. The key
@@ -1067,6 +1067,21 @@ Focus: a click inside a frame posts `focused` → `workspaceStore.activateTab`
 (as previews do); chords forwarded via `app-chord` act on this tab.
 Clicking the placeholder's margin (outside the frame) places the cursor
 → the block reveals → the frame hides.
+
+As built (Phase 5), measured corrections: the frames are created only for
+placeholders CodeMirror has DRAWN (viewport plus its margin), and that
+margin can hold more small frames than the cap (17 mermaid blocks at 80px
+did) — so eviction ranks undrawn, then drawn-but-off-screen, and never
+creates past the cap (the placeholder keeps its skeleton). Pinned kinds are
+kept within three screens by distance from CodeMirror's height map
+(`lineBlockAt`), which knows where undrawn blocks are. A frame element's
+`color-scheme` must equal its document's (preview.css declares one per
+theme) or Chromium paints an opaque backdrop. A frame's height is also
+remembered by kind + ordinal, so editing a block (which changes its id)
+does not snap it back to the default height. Frames restale on
+`EV_FILE_CHANGED` for another path when they are dependent; the note's own
+saves are skipped (no RENDER_SUBSCRIBE: rendering the whole note in the
+background to learn about restales would cost more than it saves).
 
 ### 7.4 One host-side message switch (`live/frame-host.js`)
 
@@ -1369,7 +1384,19 @@ Frame → host: `size {height}` (new). Host → frame: nothing new (`render`,
 `theme`, `app-chords`, `event kv`, `scroll-to-line` unused in blocks).
 Host-side switch shared via `frame-host.js`.
 
-## Appendix D — the one engine change
+## Appendix D — the engine change that was NOT needed
+
+**As built (Phase 5):** no upstream change. Every reader of
+`global.current_file` is Clew's own code (`engine/vault-model.js#currentPage`
+— Dataview, dataviewjs, Bases, Meta Bind — and `engine/kanban-board.js`),
+and `![[#Heading]]` self-embeds are not supported by the engine in reading
+mode either. So render-service leaves a `<key>.source` sidecar beside a
+fragment's temp file naming its note, and `vault-model.js#currentFilePath`
+answers with that note (`tests/fragment-source.test.js`). The master also
+carried the owner's uncommitted edits in the very file the change would have
+touched — another reason not to. The original note follows.
+
+
 
 `watch-worker.js` build options gain `currentFile` (absolute path) →
 `global.current_file` and the input-path-derived base for self-references.

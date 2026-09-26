@@ -8,11 +8,11 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Which fragment renders read OTHER files (src/main/fragment-deps.js): those
+// Which fragment renders read OTHER files (src/shared/fragment-deps.js): those
 // must not be served from the hash cache once a file changed.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { isDependentFragment } from '../src/main/fragment-deps.js';
+import { isDependentFragment } from '../src/shared/fragment-deps.js';
 
 test('embeds of every kind are dependent', () => {
 	for (const text of ['![[Note]]', 'See ![[Note#Part|quiet]] here', '![[board.canvas]]', '![[Books.base#Table]]', '![[paper.pdf]]']) {

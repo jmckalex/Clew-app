@@ -29,6 +29,9 @@ import { HrWidget, TocWidget, BannerWidget, PropertiesWidget } from './widgets/b
 import { TableWidget } from './widgets/table.js';
 import { ImageWidget } from './widgets/image.js';
 import { imageSpec } from './images.js';
+import {
+	FramePlaceholder, frameHeightField, setFrameHeight, frameKind, wantsFrame, defaultHeight,
+} from './frames.js';
 import { inlineTokens } from './inline-dom.js';
 import { splitRow, alignmentOf } from '../tables.js';
 
@@ -70,6 +73,21 @@ function build(state) {
 		text: text(h.hidden[0]?.to ?? h.from, h.hidden[1]?.from ?? h.to).trim(),
 		pos: h.hidden[0]?.to ?? h.from,
 	}));
+
+	// Tier C placeholders. An edit to a block changes its id (the id is a
+	// hash of the text), so a height is also remembered by kind + ordinal:
+	// the edited block keeps its size instead of snapping to the default.
+	const heights = state.field(frameHeightField, false) ?? new Map();
+	const ordinal = new Map();
+	for (const c of model) {
+		if (!wantsFrame(c, config)) continue;
+		const kind = frameKind(c);
+		const n = ordinal.get(kind) ?? 0;
+		ordinal.set(kind, n + 1);
+		if (live.revealed.has(c.id)) continue;
+		const measured = heights.get(c.id) ?? heights.get(`${kind}#${n}`);
+		block(c, new FramePlaceholder(c.id, kind, measured ?? defaultHeight(kind), measured !== undefined));
+	}
 
 	for (const c of model) {
 		if (c.tier === 'B' && c.level === 'block' && !live.revealed.has(c.id)) {
@@ -125,7 +143,7 @@ export const blockField = StateField.define({
 	create: (state) => ({ live: state.field(liveStateField), deco: build(state) }),
 	update(value, tr) {
 		const live = tr.state.field(liveStateField);
-		const folds = tr.effects.some((e) => e.is(setCalloutFold));
+		const folds = tr.effects.some((e) => e.is(setCalloutFold) || e.is(setFrameHeight));
 		if (live === value.live && !folds && !(tr.selection && hasFoldedCallouts(tr.state))) return value;
 		return { live, deco: build(tr.state) };
 	},

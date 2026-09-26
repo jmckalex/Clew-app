@@ -22,6 +22,8 @@ import { liveConfigFacet } from './config.js';
 import { liveStateField } from './reveal-field.js';
 import { inlineLayer } from './inline-layer.js';
 import { blockField, calloutFoldField } from './block-field.js';
+import { frameHeightField } from './frames.js';
+import { frameLayer } from './frame-layer.js';
 import { liveEvents } from './events.js';
 
 /** The compartment every note state carries (empty in source mode). */
@@ -40,7 +42,9 @@ export function liveEdit(config) {
 		EditorView.editorAttributes.of({ class: 'cm-live' }),
 		liveStateField,
 		calloutFoldField,
+		frameHeightField,
 		blockField,
+		frameLayer,
 		inlineLayer,
 		liveEvents,
 	];

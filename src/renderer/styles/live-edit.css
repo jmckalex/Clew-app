@@ -218,3 +218,35 @@
 .le-image img { max-width: 100%; border-radius: 6px; vertical-align: middle; cursor: pointer; }
 .le-image:not(.le-image-block) img { max-height: 1.6em; }
 .le-image-chip { color: var(--clew-text-muted); background: var(--clew-bg-tertiary); }
+
+/* ---- Tier C: engine-rendered frames over their placeholders ---- */
+.cm-live .cm-scroller { position: relative; }
+.le-frames { position: absolute; top: 0; left: 0; width: 100%; height: 0; pointer-events: none; z-index: 1; }
+.le-frame {
+	position: absolute;
+	border: 0;
+	pointer-events: auto;
+	background: transparent;
+}
+/* The frame element's color-scheme must MATCH its document's (preview.css
+   declares dark / light per theme): when they differ Chromium paints an
+   opaque backdrop behind a transparent document (measured — every frame
+   showed a dark slab over the editor). */
+body[data-theme='dark'] .le-frame { color-scheme: dark; }
+body[data-theme='light'] .le-frame { color-scheme: light; }
+.le-frame-slot { padding: 0 24px; }
+.le-frame-edge { height: 6px; cursor: pointer; }
+.le-frame-edge:hover { background: var(--clew-active-item); border-radius: 3px; }
+.le-frame-body { position: relative; }
+.le-frame-skeleton {
+	height: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: 1px dashed var(--clew-border);
+	border-radius: 6px;
+	color: var(--clew-text-faint);
+	font-family: var(--clew-ui-font);
+	font-size: 0.8em;
+}
+.le-frame-slot.is-measured .le-frame-skeleton { border-color: transparent; color: transparent; }

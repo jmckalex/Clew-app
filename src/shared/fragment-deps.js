@@ -18,7 +18,8 @@
 //
 // Deliberately over-inclusive: a false positive costs one re-render, a
 // false negative shows stale content. Pure, so it is unit-tested apart from
-// render-service.js (which cannot load outside Electron).
+// render-service.js (which cannot load outside Electron); shared, because
+// live edit's frame layer asks the same question of a block's text.
 
 const DEPENDENT = new RegExp([
 	'!\\[\\[',                                                        // any embed

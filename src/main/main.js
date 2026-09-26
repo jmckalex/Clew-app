@@ -362,7 +362,8 @@ if (process.env.CLEW_SMOKE) {
 				// Input domain hit-tests properly. A scenario queues
 				// window.__clewSmokeInput = [{click:{x,y}} | {text:'abc'} |
 				// {combo:{key:'s',modifiers:2}} | {wait:ms}] — a click may carry
-				// `modifiers` too, e.g. {click:{x,y},modifiers:4} (modifiers CDP
+				// `modifiers` too, e.g. {click:{x,y},modifiers:4}; and
+				// {wheel:{x,y,deltaY}} scrolls (modifiers CDP
 				// bitmask: Alt 1, Ctrl 2, Meta 4, Shift 8).
 				// window.__clewSmokeClipboard (string) preloads the clipboard;
 				// CLEW_SMOKE_CLIPBOARD=1 dumps clipboard text afterwards.
@@ -406,6 +407,15 @@ if (process.env.CLEW_SMOKE) {
 					};
 					for (const ev of inputEvents) {
 						if (ev.wait) { await sleep(ev.wait); continue; }
+						if (ev.wheel) {
+							// {wheel:{x,y,deltaY}}: a real wheel tick at a point —
+							// the only way to prove a wheel over a cross-origin
+							// frame chains to the scroller beneath it.
+							const { x, y, deltaY = 0, deltaX = 0 } = ev.wheel;
+							await dbg.sendCommand('Input.dispatchMouseEvent', { type: 'mouseMoved', button: 'none', x, y });
+							await dbg.sendCommand('Input.dispatchMouseEvent', { type: 'mouseWheel', x, y, deltaX, deltaY });
+							continue;
+						}
 						if (ev.click || ev.tripleClick) {
 							const { x, y } = ev.click ?? ev.tripleClick;
 							// `modifiers` on a click event (same CDP bitmask) makes it
