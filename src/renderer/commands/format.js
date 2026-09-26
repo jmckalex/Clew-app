@@ -14,7 +14,11 @@
 // Everything operates on the active tab's live editor via the pool.
 import { EditorSelection } from '@codemirror/state';
 import { startCompletion } from '@codemirror/autocomplete';
-import { indentMore, indentLess, insertBlankLine } from '@codemirror/commands';
+import { indentMore, indentLess, insertBlankLine, undo, redo } from '@codemirror/commands';
+import { toggleWrapSpec } from '../editor/toggle-wrap.js';
+import { vaultSettingsStore } from '../state/vault-settings-store.js';
+import { saveAndInsert } from '../editor/attachments.js';
+import { CALLOUT_TYPES } from '../../engine/callouts.js';
 import { registerCommand, buildContext } from './registry.js';
 import { editorPool } from '../editor/pool.js';
 
@@ -28,45 +32,16 @@ export function activeEditorView() {
 
 // ---- inline helpers --------------------------------------------------------
 
-/** Wrap each selection range in marker pairs, or unwrap when already wrapped
- *  (markers just outside the range, or included in it). */
+/** Wrap each selection range in marker pairs, or unwrap: markers just
+ *  outside or inside the range, or a construct of that kind around it
+ *  (editor/toggle-wrap.js — the construct model finds its delimiters). */
 export function toggleWrap(view, before, after = before) {
-	const { state } = view;
-	const changes = state.changeByRange((range) => {
-		const { from, to } = range;
-		const outerBefore = state.sliceDoc(Math.max(0, from - before.length), from);
-		const outerAfter = state.sliceDoc(to, Math.min(state.doc.length, to + after.length));
-		const inner = state.sliceDoc(from, to);
-		if (outerBefore === before && outerAfter === after) {
-			return {
-				changes: [
-					{ from: from - before.length, to: from },
-					{ from: to, to: to + after.length },
-				],
-				range: EditorSelection.range(from - before.length, to - before.length),
-			};
-		}
-		if (inner.length >= before.length + after.length
-			&& inner.startsWith(before) && inner.endsWith(after)) {
-			return {
-				changes: [
-					{ from, to: from + before.length },
-					{ from: to - after.length, to },
-				],
-				range: EditorSelection.range(from, to - before.length - after.length),
-			};
-		}
-		return {
-			changes: [
-				{ from, insert: before },
-				{ from: to, insert: after },
-			],
-			range: EditorSelection.range(from + before.length, to + before.length),
-		};
-	});
-	view.dispatch(changes);
+	view.dispatch(toggleWrapSpec(view.state, before, after, { normalSyntax: normalSyntax() }));
 	view.focus();
 }
+
+/** The vault's dialect switch: standard markdown's `**bold**`, `*italic*`. */
+const normalSyntax = () => vaultSettingsStore.get('normalSyntax') === true;
 
 /** Insert before+content+after at the selection; the content (selection or
  *  placeholder) ends up selected so it can be typed over. */
@@ -254,6 +229,66 @@ function insertTableRow(view) {
 	view.focus();
 }
 
+/** `[text](url)` at the selection; the text is the selection when none given. */
+function insertLink(view, url, text) {
+	const range = view.state.selection.main;
+	const label = text ?? view.state.sliceDoc(range.from, range.to);
+	const insert = `[${label || 'link'}](${url})`;
+	view.dispatch({
+		changes: { from: range.from, to: range.to, insert },
+		selection: label ? { anchor: range.from + insert.length }
+			: EditorSelection.range(range.from + 1, range.from + 5),
+	});
+	view.focus();
+}
+
+/** A file picker; the chosen files go where pasted ones go (attachments.js). */
+function pickAttachment(view) {
+	const input = document.createElement('input');
+	input.type = 'file';
+	input.multiple = true;
+	input.addEventListener('change', () => {
+		if (input.files?.length) saveAndInsert(view, [...input.files], view.state.selection.main.head);
+	});
+	input.click();
+}
+
+/** `> [!type]±` around the selection (or a placeholder body). */
+function wrapCallout(view, type, fold) {
+	const range = view.state.selection.main;
+	if (range.empty) {
+		insertBlock(view, `> [!${type}]${fold}\n> Text`, 'Text');
+		return;
+	}
+	changeLines(view, (text, i) => {
+		const line = `> ${stripPrefix(text)}`;
+		return i === 0 ? `> [!${type}]${fold}\n${line}` : line;
+	});
+}
+
+/** A figure block of a given kind, with an optional `show=` choice. */
+function insertFigure(view, kind, show) {
+	const bodies = {
+		mermaid: 'graph LR\n  A --> B',
+		tikz: '\\begin{tikzpicture}\n  \\draw (0,0) -- (1,1);\n\\end{tikzpicture}',
+		latex: '$\\displaystyle \\int_0^1 x\\,dx$',
+		tex: '$$\\sqrt{2}$$\n\\nopagenumbers\\bye',
+		metapost: 'beginfig(1);\n  draw fullcircle scaled 2cm;\nendfig;',
+	};
+	const info = kind + (show && kind !== 'mermaid' ? ` show=${show}` : '');
+	wrapContainer(view, '```' + info, '```', bodies[kind] ?? '');
+}
+
+/**
+ * `:::name` around the selection — or `@begin(name)`/`@end(name)` when the
+ * note already writes its environments that way (one look, not a setting).
+ */
+function wrapEnvironment(view, name) {
+	const atStyle = /^[ \t]*@begin\(/m.test(view.state.doc.toString());
+	if (atStyle) wrapContainer(view, `@begin(${name})`, `@end(${name})`, 'Content');
+	else wrapContainer(view, `:::${name}`, ':::', 'Content');
+}
+
 /**
  * ⌘-Enter on a task line flips its checkbox — in either editing mode. Off a
  * task line it is CodeMirror's own ⌘-Enter (a blank line below), which the
@@ -272,15 +307,17 @@ function toggleTask(view) {
 // ---- the commands ----------------------------------------------------------
 
 export function registerFormatCommands() {
-	const run = (fn) => () => {
+	const run = (fn) => (ctx, args) => {
 		const view = activeEditorView();
-		if (view) fn(view);
+		if (view) fn(view, args ?? {});
 	};
 	const commands = [
 		// Inline styles (legacy edit:* ids kept for existing rebindings).
-		{ id: 'edit:format-strong', name: 'Format: strong (*text*)', fn: (v) => toggleWrap(v, '*') },
+		// Under the vault's normalSyntax the same commands write standard
+		// markdown: strong is `**`, italic `*` (the engine's reading there).
+		{ id: 'edit:format-strong', name: 'Format: strong (*text*)', fn: (v) => toggleWrap(v, normalSyntax() ? '**' : '*') },
 		{ id: 'edit:format-intense', name: 'Format: intense (**text**)', fn: (v) => toggleWrap(v, '**') },
-		{ id: 'edit:format-italic', name: 'Format: italic (/text/)', fn: (v) => toggleWrap(v, '/') },
+		{ id: 'edit:format-italic', name: 'Format: italic (/text/)', fn: (v) => toggleWrap(v, normalSyntax() ? '*' : '/') },
 		{ id: 'format:underline', name: 'Format: underline (__text__)', fn: (v) => toggleWrap(v, '__') },
 		{ id: 'edit:format-highlight', name: 'Format: highlight (==text==)', fn: (v) => toggleWrap(v, '==') },
 		{ id: 'edit:format-strike', name: 'Format: strikethrough (~text~)', fn: (v) => toggleWrap(v, '~') },
@@ -364,6 +401,29 @@ export function registerFormatCommands() {
 			fn: (v) => wrapContainer(v, ':::comment', ':::', 'Editorial note.') },
 		{ id: 'format:container', name: 'Insert generic container (:::name)',
 			fn: (v) => wrapContainer(v, ':::name', ':::', 'Content') },
+		// Live edit's toolbar (docs/dev/live-edit-plan.md §6.2); every one
+		// works in source mode too. Args come from the toolbar's popovers.
+		{ id: 'edit:undo', name: 'Undo', fn: (v) => { undo(v); v.focus(); } },
+		{ id: 'edit:redo', name: 'Redo', fn: (v) => { redo(v); v.focus(); } },
+		{ id: 'format:insert-link', name: 'Insert link ([text](url))',
+			fn: (v, { url = '', text } = {}) => insertLink(v, url, text) },
+		{ id: 'format:insert-attachment', name: 'Insert attachment…', fn: (v) => pickAttachment(v) },
+		{ id: 'format:table', name: 'Insert table…',
+			fn: (v, { rows = 2, cols = 2 } = {}) => insertTable(v, Math.max(1, rows), Math.max(1, cols)) },
+		{ id: 'format:callout', name: 'Insert callout…',
+			fn: (v, { type = 'note', fold = '' } = {}) => wrapCallout(v, type, fold) },
+		...Object.entries(CALLOUT_TYPES).map(([type, { label }]) => ({
+			id: `format:callout-${type}`, name: `Insert ${label.toLowerCase()} callout`,
+			fn: (v, { fold = '' } = {}) => wrapCallout(v, type, fold),
+		})),
+		{ id: 'format:code-fence-lang', name: 'Insert code fence (language)…',
+			fn: (v, { lang = '' } = {}) => wrapContainer(v, '```' + lang, '```', 'code') },
+		{ id: 'format:math-env', name: 'Insert math environment…',
+			fn: (v, { name = 'equation' } = {}) => wrapContainer(v, `\\begin{${name}}`, `\\end{${name}}`, name === 'align' || name === 'align*' ? 'a &= b \\\\\n  &= c' : 'e = mc^2') },
+		{ id: 'format:figure', name: 'Insert figure…',
+			fn: (v, { kind = 'mermaid', show = '' } = {}) => insertFigure(v, kind, show) },
+		{ id: 'format:env', name: 'Insert environment…',
+			fn: (v, { name = 'theorem' } = {}) => wrapEnvironment(v, name) },
 		// Lists (live edit's toolbar; they work in source mode too).
 		{ id: 'format:indent', name: 'Indent list item / lines', fn: (v) => indentMore(v) },
 		{ id: 'format:outdent', name: 'Outdent list item / lines', fn: (v) => indentLess(v) },

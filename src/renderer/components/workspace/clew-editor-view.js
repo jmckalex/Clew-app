@@ -17,6 +17,17 @@ import { uiStore } from '../../state/ui-store.js';
 import { debounce } from '../../lib/debounce.js';
 import { scrollSyncBus, makeSuppressor } from '../../preview/scroll-sync.js';
 import { EditorView } from '@codemirror/view';
+import { settingsStore } from '../../state/settings-store.js';
+import { vaultSettingsStore } from '../../state/vault-settings-store.js';
+import { liveModel } from '../../editor/live/model.js';
+import { deriveState } from '../../editor/toolbar/toolbar-state.js';
+import '../../editor/toolbar/clew-editor-toolbar.js';
+
+/** Is the formatting bar shown in this mode, under the setting? */
+export function toolbarShown(mode) {
+	const setting = settingsStore.get('editorToolbar') ?? 'live';
+	return setting === 'always' ? mode !== 'reading' : setting === 'live' && mode === 'live';
+}
 
 class ClewEditorView extends ClewElement {
 	tabId = null;
@@ -59,6 +70,13 @@ class ClewEditorView extends ClewElement {
 		// Source ↔ live is a flip of THIS view (the tab group keeps it
 		// mounted for both), so the mode is followed here.
 		this.listen(workspaceStore, 'layout-changed', () => this.#applyMode());
+		this.listen(settingsStore, 'settings-changed', (key) => {
+			if (key === 'editorToolbar') this.#syncToolbar();
+		});
+		this.listen(editorPool, 'view-update', ({ tabId: changed }) => {
+			if (changed === this.tabId) this.#scheduleToolbarState();
+		});
+		this.addEventListener('toolbar-escape', () => editorPool.get(this.tabId)?.view?.focus());
 
 		// Scroll sync with preview panes showing the same note.
 		this.#scrollDOM = entry.view.scrollDOM;
@@ -90,7 +108,46 @@ class ClewEditorView extends ClewElement {
 		const applied = editorPool.setMode(this.tabId, wanted);
 		this.dataset.mode = applied ?? wanted;
 		this.#syncBigDocNotice(wanted === 'live' && applied === 'source');
+		this.#syncToolbar();
 	}
+
+	#toolbar = null;
+	#toolbarRaf = 0;
+
+	/** Mount or drop the formatting bar (setting × mode), then fill it. */
+	#syncToolbar() {
+		const tab = workspaceStore.findTab(this.tabId)?.tab;
+		const entry = editorPool.get(this.tabId);
+		const want = Boolean(tab && entry?.view && toolbarShown(tab.view.mode));
+		if (!want) {
+			this.#toolbar?.remove();
+			this.#toolbar = null;
+			return;
+		}
+		if (!this.#toolbar) {
+			this.#toolbar = document.createElement('clew-editor-toolbar');
+			this.#toolbar.tabId = this.tabId;
+			this.insertBefore(this.#toolbar, entry.view.dom);
+		}
+		this.#scheduleToolbarState();
+	}
+
+	/** The toolbar reflects the cursor — once per frame at most. */
+	#scheduleToolbarState() {
+		if (!this.#toolbar || this.#toolbarRaf) return;
+		this.#toolbarRaf = requestAnimationFrame(() => {
+			this.#toolbarRaf = 0;
+			const entry = editorPool.get(this.tabId);
+			const tab = workspaceStore.findTab(this.tabId)?.tab;
+			if (!this.#toolbar || !entry?.view || !tab) return;
+			const normalSyntax = vaultSettingsStore.get('normalSyntax') === true;
+			const model = liveModel(entry.view.state, { normalSyntax });
+			this.#toolbar.setState(deriveState(entry.view.state, model, { mode: tab.view.mode, normalSyntax }));
+		});
+	}
+
+	/** The toolbar element, if shown (view:focus-toolbar). */
+	get toolbar() { return this.#toolbar; }
 
 	/** Live edit refuses a very large document; say so where it shows. The
 	 *  tab keeps `mode: 'live'`, so a smaller revision turns it back on. */

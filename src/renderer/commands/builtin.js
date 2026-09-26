@@ -222,6 +222,23 @@ export function registerBuiltinCommands() {
 			run: () => actions.setViewMode('live') },
 		{ id: 'workspace:mode-reading', name: 'View mode: reading', when: needsNote,
 			run: () => actions.setViewMode('reading') },
+		// The editor toolbar (live-edit-plan §6.8): hide/show, remembering
+		// which of 'live'/'always' it was; and a keyboard way in.
+		{ id: 'view:toggle-toolbar', name: 'Toggle editor toolbar',
+			run: () => {
+				const now = settingsStore.get('editorToolbar') ?? 'live';
+				if (now === 'never') settingsStore.set('editorToolbar', settingsStore.get('editorToolbarPrev') ?? 'live');
+				else {
+					settingsStore.set('editorToolbarPrev', now);
+					settingsStore.set('editorToolbar', 'never');
+				}
+			} },
+		{ id: 'view:focus-toolbar', name: 'Focus editor toolbar', hotkeys: ['Alt-Shift-t'], when: needsNote,
+			run: () => {
+				const tab = workspaceStore.activeTab();
+				const host = [...document.querySelectorAll('clew-editor-view, clew-preview-view')].find((v) => v.tabId === tab?.id);
+				host?.querySelector('clew-editor-toolbar')?.focusFirst();
+			} },
 		// The shell panel. Ctrl-` is every editor's terminal chord, and it is
 		// free here — Clew's own chords are all Mod-based.
 		{ id: 'shell:toggle', name: 'Toggle shell panel', hotkeys: ['Ctrl-`'], when: needsVault,

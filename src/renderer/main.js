@@ -26,6 +26,7 @@ import { initPlugins } from './plugins.js';
 import { installPdfSaveBridge, installOfficeSaveBridge, installOfficeThumbBridge, installExcalidrawSaveBridge, installExcalidrawLibraryBridge, installExcalidrawResolveBridge } from './pdf-save.js';
 import { officeDock } from './office-dock.js';
 import './components/chrome/clew-app.js';
+import './editor/toolbar/clew-selection-bubble.js';
 
 // ---- IPC events → stores --------------------------------------------------
 
@@ -110,6 +111,9 @@ officeDock.init();
 // ---- dev hook -------------------------------------------------------------
 
 // Exposed for dev-tools poking and the CLEW_SMOKE scenario scripts.
+// One selection bubble per window (live-edit-plan §6.7).
+document.body.append(document.createElement('clew-selection-bubble'));
+
 window.__clew = { workspaceStore, vaultStore, vaultSettingsStore, editorPool, settingsStore, ipc, actions, officeDock };
 import('./commands/registry.js').then((registry) => { window.__clew.registry = registry; });
 

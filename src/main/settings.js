@@ -27,6 +27,13 @@ const DEFAULTS = {
 	liveRenderFences: true,
 	liveRenderEmbeds: true,
 	liveFrameCap: 16,
+	// The editor toolbar (live-edit-plan §6.8): shown in live edit only,
+	// always, or never; `editorToolbarPrev` remembers which of the first two
+	// view:toggle-toolbar returns to. Groups: ordered ids, null = default.
+	editorToolbar: 'live',
+	editorToolbarPrev: 'live',
+	editorToolbarGroups: null,
+	selectionBubble: true,
 	explorerOpenMode: 'new-tab', // how newly created note tabs open ('source'|'reading')
 	diaryMode: 'files', // 'files' = one note per day, 'log' = single log note
 	diaryLogFile: 'Diary.md',

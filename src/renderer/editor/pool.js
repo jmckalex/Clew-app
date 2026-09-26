@@ -146,6 +146,9 @@ class EditorPool extends Emitter {
 			state = makeNoteState(content, handlerRef, { normalSyntax: normalSyntax() });
 		}
 		handlerRef.fn = (update) => {
+			// Selection and doc changes, for what reflects the cursor (the
+			// editor toolbar, the selection bubble).
+			if (update.docChanged || update.selectionSet || update.focusChanged) this.emit('view-update', { tabId, update });
 			if (!update.docChanged) return;
 			this.#setDirty(tabId, true);
 			// While a conflict banner is up, auto-save stays paused so typing

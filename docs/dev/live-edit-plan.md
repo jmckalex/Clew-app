@@ -798,6 +798,17 @@ for every canonical type in `CALLOUT_TYPES` (replaces/extends the five
 selection's document already uses `@begin` anywhere — a small heuristic,
 documented), `editor:toggle-task`.
 
+As built (Phase 6): the fence command that takes a language is a NEW id,
+`format:code-fence-lang {lang}` (the existing `format:code-fence` keeps its
+behaviour for rebindings); callouts are `format:callout {type, fold}` plus
+`format:callout-<type>` for each canonical type (the five `format:alert-*`
+remain). The popovers are one module (`toolbar/popovers.js`), not a
+directory. Under normalSyntax Strong writes `**` and Italic `*` (format.js
+reads the vault setting), and the dialect-only buttons (intense, underline,
+highlight) hide. The attachment button is a file input feeding
+attachments.js's `saveAndInsert` — no new IPC. Plugin API version 2 in both
+halves (main's discovery accepts apiVersion 2).
+
 ### 6.3 State (`toolbar-state.js`, pure)
 
 ```js

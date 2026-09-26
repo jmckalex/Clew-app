@@ -58,6 +58,7 @@ const defaultState = () => ({
 	readingMode: false,
 	/** the active note tab's 'source' | 'live' | 'reading', or null */
 	viewMode: null,
+	toolbarVisible: true,
 	pinned: false,
 	bookmarked: false,
 	leftSidebar: true,
@@ -298,6 +299,7 @@ class AppMenu {
 						c('workspace:mode-reading', 'Reading', { needs: 'note', type: 'radio', checked: s.viewMode === 'reading' }),
 					],
 				},
+				c('view:toggle-toolbar', 'Editor Toolbar', { type: 'checkbox', checked: s.toolbarVisible }),
 				c('view:properties', 'Properties Panel', { needs: 'vault' }),
 				{ type: 'separator' },
 				{

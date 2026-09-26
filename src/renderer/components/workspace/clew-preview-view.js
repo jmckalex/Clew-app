@@ -20,6 +20,7 @@ import { effectiveChords } from '../../commands/registry.js';
 import { handlePreviewMessage } from '../../editor/live/frame-host.js';
 import { scrollSyncBus, makeSuppressor } from '../../preview/scroll-sync.js';
 import { previewUrl } from '../../lib/preview-url.js';
+import '../../editor/toolbar/clew-editor-toolbar.js';
 
 const HOST_SOURCE = 'clew-preview-host';
 
@@ -56,8 +57,9 @@ class ClewPreviewView extends ClewElement {
 			this.#suppressor.suppress();
 			this.#post({ type: 'scroll-to-line', line, behavior: 'auto' });
 		});
-		this.listen(settingsStore, 'settings-changed', () => {
+		this.listen(settingsStore, 'settings-changed', (key) => {
 			this.#post({ type: 'theme', theme: document.body.dataset.theme ?? 'dark' });
+			if (key === 'editorToolbar') this.#syncModeBar();
 		});
 		// Back/Forward over anchor jumps restore a same-path entry, which the
 		// tab group deliberately does not rebuild — scroll the live document.
@@ -90,6 +92,24 @@ class ClewPreviewView extends ClewElement {
 		this.#iframe.allow = 'fullscreen';
 		this.#iframe.src = previewUrl(this.path);
 		this.replaceChildren(this.#iframe);
+		this.#syncModeBar();
+	}
+
+	/**
+	 * Reading mode's slim bar: only the mode switch, so the three modes are
+	 * one click apart from every state (live-edit-plan §6.5) — unless the
+	 * toolbar is turned off altogether.
+	 */
+	#syncModeBar() {
+		const want = (settingsStore.get('editorToolbar') ?? 'live') !== 'never';
+		const bar = this.querySelector(':scope > clew-editor-toolbar');
+		if (!want) { bar?.remove(); return; }
+		if (bar) return;
+		const slim = document.createElement('clew-editor-toolbar');
+		slim.slim = true;
+		slim.tabId = this.tabId;
+		this.prepend(slim);
+		slim.setState({ mode: 'reading', inline: new Set(), blockType: 'paragraph' });
 	}
 
 	#post(msg) {

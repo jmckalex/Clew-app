@@ -18,8 +18,10 @@ import { ipc, CH } from './ipc.js';
 import { vaultStore } from './state/vault-store.js';
 import { workspaceStore } from './state/workspace-store.js';
 import { registerCommand, unregisterCommand } from './commands/registry.js';
+import { addToolbarButton } from './editor/toolbar/clew-editor-toolbar.js';
 
-export const PLUGIN_API_VERSION = 1;
+// 2: `clew.toolbar.addButton` (live edit's editor toolbar).
+export const PLUGIN_API_VERSION = 2;
 
 let loaded = []; // [{id, cleanup: fn[]}]
 
@@ -109,6 +111,21 @@ function makeApi(pluginId, record) {
 		}),
 
 		ui: Object.freeze({ notice }),
+
+		toolbar: Object.freeze({
+			/**
+			 * A button on the editor toolbar (API 2): `{ id, command, label,
+			 * icon, group }` — `command` is a command id (usually one this
+			 * plugin registered), `icon` an icon name or an `<svg>` string,
+			 * `group` a toolbar group id (default 'insert'). Removed with the
+			 * plugin's other registrations when the vault changes.
+			 */
+			addButton(spec) {
+				const off = addToolbarButton({ ...spec, id: `plugin:${pluginId}:${spec.id ?? spec.command}` });
+				record.cleanup.push(off);
+				return off;
+			},
+		}),
 	});
 }
 

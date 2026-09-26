@@ -20,6 +20,7 @@ import { invalidateNoteApiGate } from '../../note-api.js';
 import { ipc, CH } from '../../ipc.js';
 import { createCodeEditor } from '../../editor/mini-editor.js';
 import { fragmentKey } from '../../../engine/tex-fragments.js';
+import { TOOLBAR_GROUPS } from '../../editor/toolbar/toolbar-spec.js';
 
 const isMac = navigator.platform.startsWith('Mac');
 
@@ -81,6 +82,12 @@ class ClewSettingsView extends ClewElement {
 				this.#checkRow('Render diagram and query fences in place', 'liveRenderFences'),
 				this.#checkRow('Render embeds and media in place', 'liveRenderEmbeds'),
 				this.#numberRow('Rendered blocks kept alive (advanced)', 'liveFrameCap', 16, 4, 64),
+			]),
+			this.#section('Editor toolbar', [
+				this.#selectRow('Show the toolbar', 'editorToolbar',
+					[['live', 'In live edit'], ['always', 'In live edit and source mode'], ['never', 'Never']]),
+				this.#checkRow('Selection bubble over selected text', 'selectionBubble'),
+				this.#toolbarGroupsRow(),
 			]),
 			this.#section('Diary', [
 				this.#selectRow('Mode', 'diaryMode',
@@ -701,6 +708,46 @@ class ClewSettingsView extends ClewElement {
 		input.addEventListener('blur', () => save.flush());
 		input.addEventListener('keydown', (e) => e.stopPropagation());
 		return this.#row(label, input);
+	}
+
+	/** The toolbar's groups: shown or not, and their order (▲▼). The mode
+	 *  switch is not listed — it cannot be hidden. */
+	#toolbarGroupsRow() {
+		const wrap = document.createElement('div');
+		wrap.className = 'settings-row settings-row-stacked toolbar-groups-setting';
+		const all = TOOLBAR_GROUPS.filter((g) => g.id !== 'mode');
+		const draw = () => {
+			const saved = settingsStore.get('editorToolbarGroups');
+			const order = Array.isArray(saved) ? saved.filter((id) => all.some((g) => g.id === id)) : all.map((g) => g.id);
+			const hidden = all.filter((g) => !order.includes(g.id)).map((g) => g.id);
+			const rows = [...order, ...hidden].map((id, i, list) => {
+				const group = all.find((g) => g.id === id);
+				const row = document.createElement('div');
+				row.className = 'toolbar-group-row';
+				row.dataset.group = id;
+				const box = Object.assign(document.createElement('input'), { type: 'checkbox', checked: order.includes(id) });
+				const name = Object.assign(document.createElement('span'), { textContent: group.label });
+				const up = Object.assign(document.createElement('button'), { textContent: '▲', title: 'Move up', disabled: i === 0 });
+				const down = Object.assign(document.createElement('button'), { textContent: '▼', title: 'Move down', disabled: i === list.length - 1 });
+				const save = (next) => { settingsStore.set('editorToolbarGroups', next); draw(); };
+				box.addEventListener('change', () => save(box.checked ? [...order, id] : order.filter((x) => x !== id)));
+				const move = (d) => {
+					const next = [...list];
+					[next[i], next[i + d]] = [next[i + d], next[i]];
+					save(next.filter((x) => order.includes(x)));
+				};
+				up.addEventListener('click', () => move(-1));
+				down.addEventListener('click', () => move(1));
+				row.append(box, name, up, down);
+				return row;
+			});
+			const reset = Object.assign(document.createElement('button'), { textContent: 'Reset', className: 'toolbar-groups-reset' });
+			reset.addEventListener('click', () => { settingsStore.set('editorToolbarGroups', null); draw(); });
+			const label = Object.assign(document.createElement('div'), { className: 'settings-label', textContent: 'Groups, in order' });
+			wrap.replaceChildren(label, ...rows, reset);
+		};
+		draw();
+		return wrap;
 	}
 
 	#numberRow(label, key, fallback, min, max) {
