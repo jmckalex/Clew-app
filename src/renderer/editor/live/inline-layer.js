@@ -25,6 +25,11 @@ import { ViewPlugin, Decoration } from '@codemirror/view';
 import { StateEffect } from '@codemirror/state';
 import { liveStateField } from './reveal-field.js';
 import { MathWidget } from './widgets/math.js';
+import {
+	BulletWidget, TaskWidget, CalloutHeadWidget, FenceHeadWidget, FenceFootWidget,
+	EnvHeadWidget, EnvFootWidget,
+} from './widgets/lines.js';
+import { calloutFolded } from './block-field.js';
 import { ChipWidget } from './widgets/chip.js';
 import { vaultStore } from '../../state/vault-store.js';
 import { citationLabel } from '../complete/citations.js';
@@ -72,6 +77,10 @@ function build(view) {
 		out.push(Decoration.replace({ widget: w }).range(from, to));
 		replaced.push({ from, to });
 	};
+
+	// Line stand-ins first: an inline construct inside a replaced opener
+	// line (a directive's `[caption]`) is then skipped, never overlapped.
+	lines();
 
 	for (const c of model) {
 		if (c.tier !== 'A' || (c.level !== 'inline' && c.kind !== 'blockId')) continue;
@@ -195,6 +204,100 @@ function build(view) {
 	}
 
 	return Decoration.set(out, true);
+
+	/**
+	 * Line constructs (plan §5.1, §5.4, §5.5): their LINE classes apply in
+	 * both states — a heading's size, a list's indent, a quote's border, a
+	 * callout's tint — so entering a line never changes its height; only
+	 * the marks and stand-ins toggle with the reveal.
+	 */
+	function lines() {
+		const lineClass = (pos, cls, attributes) =>
+			out.push(Decoration.line(attributes ? { class: cls, attributes } : { class: cls }).range(doc.lineAt(pos).from));
+		const lineRange = (from, to) => ({ from, to });
+		for (const c of model) {
+			if (c.tier !== 'A' || !inView(c.lineFrom, c.lineTo)) continue;
+			const hidden = !live.revealed.has(c.id);
+			switch (c.kind) {
+				case 'heading':
+					lineClass(c.from, `le-h le-h${c.depth}`);
+					if (hidden) c.hidden.forEach(hide);
+					break;
+				case 'align':
+					lineClass(c.from, `le-align-${c.align}`);
+					if (hidden) c.hidden.forEach(hide);
+					break;
+				case 'quote':
+					lineClass(c.from, `le-quote le-quote-${Math.min(c.depth, 4)}${c.callout ? ` le-callout le-callout-${c.callout}` : ''}`);
+					if (hidden) c.hidden.forEach(hide);
+					break;
+				case 'callout':
+					lineClass(c.from, 'le-callout-head');
+					if (hidden) {
+						const h = c.hidden[0];
+						widget(h.from, h.to, new CalloutHeadWidget(c.type, c.fold, calloutFolded(state, c), Boolean(c.title), c.id));
+						if (c.title) mark(c.title.from, c.title.to, 'le-callout-title');
+					}
+					break;
+				case 'bullet':
+				case 'numbered':
+				case 'task': {
+					const indent = c.listMark.from - doc.lineAt(c.listMark.from).from;
+					lineClass(c.from, `le-li le-li-${Math.min(c.depth, 4)}${c.kind === 'task' && c.checked ? ' le-done' : ''}`,
+						{ style: `--le-indent: ${indent}` });
+					if (!hidden) break;
+					if (c.kind === 'bullet') widget(c.hidden[0].from, c.hidden[0].to, new BulletWidget(c.depth));
+					if (c.kind === 'task') {
+						c.hidden.forEach(hide);
+						widget(c.marker.from, c.marker.to, new TaskWidget(c.checked));
+					}
+					break;
+				}
+				case 'codeFence': {
+					const last = c.closeLine ?? lineRange(doc.lineAt(c.to).from, c.to);
+					for (let n = doc.lineAt(c.openLine.from).number; n <= doc.lineAt(last.from).number; n += 1) {
+						const line = doc.line(n);
+						if (!inView(line.from, line.to)) continue;
+						const edge = line.from === c.openLine.from ? ' le-fence-open'
+							: c.closeLine && line.from === c.closeLine.from ? ' le-fence-close' : '';
+						lineClass(line.from, `le-fence${edge}`);
+					}
+					if (!hidden) break;
+					if (c.openLine.to > c.openLine.from) widget(c.openLine.from, c.openLine.to, new FenceHeadWidget(c.lang));
+					if (c.closeLine && c.closeLine.to > c.closeLine.from) widget(c.closeLine.from, c.closeLine.to, new FenceFootWidget());
+					break;
+				}
+				case 'directive':
+				case 'environment': {
+					const name = c.name || '';
+					const kindCls = `le-env le-env-${name.replace(/[^\w-]/g, '')}${c.texOnly ? ' le-tex-only-block' : ''}${c.comment ? ' le-env-comment' : ''}`;
+					const bodyFrom = c.body.start ?? c.body.from;
+					const bodyTo = c.body.end ?? c.body.to;
+					lineClass(c.openLine.from, `${kindCls} le-env-open`);
+					if (c.closeLine) lineClass(c.closeLine.from, `${kindCls} le-env-close`);
+					if (bodyTo > bodyFrom || doc.lineAt(bodyFrom).from === bodyFrom) {
+						for (let n = doc.lineAt(bodyFrom).number; n <= doc.lineAt(bodyTo).number; n += 1) {
+							const line = doc.line(n);
+							if (line.from >= c.openLine.from && line.from <= c.openLine.to) continue;
+							if (c.closeLine && line.from === c.closeLine.from) continue;
+							if (inView(line.from, line.to)) lineClass(line.from, kindCls);
+						}
+					}
+					if (!hidden) break;
+					const caption = c.content ? doc.sliceString(c.content.start ?? c.content.from, c.content.end ?? c.content.to) : '';
+					const attrs = c.attrs ? doc.sliceString(c.attrs.start ?? c.attrs.from, c.attrs.end ?? c.attrs.to) : '';
+					widget(c.openLine.from, c.openLine.to, new EnvHeadWidget(name, caption, attrs,
+						c.texOnly ? 'LaTeX only' : c.htmlOnly ? 'HTML only' : ''));
+					if (c.closeLine && c.closeLine.to > c.closeLine.from) widget(c.closeLine.from, c.closeLine.to, new EnvFootWidget());
+					break;
+				}
+				case 'term':
+					mark(c.term.from, c.term.to, 'le-dt');
+					break;
+				default:
+			}
+		}
+	}
 }
 
 /** Rebuild without a document change: what a link resolves to, or a

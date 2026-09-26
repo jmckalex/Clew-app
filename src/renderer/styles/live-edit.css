@@ -70,3 +70,141 @@
 	font-size: 0.9em;
 	text-decoration: underline wavy var(--clew-danger);
 }
+
+/* ---- headings: the size lives on the LINE, in both states ---- */
+.cm-live .le-h .cmt-heading1, .cm-live .le-h .cmt-heading2, .cm-live .le-h .cmt-heading3,
+.cm-live .le-h .cmt-heading4 { font-size: inherit; }
+.le-h { color: var(--clew-heading); font-weight: 650; line-height: 1.3; }
+.le-h1 { font-size: 1.55em; padding-top: 0.35em !important; }
+.le-h2 { font-size: 1.35em; padding-top: 0.3em !important; }
+.le-h3 { font-size: 1.18em; padding-top: 0.2em !important; }
+.le-h4 { font-size: 1.05em; }
+.le-h5, .le-h6 { font-size: 1em; }
+.le-h6 { color: var(--clew-text-muted); }
+
+/* ---- alignment ---- */
+.le-align-center { text-align: center; }
+.le-align-right { text-align: right; }
+
+/* ---- lists: a hanging indent, so wrapped lines sit under the text ---- */
+.le-li {
+	--le-hang: calc(var(--le-indent, 0) * 0.3em + 1.4em);
+	padding-left: calc(24px + var(--le-hang)) !important;
+	text-indent: calc(-1 * var(--le-hang));
+}
+.le-bullet {
+	display: inline-block;
+	width: 1.4em;
+	text-indent: 0;
+	color: var(--clew-accent);
+	font-weight: 700;
+}
+.le-li-2 .le-bullet, .le-li-4 .le-bullet { font-weight: 400; }
+.le-task {
+	width: 1em;
+	height: 1em;
+	margin: 0 0.3em 0 0;
+	vertical-align: -0.12em;
+	accent-color: var(--clew-accent);
+	cursor: pointer;
+}
+.le-done { color: var(--clew-text-muted); text-decoration: line-through; text-decoration-color: var(--clew-text-faint); }
+
+/* ---- quotes and callouts (colours mirror preview.css's callout table) ---- */
+.le-quote {
+	border-left: 3px solid var(--clew-quote);
+	color: var(--clew-quote);
+	padding-left: 20px !important;
+	margin-left: 24px;
+}
+.le-quote-2 { border-left-width: 6px; }
+.le-quote-3, .le-quote-4 { border-left-width: 9px; }
+.le-callout {
+	--callout: #6b7785;
+	border-left: 4px solid var(--callout);
+	background: color-mix(in srgb, var(--callout) 12%, transparent);
+	color: var(--clew-text-normal);
+}
+.le-callout-head { font-weight: 600; }
+.le-callout-marker { color: var(--callout); display: inline-flex; align-items: center; gap: 0.35em; margin-right: 0.35em; vertical-align: -0.1em; }
+.le-callout-marker .callout-icon { width: 1em; height: 1em; }
+.le-callout-label, .le-callout-title { color: var(--callout); }
+.le-callout-fold { cursor: pointer; display: inline-block; transform: rotate(90deg); transition: transform 0.12s; padding: 0 0.3em; }
+.le-callout-fold.is-folded { transform: rotate(0deg); }
+.le-callout-note          { --callout: #5b8def; }
+.le-callout-abstract      { --callout: #00b8a3; }
+.le-callout-info          { --callout: #3b9dd8; }
+.le-callout-todo          { --callout: #3b9dd8; }
+.le-callout-tip           { --callout: #00b8a3; }
+.le-callout-success       { --callout: #3fb950; }
+.le-callout-question      { --callout: #d9a441; }
+.le-callout-warning       { --callout: #e08c3c; }
+.le-callout-failure       { --callout: #e5534b; }
+.le-callout-danger        { --callout: #e5534b; }
+.le-callout-bug           { --callout: #e5534b; }
+.le-callout-example       { --callout: #a371f7; }
+.le-callout-quote         { --callout: #8b949e; }
+.le-callout-compatibility { --callout: #00b8a3; }
+
+/* ---- code fences: source stays, the fence lines become chrome ---- */
+.le-fence {
+	font-family: var(--clew-mono-font);
+	font-size: 0.9em;
+	background: var(--clew-bg-tertiary);
+}
+.le-fence-open { border-radius: 8px 8px 0 0; }
+.le-fence-close { border-radius: 0 0 8px 8px; }
+.le-fence-head { display: inline-flex; width: 100%; justify-content: space-between; font-family: var(--clew-ui-font); font-size: 0.8em; }
+.le-fence-lang { color: var(--clew-text-muted); cursor: pointer; }
+.le-fence-copy { color: var(--clew-text-faint); cursor: pointer; }
+.le-fence-copy:hover { color: var(--clew-accent); }
+.le-fence-foot { display: inline-block; }
+
+/* ---- directives and environments: a captioned frame ---- */
+.le-env { border-left: 2px solid var(--clew-accent); padding-left: 20px !important; margin-left: 24px; }
+.le-env-open { padding-top: 2px !important; }
+.le-env-head { font-family: var(--clew-ui-font); font-size: 0.8em; color: var(--clew-accent); cursor: pointer; }
+.le-env-name { font-weight: 700; text-transform: capitalize; }
+.le-env-caption { margin-left: 0.6em; color: var(--clew-text-normal); font-weight: 600; }
+.le-env-note { margin-left: 0.6em; color: var(--clew-text-faint); }
+.le-env-foot { display: inline-block; }
+.le-tex-only-block, .le-env-comment { opacity: 0.55; }
+.le-dt { font-weight: 600; }
+
+/* ---- blocks ---- */
+.le-hr { padding: 8px 24px; cursor: pointer; }
+.le-hr hr { border: none; border-top: 1px solid var(--clew-border); margin: 0; }
+.le-math-block { padding: 6px 24px; text-align: center; overflow-x: auto; }
+.le-toc { padding: 8px 24px; font-size: 0.95em; }
+.le-toc-title { font-family: var(--clew-ui-font); font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.06em; color: var(--clew-text-muted); cursor: pointer; }
+.le-toc ul { list-style: none; margin: 4px 0 0; padding: 0; }
+.le-toc li { color: var(--clew-link); cursor: pointer; line-height: 1.7; }
+.le-toc li:hover { text-decoration: underline; }
+.le-props { margin: 4px 24px 8px; padding: 6px 0; border-bottom: 1px solid var(--clew-border); font-family: var(--clew-ui-font); font-size: 0.85em; }
+.le-props-row { display: flex; align-items: center; gap: 8px; }
+.le-props-key { flex: 0 0 9em; color: var(--clew-text-muted); padding: 3px 6px; }
+.le-props-foot { color: var(--clew-text-faint); font-size: 0.85em; padding: 4px 6px 0; }
+.le-props-yaml { cursor: pointer; color: var(--clew-text-muted); text-decoration: underline dotted; }
+.le-banner {
+	margin: 8px 24px;
+	padding: 8px 12px;
+	border-radius: 6px;
+	background: var(--clew-active-item);
+	font-family: var(--clew-ui-font);
+	font-size: 0.85em;
+	display: flex;
+	gap: 12px;
+	align-items: center;
+	justify-content: space-between;
+}
+/* Source mode tints a whole list item with the list face; in live edit the
+   bullet carries the colour and the item reads as prose. */
+.cm-live .le-li .cmt-list { color: inherit; }
+
+/* CodeMirror puts a 1em, `vertical-align: text-top` image either side of a
+   replaced range (a caret anchor). On a large-font line that image pokes
+   above the line box and a concealed heading stood 1px taller than the same
+   heading revealed (measured, 41.9 vs 40.9) — which breaks the rule that
+   entering a line never changes its height. Sat on the baseline and kept
+   short, it holds the caret without lifting the line. */
+.cm-live .cm-widgetBuffer { vertical-align: baseline; height: 0.6em; }

@@ -21,6 +21,7 @@ import { EditorView } from '@codemirror/view';
 import { liveConfigFacet } from './config.js';
 import { liveStateField } from './reveal-field.js';
 import { inlineLayer } from './inline-layer.js';
+import { blockField, calloutFoldField } from './block-field.js';
 import { liveEvents } from './events.js';
 
 /** The compartment every note state carries (empty in source mode). */
@@ -38,6 +39,8 @@ export function liveEdit(config) {
 		// The one marker source-mode CSS and scenarios key on.
 		EditorView.editorAttributes.of({ class: 'cm-live' }),
 		liveStateField,
+		calloutFoldField,
+		blockField,
 		inlineLayer,
 		liveEvents,
 	];

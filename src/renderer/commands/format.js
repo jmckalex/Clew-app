@@ -14,6 +14,7 @@
 // Everything operates on the active tab's live editor via the pool.
 import { EditorSelection } from '@codemirror/state';
 import { startCompletion } from '@codemirror/autocomplete';
+import { indentMore, indentLess, insertBlankLine } from '@codemirror/commands';
 import { registerCommand, buildContext } from './registry.js';
 import { editorPool } from '../editor/pool.js';
 
@@ -253,6 +254,21 @@ function insertTableRow(view) {
 	view.focus();
 }
 
+/**
+ * ⌘-Enter on a task line flips its checkbox — in either editing mode. Off a
+ * task line it is CodeMirror's own ⌘-Enter (a blank line below), which the
+ * chord would otherwise have taken away.
+ */
+function toggleTask(view) {
+	const { state } = view;
+	const line = state.doc.lineAt(state.selection.main.head);
+	const m = /^(\s*(?:[-*+]|\d+[.)])\s+)\[( |x|X)\]/.exec(line.text);
+	if (!m) return insertBlankLine(view);
+	const at = line.from + m[1].length + 1;
+	view.dispatch({ changes: { from: at, to: at + 1, insert: m[2] === ' ' ? 'x' : ' ' }, userEvent: 'input.task' });
+	return true;
+}
+
 // ---- the commands ----------------------------------------------------------
 
 export function registerFormatCommands() {
@@ -348,6 +364,10 @@ export function registerFormatCommands() {
 			fn: (v) => wrapContainer(v, ':::comment', ':::', 'Editorial note.') },
 		{ id: 'format:container', name: 'Insert generic container (:::name)',
 			fn: (v) => wrapContainer(v, ':::name', ':::', 'Content') },
+		// Lists (live edit's toolbar; they work in source mode too).
+		{ id: 'format:indent', name: 'Indent list item / lines', fn: (v) => indentMore(v) },
+		{ id: 'format:outdent', name: 'Outdent list item / lines', fn: (v) => indentLess(v) },
+		{ id: 'editor:toggle-task', name: 'Toggle task checkbox', hotkeys: ['Mod-Enter'], fn: (v) => toggleTask(v) },
 	];
 
 	for (const { id, name, hotkeys, fn } of commands) {

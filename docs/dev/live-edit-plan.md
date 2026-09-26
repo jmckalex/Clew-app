@@ -633,6 +633,16 @@ widget both use these; `tests/frontmatter.test.js` already covers the
 subset. The widget is a block replacement of the whole header including
 both `---` fences; `eq` compares the header text.
 
+As built (Phase 3): the widget is its own compact editor over
+`shared/frontmatter.js` (text, number, date and checkbox values edit in
+place; lists show as chips; a non-`clean` block is read-only), writing
+through `editor/frontmatter-edit.js` — the Properties panel was NOT
+refactored into `properties-rows.js`: its rows are bound to the panel's
+private state, and a second, smaller renderer sharing the CSS and the
+serialisation was the smaller risk. Callout titles stay DOCUMENT text
+(styled `le-callout-title`, their inline constructs concealed like any
+others) rather than an `inlineDom` rendering, so they edit in place.
+
 ### 5.8 TocWidget
 
 Headings from the model (`heading` constructs in order); nested `<ul>` by
@@ -662,7 +672,23 @@ because `eq` compares a hash of the heading list.
   edge of a replaced range, the construct reveals, and the next arrow moves
   through the now-visible delimiter. Test this explicitly (§10).
 
+As built (Phase 3): no `live/keymap.js`. Enter already continues lists,
+tasks and quotes in both modes (`markdownKeymap`'s
+`insertNewlineContinueMarkup`, in editor.js's keymap), and Tab already
+indents list items (`indentWithTab` → `indentMore`); what was missing is
+now three commands in format.js — `format:indent`, `format:outdent`, and
+`editor:toggle-task` on ⌘-Enter, which falls back to CodeMirror's own ⌘-Enter
+(`insertBlankLine`) off a task line so the chord takes nothing away.
+
 ### 5.10 What a construct looks like while revealed
+
+**Measured in Phase 3**: CodeMirror places a `cm-widgetBuffer` image
+(1em tall, `vertical-align: text-top`) either side of a replaced range; on a
+heading line it lifted the line box by 1px (41.9 vs 40.9), so a concealed
+heading stood taller than a revealed one. live-edit.css sets those images on
+the baseline at 0.6em; `live-lines-scenario` asserts `height-stable=true`.
+Heading SIZE lives on the line (`le-hN`), and live mode neutralises the
+`cmt-headingN` span sizes so the two do not compound.
 
 Exactly source mode: the overlay's `jmd-*` faces and `cmt-*` classes. The
 live-edit layers add nothing to a revealed construct except keeping the

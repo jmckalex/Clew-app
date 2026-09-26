@@ -22,8 +22,10 @@ import { EditorView } from '@codemirror/view';
 import * as actions from '../../commands/actions.js';
 import { openExternal } from '../../lib/external-links.js';
 import { runCommand } from '../../commands/registry.js';
+import { setCalloutFold, calloutFolded } from './block-field.js';
+import { liveStateField } from './reveal-field.js';
 
-const TARGETS = '[data-le-href],[data-le-target],[data-le-tag],[data-le-ref],[data-le-blockid],.le-reveal-on-click';
+const TARGETS = '[data-le-task],[data-le-fold],[data-le-copy],[data-le-goto],[data-le-command],[data-le-href],[data-le-target],[data-le-tag],[data-le-ref],[data-le-blockid],.le-reveal-on-click';
 
 /** Put the cursor at `pos` (revealing whatever is there) and focus. */
 function placeCursor(view, pos) {
@@ -41,6 +43,42 @@ export const liveEvents = EditorView.domEventHandlers({
 		if (event.altKey && !revealOnly) return false;
 		event.preventDefault();
 
+		if (el.dataset.leTask) {
+			// The checkbox replaces `[ ]` / `[x]`: flip that one character.
+			const pos = view.posAtDOM(el);
+			const marker = view.state.doc.sliceString(pos, pos + 3);
+			if (/^\[[ xX]\]$/.test(marker)) {
+				view.dispatch({
+					changes: { from: pos + 1, to: pos + 2, insert: marker[1] === ' ' ? 'x' : ' ' },
+					userEvent: 'input.task',
+				});
+			}
+			return true;
+		}
+		if (el.dataset.leFold) {
+			const callout = view.state.field(liveStateField).model.find((c) => c.id === el.dataset.leFold);
+			if (callout) {
+				view.dispatch({ effects: setCalloutFold.of({ id: callout.id, folded: !calloutFolded(view.state, callout) }) });
+			}
+			return true;
+		}
+		if (el.dataset.leCopy) {
+			const pos = view.posAtDOM(el);
+			const fence = view.state.field(liveStateField).model
+				.find((c) => c.kind === 'codeFence' && pos >= c.openLine.from && pos <= c.openLine.to);
+			if (fence) navigator.clipboard.writeText(view.state.doc.sliceString(fence.body.from, fence.body.to)).catch(() => {});
+			return true;
+		}
+		if (el.dataset.leGoto) {
+			const pos = Math.min(Number(el.dataset.leGoto), view.state.doc.length);
+			view.dispatch({ selection: { anchor: pos }, effects: EditorView.scrollIntoView(pos, { y: 'start' }) });
+			view.focus();
+			return true;
+		}
+		if (el.dataset.leCommand) {
+			runCommand(el.dataset.leCommand);
+			return true;
+		}
 		if (el.dataset.leBlockid) {
 			placeCursor(view, view.posAtDOM(el));
 			runCommand('editor:copy-block-ref');
