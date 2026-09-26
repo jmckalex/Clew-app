@@ -47,7 +47,7 @@ export function splitRow(line) {
 }
 
 /** ':--', '--:', ':-:' → 'left' | 'right' | 'center' | null */
-function alignmentOf(spec) {
+export function alignmentOf(spec) {
 	const s = spec.trim();
 	const left = s.startsWith(':');
 	const right = s.endsWith(':');

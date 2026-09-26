@@ -448,7 +448,9 @@ function build(doc, tree, config) {
 			}
 			case 'wikilink':
 			case 'embed': {
-				const target = s.target ? text(s.target.start, s.target.end) : '';
+				// Inside a table the pipe must be escaped (`[[Note\|alias]]`, as
+				// in Obsidian): the backslash belongs to the table, not the name.
+				const target = (s.target ? text(s.target.start, s.target.end) : '').replace(/\\$/, '');
 				const parts = {
 					target, heading: s.heading ? text(s.heading.start, s.heading.end) : null,
 					blockId: s.blockId ? text(s.blockId.start, s.blockId.end) : null,

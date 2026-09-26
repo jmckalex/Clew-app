@@ -208,3 +208,13 @@
    entering a line never changes its height. Sat on the baseline and kept
    short, it holds the caret without lifting the line. */
 .cm-live .cm-widgetBuffer { vertical-align: baseline; height: 0.6em; }
+
+/* ---- tables and images (Tier B) ---- */
+.le-table-wrap { padding: 6px 24px; overflow-x: auto; }
+.le-table { border-collapse: collapse; font-size: 0.95em; }
+.le-table th, .le-table td { border: 1px solid var(--clew-border); padding: 4px 10px; cursor: text; }
+.le-table th { background: var(--clew-bg-secondary); font-weight: 650; text-align: left; }
+.le-image-block { display: block; padding: 6px 24px; }
+.le-image img { max-width: 100%; border-radius: 6px; vertical-align: middle; cursor: pointer; }
+.le-image:not(.le-image-block) img { max-height: 1.6em; }
+.le-image-chip { color: var(--clew-text-muted); background: var(--clew-bg-tertiary); }

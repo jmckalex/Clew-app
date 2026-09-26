@@ -22,9 +22,15 @@
 // edits nothing (calloutFoldField).
 import { StateField, StateEffect } from '@codemirror/state';
 import { EditorView, Decoration } from '@codemirror/view';
+import { syntaxTree } from '@codemirror/language';
 import { liveStateField } from './reveal-field.js';
 import { MathWidget } from './widgets/math.js';
 import { HrWidget, TocWidget, BannerWidget, PropertiesWidget } from './widgets/blocks.js';
+import { TableWidget } from './widgets/table.js';
+import { ImageWidget } from './widgets/image.js';
+import { imageSpec } from './images.js';
+import { inlineTokens } from './inline-dom.js';
+import { splitRow, alignmentOf } from '../tables.js';
 
 /** Toggle a foldable callout: `{ id, folded }`. */
 export const setCalloutFold = StateEffect.define();
@@ -66,6 +72,11 @@ function build(state) {
 	}));
 
 	for (const c of model) {
+		if (c.tier === 'B' && c.level === 'block' && !live.revealed.has(c.id)) {
+			if (c.kind === 'table') block(c, tableWidget(state, c, model));
+			else if (c.kind === 'image') block(c, new ImageWidget(imageSpec(c, config.notePath, true)));
+			continue;
+		}
 		if (c.tier !== 'A') continue;
 		if (c.kind === 'callout' && c.fold && c.body && calloutFolded(state, c)) {
 			// A folded body hides, unless the cursor is in it (arrow keys can
@@ -120,6 +131,34 @@ export const blockField = StateField.define({
 	},
 	provide: (field) => EditorView.decorations.from(field, (value) => value.deco),
 });
+
+/** A table construct's widget, from the lezer rows and cells. */
+function tableWidget(state, c, model) {
+	const doc = state.doc;
+	const rows = [];
+	let delimiter = null;
+	syntaxTree(state).iterate({
+		from: c.from,
+		to: c.to,
+		enter(node) {
+			if (node.name === 'TableHeader' || node.name === 'TableRow') {
+				const cells = [];
+				for (let cell = node.node.firstChild; cell; cell = cell.nextSibling) {
+					if (cell.name !== 'TableCell') continue;
+					cells.push({ tokens: inlineTokens(doc, cell.from, cell.to, model), offset: cell.from - c.lineFrom });
+				}
+				rows.push({ header: node.name === 'TableHeader', cells });
+				return false;
+			}
+			if (node.name === 'TableDelimiter' && delimiter === null && doc.lineAt(node.from).number === doc.lineAt(c.from).number + 1) {
+				delimiter = doc.lineAt(node.from).text;
+			}
+			return node.name === 'Table' || node.name === 'Document';
+		},
+	});
+	const align = delimiter ? splitRow(delimiter).map(alignmentOf) : [];
+	return new TableWidget(doc.sliceString(c.from, c.to), rows, align);
+}
 
 function hasFoldedCallouts(state) {
 	return state.field(liveStateField).model.some((c) => c.kind === 'callout' && c.fold);

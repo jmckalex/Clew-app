@@ -24,6 +24,7 @@ import { Facet } from '@codemirror/state';
  * @property {boolean} renderEmbeds   engine frames for embeds and media
  * @property {number} frameCap        live block documents per editor
  * @property {string[]} richFences    extra fence names plugins render
+ * @property {string|null} notePath   the note this editor holds (vault-relative)
  */
 
 /** @type {LiveConfig} */
@@ -35,6 +36,7 @@ export const DEFAULT_LIVE_CONFIG = Object.freeze({
 	renderEmbeds: true,
 	frameCap: 16,
 	richFences: [],
+	notePath: null,
 });
 
 export const liveConfigFacet = Facet.define({
@@ -58,5 +60,6 @@ export function readLiveConfig(settings, vaultSettings) {
 		renderEmbeds: settings.get('liveRenderEmbeds') !== false,
 		frameCap: Number.isFinite(cap) ? Math.min(64, Math.max(4, Math.round(cap))) : 16,
 		richFences: [],
+		notePath: null,
 	};
 }

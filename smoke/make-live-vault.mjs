@@ -1,6 +1,8 @@
-// Fixture for live-lines-scenario.js: `node smoke/make-live-vault.mjs <dir>`.
-// One note holding every line and block construct live edit draws.
-import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
+// Fixtures for live-lines-scenario.js and live-tables-scenario.js:
+// `node smoke/make-live-vault.mjs <dir>`. Blocks.md holds every line and
+// block construct live edit draws; Tables.md the Tier B ones (a table with
+// inline markdown in its cells, and images of every kind).
+import { mkdirSync, writeFileSync, rmSync, copyFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const dir = process.argv[2];
@@ -49,6 +51,28 @@ Body with $a^2+b^2=c^2$.
 :::
 
 Term:: definition here.
+
+Last line.
+`);
+
+mkdirSync(join(dir, 'Attachments'), { recursive: true });
+copyFileSync(new URL('../demo-vault/Attachments/clew-gradient.png', import.meta.url), join(dir, 'Attachments', 'pic.png'));
+writeFileSync(join(dir, 'Tables.md'), `# Tables
+
+| Name | Style | Value |
+| :--- | :---: | ---: |
+| one | *strong* | $x^2$ |
+| two | [[Blocks\\|a link]] | \`code\` |
+
+![[pic.png|120]]
+
+![Markdown path](Attachments/pic.png)
+
+![Remote](https://example.org/x.png)
+
+![[nowhere.png]]
+
+Text with an inline ![[pic.png|20]] image.
 
 Last line.
 `);

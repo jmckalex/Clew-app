@@ -72,3 +72,28 @@ export class MathWidget extends WidgetType {
 
 	ignoreEvent(event) { return event.type !== 'mousedown'; }
 }
+
+/**
+ * A formula as a free-standing element (table cells, the inline renderer):
+ * typeset now when MathJax is in, else the source until it is.
+ */
+export function mathElement(tex, display, source) {
+	const el = document.createElement('span');
+	el.className = `le-math${display ? ' le-math-display' : ''}`;
+	const fill = () => {
+		const out = typesetTex(tex, { display });
+		if (!out) return false;
+		el.textContent = '';
+		if (out.getAttribute('data-mjx-error')) {
+			el.classList.add('le-math-error');
+			el.textContent = source;
+		} else el.append(out);
+		return true;
+	};
+	if (!mathLoaded() || !fill()) {
+		el.textContent = source;
+		el.classList.add('le-math-pending');
+		mathReady().then(() => { el.classList.remove('le-math-pending'); fill(); }).catch(() => {});
+	}
+	return el;
+}

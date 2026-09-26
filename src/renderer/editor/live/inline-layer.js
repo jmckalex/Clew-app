@@ -30,6 +30,8 @@ import {
 	EnvHeadWidget, EnvFootWidget,
 } from './widgets/lines.js';
 import { calloutFolded } from './block-field.js';
+import { ImageWidget } from './widgets/image.js';
+import { imageSpec } from './images.js';
 import { ChipWidget } from './widgets/chip.js';
 import { vaultStore } from '../../state/vault-store.js';
 import { citationLabel } from '../complete/citations.js';
@@ -83,6 +85,11 @@ function build(view) {
 	lines();
 
 	for (const c of model) {
+		if (c.kind === 'image' && c.level === 'inline' && inView(c.from, c.to) && !live.revealed.has(c.id)
+			&& oneLine(c.from, c.to) && !replaced.some((r) => c.from >= r.from && c.to <= r.to)) {
+			widget(c.from, c.to, new ImageWidget(imageSpec(c, config.notePath, false)));
+			continue;
+		}
 		if (c.tier !== 'A' || (c.level !== 'inline' && c.kind !== 'blockId')) continue;
 		if (!inView(c.from, c.to) || live.revealed.has(c.id)) continue;
 		if (replaced.some((r) => c.from >= r.from && c.to <= r.to)) continue;

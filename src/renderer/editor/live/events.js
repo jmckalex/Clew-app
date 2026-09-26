@@ -25,7 +25,7 @@ import { runCommand } from '../../commands/registry.js';
 import { setCalloutFold, calloutFolded } from './block-field.js';
 import { liveStateField } from './reveal-field.js';
 
-const TARGETS = '[data-le-task],[data-le-fold],[data-le-copy],[data-le-goto],[data-le-command],[data-le-href],[data-le-target],[data-le-tag],[data-le-ref],[data-le-blockid],.le-reveal-on-click';
+const TARGETS = '[data-le-cell],[data-le-task],[data-le-fold],[data-le-copy],[data-le-goto],[data-le-command],[data-le-href],[data-le-target],[data-le-tag],[data-le-ref],[data-le-blockid],.le-reveal-on-click';
 
 /** Put the cursor at `pos` (revealing whatever is there) and focus. */
 function placeCursor(view, pos) {
@@ -43,6 +43,13 @@ export const liveEvents = EditorView.domEventHandlers({
 		if (event.altKey && !revealOnly) return false;
 		event.preventDefault();
 
+		if (el.dataset.leCell !== undefined) {
+			// A table cell: the cursor to that cell's text, which reveals the
+			// table as source (the widget sits at the table's first line).
+			const table = el.closest('.le-table-wrap');
+			placeCursor(view, view.posAtDOM(table) + Number(el.dataset.leCell));
+			return true;
+		}
 		if (el.dataset.leTask) {
 			// The checkbox replaces `[ ]` / `[x]`: flip that one character.
 			const pos = view.posAtDOM(el);
