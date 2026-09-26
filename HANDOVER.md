@@ -47,6 +47,16 @@ intended guide-note changes, committed (runs used scratch copies).
   live-lines, live-toolbar, live-table-edit, math-highlight, slash-menu)
   unchanged; live-perf within noise. 791 tests. The harness gained
   `{move:{x,y}}`.
+- **The live preview pane** (§5.12, planning session's design): maths and
+  diagrams rendered beside their source while the cursor is in them, both
+  editing modes. Built on a new shared floating-pane base (the link preview
+  moved onto it). Measuring turned up a live-edit gap the design had
+  assumed away: ArrowUp/Down jumped clean over every block widget —
+  `live/keys.js` fixes it. `preview-pane-scenario.js` passes every step.
+- **Pre-existing, not a regression**: `figures-edit-scenario` phase 3
+  (`key-changed=false` — an edited ```tikz in READING mode keeps its old
+  picture) fails identically at `c6f3169`, before this session's work
+  (checked in a scratch worktree, 2026-09-26). Not investigated further.
 
 ## 1. STILL OPEN
 

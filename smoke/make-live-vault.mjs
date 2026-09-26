@@ -107,6 +107,30 @@ ${extra}
 Last line.
 `);
 
+// Pane.md (preview-pane-scenario.js): inline and display maths, a mermaid
+// fence, a tikz fence (its phase runs only where mp-tikz-wasm is staged).
+writeFileSync(join(dir, 'Pane.md'), `# Pane
+
+Inline $a^2 + b^2$ here.
+
+$$
+x = 1
+$$
+
+\`\`\`mermaid
+graph TD
+  A[Start] --> B[End]
+\`\`\`
+
+\`\`\`tikz
+\\begin{tikzpicture}
+\\draw (0,0) -- (1,1);
+\\end{tikzpicture}
+\`\`\`
+
+Last line.
+`);
+
 // Slash.md (slash-menu-scenario.js): prose, a code fence, a table.
 writeFileSync(join(dir, 'Slash.md'), `# Slash
 

@@ -32,6 +32,9 @@ come back, and ⌘Z still works.
 
 - **⌘-click** a `[[wikilink]]` to follow it (⌥ for a new tab). In live
   edit a plain click follows it and ⌥-click edits it.
+- **Edit a formula or a diagram** and its rendering sits beside it,
+  updating as you pause — $e^{i\pi} + 1 = 0$ is one to try. *Esc* puts it
+  away until you leave that formula.
 - **Hover** a link to peek at it: [[Welcome#The guide]] shows just that
   section, rendered, in a popover — in every mode. Settings → Appearance
   can make it wait for ⌘, or turn it off.

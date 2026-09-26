@@ -28,6 +28,7 @@ import { officeDock } from './office-dock.js';
 import './components/chrome/clew-app.js';
 import './editor/toolbar/clew-selection-bubble.js';
 import { linkPreview } from './editor/link-preview.js';
+import { previewPane } from './editor/preview-pane.js';
 
 // ---- IPC events → stores --------------------------------------------------
 
@@ -115,8 +116,9 @@ officeDock.init();
 // One selection bubble per window (docs/dev/live-edit.md §6.7).
 document.body.append(document.createElement('clew-selection-bubble'));
 linkPreview(); // <clew-link-preview>, the window's one link popover
+previewPane(); // <clew-preview-pane>, the window's one live preview pane
 
-window.__clew = { linkPreview, workspaceStore, vaultStore, vaultSettingsStore, editorPool, settingsStore, ipc, actions, officeDock };
+window.__clew = { linkPreview, previewPane, workspaceStore, vaultStore, vaultSettingsStore, editorPool, settingsStore, ipc, actions, officeDock };
 // Live edit's in-place table cells, for scenarios (smoke/live-table-edit-scenario.js).
 import('./editor/live/table-cell-editor.js').then((m) => { window.__clew.activeCellView = m.activeCellView; });
 import('./commands/registry.js').then((registry) => { window.__clew.registry = registry; });

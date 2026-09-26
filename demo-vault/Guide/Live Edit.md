@@ -32,7 +32,7 @@ Every style of the dialect: *strong*, **intense**, /italic/,
 __underline__, ==highlighted==, ~struck~, H_2O and x^{10}, `code`, and
 maths $e^{i\pi} + 1 = 0$ typeset in place. Links follow on a click —
 [[Welcome]], [[Callouts|an aliased link]], [a web link](https://jmckalex.org)
-— and *⌥-click* puts the cursor in one instead; hover one to peek at it. Tags like #guide open a
+— and *⌥-click* puts the cursor in one instead; hover one to peek at it. Put the cursor in a formula and its source shows, with the rendering beside it as you type. Tags like #guide open a
 search. A footnote becomes its number,[fn: Hover the number to read it.]
 a citation its author and year
 \cite{alexander2023}, and a `{{…}}` variable a chip: {{title}}. Today is :today. A block id

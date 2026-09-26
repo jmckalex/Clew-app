@@ -30,6 +30,7 @@ import { slashCompletions } from './complete/slash-commands.js';
 import { tagCompletions } from './complete/tags.js';
 import { wikilinkClick } from './wikilink-click.js';
 import { linkHover } from './link-hover.js';
+import { previewPanePlugin } from './preview-pane-plugin.js';
 import { attachments } from './attachments.js';
 import { citationCompletions } from './complete/citations.js';
 import { jmdOverlay } from './jmd/overlay.js';
@@ -84,6 +85,9 @@ export function makeNoteState(doc, handlerRef, { normalSyntax = false } = {}) {
 			wikilinkClick(),
 			// Hover a link to preview it (link-hover.js; both modes).
 			linkHover(),
+			// The rendering of the formula or diagram being edited, beside it
+			// (preview-pane-plugin.js; both modes).
+			previewPanePlugin,
 			attachments(),
 			// Reads the settings per keystroke: the toggle applies live and
 			// cached EditorStates (pool undo cache) need no rebuild.

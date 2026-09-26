@@ -22,17 +22,17 @@
 // the same target re-shows without a reload, and the fragment cache makes a
 // repeat render instant. Thirty seconds after it closes the iframe is
 // blanked, releasing the document. An image is a plain <img>; an unresolved
-// note is a card that creates it. It never takes focus.
-import { blockUrl, blockDocumentUrl, vaultFileUrl } from '../lib/preview-url.js';
-import { effectiveChords } from '../commands/registry.js';
+// note is a card that creates it. It never takes focus. The iframe, its
+// messages, the blanking and the placing are the shared floating-pane base
+// (components/chrome/floating-pane.js), which the live preview pane uses too.
+import { vaultFileUrl } from '../lib/preview-url.js';
 import { handlePreviewMessage } from './live/frame-host.js';
 import { workspaceStore } from '../state/workspace-store.js';
 import * as actions from '../commands/actions.js';
+import { FloatingPane } from '../components/chrome/floating-pane.js';
 
-const HOST_SOURCE = 'clew-preview-host';
 const DELAY_MS = 500;
 const GRACE_MS = 300;
-const BLANK_MS = 30000;
 const WIDTH = 440;
 const MIN_H = 80;
 const MAX_H = 360;
@@ -42,24 +42,20 @@ const FOLLOWED = new Set(['link-click', 'external-link', 'open-external-file']);
 /** A spec's identity: the same key re-shows without a reload. */
 const keyOf = (spec) => `${spec.kind}:${spec.text ?? spec.path ?? spec.name}`;
 
-class ClewLinkPreview extends HTMLElement {
+class ClewLinkPreview extends FloatingPane {
 	#spec = null;          // what is shown (or about to be)
 	#sourcePath = null;    // the note the hovered link is in
 	#rect = null;          // the link's client rect
 	#showTimer = null;
 	#hideTimer = null;
-	#blankTimer = null;
-	#hash = null;          // the block document the iframe holds
-	#ready = false;
 	#height = MIN_H;
 	#pointerInside = false;
-	#generation = 0;
 
 	connectedCallback() {
-		this.hidden = true;
+		this.innerHTML = '';
+		this.initPane({ frameClass: 'link-preview-frame' });
 		this.setAttribute('role', 'dialog');
 		this.setAttribute('aria-label', 'Link preview');
-		this.innerHTML = '';
 		this.header = document.createElement('div');
 		this.header.className = 'link-preview-header';
 		this.name = document.createElement('span');
@@ -69,14 +65,10 @@ class ClewLinkPreview extends HTMLElement {
 		this.open.className = 'link-preview-open';
 		this.open.textContent = 'Open';
 		this.open.title = 'Open (⌘-click: in a new tab)';
-		this.open.addEventListener('pointerdown', (e) => e.preventDefault());
 		this.open.addEventListener('click', (e) => this.#follow(e.metaKey || e.ctrlKey));
 		this.header.append(this.name, this.open);
 		this.body = document.createElement('div');
 		this.body.className = 'link-preview-body';
-		this.iframe = document.createElement('iframe');
-		this.iframe.className = 'link-preview-frame';
-		this.iframe.src = 'about:blank';
 		this.image = document.createElement('img');
 		this.image.className = 'link-preview-image';
 		this.image.alt = '';
@@ -84,18 +76,15 @@ class ClewLinkPreview extends HTMLElement {
 		this.card = document.createElement('button');
 		this.card.type = 'button';
 		this.card.className = 'link-preview-card';
-		this.card.addEventListener('pointerdown', (e) => e.preventDefault());
 		this.card.addEventListener('click', (e) => this.#follow(e.metaKey || e.ctrlKey));
-		this.body.append(this.iframe, this.image, this.card);
+		this.body.append(this.frame, this.image, this.card);
 		this.append(this.header, this.body);
 
 		this.addEventListener('pointerenter', () => { this.#pointerInside = true; clearTimeout(this.#hideTimer); });
 		this.addEventListener('pointerleave', () => { this.#pointerInside = false; this.unhover(); });
-		this.onMessage = (event) => this.#message(event);
 		this.onKey = (e) => { if (e.key === 'Escape' && !this.hidden) this.hide(); };
 		this.onPointerDown = (e) => { if (!this.hidden && !this.contains(e.target)) this.hide(); };
 		this.onBlur = () => this.hide();
-		window.addEventListener('message', this.onMessage);
 		document.addEventListener('keydown', this.onKey, true);
 		document.addEventListener('pointerdown', this.onPointerDown, true);
 		window.addEventListener('blur', this.onBlur);
@@ -103,7 +92,7 @@ class ClewLinkPreview extends HTMLElement {
 	}
 
 	disconnectedCallback() {
-		window.removeEventListener('message', this.onMessage);
+		this.destroyPane();
 		document.removeEventListener('keydown', this.onKey, true);
 		document.removeEventListener('pointerdown', this.onPointerDown, true);
 		window.removeEventListener('blur', this.onBlur);
@@ -147,31 +136,23 @@ class ClewLinkPreview extends HTMLElement {
 	hide() {
 		clearTimeout(this.#showTimer);
 		clearTimeout(this.#hideTimer);
-		if (this.hidden) return;
-		this.hidden = true;
-		this.classList.remove('shown');
 		this.#pointerInside = false;
-		clearTimeout(this.#blankTimer);
-		this.#blankTimer = setTimeout(() => this.#blank(), BLANK_MS);
+		if (this.hidePane()) this.classList.remove('shown');
 	}
 
-	#blank() {
-		this.iframe.src = 'about:blank';
-		this.#hash = null;
-		this.#ready = false;
+	blankFrame() {
+		super.blankFrame();
 		this.#spec = null;
 	}
 
 	async #show(spec, rect, sourcePath) {
-		const generation = ++this.#generation;
-		clearTimeout(this.#blankTimer);
 		const sameTarget = this.#spec && keyOf(this.#spec) === keyOf(spec);
 		this.#spec = spec;
 		this.#rect = rect;
 		this.#sourcePath = sourcePath;
 		this.name.textContent = spec.label;
 		this.open.hidden = spec.kind === 'unresolved';
-		this.iframe.hidden = spec.kind !== 'block';
+		this.frame.hidden = spec.kind !== 'block';
 		this.image.hidden = spec.kind !== 'image';
 		this.card.hidden = spec.kind !== 'unresolved';
 		this.dataset.kind = spec.kind;
@@ -188,26 +169,19 @@ class ClewLinkPreview extends HTMLElement {
 			this.card.replaceChildren(line, hint);
 			this.card.disabled = what !== 'note';
 			this.#height = 0;
-		} else if (!sameTarget || !this.#hash) {
-			let hash;
-			try {
-				const response = await fetch(blockUrl(), { method: 'POST', body: JSON.stringify({ text: spec.text, sourcePath }) });
-				if (!response.ok) throw new Error(String(response.status));
-				hash = (await response.json()).hash;
-			} catch {
-				return;
-			}
-			if (generation !== this.#generation) return;
-			if (hash !== this.#hash) {
-				this.#hash = hash;
-				this.#ready = false;
-				this.#height = MIN_H;
-				this.iframe.src = blockDocumentUrl(hash);
-			}
+		} else if (!sameTarget || !this.frameHash) {
+			const result = await this.renderIntoFrame(spec.text, sourcePath);
+			if (result === null || this.#spec !== spec) return;
+			if (result === 'loaded') this.#height = MIN_H;
 		}
-		this.hidden = false;
+		this.showPane();
 		this.#place();
 		requestAnimationFrame(() => this.classList.add('shown'));
+	}
+
+	onFrameSize(height) {
+		this.#height = height;
+		this.#place();
 	}
 
 	/** Below the link, flipped above when clipped, clamped sideways. */
@@ -217,42 +191,17 @@ class ClewLinkPreview extends HTMLElement {
 		// The body's padding (link-preview.css) is outside the document's height.
 		const pad = this.#spec?.kind === 'block' ? 12 : 0;
 		this.body.style.height = this.#spec?.kind === 'unresolved' ? '' : `${bodyH + pad}px`;
-		const r = this.getBoundingClientRect();
-		const h = r.height;
-		const gap = 6;
-		let top = this.#rect.bottom + gap;
-		if (top + h > window.innerHeight - 8 && this.#rect.top - gap - h > 8) top = this.#rect.top - gap - h;
-		const left = Math.max(8, Math.min(this.#rect.left, window.innerWidth - WIDTH - 8));
-		this.style.top = `${Math.round(top)}px`;
-		this.style.left = `${Math.round(left)}px`;
+		this.placeAgainst(this.#rect, { prefer: 'below' });
 	}
 
-	#post(msg) {
-		this.iframe.contentWindow?.postMessage({ source: HOST_SOURCE, ...msg }, '*');
-	}
-
-	#message(event) {
-		const msg = event.data;
-		if (!msg || msg.source !== 'clew-preview' || event.source !== this.iframe.contentWindow) return;
-		switch (msg.type) {
-			case 'ready':
-				this.#ready = true;
-				this.#post({ type: 'theme', theme: document.body.dataset.theme ?? 'dark' });
-				this.#post({ type: 'app-chords', chords: effectiveChords() });
-				return;
-			case 'size':
-				this.#height = Math.round(msg.height);
-				this.#place();
-				return;
-			default:
-				// Following a link inside the preview happens in the window; a
-				// click in it never makes it the active tab (`focused` ignored).
-				if (!FOLLOWED.has(msg.type)) return;
-				this.hide();
-				handlePreviewMessage(msg, {
-					mode: 'block', tabId: workspaceStore.activeTab()?.id ?? null, path: this.#sourcePath, post: (m) => this.#post(m),
-				});
-		}
+	onFrameMessage(msg) {
+		// Following a link inside the preview happens in the window; a click
+		// in it never makes it the active tab (`focused` ignored).
+		if (!FOLLOWED.has(msg.type)) return;
+		this.hide();
+		handlePreviewMessage(msg, {
+			mode: 'block', tabId: workspaceStore.activeTab()?.id ?? null, path: this.#sourcePath, post: (m) => this.postToFrame(m),
+		});
 	}
 
 	#follow(newTab) {
@@ -270,8 +219,8 @@ class ClewLinkPreview extends HTMLElement {
 	describe() {
 		return {
 			visible: !this.hidden, kind: this.#spec?.kind ?? null, path: this.#spec?.path ?? null, label: this.#spec?.label ?? null,
-			ready: this.#ready, height: Math.round(this.body.getBoundingClientRect().height),
-			src: this.iframe.getAttribute('src'), card: this.card.hidden ? null : this.card.firstChild?.textContent ?? null,
+			ready: this.frameReady, height: Math.round(this.body.getBoundingClientRect().height),
+			src: this.frame.getAttribute('src'), card: this.card.hidden ? null : this.card.firstChild?.textContent ?? null,
 		};
 	}
 }

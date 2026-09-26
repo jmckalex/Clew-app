@@ -79,7 +79,7 @@ note API, plugins, and every settings key.
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
   dialect scanner's constructs and grammar, live edit's model, reveal rule,
-  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews — 791 tests. DOM/UI work is
+  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets — 798 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
@@ -621,9 +621,18 @@ except where the selection touches a construct. The durable design is
   `![[path#heading|bare]]` through the block endpoint, in ONE iframe kept
   across hovers and blanked 30 s after closing. The plugin has no
   `update` — keep it that way; a keystroke must not pay for hovering.
+- **The live preview pane** (§5.12; source mode AND live edit): while the
+  cursor is in a formula or a diagram block, `<clew-preview-pane>` shows
+  the current source rendered — maths via `typesetTex` (the widget's own
+  cached call), diagrams via the block endpoint morphed into ONE iframe.
+  Targets are `editor/preview-target.js` (pure); the plugin
+  (`preview-pane-plugin.js`) runs only on selection/doc/focus changes. The
+  pane and the link preview share `components/chrome/floating-pane.js` —
+  extend that base, never copy it. `live/keys.js` makes ArrowUp/Down stop
+  at a block widget's edge (CodeMirror's vertical motion jumps over it).
 - Settings: `defaultEditMode`, `liveReveal`, `liveRender{Math,Fences,Embeds}`,
   `liveFrameCap`, `editorToolbar(+Prev)`, `editorToolbarGroups`,
-  `selectionBubble`, `slashCommands`, `linkPreview`; `newTabMode` accepts `live`. Documents over 500 KB
+  `selectionBubble`, `slashCommands`, `linkPreview`, `previewPane`; `newTabMode` accepts `live`. Documents over 500 KB
   fall back to source with a banner. Scenarios: `live-*` in smoke/ (README).
 
 ### Note API (scripts in rendered notes)

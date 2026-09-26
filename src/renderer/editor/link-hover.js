@@ -42,6 +42,8 @@ export const vaultResolvers = (current) => ({
  *  outlives any one path and a view is re-pointed on navigation. */
 const notePaths = new WeakMap();
 export function setViewNotePath(view, path) { notePaths.set(view, path); }
+/** The note a view shows (null before the pool has said). */
+export const viewNotePath = (view) => notePaths.get(view) ?? null;
 
 export function linkHover() {
 	return ViewPlugin.fromClass(class {

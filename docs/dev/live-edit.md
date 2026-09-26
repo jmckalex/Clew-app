@@ -737,6 +737,10 @@ now three commands in format.js — `format:indent`, `format:outdent`, and
 `editor:toggle-task` on ⌘-Enter, which falls back to CodeMirror's own ⌘-Enter
 (`insertBlankLine`) off a task line so the chord takes nothing away.
 
+Corrected with §5.12: the arrow-key claim above holds for INLINE
+constructs only. Vertical motion carried the cursor past a block widget
+entirely; `live/keys.js` now stops it at the block's near edge (§5.12).
+
 ### 5.10 What a construct looks like while revealed
 
 **Measured in Phase 3**: CodeMirror places a `cm-widgetBuffer` image
@@ -844,6 +848,90 @@ goes away when the pointer does. Source mode, live edit AND reading mode.
   the app page (a cross-origin frame), so its fixture link carries a long
   alias that fills seven lines, and the pointer goes to its third line as
   measured in live edit.
+
+### 5.12 The live preview pane
+
+Requested by the owner after the build (the idea is jmacs's live math
+tooltip; nothing there was taken as authoritative), designed by the planning
+session. While the cursor is inside a formula or a diagram block — its
+source showing — a floating pane beside it shows what the CURRENT source
+renders to, updated on a typing pause. Source mode, where nothing else
+would show it, and live edit, where the construct's widget or frame is
+hidden while it is revealed.
+
+**As built** (deviations marked ◆):
+
+- **Targets**: `editor/preview-target.js#previewTargetAt(state, pos)`, pure
+  over the scanner (`math`, `directiveBlock`, `environment`) and lezer
+  (`FencedCode` + `CodeInfo`), `tests/preview-target.test.js`. Kinds:
+  `math-inline` (`$…$`, `\(…\)`), `math-display` (`$$…$$`, `\[…\]`, a
+  top-level `\begin{align}` etc. — the scanner's segment, whose body is the
+  whole environment — and `@begin(align…)` from the environment list,
+  wrapped as block-field.js wraps it), `fence` (mermaid 400 ms; tikz, latex,
+  tex, metapost 700 ms), `directive` (`:::TiKZ`/`tikz`/`mermaid`),
+  `environment` (`@begin(TiKZ|tikz|tikzpicture|metapost|mermaid)`). Inside =
+  `from ≤ pos ≤ to` on the whole extent. Only COMPLETE constructs: an
+  unclosed `$$` makes no scanner segment, an unclosed fence has one code
+  mark, a directive/environment needs its closer. Queries/Dataview/Bases are
+  never targets. Math carries `tex` (what MathJax typesets); the rest `text`
+  (the full source). A cursor at a fence's very first character resolves to
+  the node before it looking left, so lezer is asked from both sides ◆.
+- **The shared base** `components/chrome/floating-pane.js` (`FloatingPane`,
+  a subclass of HTMLElement both panes extend): the one kept iframe, `ready`
+  → theme + app-chords, `size` → `onFrameSize`, `renderIntoFrame(text,
+  sourcePath, {morph})` (POST `__clew_block__`; `'same'` when the hash has
+  not changed, `'morphed'` — the body fetched and posted as `render` — when
+  the frame already holds a document, else `'loaded'`; a generation counter
+  returns null for superseded calls), 30 s blanking after hide,
+  `placeAgainst(anchor, {prefer, left})` with flip and clamp, and at most one
+  floating pane visible per window (showing one hides the other). The link
+  preview (§5.11) was refactored onto it, not copied.
+- **The pane** `<clew-preview-pane>` (`editor/preview-pane.js`,
+  `styles/preview-pane.css`): maths through `lib/mathjax.js#typesetTex` —
+  the widget's own call, so `same-as-widget=true` and leaving the formula
+  shows it with no flicker; a TeX error (`data-mjx-error`) shows its message
+  in `--clew-danger` UNDER the last good picture. Engine kinds through the
+  base's iframe, morphed per update, so the figure morph guard keeps what
+  did not change. The frame takes no pointer events and is sized to its
+  document's full height; the pane's body scrolls it (60–420 px) ◆ — the
+  design's "a pointer may scroll it, clicks do nothing", without a click
+  ever reaching (or focusing) the frame. `role="status"`.
+- **Placement**: inline maths ABOVE its line at the segment's x, flipped
+  below when clipped, as wide as it needs up to the text column; everything
+  else BELOW the construct's last line, left edge and width = the text
+  column (`.cm-line`'s box). Repositioned through `requestMeasure` on
+  geometry/viewport changes and scroll; hidden (visibility) while the anchor
+  is off screen.
+- **The plugin** `editor/preview-pane-plugin.js` in the note state's base
+  extensions (both modes; not the table-cell editor): on `selectionSet ||
+  docChanged || focusChanged` it asks previewTargetAt at the head and calls
+  `pane.track(view, target, path)`; geometry changes only reposition. In
+  live edit a target counts only while a model construct starting at its
+  `from` is in the revealed set. The pane renders at once on entering a
+  target and on the target's pause while the head stays in the SAME target
+  (kind + from). Escape (a keydown listener on the view, which consumes
+  nothing) hides it until the head leaves that target; blur, `layout-changed`
+  (tab or mode switch) and `previewPane: 'off'` hide it.
+- **◆ Arrow keys into block widgets** (`live/keys.js`, in the live bundle):
+  measuring the scenario's "ArrowUp/Down out and back" found that
+  CodeMirror's vertical motion carries the cursor clean PAST a block
+  replacement — from below a `$$` block, ArrowUp landed on the line above
+  it; from above, ArrowDown on the line below — so no drawn block (maths, a
+  frame, a table, a rule) could be reached from the keyboard. §5.9's "arrow
+  keys need nothing special" held for inline constructs only. Now, when the
+  motion would cross a block replacement, the cursor stops at its near edge,
+  the construct reveals, and the next arrow walks its source.
+- **Keystroke cost**: `live-perf-scenario` 3.3 ms median live / 14.7 ms at
+  207 KB (before: 3.7 / 14.9) — noise.
+- **Setting** `previewPane: 'on' | 'off'`, default on; Settings →
+  Appearance, beside link previews.
+- **Smoke**: `preview-pane-scenario.js` + `preview-pane-frame.js` over
+  `make-live-vault.mjs`'s `Pane.md`. The design's TikZ gate (run only where
+  mp-tikz-wasm is staged) was dropped ◆: the pane renders a ```tikz block
+  either way — the figure, or the engine's refusal by name — so the step
+  asserts the frame is ready, not what it drew. The TikZ step runs LAST and
+  the scenario then returns to the mermaid fence, because the pane's one
+  iframe must end the run holding the document the frame script reads.
 
 ## 6. The toolbar
 
@@ -1371,6 +1459,7 @@ Child embed's `*styled*` became `<em>` (`strong` with the listener removed).
 | `selectionBubble` | bool | true | Toolbar |
 | `slashCommands` | bool | true | Toolbar — "// menu: type // for the Format menu" (§6.9) |
 | `linkPreview` | `hover` \| `mod` \| `off` | `hover` | Appearance — "Link previews on hover" (§5.11) |
+| `previewPane` | `on` \| `off` | `on` | Appearance — "Live preview of maths and diagrams while editing" (§5.12) |
 
 Per-vault: nothing new; `normalSyntax` is read (§4.3). Every key goes into
 `main/settings.js` DEFAULTS, the settings view, and the manual's settings
@@ -1488,6 +1577,12 @@ still prefer, and changing one is a small, local edit.
 | MathJax macros | one page-wide MathJax: macros leak across notes (documented) | a per-note InputJax |
 | Tables | edited in place on a click; Esc, ⌥-click or "Edit as source" for the source; reflow once on leaving | reveal source on click; never reflow automatically |
 | Reading mode's bar | a slim bar with the mode switch | none |
+| Preview pane: block placement | below the block, the text column's width | to the right of the text on a wide pane |
+| Preview pane: inline maths | above the line at the formula | a tooltip under the caret |
+| Preview pane: cadence | 150 ms maths, 400 ms mermaid, 700 ms TeX kinds | one setting for all |
+| Preview pane: queries, Dataview, Bases | not previewed (a vault scan per pause) | previewed on a 1.5 s pause |
+| Preview pane: Escape | hides until the cursor leaves that formula or block | hides for the session |
+| Preview pane: source mode | on | live edit only |
 | Link hover previews | plain hover after 500 ms; 440 × ≤360 px; in reading mode too | ⌘-hover only (Obsidian's default — the `mod` setting) |
 | Slash-command trigger | `//` at a line start or after whitespace (a single `/` is the dialect's italic) | `/` at a line start only, accepting a menu over every line that opens with an italic |
 

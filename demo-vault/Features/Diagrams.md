@@ -1,6 +1,8 @@
 # Diagrams
 
-Mermaid renders client-side in the preview. Obsidian's fence syntax works:
+Mermaid renders client-side in the preview. Obsidian's fence syntax works
+— and while the cursor is inside one of these blocks, in source mode or
+live edit, a pane beside it shows the diagram as you type:
 
 ```mermaid
 graph LR

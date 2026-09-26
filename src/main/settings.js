@@ -38,6 +38,8 @@ const DEFAULTS = {
 	slashCommands: true,
 	// Link hover previews (editor/link-hover.js): 'hover' | 'mod' | 'off'.
 	linkPreview: 'hover',
+	// The live preview pane (editor/preview-pane.js): 'on' | 'off'.
+	previewPane: 'on',
 	explorerOpenMode: 'new-tab', // how newly created note tabs open ('source'|'reading')
 	diaryMode: 'files', // 'files' = one note per day, 'log' = single log note
 	diaryLogFile: 'Diary.md',
