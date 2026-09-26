@@ -11,7 +11,7 @@
 // Editor assembly: one function that builds a CodeMirror EditorView for a
 // note. M1 uses stock lang-markdown; the jmarkdown dialect overlay and the
 // wikilink/tag completion sources land in M3.
-import { EditorState } from '@codemirror/state';
+import { EditorState, Compartment } from '@codemirror/state';
 import {
 	EditorView, keymap, drawSelection, dropCursor, highlightActiveLine,
 } from '@codemirror/view';
@@ -23,7 +23,7 @@ import {
 	autocompletion, closeBrackets, closeBracketsKeymap, completionKeymap,
 } from '@codemirror/autocomplete';
 import { search, searchKeymap } from '@codemirror/search';
-import { markdown, markdownLanguage, markdownKeymap } from '@codemirror/lang-markdown';
+import { markdownKeymap } from '@codemirror/lang-markdown';
 import { clewEditorTheme, clewHighlighting } from './theme.js';
 import { wikilinkCompletions } from './complete/wikilinks.js';
 import { tagCompletions } from './complete/tags.js';
@@ -31,21 +31,31 @@ import { wikilinkClick } from './wikilink-click.js';
 import { attachments } from './attachments.js';
 import { citationCompletions } from './complete/citations.js';
 import { jmdOverlay } from './jmd/overlay.js';
-import { jmdFootnotes } from './jmd/footnote-parser.js';
-import { jmdMath } from './jmd/math-parser.js';
+import { noteMarkdown } from './jmd/markdown-config.js';
 import { jmdFolding } from './jmd/folding.js';
 import { tableKeymap } from './tables.js';
 import { autoFillHandler } from './fill.js';
-import { fenceLanguage } from './langs/fence-languages.js';
 import { settingsStore } from '../state/settings-store.js';
+
+/**
+ * The markdown language lives in a Compartment so a vault's `normalSyntax`
+ * flip reconfigures an open editor in place — undo history and all —
+ * instead of rebuilding its state: `view.dispatch({ effects:
+ * markdownCompartment.reconfigure(noteMarkdown({ normalSyntax })) })`.
+ */
+export const markdownCompartment = new Compartment();
 
 /**
  * Build an EditorState for a note. `handlerRef` is a mutable `{fn}` box the
  * update listener reads through — so a cached state (per-path undo history,
  * see editor/pool.js) can be re-adopted by a different tab later and have its
  * events rebound by assigning `handlerRef.fn`, without rebuilding the state.
+ *
+ * @param {string} doc
+ * @param {{fn?: Function}} handlerRef
+ * @param {{ normalSyntax?: boolean }} [options] - the vault's dialect switch
  */
-export function makeNoteState(doc, handlerRef) {
+export function makeNoteState(doc, handlerRef, { normalSyntax = false } = {}) {
 	const onUpdate = (update) => handlerRef.fn?.(update);
 	return EditorState.create({
 		doc,
@@ -57,23 +67,9 @@ export function makeNoteState(doc, handlerRef) {
 			indentOnInput(),
 			bracketMatching(),
 			closeBrackets(),
-			markdown({
-				base: markdownLanguage,
-				// jmarkdown has no indented code blocks or setext headings; removing
-				// them also stops the metadata header masquerading as a heading.
-				// jmdFootnotes takes `[^label: …]` / `[fn: …]` away from the link
-				// parser, jmdMath takes every `$…$` away from ALL of them —
-				// TeX is full of markdown's punctuation (footnote-parser.js,
-				// math-parser.js). The dialect overlay paints both.
-				extensions: [
-					{ remove: ['IndentedCode', 'SetextHeading'] },
-					jmdFootnotes,
-					jmdMath,
-				],
-				// ```tikz / ```latex / ```tex / ```metapost bodies are parsed
-				// by their own grammars (langs/); every other fence stays text.
-				codeLanguages: fenceLanguage,
-			}),
+			// The dialect's grammar corrections and fence languages
+			// (jmd/markdown-config.js).
+			markdownCompartment.of(noteMarkdown({ normalSyntax })),
 			clewHighlighting,
 			clewEditorTheme,
 			jmdOverlay(),

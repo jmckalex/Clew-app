@@ -348,7 +348,14 @@ dialect in two places. Fix the grammar, not the faces:
 
 The markdown language config becomes a `Compartment` in `makeNoteState`
 so a `normalSyntax` flip reconfigures every open editor without losing
-undo history (§4.3). Add `tests/subsup-syntax.test.js` (parse with
+undo history (§4.3). As built (Phase 0): the config is one node-importable function,
+`jmd/markdown-config.js#noteMarkdown({normalSyntax})`, which editor.js
+installs inside the exported `markdownCompartment` and which the grammar
+tests (`math-`, `footnote-`, `subsup-syntax`) parse with — so the tests see
+what the editor sees. Block-id detection needs the id to run to the end of
+the INLINE SECTION (the engine's `$` is end-of-paragraph, not end-of-line).
+Visible side effect in source mode: `_x_` no longer paints `cmt-emphasis`,
+nor `^x^` GFM superscript — the engine renders neither. Add `tests/subsup-syntax.test.js` (parse with
 `markdownLanguage.parser.configure(...)` under node, assert node names at
 positions — the pattern `tests/math-syntax.test.js` uses).
 
