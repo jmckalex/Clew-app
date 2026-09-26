@@ -36,6 +36,7 @@ import { splitRow, alignmentOf } from '../tables.js';
 import { cellRanges, isExtendedTable, CELL_EDIT_LIMITS } from './table-cell-model.js';
 import { activeCellOf } from './active-cell.js';
 import { numberDocument } from './numbering.js';
+import { ChipWidget } from './widgets/chip.js';
 
 /** Toggle a foldable callout: `{ id, folded }`. */
 export const setCalloutFold = StateEffect.define();
@@ -68,8 +69,27 @@ function build(state) {
 	const sel = state.selection.ranges;
 	const text = (a, b) => doc.sliceString(a, b);
 	const numbering = numberDocument(doc, config.numbered?.size ? { numbered: config.numbered } : undefined);
-	const block = (c, widget) =>
+
+	// A concealed MULTI-LINE footnote (§5.2 as corrected): an INLINE
+	// replacement across its line breaks — not a block — so the note collapses
+	// into its paragraph as a one-line note does and the sentence continues
+	// after it. Only a StateField may replace across a line break, which is
+	// why this badge is here and a one-line note's is in the inline layer.
+	// Nothing inside a concealed note gets a block of its own.
+	const notes = model.filter((c) => c.kind === 'footnote' && c.multiline && !live.revealed.has(c.id));
+	for (const c of notes) {
+		const body = c.body ? text(c.body.from, c.body.to).trim() : '';
+		const paragraphs = body.split(/\n[ \t]*\n/);
+		const first = paragraphs[0].replace(/\s+/g, ' ').trim();
+		out.push(Decoration.replace({
+			widget: new ChipWidget({ cls: 'le-fn le-fn-long', tag: 'sup', text: String(c.number), title: paragraphs.length > 1 ? `${first}…` : first }),
+		}).range(c.from, c.to));
+	}
+	const inNote = (c) => notes.some((n) => c.from >= n.from && c.to <= n.to && n !== c);
+	const block = (c, widget) => {
+		if (inNote(c)) return;
 		out.push(Decoration.replace({ widget, block: true }).range(c.lineFrom, c.lineTo));
+	};
 
 	const headings = model.filter((c) => c.kind === 'heading').map((h) => ({
 		depth: h.depth,
@@ -103,7 +123,7 @@ function build(state) {
 			// A folded body hides, unless the cursor is in it (arrow keys can
 			// still walk in; the lines then show rather than trap the caret).
 			const inside = sel.some((r) => r.to >= c.body.from && r.from <= c.body.to);
-			if (!inside) out.push(Decoration.replace({ block: true }).range(c.body.from, c.body.to));
+			if (!inside && !inNote(c)) out.push(Decoration.replace({ block: true }).range(c.body.from, c.body.to));
 			continue;
 		}
 		if (c.level !== 'block' || live.revealed.has(c.id)) continue;

@@ -63,7 +63,6 @@ settings-driven layout, and a selection bubble variant.
   the frame path renders the fences). §5.4.
 - Live rendering of `|live` office embeds (thumbnail in live edit; §7.6).
 - Slash commands — built after v1 as the `//` menu (§6.9).
-- Multi-paragraph inline footnotes concealed (single-line ones are; §5.2).
 - Obsidian `%%comments%%` (the engine does not render them; nothing to
   mirror).
 - Live edit over documents above `BIG_DOC` (500k chars): the tab falls back
@@ -469,7 +468,7 @@ CSS classes are `le-<kind>`; delimiters concealed with
 | `![[…]]` embeds | § 5.4 (image) / §7 (everything else); **inline** embeds (not alone on the line) show as a chip `⧉ name` + follow on click | |
 | `#tag` `#a/b` | `le-tag` chip (existing `.jmd-tag` look, `#` kept) | click → `clew-app.openSearch()` with `tag:#name` prefilled (extend `openSearch(query)`) |
 | `[fn: body]` `[^label: body]` (single line) | replace with a **superscript badge** `¹` numbered in document order (`le-fn`); body in a hover tooltip rendered by inline-dom | click → cursor at the opener (reveals) |
-| multi-line footnote | NOT concealed (opener/body/closer keep their `jmd-footnote*` faces); the opener gets a `le-fn-open` left border so the note reads as a block | — |
+| multi-line footnote | **Corrected (owner's request, 2026-09-27):** concealed to the same `le-fn` badge (`le-fn-long`), title = the body's first paragraph + "…" when there is more. The badge is an INLINE `Decoration.replace` across the note's line breaks, emitted by the BLOCK FIELD (a StateField may replace across line breaks; the inline layer, a ViewPlugin, may not — the old reason for leaving it source), so the note collapses into its paragraph and the sentence continues after it. Containment: while concealed, NEITHER provider draws anything inside it (a list, math, a fence in the body — the engine allows block content) — the block field's `block()` skips contained constructs, the inline layer treats the note as a replaced range and `lines()` skips constructs inside it; revealed, everything inside renders as in prose. Footnotes are numbered ONCE, in the model (`c.number`, document order), so both providers agree. The paragraph shrinks when concealed and grows when revealed — inherent, as a table or a math block does, and not a breach of the line-height rule (which is about line-level chrome). The `le-fn-open` border is gone: revealed, the note is plain prose with its `jmd-footnote*` faces. Arrow keys: the badge is not a block, so `live/keys.js` leaves it alone and CodeMirror treats it as any inline replacement (entering reveals). Smoke: `live-footnotes-scenario.js`. | — |
 | `\cite{k}` family | replace with chip `le-cite`: the key text; when `complete/citations.js`'s index resolves it, chip text = `Author Year` (extract a `citationLabel(key)` helper from that module) and tooltip = title; multiple keys → one chip per key inside one pill; command variant (`citep`/`citet`/`fullcite`) shown as a tiny prefix glyph only when not `cite` | click → reveals |
 | `{{name}}` mustache | `{{TOC}}` alone on a line → §5.8; otherwise chip `le-var` with the name | — |
 | `:name[content]{attrs}` / `@name[text]{attrs}` (inline, generic) | hide `:name[`, `]`, `{attrs}`; content styled `le-directive` (dotted underline, `title` = `name` + attrs) | — |
@@ -1692,7 +1691,7 @@ still prefer, and changing one is a small, local edit.
 | Slash-command trigger | `//` at a line start or after whitespace (a single `/` is the dialect's italic) | `/` at a line start only, accepting a menu over every line that opens with an italic |
 
 Follow-ons deliberately left out: table drag handles, multi-cell selection and pasting a grid into cells;
-multi-line footnote concealment; Meta Bind widgets in prose; plugin-declared
+Meta Bind widgets in prose; plugin-declared
 rich fence names; persisting frame heights across reopenings; drag handles
 for blocks; a focus mode.
 

@@ -190,9 +190,20 @@ test('footnotes, citations, tags, block ids, terms, mustaches', () => {
 	assert.equal(m[4].id.length > 0, true);
 });
 
-test('a multi-line footnote hides nothing; an unclosed one is no construct', () => {
-	assert.deepEqual(one('A[fn: one\n\ntwo] b\n', 'footnote').hiddenText, []);
+test('a multi-line footnote is concealed whole, like a one-line one; an unclosed one is no construct', () => {
+	const note = one('A[fn: one\n\ntwo] b\n', 'footnote');
+	assert.deepEqual(note.hiddenText, ['[fn: one\n\ntwo]']);
+	assert.equal(note.multiline, true);
+	assert.equal(note.level, 'inline', 'a caret anywhere in any paragraph reveals it all');
 	assert.deepEqual(kinds('A[fn: typing'), []);
+});
+
+test('footnotes are numbered once, in document order, one-line and multi-line alike', () => {
+	const notes = model('A[fn: one] b[^long: two\n\n- a list\n\nthree] c[fn: four].\n').filter((c) => c.kind === 'footnote');
+	assert.deepEqual(notes.map((c) => c.number), [1, 2, 3]);
+	assert.deepEqual(notes.map((c) => c.multiline), [false, true, false]);
+	// What the body holds is still modelled (it renders when revealed).
+	assert.ok(model('A[^long: two\n\n- a list\n\nthree] c.\n').some((c) => c.kind === 'bullet'));
 });
 
 test('ids are unique even for identical constructs, and stable across unrelated edits', () => {

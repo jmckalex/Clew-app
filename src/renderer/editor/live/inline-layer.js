@@ -70,9 +70,10 @@ function build(view) {
 	// What the engine will number, and what each label resolves to (§5.13).
 	const numbering = numberDocument(doc, config.numbered?.size ? { numbered: config.numbered } : undefined);
 
-	// Footnotes are numbered in document order, as the engine numbers them.
-	const footnoteNumber = new Map();
-	for (const c of model) if (c.kind === 'footnote') footnoteNumber.set(c.id, footnoteNumber.size + 1);
+	// A CONCEALED multi-line footnote is replaced whole by the block field's
+	// badge: nothing inside it is decorated here (§5.2, the containment rule).
+	const concealedNotes = model.filter((c) => c.kind === 'footnote' && c.multiline && !live.revealed.has(c.id));
+	const inNote = (from, to) => concealedNotes.some((n) => from >= n.from && to <= n.to && !(from === n.from && to === n.to));
 
 	const hide = (r) => { if (r.to > r.from) out.push(HIDE.range(r.from, r.to)); };
 	const mark = (from, to, cls, attributes) => {
@@ -83,6 +84,7 @@ function build(view) {
 		out.push(Decoration.replace({ widget: w }).range(from, to));
 		replaced.push({ from, to });
 	};
+	for (const n of concealedNotes) replaced.push({ from: n.from, to: n.to });
 
 	// Line stand-ins first: an inline construct inside a replaced opener
 	// line (a directive's `[caption]`) is then skipped, never overlapped.
@@ -147,9 +149,9 @@ function build(view) {
 				mark(c.from, c.to, 'le-tag', { 'data-le-tag': c.name });
 				break;
 			case 'footnote':
-				if (c.multiline) break; // stays source (plan §5.2)
+				if (c.multiline) break; // the block field's badge (it spans lines)
 				widget(c.from, c.to, new ChipWidget({
-					cls: 'le-fn', tag: 'sup', text: String(footnoteNumber.get(c.id)),
+					cls: 'le-fn', tag: 'sup', text: String(c.number),
 					title: text(c.body).trim(),
 				}));
 				break;
@@ -238,6 +240,7 @@ function build(view) {
 		const lineRange = (from, to) => ({ from, to });
 		for (const c of model) {
 			if (c.tier !== 'A' || !inView(c.lineFrom, c.lineTo)) continue;
+			if (inNote(c.from, c.to)) continue; // inside a concealed note
 			const hidden = !live.revealed.has(c.id);
 			switch (c.kind) {
 				case 'heading': {

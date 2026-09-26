@@ -491,8 +491,10 @@ function build(doc, tree, config) {
 					label: s.label ? text(s.label.start, s.label.end) : null,
 					group: s.group ? text(s.group.start, s.group.end) : null,
 					body: r(s.body), multiline: s.multiline,
-					// A multi-line note stays source (plan §5.2).
-					hidden: s.multiline ? [] : [{ from: s.start, to: s.end }],
+					// Concealed whole, one line or many (§5.2 as corrected):
+					// a multi-line note's badge comes from the block field,
+					// which may replace across line breaks.
+					hidden: [{ from: s.start, to: s.end }],
 				});
 				break;
 			case 'directiveInline':
@@ -514,6 +516,11 @@ function build(doc, tree, config) {
 
 	out.sort((a, b) => a.from - b.from || b.to - a.to);
 	assignIds(out, doc);
+	// Footnotes numbered ONCE, in document order as the engine numbers them,
+	// so both providers (a one-line note's badge in the inline layer, a
+	// multi-line note's in the block field) agree.
+	let footnotes = 0;
+	for (const c of out) if (c.kind === 'footnote') c.number = ++footnotes;
 	return out;
 }
 

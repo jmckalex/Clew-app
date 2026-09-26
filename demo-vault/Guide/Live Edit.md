@@ -33,7 +33,12 @@ __underline__, ==highlighted==, ~struck~, H_2O and x^{10}, `code`, and
 maths $e^{i\pi} + 1 = 0$ typeset in place. Links follow on a click —
 [[Welcome]], [[Callouts|an aliased link]], [a web link](https://jmckalex.org)
 — and *⌥-click* puts the cursor in one instead; hover one to peek at it. Put the cursor in a formula and its source shows, with the rendering beside it as you type. A cross-reference like @cref[thm-main] in [[Math and Theorems]] shows the number it will print, jumps on a click and previews on a hover. Tags like #guide open a
-search. A footnote becomes its number,[fn: Hover the number to read it.]
+search. A footnote becomes its number,[fn: Hover the number to read it.] however long it is.[^long: A note can run to several paragraphs.
+
+- It can hold a list,
+- or maths, $e^{i\pi} = -1$.
+
+Click its number to open it all.]
 a citation its author and year
 \cite{alexander2023}, and a `{{…}}` variable a chip: {{title}}. Today is :today. A block id
 becomes a small badge — click it to copy a link to its block. ^live-inline

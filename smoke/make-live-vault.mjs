@@ -131,6 +131,20 @@ graph TD
 Last line.
 `);
 
+// Footnotes.md (live-footnotes-scenario.js): a one-line note, a long one of
+// three paragraphs with a list in the second, and a trailing one-line note.
+writeFileSync(join(dir, 'Footnotes.md'), `# Footnotes
+
+A short note[fn: One line.] and a long one[^long: The first paragraph of the long note.
+
+- an item in the second paragraph
+- another item
+
+The third paragraph.] and a last one[fn: Trailing.] ends the sentence.
+
+Last line.
+`);
+
 // Slash.md (slash-menu-scenario.js): prose, a code fence, a table.
 writeFileSync(join(dir, 'Slash.md'), `# Slash
 

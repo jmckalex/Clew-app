@@ -57,6 +57,11 @@ intended guide-note changes, committed (runs used scratch copies).
   while writing — chips, env heads, equation tags, numbered headings,
   completion, jump + Back, hover. `numbers-match=true` against the
   engine's own document. Plugins' `fences`/`numbered` manifest keys.
+- **Multi-paragraph footnotes** (owner's amendment): concealed to a badge
+  like a one-line note — an inline replacement across line breaks from the
+  block field; nothing inside drawn while concealed; numbered once in the
+  model. `live-footnotes-scenario.js`. The §1.1 non-goal and the §5.2 row
+  are corrected.
 - **Pre-existing, not a regression**: `figures-edit-scenario` phase 3
   (`key-changed=false` — an edited ```tikz in READING mode keeps its old
   picture) fails identically at `c6f3169`, before this session's work
