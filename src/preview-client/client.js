@@ -440,7 +440,43 @@ function reportSize() {
 	soon();
 }
 
+// Link hover previews (docs/dev/live-edit.md §5.11): reading mode tells the
+// host which vault link is under the pointer, and where; the host owns the
+// popover and its timing. Not from block documents — a live edit frame, or
+// the popover's own preview — in v1.
+function reportLinkHovers() {
+	let current = null;
+	let mod = false;
+	const linkOf = (el) => el?.closest?.('a.internal-link');
+	const send = (link, withMod) => {
+		const r = link.getBoundingClientRect();
+		post({
+			type: 'link-hover', target: link.dataset.href ?? '', mod: withMod,
+			rect: { left: r.left, top: r.top, right: r.right, bottom: r.bottom },
+		});
+	};
+	document.addEventListener('mouseover', (e) => {
+		const link = linkOf(e.target);
+		if (link === current) return;
+		if (current) post({ type: 'link-unhover' });
+		current = link && !link.dataset.openExternal ? link : null;
+		mod = e.metaKey || e.ctrlKey;
+		if (current) send(current, mod);
+	});
+	document.addEventListener('mousemove', (e) => {
+		// ⌘ pressed or released over the same link (the `mod` setting).
+		const now = e.metaKey || e.ctrlKey;
+		if (current && now !== mod) { mod = now; send(current, mod); }
+	});
+	document.addEventListener('keydown', (e) => {
+		if (current && (e.key === 'Meta' || e.key === 'Control') && !mod) { mod = true; send(current, true); }
+	});
+	document.addEventListener('mouseleave', () => { if (current) { current = null; post({ type: 'link-unhover' }); } });
+	window.addEventListener('scroll', () => { if (current) { current = null; post({ type: 'link-unhover', scrolled: true }); } }, { passive: true });
+}
+
 if (BLOCK) reportSize();
+if (!BLOCK) reportLinkHovers();
 enableTaskCheckboxes();
 initCanvasEmbeds();
 initLeafletMaps();

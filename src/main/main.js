@@ -360,7 +360,7 @@ if (process.env.CLEW_SMOKE) {
 				// cross-origin iframe (an OOPIF), and sendInputEvent never
 				// routes there (measured 2026-09-01) while the debugger's
 				// Input domain hit-tests properly. A scenario queues
-				// window.__clewSmokeInput = [{click:{x,y}} | {text:'abc'} |
+				// window.__clewSmokeInput = [{click:{x,y}} | {move:{x,y}} | {text:'abc'} |
 				// {combo:{key:'s',modifiers:2}} | {wait:ms}] — a click may carry
 				// `modifiers` too, e.g. {click:{x,y},modifiers:4}; and
 				// {wheel:{x,y,deltaY}} scrolls (modifiers CDP
@@ -414,6 +414,15 @@ if (process.env.CLEW_SMOKE) {
 							const { x, y, deltaY = 0, deltaX = 0 } = ev.wheel;
 							await dbg.sendCommand('Input.dispatchMouseEvent', { type: 'mouseMoved', button: 'none', x, y });
 							await dbg.sendCommand('Input.dispatchMouseEvent', { type: 'mouseWheel', x, y, deltaX, deltaY });
+							continue;
+						}
+						if (ev.move) {
+							// {move:{x,y}, modifiers?}: the pointer to a point, nothing
+							// pressed — hover (link previews). `modifiers` (the CDP
+							// bitmask) makes it a ⌘-hover: e.metaKey in the page.
+							const { x, y } = ev.move;
+							await dbg.sendCommand('Input.dispatchMouseEvent', { type: 'mouseMoved', button: 'none', x, y, modifiers: ev.modifiers ?? 0 });
+							await sleep(ev.delay ?? 30);
 							continue;
 						}
 						if (ev.click || ev.tripleClick) {

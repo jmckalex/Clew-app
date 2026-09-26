@@ -36,6 +36,8 @@ const DEFAULTS = {
 	selectionBubble: true,
 	// The `//` menu (editor/complete/slash-commands.js).
 	slashCommands: true,
+	// Link hover previews (editor/link-hover.js): 'hover' | 'mod' | 'off'.
+	linkPreview: 'hover',
 	explorerOpenMode: 'new-tab', // how newly created note tabs open ('source'|'reading')
 	diaryMode: 'files', // 'files' = one note per day, 'log' = single log note
 	diaryLogFile: 'Diary.md',

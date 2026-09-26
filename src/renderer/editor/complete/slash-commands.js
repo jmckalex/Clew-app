@@ -13,23 +13,11 @@
 // item deletes what was typed and runs its command. Source mode and live
 // edit alike, and in a table cell edited in place (inline items only).
 // What triggers it and what it offers are slash-spec.js, which is pure.
-import { syntaxTree } from '@codemirror/language';
 import { slashQuery, slashItems } from './slash-spec.js';
-import { scanFor } from '../jmd/scan-cache.js';
+import { literalAt } from '../literal-at.js';
 import { runCommand } from '../../commands/registry.js';
 import { settingsStore } from '../../state/settings-store.js';
 import { vaultSettingsStore } from '../../state/vault-settings-store.js';
-
-/** Where `//` is text, not a request: code, maths, raw HTML. */
-const LITERAL_NODES = new Set(['FencedCode', 'CodeText', 'InlineCode', 'JmdMath', 'HTMLBlock', 'CommentBlock']);
-
-function literalAt(state, pos) {
-	for (let node = syntaxTree(state).resolveInner(pos, -1); node; node = node.parent) {
-		if (LITERAL_NODES.has(node.name)) return true;
-	}
-	// The metadata header / frontmatter is the scanner's, not lezer's.
-	return scanFor(state.doc).constructs.some((c) => c.kind === 'metaHeader' && pos > c.start && pos <= c.end);
-}
 
 function source(inCell) {
 	return (context) => {

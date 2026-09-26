@@ -32,6 +32,9 @@ come back, and ⌘Z still works.
 
 - **⌘-click** a `[[wikilink]]` to follow it (⌥ for a new tab). In live
   edit a plain click follows it and ⌥-click edits it.
+- **Hover** a link to peek at it: [[Welcome#The guide]] shows just that
+  section, rendered, in a popover — in every mode. Settings → Appearance
+  can make it wait for ⌘, or turn it off.
 - **Paste or drop** images and files straight into a note — they're saved
   to the attachment folder and embedded (see [[Attachments and Files]]).
 - ⌘F searches within the note.

@@ -70,6 +70,8 @@ class ClewSettingsView extends ClewElement {
 				this.#numberRow('Editor line width (em)', 'editorLineWidth', 44, 20, 120),
 				this.#numberRow('Fill column (hard-wrap)', 'fillColumn', 72, 40, 120),
 				this.#checkRow('Auto-fill while typing', 'autoFill'),
+				this.#selectRow('Link previews on hover', 'linkPreview',
+					[['hover', 'Always'], ['mod', navigator.platform.startsWith('Mac') ? 'With ⌘ held' : 'With Ctrl held'], ['off', 'Off']]),
 				this.#selectRow('PDF paper size (reading-view export)', 'printPaperSize',
 					[['a4', 'A4'], ['letter', 'US Letter'], ['legal', 'US Legal'], ['tabloid', 'Tabloid']]),
 			]),

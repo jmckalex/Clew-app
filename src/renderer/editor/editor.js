@@ -29,6 +29,7 @@ import { wikilinkCompletions } from './complete/wikilinks.js';
 import { slashCompletions } from './complete/slash-commands.js';
 import { tagCompletions } from './complete/tags.js';
 import { wikilinkClick } from './wikilink-click.js';
+import { linkHover } from './link-hover.js';
 import { attachments } from './attachments.js';
 import { citationCompletions } from './complete/citations.js';
 import { jmdOverlay } from './jmd/overlay.js';
@@ -81,6 +82,8 @@ export function makeNoteState(doc, handlerRef, { normalSyntax = false } = {}) {
 			jmdFolding(),
 			autocompletion({ override: [wikilinkCompletions, tagCompletions, citationCompletions, slashCompletions] }),
 			wikilinkClick(),
+			// Hover a link to preview it (link-hover.js; both modes).
+			linkHover(),
 			attachments(),
 			// Reads the settings per keystroke: the toggle applies live and
 			// cached EditorStates (pool undo cache) need no rebuild.

@@ -79,7 +79,7 @@ note API, plugins, and every settings key.
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
   dialect scanner's constructs and grammar, live edit's model, reveal rule,
-  inline renderer and toolbar state/layout, format toggling, the `//` menu — 783 tests. DOM/UI work is
+  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews — 791 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
@@ -103,8 +103,9 @@ note API, plugins, and every settings key.
   a native menu is an OS-level window that capturePage cannot see, so
   this is the only assertion a menu change can carry), and REAL input:
   a scenario queues `window.__clewSmokeInput =
-  [{click:{x,y}} | {tripleClick:{x,y}} | {text:'abc'} |
-  {combo:{key,modifiers}} | {wait:ms}]`, dispatched over CDP
+  [{click:{x,y}} | {tripleClick:{x,y}} | {move:{x,y}} | {text:'abc'} |
+  {combo:{key,modifiers}} | {wait:ms}]` (`move` is a bare pointer move —
+  hover; `modifiers` on it makes a ⌘-hover), dispatched over CDP
   `Input.dispatch*` — `webContents.sendInputEvent` NEVER reaches OOPIFs
   (i.e. every preview iframe), and combos need real modifier keydowns
   around the letter. Each key carries a REAL `keyCode`, because xterm —
@@ -610,9 +611,19 @@ except where the selection touches a construct. The durable design is
   offers the Format menu (`shared/format-spec.js`) and nothing else, so
   menu, palette and this cannot drift; accepting deletes what was typed
   and runs the command. `CELL_SAFE_COMMANDS` lives in format-spec.js.
+- **Link hover previews** (live edit §5.11; source, live AND reading
+  mode): `editor/link-at.js` is the ONE reader of links (pure; ⌘-click in
+  source mode uses it too) and decides what a link previews;
+  `<clew-link-preview>` (`editor/link-preview.js`) is the window's one
+  popover and owns all timing; `editor/link-hover.js` reports the link
+  under the pointer from the editor, `preview-client/client.js` from
+  reading mode (`link-hover`/`link-unhover`). A note previews as
+  `![[path#heading|bare]]` through the block endpoint, in ONE iframe kept
+  across hovers and blanked 30 s after closing. The plugin has no
+  `update` — keep it that way; a keystroke must not pay for hovering.
 - Settings: `defaultEditMode`, `liveReveal`, `liveRender{Math,Fences,Embeds}`,
   `liveFrameCap`, `editorToolbar(+Prev)`, `editorToolbarGroups`,
-  `selectionBubble`, `slashCommands`; `newTabMode` accepts `live`. Documents over 500 KB
+  `selectionBubble`, `slashCommands`, `linkPreview`; `newTabMode` accepts `live`. Documents over 500 KB
   fall back to source with a banner. Scenarios: `live-*` in smoke/ (README).
 
 ### Note API (scripts in rendered notes)

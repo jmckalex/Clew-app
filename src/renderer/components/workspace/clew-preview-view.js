@@ -18,6 +18,9 @@ import { ipc, CH } from '../../ipc.js';
 import * as actions from '../../commands/actions.js';
 import { effectiveChords } from '../../commands/registry.js';
 import { handlePreviewMessage } from '../../editor/live/frame-host.js';
+import { linkPreview } from '../../editor/link-preview.js';
+import { previewMode, vaultResolvers } from '../../editor/link-hover.js';
+import { parseTarget, previewSpec } from '../../editor/link-at.js';
 import { scrollSyncBus, makeSuppressor } from '../../preview/scroll-sync.js';
 import { previewUrl } from '../../lib/preview-url.js';
 import '../../editor/toolbar/clew-editor-toolbar.js';
@@ -193,6 +196,21 @@ class ClewPreviewView extends ClewElement {
 					this.#rememberReadingLine(msg.line);
 					scrollSyncBus.emit('scroll', { path: this.path, line: msg.line, from: 'preview' });
 				}
+				break;
+			case 'link-hover': {
+				// Hover previews (§5.11): the popover is the window's, so the
+				// link's rect moves from the frame's coordinates to ours.
+				const mode = previewMode();
+				if (mode === 'off' || (mode === 'mod' && !msg.mod)) { linkPreview().unhover(); break; }
+				const frame = this.#iframe.getBoundingClientRect();
+				const r = msg.rect;
+				const rect = { left: frame.left + r.left, right: frame.left + r.right, top: frame.top + r.top, bottom: frame.top + r.bottom };
+				linkPreview().hover(previewSpec(parseTarget(msg.target), vaultResolvers(this.path)), rect, this.path, { now: mode === 'mod' });
+				break;
+			}
+			case 'link-unhover':
+				if (msg.scrolled) linkPreview().hide();
+				else linkPreview().unhover();
 				break;
 			default:
 				// Everything a block document shares (live/frame-host.js).

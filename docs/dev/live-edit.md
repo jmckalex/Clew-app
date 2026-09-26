@@ -757,6 +757,94 @@ states; only the marks toggle.
 
 ---
 
+### 5.11 Link hover previews
+
+Obsidian's page preview, requested by the owner after the build and
+designed by the planning session: hovering a link to something in the
+vault shows what it points to, rendered by the engine, in a popover that
+goes away when the pointer does. Source mode, live edit AND reading mode.
+
+**As built** (deviations from the design are marked ◆):
+
+- **One reader of links.** `editor/link-at.js` (pure, `tests/link-at.test.js`):
+  `linkAt(lineText, column)` finds a `[[…]]` / `![[…]]` (target, heading
+  or `^id`, alias, `|external`) or a `[text](url)` at a column, inclusive of
+  both ends (CodeMirror reports the position AFTER the last character when
+  the pointer is over its right half), and null inside a code span.
+  `wikilink-click.js` (source mode's ⌘-click) now reads links through it.
+  `parseTarget` turns reading mode's `data-href` into the same shape.
+  `previewSpec(link, resolvers)` decides what shows:
+  a note → `{kind: 'block', text: '![[Folder/Note#Heading|bare]]'}` (the
+  resolved PATH, not the name typed, so the engine cannot resolve it
+  differently); `[[#Heading]]` and `[x](#Heading)` → the note being edited;
+  an image → `{kind: 'image'}`; any other vault file → a block of
+  `![[path]]` ◆ (no `|bare`: the keyword is a NOTE embed's chrome and means
+  nothing to a PDF, an office thumbnail or media); an unresolved name →
+  `{kind: 'unresolved'}` (a note or, with an extension, a file); a URL,
+  `mailto:` or `|external` → null, no popover.
+- **The popover** is `<clew-link-preview>` (`editor/link-preview.js`,
+  `styles/link-preview.css`), one per window, appended to `<body>` like the
+  selection bubble ◆ (not `<clew-app>`). Its API is `hover(spec, rect,
+  sourcePath, {now})` / `unhover()` / `hide()`, and it owns the timing: 500 ms
+  before showing, none when moving from one link to another while it is
+  open (or with `now` — a ⌘ press in `mod` mode), 300 ms of grace on
+  leaving so the pointer can cross into it. A header names the target
+  (`Welcome › The guide`) with an **Open** button (⌘-click: new tab); the
+  body is 440 px wide, the document's reported height clamped to 80–360 px,
+  scrolling inside beyond that, with 6/14 px of padding the popover adds ◆
+  (a block document has no margin of its own — a live frame sits flush with
+  the text). An unresolved note is a card, "No note called X", that creates
+  it on click; an unresolved file's card is disabled.
+- **One iframe**, kept across hovers: a block spec POSTs to
+  `__clew_block__` and sets `src` only when the returned hash differs, so
+  the same target re-shows without a reload and a repeat render comes from
+  the fragment cache. Thirty seconds after closing, `src = about:blank`.
+  Messages: `ready` → theme + app-chords; `size` → height; `link-click`,
+  `external-link`, `open-external-file` → `frame-host.js` in `block` mode
+  (the popover closes first); everything else, `focused` included,
+  ignored. The iframe's `color-scheme` follows the theme, as `.le-frame`'s.
+- **Closing**: Escape, a pointerdown outside it, window blur, any
+  `layout-changed` (tab or mode switch), and — from the editor plugin — any
+  non-modifier keydown in the editor or a scroll of it. It never takes
+  focus: `hover` touches nothing but its own DOM.
+- **The editor plugin** `editor/link-hover.js` is in the note state's base
+  extensions (both modes; the cell editor does not carry it ◆ — a cell is
+  its own editor and v1 leaves it out). A rAF-throttled `mousemove` on the
+  view's DOM asks what is under the pointer: something DRAWN as a link
+  (`.le-link`, `.le-wikilink`, `.le-embed-chip` in live edit;
+  `.jmd-wikilink-*`, `.cmt-link`, `.cmt-url` in source mode) ◆ — the gate
+  that stops `posAtCoords`, which snaps to the nearest position, from
+  finding a link the pointer is merely beside — then `posAtCoords` +
+  `linkAt` on that line, and `literal-at.js` (code, maths, HTML, metadata
+  header; shared with the `//` menu, whose check it was) refuses code. It
+  has no `update` method, so it adds nothing to a keystroke (measured:
+  `live-perf-scenario` 3.7 ms median live on Diagrams.md, 14.9 ms at 207 KB,
+  against 3.5 / 14.4 before — noise). The note a view shows comes from the
+  pool (`setViewNotePath`, set on open and on rename) ◆, since a state is
+  created before any path is known.
+- **Reading mode**: `preview-client/client.js#reportLinkHovers` (not in
+  block documents — live frames and the popover's own document stay out,
+  as designed) posts `link-hover {target, rect, mod}` on entering an
+  `a.internal-link` (not a `data-open-external` one), again when ⌘ is
+  pressed or released over it, and `link-unhover` on leaving, on
+  `mouseleave` of the document and on scroll (`scrolled: true` → hide).
+  `clew-preview-view` offsets the rect by the iframe's and calls the same
+  popover — one host, so reading mode came in the same commit.
+- **Trigger**: setting `linkPreview: 'hover' | 'mod' | 'off'`, default
+  `'hover'`; Settings → Appearance ◆ ("Link previews on hover": Always /
+  With ⌘ held / Off — Ctrl off the Mac). `mod` needs ⌘ (Ctrl) held; a ⌘
+  keydown over a link shows it at once.
+- **Smoke**: `link-preview-scenario.js` + `link-preview-frame.js` over
+  `make-hover-vault.mjs` ◆ (a scratch copy of the demo vault plus
+  `Hover.md` — one link per line, since a popover opens below its link and
+  would cover the next line's; the design's `Dialect Demo.md` and
+  `Math and Theorems#Dialect extras` do not have the links or headings
+  named). The harness gained `{move:{x,y}, modifiers?}` (CDP `mouseMoved`,
+  nothing pressed). Reading mode's link positions cannot be measured from
+  the app page (a cross-origin frame), so its fixture link carries a long
+  alias that fills seven lines, and the pointer goes to its third line as
+  measured in live edit.
+
 ## 6. The toolbar
 
 ### 6.1 Principles
@@ -1281,6 +1369,8 @@ Child embed's `*styled*` became `<em>` (`strong` with the listener removed).
 | `editorToolbarPrev` | (internal) | — | — |
 | `editorToolbarGroups` | id[] \| null | null | Toolbar (group list) |
 | `selectionBubble` | bool | true | Toolbar |
+| `slashCommands` | bool | true | Toolbar — "// menu: type // for the Format menu" (§6.9) |
+| `linkPreview` | `hover` \| `mod` \| `off` | `hover` | Appearance — "Link previews on hover" (§5.11) |
 
 Per-vault: nothing new; `normalSyntax` is read (§4.3). Every key goes into
 `main/settings.js` DEFAULTS, the settings view, and the manual's settings
@@ -1398,6 +1488,7 @@ still prefer, and changing one is a small, local edit.
 | MathJax macros | one page-wide MathJax: macros leak across notes (documented) | a per-note InputJax |
 | Tables | edited in place on a click; Esc, ⌥-click or "Edit as source" for the source; reflow once on leaving | reveal source on click; never reflow automatically |
 | Reading mode's bar | a slim bar with the mode switch | none |
+| Link hover previews | plain hover after 500 ms; 440 × ≤360 px; in reading mode too | ⌘-hover only (Obsidian's default — the `mod` setting) |
 | Slash-command trigger | `//` at a line start or after whitespace (a single `/` is the dialect's italic) | `/` at a line start only, accepting a menu over every line that opens with an italic |
 
 Follow-ons deliberately left out: table drag handles, multi-cell selection and pasting a grid into cells;
@@ -1430,7 +1521,8 @@ of secondary/border, so themes can diverge later). Line-height invariance
 
 Frame → host: `size {height}` (new). Host → frame: nothing new (`render`,
 `theme`, `app-chords`, `event kv`, `scroll-to-line` unused in blocks).
-Host-side switch shared via `frame-host.js`.
+Host-side switch shared via `frame-host.js`. Reading mode → host:
+`link-hover {target, rect, mod}` and `link-unhover {scrolled?}` (§5.11).
 
 ## Appendix D — the engine change that was not needed
 

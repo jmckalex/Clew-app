@@ -26,6 +26,7 @@ import { liveCompartment, liveEdit } from './live/index.js';
 import { destroyCellEditor } from './live/table-cell-editor.js';
 import { minimalChange } from './minimal-change.js';
 import { readLiveConfig } from './live/config.js';
+import { setViewNotePath } from './link-hover.js';
 
 /** Live edit refuses documents above this size (plan §9); source mode
  *  degrades on its own past the same threshold (jmd/overlay.js). */
@@ -161,6 +162,7 @@ class EditorPool extends Emitter {
 
 		if (entry.view) entry.view.setState(state);
 		else entry.view = new EditorView({ state });
+		setViewNotePath(entry.view, path);
 		// A cached state carries whatever its live compartment held when it
 		// was banked; the next setMode decides afresh.
 		entry.mode = null;
@@ -287,7 +289,10 @@ class EditorPool extends Emitter {
 			if (p?.startsWith(fromPath + '/')) return toPath + p.slice(fromPath.length);
 			return p;
 		};
-		for (const entry of this.#entries.values()) entry.path = remap(entry.path);
+		for (const entry of this.#entries.values()) {
+			entry.path = remap(entry.path);
+			if (entry.view) setViewNotePath(entry.view, entry.path);
+		}
 		for (const [path, cached] of [...this.#stateCache]) {
 			const next = remap(path);
 			if (next !== path) {

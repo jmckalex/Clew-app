@@ -27,6 +27,7 @@ import { installPdfSaveBridge, installOfficeSaveBridge, installOfficeThumbBridge
 import { officeDock } from './office-dock.js';
 import './components/chrome/clew-app.js';
 import './editor/toolbar/clew-selection-bubble.js';
+import { linkPreview } from './editor/link-preview.js';
 
 // ---- IPC events → stores --------------------------------------------------
 
@@ -113,8 +114,9 @@ officeDock.init();
 // Exposed for dev-tools poking and the CLEW_SMOKE scenario scripts.
 // One selection bubble per window (docs/dev/live-edit.md §6.7).
 document.body.append(document.createElement('clew-selection-bubble'));
+linkPreview(); // <clew-link-preview>, the window's one link popover
 
-window.__clew = { workspaceStore, vaultStore, vaultSettingsStore, editorPool, settingsStore, ipc, actions, officeDock };
+window.__clew = { linkPreview, workspaceStore, vaultStore, vaultSettingsStore, editorPool, settingsStore, ipc, actions, officeDock };
 // Live edit's in-place table cells, for scenarios (smoke/live-table-edit-scenario.js).
 import('./editor/live/table-cell-editor.js').then((m) => { window.__clew.activeCellView = m.activeCellView; });
 import('./commands/registry.js').then((registry) => { window.__clew.registry = registry; });
