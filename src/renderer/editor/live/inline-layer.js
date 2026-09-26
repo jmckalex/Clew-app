@@ -34,7 +34,7 @@ import { ImageWidget } from './widgets/image.js';
 import { imageSpec } from './images.js';
 import { ChipWidget } from './widgets/chip.js';
 import { vaultStore } from '../../state/vault-store.js';
-import { citationLabel } from '../complete/citations.js';
+import { citationLabel, citationsReady } from '../complete/citations.js';
 
 const HIDE = Decoration.replace({});
 const markCache = new Map();
@@ -322,8 +322,9 @@ export const inlineLayer = ViewPlugin.fromClass(class {
 			vaultStore.on('tree-changed', refresh),
 			vaultStore.on('index-changed', refresh),
 		];
-		// The .bib entries load on the first citationLabel() ask.
-		if (this.live.model.some((c) => c.kind === 'cite')) setTimeout(refresh, 800);
+		// The .bib entries load on the first citationLabel() ask; redraw
+		// when they are in (a fixed delay lost the race on a cold start).
+		if (this.live.model.some((c) => c.kind === 'cite')) citationsReady().then(refresh);
 	}
 
 	update(update) {

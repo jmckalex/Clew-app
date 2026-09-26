@@ -253,3 +253,7 @@ body[data-theme='light'] .le-frame { color-scheme: light; }
 /* A callout's text is prose, as in reading mode — not the quote face that
    lang-markdown puts on every span of a blockquote. */
 .cm-live .le-callout .cmt-quote { color: inherit; }
+/* lang-markdown tags `__x__` as strong emphasis, and the source theme's
+   strong face is the dialect's INTENSE (small caps). Concealed, `__x__` is
+   an underline and nothing else — whichever way the two spans nest. */
+.le-underline, .le-underline .cmt-strong { font-variant: normal; letter-spacing: normal; font-weight: inherit; }

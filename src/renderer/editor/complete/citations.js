@@ -40,6 +40,11 @@ async function bibEntries() {
  * @param {string} key
  * @returns {{ label: string, title: string }|null}
  */
+/** Resolves once the vault's .bib entries are loaded (for a redraw). */
+export function citationsReady() {
+	return bibEntries().then(() => undefined, () => undefined);
+}
+
 export function citationLabel(key) {
 	if (!cache) { bibEntries().catch(() => {}); return null; }
 	const entry = cache.find((e) => e.key === key);
