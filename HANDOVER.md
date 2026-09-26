@@ -237,13 +237,15 @@ strings; `make stage-downloads`; `make check-links`; `make sync` and
   notes; tables edit as source), then merge both branches together and
   remove the two worktrees.
 - **The DNS change** (above). Everything about publishing waits on it.
-- **Both repos are PUSHED** (planning session, 2026-09-26, on the
-  owner's ask): Clew-app `main` and `feat/live-edit` to
-  `https://github.com/jmckalex/Clew-app.git`, both tracking `origin`;
-  Clew-docs got a remote — `https://github.com/jmckalex/Clew-docs.git`,
-  public like Clew-app — with `main` and `feat/live-edit` pushed and
-  tracking. The droplet is still not a copy of the docs (§5), but GitHub
-  now is.
+- **Clew-app is PUSHED** (planning session, 2026-09-26, on the owner's
+  ask): `main` and `feat/live-edit` to
+  `https://github.com/jmckalex/Clew-app.git`, both tracking `origin`.
+  **Clew-docs is NOT** — it still has no remote; creating a public
+  repository is an action the assistant's permissions refuse, so the
+  owner must create `jmckalex/Clew-docs` (from `../Clew-docs`: `gh repo
+  create jmckalex/Clew-docs --public --source=. --remote=origin --push`,
+  then `git push -u origin feat/live-edit`). Until then the manual's
+  commits exist only on this Mac, and the droplet is not a copy (§5).
 - Two offers still waiting on a yes or no: the stray link face on plain
   `[text]` brackets, and a manual line about `\[ \begin{align*} … \]`
   rendering in the preview but failing a LaTeX export.
