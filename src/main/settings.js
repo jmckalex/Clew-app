@@ -19,7 +19,7 @@ const DEFAULTS = {
 	recentVaults: [],
 	openVaults: [], // one window each, restored at launch
 	newTabMode: 'source', // 'source' | 'live' | 'reading'
-	// Live edit (docs/dev/live-edit-plan.md §8). defaultEditMode: where ⌘E
+	// Live edit (docs/dev/live-edit.md §8). defaultEditMode: where ⌘E
 	// returns from reading for a tab that has no editing mode of its own.
 	defaultEditMode: 'source',
 	liveReveal: 'construct', // 'construct' | 'line'
@@ -27,7 +27,7 @@ const DEFAULTS = {
 	liveRenderFences: true,
 	liveRenderEmbeds: true,
 	liveFrameCap: 16,
-	// The editor toolbar (live-edit-plan §6.8): shown in live edit only,
+	// The editor toolbar (docs/dev/live-edit.md §6.8): shown in live edit only,
 	// always, or never; `editorToolbarPrev` remembers which of the first two
 	// view:toggle-toolbar returns to. Groups: ordered ids, null = default.
 	editorToolbar: 'live',

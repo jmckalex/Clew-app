@@ -1,4 +1,4 @@
-// The editor toolbar (docs/dev/live-edit-plan.md §6) with real input. Run
+// The editor toolbar (docs/dev/live-edit.md §6) with real input. Run
 // with CLEW_SMOKE_MENU=1 for the menu half.
 //
 // Fixture (regenerate before every run — it is edited):

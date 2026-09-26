@@ -111,7 +111,7 @@ officeDock.init();
 // ---- dev hook -------------------------------------------------------------
 
 // Exposed for dev-tools poking and the CLEW_SMOKE scenario scripts.
-// One selection bubble per window (live-edit-plan §6.7).
+// One selection bubble per window (docs/dev/live-edit.md §6.7).
 document.body.append(document.createElement('clew-selection-bubble'));
 
 window.__clew = { workspaceStore, vaultStore, vaultSettingsStore, editorPool, settingsStore, ipc, actions, officeDock };

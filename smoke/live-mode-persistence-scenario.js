@@ -1,4 +1,4 @@
-// Live edit's MODE, across a restart (docs/dev/live-edit-plan.md §3.3). Two
+// Live edit's MODE, across a restart (docs/dev/live-edit.md §3.3). Two
 // runs over one fixture — the scenario tells them apart by what the
 // workspace restored.
 //

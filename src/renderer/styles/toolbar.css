@@ -1,4 +1,4 @@
-/* Clew — the editor toolbar and its popovers (docs/dev/live-edit-plan.md §6).
+/* Clew — the editor toolbar and its popovers (docs/dev/live-edit.md §6).
    Every colour a --clew-* variable. */
 
 .preview-host { flex-direction: column; }

@@ -1,4 +1,4 @@
-// Live edit in the editor itself (docs/dev/live-edit-plan.md §5): concealment,
+// Live edit in the editor itself (docs/dev/live-edit.md §5): concealment,
 // rendering in place, and the reveal rule under REAL input. Over a scratch
 // copy of the demo vault — its Projects/Dialect Demo.md is the dialect's
 // showcase:

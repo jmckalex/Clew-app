@@ -8,7 +8,7 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Clicks on concealed constructs (plan §5.2, and the §13 decision): a
+// Clicks on concealed constructs (docs/dev/live-edit.md §5.2, and a decision in force, docs/dev/live-edit.md §12): a
 // concealed link FOLLOWS on click — Obsidian's behaviour — and ⌥-click puts
 // the cursor in it instead, which reveals it for editing. ⌘/Ctrl-click opens
 // a note link in a new tab. A tag opens the search panel on that tag; a

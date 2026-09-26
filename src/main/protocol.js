@@ -341,7 +341,7 @@ export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDi
 				return new Response(html, { headers: headers('text/html') });
 			}
 
-			// Live edit's block frames (docs/dev/live-edit-plan.md §7.2). POST
+			// Live edit's block frames (docs/dev/live-edit.md §7.2). POST
 			// `{text, sourcePath}` renders the snippet as a full preview
 			// document and answers `{hash}`; GET `__clew_block__/<hash>` serves
 			// that document with the same client injection a note gets, marked

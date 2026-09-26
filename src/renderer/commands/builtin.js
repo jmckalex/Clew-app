@@ -212,7 +212,7 @@ export function registerBuiltinCommands() {
 			run: () => actions.closeOtherPane() },
 		{ id: 'workspace:toggle-mode', name: 'Toggle reading mode', hotkeys: ['Mod-e'], when: needsNote,
 			run: () => actions.toggleReadingMode() },
-		// Live edit (docs/dev/live-edit-plan.md): ⌘⇧E flips source ↔ live;
+		// Live edit (docs/dev/live-edit.md): ⌘⇧E flips source ↔ live;
 		// the three explicit modes are for the menu's radios and the palette.
 		{ id: 'workspace:toggle-live', name: 'Toggle live edit / source', hotkeys: ['Mod-Shift-e'], when: needsNote,
 			run: () => actions.toggleLiveEdit() },
@@ -222,7 +222,7 @@ export function registerBuiltinCommands() {
 			run: () => actions.setViewMode('live') },
 		{ id: 'workspace:mode-reading', name: 'View mode: reading', when: needsNote,
 			run: () => actions.setViewMode('reading') },
-		// The editor toolbar (live-edit-plan §6.8): hide/show, remembering
+		// The editor toolbar (docs/dev/live-edit.md §6.8): hide/show, remembering
 		// which of 'live'/'always' it was; and a keyboard way in.
 		{ id: 'view:toggle-toolbar', name: 'Toggle editor toolbar',
 			run: () => {

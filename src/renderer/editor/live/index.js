@@ -9,7 +9,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Live edit: the note editor with its markdown syntax concealed and the
-// result drawn in place, except where the cursor is (docs/dev/live-edit-plan.md).
+// result drawn in place, except where the cursor is (docs/dev/live-edit.md).
 //
 // It is NOT a second editor. It is this bundle of extensions, swapped into
 // the pooled EditorView's `liveCompartment` (editor.js) by

@@ -1,4 +1,4 @@
-/* Clew — live edit (docs/dev/live-edit-plan.md). Structure classes `le-*`;
+/* Clew — live edit (docs/dev/live-edit.md). Structure classes `le-*`;
    every colour is a --clew-* variable. What a REVEALED construct looks like
    is source mode's business (editor.css): nothing here applies to it except
    line-level classes, which must hold in both states — entering a line

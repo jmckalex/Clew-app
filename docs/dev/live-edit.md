@@ -1,51 +1,17 @@
-# Live edit mode — implementation plan
+# Live edit — the design as built
 
-Status: DESIGN, written 2026-09-26 on branch `feat/live-edit`, for the model
-that builds it. Everything here was checked against the tree at `ed2aabc`
-(0.10.0). Where this plan and the code disagree, measure, then fix the plan.
+Live edit is Clew's Obsidian-style Live Preview: a third view mode in which
+the editor conceals markdown syntax and draws the result in place, except
+where the selection touches a construct. This document is the durable
+design — CLAUDE.md's "Live edit" subsection is the short form. It began as
+the build plan (branch `feat/live-edit`, 2026-09-26); where the build
+measured something the plan got wrong, the section says so under **As
+built**, and those notes are the truth.
 
-When the feature ships, this file becomes `docs/dev/live-edit.md` — the
-durable dev doc CLAUDE.md indexes — with the phase/acceptance sections
-deleted and the architecture sections kept current.
-
----
-
-## 0. How to work this plan
-
-Read, in order: `CLAUDE.md`, `HANDOVER.md`, this file. Then `npm install`
-in this worktree (it shares nothing with the main checkout: no
-`node_modules/`, `zeta-assets/`, `mptikz-assets/`, `build-engine/`), then
-`npm test` (644 green) and `node scripts/build.js` before touching anything.
-
-House rules that bite here (all from CLAUDE.md; restated because every one
-of them is tempting to break in this feature):
-
-- Plain JS ES modules, web components, tabs. No frameworks, no TypeScript.
-- **The engine never runs in the renderer.** Anything that needs jmarkdown
-  goes through the render service's fragment path (§7). The renderer may
-  parse (lezer, the jmd scanner) but never render markdown to HTML itself
-  beyond the tiny inline subset defined in §5.3.
-- **Never edit `vendor/`.** The one engine change this plan needs (§7.2,
-  `currentFile`) goes to the jmarkdown master and is re-synced.
-- **Shortcuts are commands** (`commands/registry.js`) — never ad-hoc
-  keydown listeners. Every toolbar button dispatches a command id.
-- **The compat line is drawn.** Live edit renders what reading mode renders
-  and refuses what reading mode refuses, by name. Do not add Obsidian
-  behaviours on your own judgment.
-- Heavy wasm (EmbedPDF, mp-tikz-wasm, LibreOffice) lives in
-  `clew-preview://` documents, never the app page. MathJax is the ONE
-  library this plan loads into the app page, and `lib/mathjax.js` already
-  does (the CSP allows `clew-preview://vault/__clew_assets__/`).
-- Stage explicit paths; never `git add -A`. Run the smoke harness for every
-  UI change. The manual in `../Clew-docs` and the demo vault are part of
-  the deliverable (§11).
-- Owner's bug reports have been consistently right. Measure before naming
-  a cause.
-
-Definition of done for the whole feature: every phase's acceptance list in
-§12 passes, `npm test` is green, every scenario in §10 runs clean over its
-fixture, the manual and demo vault match, CLAUDE.md has the new subsection,
-and HANDOVER.md is rewritten.
+User-facing: the manual's *Live edit and the toolbar* chapter
+(`../Clew-docs/site/manual/live-edit.html`) and the demo vault's
+`Guide/Live Edit.md` (which holds one of everything and is the test
+corpus).
 
 ---
 
@@ -96,7 +62,7 @@ settings-driven layout, and a selection bubble variant.
 - Meta Bind widgets rendered live in prose (`INPUT[…]` shows as a chip;
   the frame path renders the fences). §5.4.
 - Live rendering of `|live` office embeds (thumbnail in live edit; §7.6).
-- Slash commands (`/` menu). Listed as a follow-on in §13.
+- Slash commands (`/` menu). A follow-on (§12).
 - Multi-paragraph inline footnotes concealed (single-line ones are; §5.2).
 - Obsidian `%%comments%%` (the engine does not render them; nothing to
   mirror).
@@ -105,9 +71,10 @@ settings-driven layout, and a selection bubble variant.
 
 ---
 
-## 2. Ground truth: the editor as it stands
+## 2. Ground truth: the editor before live edit (at `ed2aabc`)
 
-Read these before designing anything; the plan assumes them.
+What the design was written against; kept because it says why each
+change landed where it did.
 
 | Thing | Where | What matters here |
 | --- | --- | --- |
@@ -125,7 +92,7 @@ Read these before designing anything; the plan assumes them.
 | Editor view | `components/workspace/clew-editor-view.js` | Adopts the pooled DOM, conflict banner, view-state save/restore (`cursor`, `scrollTop`, `cursorLine`, `readingLine`, `pendingLine`), scroll-sync bus. Toolbar and mode effect hook in here. |
 | Preview view | `components/workspace/clew-preview-view.js` | The host side of the preview postMessage protocol (`ready`, `link-click`, `checkbox-toggle`, `task-toggle`, `field-edit`, `api-request`, `focused`, `chord`, `app-chord`, `scrolled`, `source-line-click`, `embed-collapse`, `morph-failed`, …). The block-frame layer needs the SAME switch (§7.4 factors it out). |
 | Fragment render | `main/protocol.js` (`POST …/<sid>/__clew_fragment__`), `main/render-service.js#renderFragment` | Text in, body HTML out; same worker pipeline and config as notes; cached by sha1(text), bounded 500. Origin-guarded (file:// and clew-preview:// only). `lib/preview-url.js#fragmentUrl()` exists. Fragment builds skip `data-source-line`. |
-| App CSP | `src/renderer/index.html` | `script-src 'self' clew-preview://vault/__clew_assets__/ …; img-src 'self' data: clew-preview:; frame-src clew-preview:; connect-src 'self' clew-preview:`. MathJax in-app, vault images, block iframes and fragment fetches are all allowed today. Remote `http(s)` images are NOT (§13 decision). |
+| App CSP | `src/renderer/index.html` | `script-src 'self' clew-preview://vault/__clew_assets__/ …; img-src 'self' data: clew-preview:; frame-src clew-preview:; connect-src 'self' clew-preview:`. MathJax in-app, vault images, block iframes and fragment fetches are all allowed today. Remote `http(s)` images are NOT (§12). |
 | MathJax in app | `lib/mathjax.js` | Lazy tex-svg from the preview assets, config mirrored from the engine default (`tags: 'ams'`). Used by canvas cards. Extend, don't duplicate (§5.6). |
 | Vault settings | `<vault>/.clew/vault-settings.json` via `CH.VAULT_SETTINGS_GET/SET` | `normalSyntax` flips the dialect to standard Markdown emphasis. The editor does not read it today; live edit must (§4.3). |
 | Smoke harness | `main.js` (CLEW_SMOKE*), `smoke/README.md` | Real input via CDP, frame scripts via webFrameMain, `CLEW_SMOKE_MENU=1`. §10 adds a multi-frame knob. |
@@ -164,14 +131,20 @@ field (no decoration set lingers, no frame layer keeps iframes alive).
 The bundle (`editor/live/index.js#liveEdit(config)`) is:
 
 ```
-liveConfigFacet        static per-vault facts: normalSyntax, reveal mode, render flags
-revealField            StateField<RevealState>: which constructs are revealed (from selection)
-blockField             StateField<DecorationSet>: block-level replacements (§3.2)
-inlineLayer            ViewPlugin: inline marks/widgets/line decorations for visibleRanges
+liveConfigFacet        settings + vault facts, plus the editor's notePath and tabId (config.js)
+liveStateField         the construct model + the revealed set (reveal-field.js)
+calloutFoldField       which foldable callouts are folded (view state; block-field.js)
+frameHeightField       measured Tier C heights, by id and by kind+ordinal (frames.js)
+blockField             StateField<DecorationSet>: block replacements (§3.2)
 frameLayer             ViewPlugin: Tier C iframes hoisted into the scroller (§7.3)
-liveKeymap             Enter/Backspace/Tab behaviours that only make sense concealed (§5.9)
-liveEventHandlers      click on links/checkboxes/frames, hover tooltips
-liveTheme              EditorView.theme for le-* structure (colours stay in editor.css)
+inlineLayer            ViewPlugin: inline marks/widgets and line decorations for visibleRanges
+liveEvents             Prec.high click handlers (links, tasks, folds, frames…; events.js)
+cm-live                an editor class the CSS and the scenarios key on
+```
+
+As built: no live keymap (§5.9) and no theme extension — the structure
+lives in `styles/live-edit.css` and `styles/toolbar.css`.
+
 ```
 
 Everything else in `makeNoteState` stays exactly as it is: the overlay keeps
@@ -227,44 +200,44 @@ list of **constructs** in the document (§4), memoised per `Text` via a
 src/renderer/editor/live/
   index.js            liveEdit(config) → Extension (the bundle); liveCompartment
   config.js           liveConfigFacet + readLiveConfig(settings, vaultSettings)
-  model.js            liveModel(state) → Construct[] (tree + scanner → one list), memoised
-  reveal.js           revealField; revealed(construct, selection, mode) — PURE, unit-tested
-  block-field.js      blockField: block replacements from the model
-  inline-layer.js     inline marks/widgets/line decorations over visibleRanges
-  widgets/
-    math.js           MathWidget (inline + display) over lib/mathjax.js
-    task.js           checkbox widget; bullet/number marker widgets
-    link.js           LinkWidget (md link / wikilink / autolink), unresolved state
-    badge.js          footnote number, citation chip, block-id anchor, tag chip, directive chip
-    callout.js        callout title bar (icon + inline-rendered title), fold chevron
-    env.js            directive / environment head + foot
-    table.js          TableWidget (Tier B) from lezer Table nodes + inline-dom
-    image.js          ImageWidget (Tier B)
-    frontmatter.js    PropertiesWidget (rows shared with the Properties panel)
-    toc.js            {{TOC}} widget from headings
-    hr.js             horizontal rule
-    fence.js          code-fence head/foot chrome (language badge, copy)
-    frame.js          Tier C placeholder widget (height cache, skeleton)
-  inline-dom.js       renderInline(state, from, to) → DocumentFragment (the tiny subset, §5.3)
+  model.js            liveModel(state, config) → Construct[] (tree + scanner), memoised
+  reveal.js           revealed(construct, ranges, mode), revealSet — PURE, unit-tested
+  reveal-field.js     liveStateField: { model, revealed, signature, config }
+  block-field.js      blockField + calloutFoldField: block replacements from the model
+  inline-layer.js     inline marks/widgets + line decorations over visibleRanges; liveRefresh
+  inline-dom.js       inlineTokens (pure, tested) + tokensToDom — the tiny subset (§5.3)
+  images.js           imageSpec: where an image construct points
+  rich-fences.js      what only the engine draws (fences, directives, environments, HTML)
+  frames.js           Tier C: frame kinds, placeholder widget, heights field
   frame-layer.js      Tier C iframe layer: lifecycle, positioning, laziness, cap, messages
   frame-host.js       host-side message switch shared with clew-preview-view (§7.4)
-  keymap.js           Enter/Backspace/Tab conceal-aware behaviours
-  events.js           click/hover handlers
-  height-cache.js     per-editor LRU of block heights keyed by construct hash
+  events.js           click handlers (Prec.high)
+  widgets/
+    math.js           MathWidget + mathElement over lib/mathjax.js
+    chip.js           footnote number, citation, variable, label, date, block id, inline embed
+    lines.js          bullet, task, callout head, fence head/foot, env head/foot
+    blocks.js         hr, TOC, kanban banner, PropertiesWidget
+    table.js          TableWidget (Tier B)
+    image.js          ImageWidget (Tier B)
 src/renderer/editor/toolbar/
-  toolbar-spec.js     groups, buttons, priorities, popover kinds (declarative)
+  toolbar-spec.js     groups, items (command ids), priorities, popover kinds
   toolbar-state.js    deriveState(state, model) — PURE, unit-tested
   toolbar-layout.js   layoutGroups(groups, widths, available) — PURE, unit-tested
-  clew-editor-toolbar.js   <clew-editor-toolbar> element
-  clew-selection-bubble.js <clew-selection-bubble> element
+  clew-editor-toolbar.js   <clew-editor-toolbar> (+ addToolbarButton for plugins)
+  clew-selection-bubble.js <clew-selection-bubble>
   popover.js          anchored popover primitive (one open at a time)
-  popovers/           link.js table.js callout.js heading.js code.js diagram.js math.js insert.js block.js
-src/renderer/editor/jmd/scan-cache.js   scanFor(doc) — the one memoised scan (overlay, folding, live share it)
-src/renderer/editor/jmd/subsup-parser.js JmdSubscript / JmdSuperscript / JmdBlockId grammar (§4.2)
-src/renderer/state/vault-settings-store.js   cache + 'vault-settings-changed' (§4.3)
-src/preview-client/client.js            block-document additions (§7.5) — same file, one flag
-src/main/protocol.js                    __clew_block__ endpoint (§7.2)
-src/main/render-service.js              renderFragment(text, { sourcePath, dependent }) (§7.2)
+  popovers.js         the popover contents
+src/renderer/editor/toggle-wrap.js       toggleWrapSpec — unwrap from inside a construct (tested)
+src/renderer/editor/frontmatter-edit.js  properties written through the editor (tested)
+src/renderer/editor/jmd/scan-cache.js    scanFor(doc) — the one memoised scan
+src/renderer/editor/jmd/subsup-parser.js JmdSubscript / JmdSuperscript / JmdBlockId
+src/renderer/editor/jmd/markdown-config.js noteMarkdown({normalSyntax}) — the editor's grammar
+src/renderer/state/vault-settings-store.js the vault's settings in the renderer
+src/shared/fragment-deps.js             isDependentFragment
+src/engine/media-alias.js               parseMediaAlias (shared with the renderer)
+src/preview-client/client.js            block-document mode (§7.5)
+src/main/protocol.js                    __clew_block__ endpoints, wrapPreviewDocument (§7.2)
+src/main/render-service.js              renderFragment / renderBlock, epoch + config generation
 ```
 
 Changed files are named in their sections. CSS: a new
@@ -551,7 +524,7 @@ Nested lists inside quotes/callouts compose (the line classes stack).
 | table | block **TableWidget** (§5.5a) | source, formatted by nothing (never rewrite on reveal) | click on a cell → cursor to that cell's source start |
 | image alone on a line (`![alt](src)`, `![[img.png\|320x60]]`) | block **ImageWidget** (§5.5b) | source | click → reveals; ⌥-click opens the file |
 | code fence | NEVER concealed body: `CodeText` stays source with fence-language highlighting; opener line replaced by **FenceHead** (language badge + copy button; `CodeInfo` text hidden), closer by **FenceFoot** (thin rule); lines get `le-fence` (mono, background) | opener/closer shown | copy button copies `CodeText` |
-| rich fences (`mermaid tikz latex tex metapost leaflet query tasks kanban dataview dataviewjs base ad-* meta-bind(-button/-embed/-js/-js-view)` + any language a plugin's engine surface registers — the list lives in `live/rich-fences.js`, imported by the toolbar too. Plugins do NOT declare fence names today (the Charts manifest has only `surfaces`); the model takes `richFences` as config, and how a plugin supplies it — a manifest `fences` key? — is Phase 5's question) | Tier C frame (§7) when `liveRenderFences`; else as code fence | source | — |
+| rich fences (`mermaid tikz latex tex metapost leaflet query tasks kanban dataview dataviewjs base ad-* meta-bind(-button/-embed/-js/-js-view)` + any language a plugin's engine surface registers — the list lives in `live/rich-fences.js`, imported by the toolbar too. Plugins do NOT declare fence names today (the Charts manifest has only `surfaces`); the model takes `richFences` as config, and how a plugin supplies it — a manifest `fences` key? — is still open, §12) | Tier C frame (§7) when `liveRenderFences`; else as code fence | source | — |
 | `:::name` … `:::` (generic: theorem, abstract, title-box, comment, HTML, custom) | opener line → **EnvHead** widget (`name` + attrs summary as a caption, left rule), closer → **EnvFoot**; body lines `le-env le-env-<name>` (left rule `--clew-accent`); `:::TeX` body additionally `le-tex-only` (dimmed, head says "LaTeX only"); `:::comment` dimmed; nesting via `data-depth` from colon count | source | — |
 | `@begin(name)`…`@end(name)` | same as above; `@begin(equation\|align\|…)` (the `MATH_ENVIRONMENT_NAMES`) → display MathWidget wrapping the body in `\begin{name}…\end{name}` | source | — |
 | `:::mermaid`, `:::TiKZ`, `@begin(TiKZ\|metapost\|mermaid\|reveal)`, `:::game`, `:::Mathematica`, `:::markdown-demo`, `@reveal[…]`, `@name+[…]` for a name the engine renders richly | Tier C frame | source | — |
@@ -577,7 +550,7 @@ badge below the widget.
 `<img>` with `src` from `lib/preview-url.js#vaultFileUrl(resolvedPath)` for
 vault files (resolve `![[name.png]]` through `vaultStore.resolveFileName`),
 `data:` and `clew-preview:` URLs as-is, and `http(s)` URLs **only if the
-CSP is widened** (§13 decision; until then such images show a chip "Remote
+CSP is widened** (§12; until then such images show a chip "Remote
 image — shown in reading mode"). Size from the wikilink alias (`|320`,
 `|320x60` — reuse the parsing in `src/engine/wikilinks.js`; export
 `imageSize(alias)` from there) or from `![alt](src =300x)`-style not
@@ -617,7 +590,7 @@ numbers (`tags:'ams'`) increment across re-typesets. Mitigation in v1: the
 block field typesets a document's display blocks in order on first build
 (`MathJax.texReset()` first), so macros defined earlier in the SAME note
 work; cross-note leakage is documented in the manual as a known limitation
-("reading mode is the truth for macros"). §13 lists the v2 option (a
+("reading mode is the truth for macros"). §12 lists the v2 option (a
 per-note MathJax `InputJax` instance).
 
 ### 5.7 PropertiesWidget
@@ -650,7 +623,7 @@ level; entries via `renderInline`; click → `view.dispatch({selection,
 effects: EditorView.scrollIntoView(pos, {y:'start'})})`. Reflects edits
 because `eq` compares a hash of the heading list.
 
-### 5.9 Conceal-aware keys (`live/keymap.js`, `Prec.high`, every handler returns false when not applicable)
+### 5.9 Keys
 
 - **Enter** at the end of a list item continues the list (`- `, `1. ` with
   the next number, `- [ ] ` for tasks — an empty item + Enter removes the
@@ -960,8 +933,8 @@ renderFragment(text, { sourcePath = null, dependent = false } = {})
   NOT kept in `#fragments` across file changes: key it with the current
   `#fragmentEpoch`, a counter `onFileChanged` increments. Export the regex
   as `isDependentFragment(text)` and unit-test it.
-- `sourcePath` → the worker build option `currentFile: <abs path>` — an
-  **upstream jmarkdown change**: `watch-worker.js`/`index.js` must let a
+- `sourcePath` → part of the key, and a `<key>.source` sidecar beside the
+  temp file (Appendix D). The plan's original text, superseded: `watch-worker.js`/`index.js` must let a
   build set `global.current_file` (and whatever the same code path derives
   from the input path for relative `![[#Heading]]`/`this`) from an option
   instead of the input file. Small, additive, config-gated in spirit; make
@@ -1007,8 +980,7 @@ As built (Phase 0), three differences, each measured or forced:
   canvas card that embeds a note stops being served stale too. The key
   carries `#fragmentEpoch`, bumped by `onFileChanged` and `reconfigure`.
 - A `sourcePath` escaping the vault is a 403; malformed JSON a 400.
-- `currentFile` is already passed to the worker; the engine ignores it
-  until Appendix D lands.
+- No `currentFile` option reaches the worker (Appendix D).
 
 ### 7.3 The frame layer (`live/frame-layer.js`)
 
@@ -1056,8 +1028,9 @@ Lifecycle:
    (leaflet/pdf/kanban state survives where the morph guards allow) rather
    than reloading.
 6. Placeholder widget (`widgets/frame.js`): `<div class="le-frame-slot"
-   data-kind>` with `height` from `height-cache.js` (LRU by construct id,
-   per editor, persisted to the tab's `view.frameHeights` so a reopened
+   data-kind>` with `height` from `frameHeightField` (by construct id and by
+   kind+ordinal, for this editor's session — NOT persisted to the tab; a
+   reopened note lays out at default heights first; as planned: persisted to the tab's `view.frameHeights` so a reopened
    note lays out without jumps) or a kind default (mermaid 240, embed 160,
    query 200, pdf 480, …); shows a skeleton (kind icon + "Rendering…")
    until the first `size`, and the last error message on `error`
@@ -1065,8 +1038,7 @@ Lifecycle:
    `.clew-figure-refused` inside the frame — those are content, not layer
    errors).
 7. Destroy on: plugin destroy (mode off, tab close), record gone, eviction.
-   `RENDER_SUBSCRIBE` the note path while any frame exists (so
-   `EV_RENDER_DONE` restales arrive), `RENDER_UNSUBSCRIBE` on destroy.
+   (As built: no RENDER_SUBSCRIBE — see the note below.)
 
 Scroll chaining: a wheel over a frame whose document is not scrollable
 chains to the editor's scroller in Chromium (cross-origin included). The
@@ -1249,22 +1221,17 @@ every open live editor (`editorPool.reconfigureLive()`); changing
 | `fragment-dependent.test.js` | `isDependentFragment` for each trigger and for plain prose. |
 | `frontmatter-edit.test.js` | `applyProperties` produces the same text the panel would; `clean:false` refused. |
 
-### 10.2 Smoke scenarios (`smoke/`, each with its assertions in the README table)
+### 10.2 Smoke scenarios
 
-Harness change first: `CLEW_SMOKE_FRAME_SCRIPT` today runs against "the
-preview iframe". Add `CLEW_SMOKE_FRAME_MATCH=<substring>`: when set,
-`main.js` runs the frame script in EVERY `clew-preview://` frame whose URL
-contains it (each result line prefixed with the frame's URL hash). Document
-in CLAUDE.md's smoke paragraph.
-
-| scenario | drives | asserts |
-| --- | --- | --- |
-| `live-edit-scenario.js` (over the demo vault, `Projects/Dialect Demo.md`, tab forced to `live`) | opens the note, waits for the model | `mode=live`; heading line has `le-h1`; `hidden-marks=0` visible `cmt-formatting` in `.cm-content` outside the cursor line; `math-widgets>=2` each containing `svg`; wikilink widget text `the design`; `tag-chips>=1`; theorem env has `le-env-head` text `theorem`; `:::TeX` body has `le-tex-only`; footnote badge `¹` with tooltip text; then REAL input: click inside `*strong*` → `revealed=strong` (two `*` visible in `cmt-formatting` on that line, no other line changed); ArrowRight ×7 out → `concealed=true`; click the task checkbox of a `- [ ]` line the scenario appended → doc line becomes `- [x]` and after 1.2 s the file on disk has it; `line-height-stable=true` (the heading line's `getBoundingClientRect().height` before/after the cursor enters it). Screenshot. |
-| `live-blocks-scenario.js` + `live-blocks-frame.js` (fixture from its header: mermaid, ```query, `![[Child]]`, `![[sample.pdf]]`, leaflet, `@reveal[Nothing/]` refused, 20 extra mermaid blocks below the fold) | opens in live, waits for `size` on the first four | `frames<=16` at all times; each visible frame reports `height>0` and its placeholder's height equals it (±1); `refused-by-name=true` for the reveal frame (text of `.clew-embed-refused`); rewrite `Child.md` through NOTE_WRITE → the embed frame's document contains `UPDATED` within 3 s (`has-UPDATED=true`); scroll to the bottom by real wheel input over a frame (`scroll-chained=true` — `scrollTop` moved) and back → the leaflet frame's `data-frame-id` unchanged (`pinned-survived=true`); place the cursor on the mermaid block → `frame-hidden=true` and the source visible; `CLEW_SMOKE_METRICS` recorded. |
-| `live-toolbar-scenario.js` | `CLEW_SMOKE_MENU=1`; opens a note in live | `smoke-menu: View > Live Edit [Cmd+Shift+E]` and the Mode radios; `groups=N visible`; click Strong with a real drag selection (or tripleClick a line) → line text wrapped in `*…*`; cursor into the word → `pressed=strong`; open the table popover, click 3×2 → a 3-row 2-col table inserted (`tables.js#tableAround` on the doc); narrow the pane (`splitActive('right')` twice) → `overflow` holds `insert`/`list` and `mode` still visible; keyboard: `Alt-Shift-t` focuses the bar, ArrowRight ×3, Enter → the command ran; tripleClick a line → `bubble=visible`, Escape → hidden; `⌘⇧E` → `mode=source` and toolbar hidden under the default setting; `⌘⇧E` → live again. |
-| `live-mode-persistence-scenario.js` (two runs over one fixture) | run 1 sets live on a tab, flips to reading with ⌘E, quits | run 2: `restored-mode=reading editMode=live`; ⌘E → `mode=live`; ⌘-click a block in reading (real input over the preview) → lands in `live` at that line (`landed=<line>`). |
-| `live-tables-scenario.js` | a note with a table with inline markdown in cells | `table-widget=1 rows=3`; a cell's HTML holds `<strong>`; click cell (2,1) → `revealed=table cursor-cell=2,1`; Tab → next cell (the existing keymap). |
-| existing scenarios | `fence-highlight`, `footnote-highlight`, `math-highlight`, `editor-hotkeys`, `reading-scroll` | must pass unchanged in source mode (regressions in the grammar change show up here). |
+`smoke/README.md` carries every scenario's assertions and fixture recipe:
+`block-endpoint`, `normal-syntax`, `live-mode-persistence` (two runs),
+`live-edit`, `live-lines`, `live-tables`, `live-blocks` (+ frame script,
+with `CLEW_SMOKE_FRAME_MATCH=__clew_block__` and the memory numbers),
+`live-toolbar` (with `CLEW_SMOKE_MENU=1`) and `live-perf`. The existing
+`fence-highlight`, `footnote-highlight`, `math-highlight`,
+`editor-hotkeys`, `reading-scroll`, `embed-refresh` and `embed-collapse`
+scenarios guard source and reading mode. The harness grew for this:
+`CLEW_SMOKE_FRAME_MATCH`, clicks carrying `modifiers`, and `wheel`.
 
 ### 10.3 Manual QA checklist (owner's pass, not automatable)
 
@@ -1280,111 +1247,36 @@ the frontmatter widget editing the same note.
 
 ---
 
-## 11. Documentation and demo vault (part of the deliverable)
+## 11. Documentation
 
-- **Manual** (`../Clew-docs/site/manual/`, own repo, `make check-links`):
-  `editing.html` — new sections "Live edit" (the reveal rule in the user's
-  words, what renders in place, the click-vs-edit rule for links, the
-  known limitations: macros across notes, multi-line footnotes, Meta Bind
-  chips, `|live` office embeds, tables edit as source) and "The toolbar"
-  (every group, popovers, overflow, keyboard, customisation, the bubble);
-  `reading-mode.html` — "Every note tab is in one of THREE modes", ⌘E /
-  ⌘⇧E semantics, the mode switch; `settings-and-hotkeys.html` — every
-  §8 key and the new commands/chords; `index.html` — a feature line;
-  screenshots via the harness (the memory file `clew-manual.md` has the
-  screenshot tricks). Update the manual's own `VERSION`/changelog per its
-  README.
-- **Demo vault**: `Guide/Editing.md` — live edit + toolbar, exercising
-  every Tier A construct on the page itself (it is the test corpus);
-  `Guide/Reading Mode.md` — three modes; `Guide/Settings and Hotkeys.md`;
-  a new `Guide/Live Edit.md` that holds one of everything (headings, every
-  inline form, a task list, a callout with a title, a foldable callout, a
-  table with inline markdown, display math with a `\newcommand`, a
-  mermaid fence, a `![[Welcome#…]]` embed, an image with a size, a
-  `:::theorem`, a `:::TeX`, a footnote, a citation, a `{{TOC}}`) — with
-  `Welcome.md` linking it. Reset demo baselines before committing
-  (HANDOVER §8).
-- **CLAUDE.md**: a "Live edit" subsection under Architecture (the facet/
-  compartment, the two providers rule, the model, the frame layer and why
-  it is hoisted, the endpoint, the settings) and the harness knob.
-- **HANDOVER.md**: rewritten at the end of the build session.
-- **THIRD-PARTY-NOTICES.md**: the added Font Awesome glyphs.
+- Manual: `../Clew-docs/site/manual/live-edit.html` (a chapter under
+  Writing), plus the editor, reading-mode, settings-and-hotkeys and plugins
+  chapters. A behaviour change here is not finished until they match.
+- Demo vault: `Guide/Live Edit.md` (one of everything), linked from
+  `Welcome.md`; `Guide/Editing.md`, `Guide/Reading Mode.md`,
+  `Guide/Settings and Hotkeys.md`.
+- CLAUDE.md: the "Live edit" subsection.
 
----
+## 12. Decisions in force
 
-## 12. Phases and acceptance
+Chosen when the design was written; each has an alternative the owner may
+still prefer, and changing one is a small, local edit.
 
-Each phase is committed on `feat/live-edit` as it lands (small commits,
-explicit paths) and leaves `npm test` green and every existing smoke
-scenario passing. Ship order matters: 1–3 are useful alone.
-
-**Phase 0 — foundations** (no visible change)
-`scan-cache.js`; scanner `constructs` (+tests); `subsup-parser.js` (+tests)
-behind the markdown Compartment; `vault-settings-store.js`; `liveModel`
-(+tests); `revealed` (+tests); `renderFragment` options + `isDependentFragment`
-(+test); `__clew_block__` endpoints + `wrapPreviewDocument` refactor;
-client.js block flag + size reporting; `CLEW_SMOKE_FRAME_MATCH`.
-Accept: tests green; `curl`-level check of the endpoints via a smoke
-scenario that `fetch`es them from the app (`block-endpoint=200`).
-
-**Phase 1 — the mode** (live = source, visually)
-§3.3 in full; settings keys + rows; menu; commands; `editorPool.setMode`
-with an empty live bundle; toolbar NOT yet. Accept:
-`live-mode-persistence-scenario.js`; `CLEW_SMOKE_MENU` shows the items;
-`workspace-tree` tests.
-
-**Phase 2 — Tier A inline**
-`inline-layer.js` with §5.2 (except cite chips' author-year, which needs
-the citations index helper — do it here if cheap), MathWidget inline,
-reveal field, `liveReveal` setting, click rules. Accept: the first half of
-`live-edit-scenario.js` (through `concealed=true`, `line-height-stable`).
-
-**Phase 3 — Tier A lines and blocks**
-§5.1 headings/alignment, §5.4 lists/tasks/quotes/callouts (+fold), §5.5
-hr/frontmatter/display math/fence chrome/env frames/TOC/kanban banner,
-§5.9 keymap. Accept: the rest of `live-edit-scenario.js`; `frontmatter-edit`
-tests; `inline-dom` tests.
-
-**Phase 4 — Tier B**
-TableWidget, ImageWidget. Accept: `live-tables-scenario.js`; images in
-`Guide/Live Edit.md` render with their sizes.
-
-**Phase 5 — Tier C**
-Frame layer, placeholder widget, height cache, host switch refactor,
-policies (§7.6), restale. Accept: `live-blocks-scenario.js` + metrics in
-the README; `embed-refresh`-style freshness proven (`has-UPDATED`).
-
-**Phase 6 — toolbar**
-Spec, state, layout, element, popovers, keyboard, bubble, settings UI,
-new commands, plugin API v2, menu item. Accept: `live-toolbar-scenario.js`;
-`toolbar-*` and `format-toggle` tests.
-
-**Phase 7 — docs, demo, polish**
-§11 in full; a pass over light theme, zoom, and the QA list; performance
-numbers written into `smoke/README.md`; CLAUDE.md + HANDOVER.
-
----
-
-## 13. Decisions for the owner (defaults chosen so the build never blocks)
-
-| decision | default in this plan | alternative |
+| decision | as built | alternative |
 | --- | --- | --- |
-| Clicking a concealed link | follows it; ⌥-click edits (Obsidian parity) | ⌘-click follows, plain click edits (source-mode parity) |
-| Remote `http(s)` images in live edit | NOT loaded (CSP unchanged); chip says "shown in reading mode" | widen `img-src` to `https:` — notes then contact remote hosts when opened for editing |
-| Toggle live/source chord | `Mod-Shift-e` (free today) | none — palette/menu only |
-| Default for new tabs | stays `source` | `live` (Obsidian's default) |
-| `\|live` office embeds in live edit | thumbnail + note | boot LibreOffice in a pinned frame |
-| MathJax macro isolation | shared page instance; documented | per-note `InputJax` (v2) |
-| Tables | rendered ↔ source on activation | in-place cell editing (v2) |
-| Toolbar in reading mode | slim bar with the mode switch only | none |
+| Clicking a concealed link | follows it; ⌥-click edits; ⌘-click opens a new tab | plain click edits, ⌘-click follows |
+| Remote `http(s)` images | not loaded in the editor (CSP unchanged); a chip says "shown in reading mode" | widen `img-src` — notes then contact remote hosts when opened for editing |
+| Toggle live/source chord | ⌘⇧E | palette/menu only |
+| New tabs | open in source (`newTabMode`) | live, as Obsidian does |
+| `\|live` office embeds | a thumbnail in live edit | a pinned LibreOffice frame |
+| MathJax macros | one page-wide MathJax: macros leak across notes (documented) | a per-note InputJax |
+| Tables | rendered; edited as source on activation | in-place cell editing |
+| Reading mode's bar | a slim bar with the mode switch | none |
 
-Follow-ons this plan deliberately leaves out: slash commands; in-place
-table cells; multi-line footnote concealment; Meta Bind widgets in-app
-(Web Awesome is already bundled — plausible v2); a per-note MathJax;
-drag handles for blocks; a "focus mode" that hides the toolbar and
-sidebars.
-
----
+Follow-ons deliberately left out: slash commands; in-place table cells;
+multi-line footnote concealment; Meta Bind widgets in prose; plugin-declared
+rich fence names; persisting frame heights across reopenings; drag handles
+for blocks; a focus mode.
 
 ## Appendix A — lezer node names in play
 
@@ -1413,9 +1305,9 @@ Frame → host: `size {height}` (new). Host → frame: nothing new (`render`,
 `theme`, `app-chords`, `event kv`, `scroll-to-line` unused in blocks).
 Host-side switch shared via `frame-host.js`.
 
-## Appendix D — the engine change that was NOT needed
+## Appendix D — the engine change that was not needed
 
-**As built (Phase 5):** no upstream change. Every reader of
+No upstream change. Every reader of
 `global.current_file` is Clew's own code (`engine/vault-model.js#currentPage`
 — Dataview, dataviewjs, Bases, Meta Bind — and `engine/kanban-board.js`),
 and `![[#Heading]]` self-embeds are not supported by the engine in reading
@@ -1423,11 +1315,4 @@ mode either. So render-service leaves a `<key>.source` sidecar beside a
 fragment's temp file naming its note, and `vault-model.js#currentFilePath`
 answers with that note (`tests/fragment-source.test.js`). The master also
 carried the owner's uncommitted edits in the very file the change would have
-touched — another reason not to. The original note follows.
-
-
-
-`watch-worker.js` build options gain `currentFile` (absolute path) →
-`global.current_file` and the input-path-derived base for self-references.
-Additive; default = the input file, so nothing else changes. Made in the
-jmarkdown master, staged by explicit path, then `npm run sync-engine` here.
+touched — another reason not to.

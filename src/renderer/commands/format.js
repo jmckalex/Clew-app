@@ -401,7 +401,7 @@ export function registerFormatCommands() {
 			fn: (v) => wrapContainer(v, ':::comment', ':::', 'Editorial note.') },
 		{ id: 'format:container', name: 'Insert generic container (:::name)',
 			fn: (v) => wrapContainer(v, ':::name', ':::', 'Content') },
-		// Live edit's toolbar (docs/dev/live-edit-plan.md §6.2); every one
+		// Live edit's toolbar (docs/dev/live-edit.md §6.2); every one
 		// works in source mode too. Args come from the toolbar's popovers.
 		{ id: 'edit:undo', name: 'Undo', fn: (v) => { undo(v); v.focus(); } },
 		{ id: 'edit:redo', name: 'Redo', fn: (v) => { redo(v); v.focus(); } },

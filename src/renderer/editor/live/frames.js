@@ -67,7 +67,7 @@ export function defaultHeight(kind) { return DEFAULT_HEIGHT[kind] ?? 160; }
 
 /**
  * The text a frame renders: the construct's source — except that a `|live`
- * office embed renders as its thumbnail here (the §13 decision: a frame is
+ * office embed renders as its thumbnail here (a decision in force, docs/dev/live-edit.md §12: a frame is
  * evictable, and a booted LibreOffice must not be).
  */
 export function frameText(c, doc) {

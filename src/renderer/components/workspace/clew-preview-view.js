@@ -97,7 +97,7 @@ class ClewPreviewView extends ClewElement {
 
 	/**
 	 * Reading mode's slim bar: only the mode switch, so the three modes are
-	 * one click apart from every state (live-edit-plan §6.5) — unless the
+	 * one click apart from every state (docs/dev/live-edit.md §6.5) — unless the
 	 * toolbar is turned off altogether.
 	 */
 	#syncModeBar() {

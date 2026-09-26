@@ -10,7 +10,7 @@
 
 // An image drawn in place (plan §5.5b, Tier B), from the vault over
 // clew-preview:// — a `data:` URL as it is. A REMOTE image is not loaded:
-// the app's CSP has no http(s) in img-src (the §13 decision — a note would
+// the app's CSP has no http(s) in img-src (a decision in force, docs/dev/live-edit.md §12 — a note would
 // otherwise contact remote hosts just by being opened for editing), so it
 // shows as a chip that says where it can be seen. A reference that resolves
 // to nothing says that by name. The size comes from the wikilink alias

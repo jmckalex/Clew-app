@@ -78,7 +78,8 @@ note API, plugins, and every settings key.
   parsers, Excalidraw round-trip, markdown tables, callouts, block
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
-  dialect scanner's constructs and grammar, live edit's model and reveal rule — 721 tests. DOM/UI work is
+  dialect scanner's constructs and grammar, live edit's model, reveal rule,
+  inline renderer and toolbar state/layout, format toggling — 756 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
@@ -541,6 +542,63 @@ browser-window-focus).
   `.clew/workspace.json`), so a scenario over a reused fixture must set a
   known state before driving the chord — the second run otherwise opens
   with the panel already showing and the chord closes it.
+
+### Live edit (`src/renderer/editor/live/`, `editor/toolbar/`)
+
+Obsidian's Live Preview: markup concealed and the result drawn in place
+except where the selection touches a construct. The durable design is
+`docs/dev/live-edit.md`; the rules that bite:
+
+- **One EditorView.** A tab's `view.mode` is `source | live | reading`,
+  `view.editMode` the editing mode ⌘E returns to. Live is `liveEdit(config)`
+  swapped into the pooled state's `liveCompartment` by
+  `editorPool.setMode` — no second editor, no second state; the tab group
+  treats source and live as ONE view (no remount). The markdown grammar
+  sits in `markdownCompartment` (`jmd/markdown-config.js#noteMarkdown`,
+  also what the grammar tests parse with), reconfigured on a
+  `normalSyntax` flip via `state/vault-settings-store.js`.
+- **One model.** `live/model.js#liveModel(state, config)` merges the lezer
+  tree (incl. `jmd/subsup-parser.js` — `_x`/`^x`/`^id` as the engine reads
+  them) with the scanner's `constructs` (`jmd/scan-cache.js`, one memoised
+  scan shared with the overlay and folding) into records carrying their
+  delimiters (`hidden`) and REVEAL EXTENTS; `live/reveal.js` is then a pure
+  range test. `reveal-field.js` holds model + revealed set, replaced only
+  when either changes — providers compare by identity.
+- **Two providers, by CodeMirror's rule.** Anything that changes vertical
+  structure (block widgets, replacements across lines) comes from the
+  StateField `block-field.js`; inline marks/widgets and LINE decorations
+  from the ViewPlugin `inline-layer.js` over visibleRanges, which must
+  never replace across a line break. Line classes (heading size, list
+  indent, callout tint) apply in BOTH states — entering a line never
+  changes its height (CodeMirror's `cm-widgetBuffer` images lifted a
+  heading 1px until live-edit.css tamed them).
+- **Tier C frames are hoisted.** Engine-only blocks render through
+  `POST/GET __clew_block__` (protocol.js; a FULL engine document through
+  `wrapPreviewDocument`, the same injection notes get) into iframes that
+  live in ONE layer inside the scroller (`frame-layer.js`), positioned over
+  placeholders the block field reserves — never inside widgets (CodeMirror
+  recycles widget DOM; a moved iframe reloads). Created for drawn
+  placeholders only, capped at `liveFrameCap`, pinned kinds kept within
+  three screens (height-map distance); sizes come back as `size` messages
+  (the client in `data-clew-block` mode reports the BODY's height —
+  documentElement.scrollHeight never shrinks below the frame). The frame
+  element's `color-scheme` must match its document's or Chromium paints an
+  opaque slab. Messages go through `live/frame-host.js`, the switch
+  clew-preview-view shares. A fragment's note travels in a `<key>.source`
+  sidecar read by `engine/vault-model.js#currentFilePath` (no engine
+  change); every fragment key carries the render-service configuration
+  generation, and the layer re-renders all frames on the vault/app settings
+  that reconfigure the engine.
+- **The toolbar** is `toolbar-spec.js` (items are COMMAND ids),
+  `toolbar-state.js` / `toolbar-layout.js` (pure, tested), the
+  `<clew-editor-toolbar>` element, `popover.js`/`popovers.js` (Insert and
+  Block reuse `shared/format-spec.js`), and `<clew-selection-bubble>`.
+  `editor/toggle-wrap.js` unwraps from a bare cursor inside a construct.
+  Plugin API 2: `clew.toolbar.addButton`.
+- Settings: `defaultEditMode`, `liveReveal`, `liveRender{Math,Fences,Embeds}`,
+  `liveFrameCap`, `editorToolbar(+Prev)`, `editorToolbarGroups`,
+  `selectionBubble`; `newTabMode` accepts `live`. Documents over 500 KB
+  fall back to source with a banner. Scenarios: `live-*` in smoke/ (README).
 
 ### Note API (scripts in rendered notes)
 
