@@ -1,4 +1,4 @@
-# Handover — 2026-09-26 (0.10.0 built for all four platforms, mac signed/notarized/stapled and boot-verified; 19 commits unpushed; the website is NOT live)
+# Handover — 2026-09-26 (0.10.0 built for all four platforms, mac signed/notarized/stapled and boot-verified; 20 commits unpushed; the website is NOT live; live edit BUILT on `feat/live-edit`, unmerged)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it; it gained the shell panel and the watch-order
@@ -33,10 +33,28 @@ signed, notarized, stapled, and verified by BOOTING it, not just by
 **The website is not live**, and an earlier claim of mine in this session
 that it was serving a stale manual was WRONG — §5. Nothing is published.
 
+**A ninth session (same day) wrote no code and one plan**: live edit mode
+— Obsidian's Live Preview — on branch `feat/live-edit`, in a sibling
+worktree, with a kickoff brief for the model that builds it. **A tenth
+(Opus 5.5, in that worktree, the same day) BUILT it**: 20 commits, phases
+0–7 complete, 756 tests, plus the manual on a matching `feat/live-edit`
+branch in `../Clew-docs-live-edit`. Both UNMERGED. §10.
+
 ## 1. STILL OPEN
 
 Nothing blocked in the code. Two things wait on the owner and gate
-everything downstream:
+everything downstream — and one build waits on a session:
+
+- **Live edit mode is BUILT and UNMERGED**: `feat/live-edit` in
+  `../Clew-app-live-edit` (25 commits to `64fb7b2`, 791 tests green, build
+  green — the mode, the toolbar, in-place table editing, the `//` menu and
+  link hover previews, the last three designed by the planning session on
+  the owner's ask and built the same evening) and `feat/live-edit` in
+  `../Clew-docs-live-edit` (the manual: a new `live-edit.html`, three
+  screenshots, editing/reading-mode/settings/plugins pages, the `//` menu
+  and hover previews). Merge both TOGETHER — the manual must not describe an unmerged
+  feature — then `git worktree remove` both. The branch's own
+  `HANDOVER.md` carries the QA list and the decisions to exercise (§10).
 
 - **The GoDaddy DNS change.** All four names still resolve to GoDaddy
   parking. Until they point at the droplet there is no site, no
@@ -211,15 +229,21 @@ strings; `make stage-downloads`; `make check-links`; `make sync` and
 
 ## 6. Owner's own actions
 
+- **Live edit**: try it on a real vault (⌘⇧E; the demo's `Guide/Live
+  Edit`), run the QA list in the branch HANDOVER §1, decide the defaults
+  in `docs/dev/live-edit.md` §12 (plain click follows a concealed link,
+  ⌥-click edits; remote images not loaded; new tabs still open in source;
+  `|live` office embeds as thumbnails; MathJax macros shared across
+  notes; tables edit as source), then merge both branches together and
+  remove the two worktrees.
 - **The DNS change** (above). Everything about publishing waits on it.
-- **Clew-app now HAS a remote** — `origin`
-  `https://github.com/jmckalex/Clew-app.git`, with `main` at `c362a35`
-  plus `feat/excalidraw` and `spike/embedpdf`. Local `main` is 0 behind,
-  **19 ahead**, and is NOT tracking it (`git status` shows a bare
-  `## main`), so nothing pushes or pulls by default:
-  `git push -u origin main`. **Clew-docs still has no remote at all** —
-  74 commits and ~50k words of manual exist only on this Mac, and the
-  droplet is not a copy of them (§5).
+- **Both repos are PUSHED** (planning session, 2026-09-26, on the
+  owner's ask): Clew-app `main` and `feat/live-edit` to
+  `https://github.com/jmckalex/Clew-app.git`, both tracking `origin`;
+  Clew-docs got a remote — `https://github.com/jmckalex/Clew-docs.git`,
+  public like Clew-app — with `main` and `feat/live-edit` pushed and
+  tracking. The droplet is still not a copy of the docs (§5), but GitHub
+  now is.
 - Two offers still waiting on a yes or no: the stray link face on plain
   `[text]` brackets, and a manual line about `\[ \begin{align*} … \]`
   rendering in the preview but failing a LaTeX export.
@@ -269,10 +293,12 @@ write path; warm-cache query renders emit no EV_RENDER_DONE.
 
 ## 8. The owner works in this tree concurrently
 
-Tree CLEAN. `zeta-assets/` and `mptikz-assets/` are deliberate and
-gitignored. Never switch THIS tree off main. Live testing flips demo
-widgets — reset `status:`/`done:`/`^motto` baselines, and the foldable
-embed in `Guide/Links and Embeds.md`, before committing demo files.
+Tree CLEAN apart from this file. `zeta-assets/` and `mptikz-assets/` are
+deliberate and gitignored. Never switch THIS tree off main — which is why
+`feat/live-edit` lives in a WORKTREE (`git worktree list`; do not remove
+it). Live testing flips demo widgets — reset `status:`/`done:`/`^motto`
+baselines, and the foldable embed in `Guide/Links and Embeds.md`, before
+committing demo files.
 
 In Clew-docs the owner has uncommitted edits to `HANDOVER.md`, `Makefile`
 and `README.md` — leave them alone.
@@ -388,3 +414,83 @@ and `README.md` — leave them alone.
   RESETS its scroll; CDP keystrokes need the caret's viewport coords for
   the focusing click; `CLEW_SMOKE_LOG=1` prefixes scenario `console.log`
   with `[smoke:info]`.
+
+## 10. Live edit mode — BUILT on `feat/live-edit`, unmerged
+
+**Built 2026-09-26 by a separate Opus 5.5 session in the worktree**, with
+the planning session watching each commit (every one re-tested on an
+isolated extract; every `git add` an explicit path; nothing outside the
+worktree touched). One correction was sent and applied (`e0a5f44`): the
+frame layer had dropped `RENDER_SUBSCRIBE`, so a TeX-fragment or
+`normalSyntax` change no longer re-rendered live-edit frames — fixing it
+also uncovered that `render-service` keyed fragments by text alone, so a
+reconfigure returned the OLD hash; every fragment key now carries a
+configuration generation. The plan below became `docs/dev/live-edit.md`
+(the design as built, decisions in its §12); the kickoff brief is deleted;
+CLAUDE.md has a "Live edit" subsection. Measured on the way: live edit
+costs ~0.4 ms/keystroke on a 12 KB note and ~2.2 ms on a 207 KB one; 16
+block documents cost ~22 MB each over reading mode; CodeMirror's
+`cm-widgetBuffer` lifts a concealed heading's line by 1px unless the
+images sit on the baseline. **In-place table editing** followed the same
+evening (`c10f524`, `c6f3169`; design in `docs/dev/live-edit.md` §5.5a as
+built): one nested CodeMirror view per note editor mounted into the
+active cell, its document a projection of the cell's span, every
+keystroke forwarded to the note's document (one model, one undo history),
+the table pinned concealed by an `activeCell` slot in the reveal field,
+`updateDOM` sparing the active cell (measured: CodeMirror does call it —
+the cell editor is the same element across typing). Two corrections from
+the watching session were applied: a `<br>` in a cell drew as text; and
+the disk reload used to replace the whole document (now the smallest
+change, `editor/minimal-change.js`, which steadies the cursor in source
+mode too). Then the **`//` menu** (`2c7d8a8`, the Format menu at the
+cursor) and **link hover previews** (`64fb7b2`, design in
+`docs/dev/live-edit.md` §5.11): a vault link hovered for 500 ms previews
+as `![[path#…|bare]]` through the block endpoint, in one popover per
+window that never takes focus, in source, live and reading mode; setting
+`linkPreview: hover | mod | off`; the smoke harness gained `{move:{x,y}}`.
+Both branches were pushed at the end of the tenth session (§6). The rest
+of this section is the plan's history.
+
+The owner asked (2026-09-26) for a plan for an Obsidian-style **live edit
+mode** — syntax concealed and rendered in place except under the cursor —
+covering the whole jmarkdown dialect, with a proper toolbar, detailed
+enough for Opus 5.5 to build. Two documents, both on the branch (now
+committed there, and since superseded as described above):
+
+- `docs/dev/live-edit-plan.md` (1,291 lines) — the design: a third
+  `tab.view.mode`, a CodeMirror `Compartment` over the SAME EditorView
+  (no second editor, no round trip — the file stays the model), the
+  reveal rule as a pure function, a construct model built from the lezer
+  tree plus the jmd scanner (which must grow structured `constructs`),
+  three rendering tiers (decorations; renderer-built tables/images;
+  engine-rendered block FRAMES through the existing `__clew_fragment__`
+  path, hoisted into a layer inside the scroller because CodeMirror
+  recycles widget DOM and any DOM move reloads an iframe), MathJax in the
+  app page for all math, a declarative registry-driven toolbar with a
+  pure overflow layout, settings, tests, smoke scenarios, manual and
+  demo-vault work, seven phases with acceptance criteria, and eight
+  owner decisions with defaults.
+- `docs/dev/live-edit-kickoff.md` — the brief to point the build session
+  at: setup in the worktree, reading order, rules, phase order, first
+  hour.
+
+Decisions taken in the plan that the owner may want to re-open (§13
+there): clicking a concealed link FOLLOWS it (⌥-click edits); remote
+`http(s)` images stay unloaded (CSP unchanged); ⌘⇧E toggles live/source;
+new tabs still default to source; `|live` office embeds render as
+thumbnails in live edit; MathJax macro state is shared across notes;
+tables edit as source on activation. Owner's question answered in that
+session: building on something other than CodeMirror would be HARDER
+(every alternative makes a rich tree the model and round-trips the
+dialect lossily) — cut scope (phase 5, the bubble) rather than substrate.
+
+Two prerequisites the plan names that touch other trees: the scanner
+grows `constructs` (Clew's own copy; offer upstream to jmacs after), and
+ONE additive engine change — a `currentFile` build option so a fragment
+render can set `global.current_file` — goes to the jmarkdown master and
+is re-synced; only phase 5 needs it, and until then Dataview `this` and
+`![[#Heading]]` self-embeds are refused by name inside a frame.
+
+The worktree has no `node_modules`; `npm install` there first. It shares
+the engine master and the EmbedPDF master with this tree, so `npm run dev`
+re-syncs as usual.
