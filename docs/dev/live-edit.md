@@ -933,6 +933,107 @@ hidden while it is revealed.
   the scenario then returns to the mermaid fence, because the pane's one
   iframe must end the run holding the document the frame script reads.
 
+### 5.13 Cross-references — @label, @ref, @cref, @Cref
+
+Designed by the planning session at the owner's request: labels and
+references are the manuscript's own links — an index, completion, a
+rendered chip, a click that jumps, a hover that previews — with the
+numbers the export will print shown while you write.
+
+**§0, the engine contract, verified against vendor/jmarkdown/src** (the
+design's reading was right except where marked ◆):
+
+- `post-processor.js` numbers in this order, HTML only: headings under
+  `Headings: numeric` (`add_labels_to_headers`: EVERY `:header`, h1
+  included, "1.", "1.2."), figures (subfigures `1a`), tables, listings,
+  theorems (ONE counter over `.theorem-env`), equations (`div.equation`,
+  from `@begin(equation)` only), custom `.jmd-env` per counter group; then
+  `process_crossrefs`: a `.xref-label` takes its footnote's number
+  (`closest('[id^="footnote-"]')`), else the innermost
+  `[data-xref-number]`, else `prevAll('.xref')` — the heading's own number
+  span, so only a label IN a numbered heading — else '' (a reference then
+  prints `??`). A trailing '.' is stripped. Duplicate keys: the later wins.
+- `@ref` prints the BARE number — an equation's too ("2", not "(2)") ◆;
+  the design and the manual both said "(2)". `@cref`/`@Cref` go through
+  `crossref.js#typedRefText` ("equation&#160;(2)").
+- A theorem's name is its `[…]` text (`ctx.text` → `data-name`), NOT a
+  `title=` attribute ◆ — the demo vault's Math and Theorems note had
+  `{#thm-main title="…"}`, which the engine ignores; fixed.
+- `{#key}` cannot carry a colon; `{id=key}` can (theorems.js, floats.js).
+- A heading's type word is `sectioning.js#commandForDepth` (`Heading base`,
+  `Document class`: depth 1 is a section in an article, a chapter in a
+  book).
+- Clew's engine config sets `Header style: fenced`, so `Headings: numeric`
+  must sit in `---` frontmatter.
+
+**As built:**
+
+- **Index**: `shared/note-metadata.js` gains `labels: [{key, kind, line,
+  col, title, host: {from, to}}]` — `{#key}`/`{id=key}` on an opener
+  (`attrLabel`, exported) and `@label`/`:label` outside code and maths; kind
+  is the numbered environment's name, `env:<name>` otherwise, `section`,
+  `footnote` or `plain`; an `@label` inside a verbatim body (an equation,
+  a diagram) is not one. The opener/closer regexes are RESTATED there ◆ —
+  shared/ must not import the renderer's scanner. The indexer's cache
+  version is bumped (2) so existing vaults re-extract; `vaultStore.labelsFor`.
+- **Numbering** `editor/live/numbering.js#numberDocument(doc)`: a pure pass
+  over the note's TEXT ◆ (the design had it over the live model), keyed by
+  LINE — an opener's, a heading's — so live edit, source-mode completion and
+  hover share one pass and need no live model. Memoised per `Text`; a
+  pre-check skips notes with nothing the engine numbers (measured: a 210 KB
+  note of diagrams 0.12 ms; a full pass on that note with a theorem in it
+  2.4 ms). `typedRefText` is imported from the vendored `crossref.js`
+  itself (a leaf module; `&#160;` becomes a real no-break space);
+  `commandForDepth`'s tables are ported, and `tests/numbering.test.js`
+  reads the vendored `sectioning.js` and asserts they agree. Per note in
+  v1; the multi-file offsets are not built.
+- **Live edit**: `EnvHeadWidget` says "Theorem 2" / "Figure 1" / "(a)" for
+  a subfigure; the `@begin(equation)` MathWidget carries `data-le-tag`
+  "(n)", drawn at the right like `.eqn-number`; a numbered heading gets a
+  "1.2." widget after its concealed `##`; `@label` stays the ⚓ chip with
+  its number in the tooltip; `@ref`/`@cref`/`@Cref` become `le-ref` chips
+  showing what the engine will print. An unknown key shows `??` ◆ (the
+  design's §3 said "the key"; its decisions table and the engine both say
+  `??`, and parity wants the engine's text — the key is in the tooltip),
+  as does a numberless target; an undeclared custom environment shows `?`.
+  A click jumps to the label's line and leaves a Back entry:
+  `recordAnchorJump(…, {editor: true})` puts a `pendingLine` in the entry
+  and `clew-editor-view.js` lands on it when Back restores it ◆ (tab
+  history restored reading positions only; the editor ignored a same-note
+  jump's Back). ⌥-click edits.
+- **Hover**: `linkAt` recognises the six spellings (`kind: 'xref'`);
+  `previewSpec` asks `resolve.label(key)` → `numbering.js#labelPreview`: the
+  host's source through the block endpoint (a heading host as
+  `![[Note#Heading|bare]]`), headed "Theorem 2 — Fundamental Triviality".
+  The lone fragment's own "Theorem 1." is hidden by a `<style>` block
+  PREPENDED to the fragment's text ◆, not a `?label=1` query read by
+  protocol.js — no protocol change. In source mode a key is unpainted text
+  (only the directive's sigil, name and brackets are classed), so the hover
+  gate accepts a bare `.cm-line` for an xref and checks the geometry itself.
+- **Completion** `complete/crossrefs.js` in both editors: the note's labels
+  from the numbering of the CURRENT state, detailed "theorem 2 — Title";
+  applying adds the `]`. Inclusion neighbours in a jmarkdownProject vault
+  are NOT built ◆ (v1 is per note throughout).
+- **Commands**: `format:label`/`format:reference` write `@label[]`/`@ref[]`
+  (a reference then opens completion); `format:cref`, `format:Cref`;
+  `editor:jump-to-label` (a list modal; Back returns). The Format menu reads
+  "Label — @label[key]", "Reference — @ref[key]", "Typed Reference —
+  @cref[key]". No sigil setting.
+- **inline-dom** renders `ref`/`label` tokens (table cells, callout titles).
+- **Manifest keys**: an engine surface's `fences` and `numbered` (a name or
+  `{name, counter, refname}`) pass through plugins.js untouched (it already
+  spread the surface spec); `renderer/plugins.js` unions the enabled
+  plugins' into `pluginEngineDeclarations()`, which `readLiveConfig` feeds
+  to the model (`richFences`) and the numbering (`numbered`); a change
+  reconfigures live editors. The demo's Charts plugin declares
+  `"fences": ["chart"]`.
+- **Parity** (`smoke/crossref-scenario.js`): live edit's chips and the
+  numbering's targets, then the ENGINE's own `.xref-ref`/`.xref-cref` texts
+  and `data-xref-number`/`.header-label` stamps read from the reading
+  document — equal element by element, before and after a theorem is typed
+  above the others (`numbers-match=true`). The demo's Math and Theorems
+  note matched too.
+
 ## 6. The toolbar
 
 ### 6.1 Principles
@@ -1577,6 +1678,10 @@ still prefer, and changing one is a small, local edit.
 | MathJax macros | one page-wide MathJax: macros leak across notes (documented) | a per-note InputJax |
 | Tables | edited in place on a click; Esc, ⌥-click or "Edit as source" for the source; reflow once on leaving | reveal source on click; never reflow automatically |
 | Reading mode's bar | a slim bar with the mode switch | none |
+| What the insert commands write | `@label` / `@ref` / `@cref` | a per-vault sigil setting |
+| Cross-reference completion scope | this note | the whole vault, detailed by note |
+| Unknown or numberless reference | `??` in the danger colour, reason in the tooltip | hide the chip, show the source |
+| Custom numbered environments | the manifest's `numbered` key; undeclared → `?` | count any `{#key}` environment per name |
 | Preview pane: block placement | below the block, the text column's width | to the right of the text on a wide pane |
 | Preview pane: inline maths | above the line at the formula | a tooltip under the caret |
 | Preview pane: cadence | 150 ms maths, 400 ms mermaid, 700 ms TeX kinds | one setting for all |

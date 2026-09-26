@@ -17,6 +17,7 @@
 //
 // Two halves: `inlineTokens` (pure, unit-tested — a token tree) and
 // `tokensToDom` (trivial DOM building).
+import { numberDocument, refDisplay } from './numbering.js';
 
 /** Styled constructs: which element each becomes. */
 const TAGS = {
@@ -35,6 +36,9 @@ const TAGS = {
  */
 export function inlineTokens(doc, from, to, model) {
 	const inside = model.filter((c) => c.level === 'inline' && c.tier !== 'C' && c.from >= from && c.to <= to);
+	// References and labels (§5.13) resolve against the note's numbering.
+	let numbering = null;
+	const numbers = () => (numbering ??= numberDocument(doc));
 	return walk(from, to);
 
 	/** Text, with each literal `<br>` a break (the engine renders it so; a
@@ -89,6 +93,16 @@ export function inlineTokens(doc, from, to, model) {
 				return { type: 'tag', name: c.name, text: source };
 			case 'escape':
 				return { type: 'text', text: source.slice(1) };
+			case 'directiveInline':
+			case 'directiveAt': {
+				const key = c.content ? doc.sliceString(c.content.from, c.content.to).trim() : '';
+				if (key && ['ref', 'cref', 'Cref'].includes(c.name)) {
+					const shown = refDisplay(numbers(), key, c.name);
+					return { type: 'ref', key, text: shown.text, state: shown.state, title: shown.tip };
+				}
+				if (key && c.name === 'label') return { type: 'label', key, text: `⚓ ${key}` };
+				return { type: 'text', text: source };
+			}
 			default:
 				return { type: 'text', text: source };
 		}
@@ -120,6 +134,14 @@ function nodeFor(t, renderMath) {
 		return el;
 	}
 	if (t.type === 'math') return renderMath(t.tex, t.display, t.source);
+	if (t.type === 'ref' || t.type === 'label') {
+		const el = document.createElement('span');
+		el.className = t.type === 'ref' ? `le-chip le-ref le-ref-${t.state}` : 'le-chip le-label';
+		if (t.type === 'ref') el.dataset.leRef = t.key;
+		if (t.title) el.title = t.title;
+		el.textContent = t.text;
+		return el;
+	}
 	if (t.type === 'tag') {
 		const el = document.createElement('span');
 		el.className = 'jmd-tag le-tag';

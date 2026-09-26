@@ -19,6 +19,9 @@ const WIKILINK = /(!?)\[\[([^[\]|#\n]*)(?:#([^[\]|\n]+))?(?:\|([^[\]\n]+))?\]\]/
  *  an optional quoted title. */
 const MDLINK = /(!?)\[([^\]\n]*)\]\(\s*(?:<([^>\n]+)>|([^\s()]+(?:\([^\s()]*\))?[^\s()]*))(?:\s+"[^"\n]*")?\s*\)/g;
 
+/** `@ref[key]` and its kin, `@` or `:` (§5.13). */
+const XREF = /(^|[^\w@:\\])([@:])(ref|cref|Cref)\[([^\]\n]+)\]/g;
+
 /** The column ranges of the line's code spans (backtick runs of equal
  *  length) — a link inside one is text. */
 function codeSpans(text) {
@@ -47,7 +50,8 @@ const hasExternal = (alias) => (alias ?? '').split('|').some((p) => p.trim().toL
  *
  * @returns {null | {kind: 'wikilink', embed: boolean, target: string, heading: string,
  *   alias: string, external: boolean, from: number, to: number}
- *   | {kind: 'markdown', embed: boolean, url: string, text: string, from: number, to: number}}
+ *   | {kind: 'markdown', embed: boolean, url: string, text: string, from: number, to: number}
+ *   | {kind: 'xref', form: 'ref'|'cref'|'Cref', key: string, from: number, to: number}}
  */
 export function linkAt(lineText, column) {
 	const inCode = codeSpans(lineText).some(([a, b]) => column >= a && column < b);
@@ -62,6 +66,13 @@ export function linkAt(lineText, column) {
 			kind: 'wikilink', embed: m[1] === '!', target: m[2].trim(), heading: (m[3] ?? '').trim(),
 			alias: m[4] ?? '', external: hasExternal(m[4]), from, to,
 		};
+	}
+	XREF.lastIndex = 0;
+	while ((m = XREF.exec(lineText))) {
+		const from = m.index + m[1].length;
+		const to = m.index + m[0].length;
+		if (column < from || column > to) continue;
+		return { kind: 'xref', form: m[3], key: m[4].trim(), from, to };
 	}
 	MDLINK.lastIndex = 0;
 	while ((m = MDLINK.exec(lineText))) {
@@ -96,8 +107,10 @@ const safeDecode = (s) => { try { return decodeURI(s); } catch { return s; } };
  *
  * @param {ReturnType<typeof linkAt>} link
  * @param {{ note: (name: string) => string|null, file: (name: string) => string|null,
- *   current: string|null }} resolve - the vault's resolvers, and the note
- *   being edited (a same-note `#Heading` previews that note's section)
+ *   current: string|null, label?: (key: string) => ({text: string, label: string}|null) }} resolve
+ *   - the vault's resolvers, the note being edited (a same-note `#Heading`
+ *   previews that note's section), and — for a reference — what its label's
+ *   host renders as (live/numbering.js#labelPreview)
  * @returns {null
  *   | { kind: 'block', path: string, text: string, label: string }
  *   | { kind: 'image', path: string, label: string }
@@ -107,6 +120,11 @@ const safeDecode = (s) => { try { return decodeURI(s); } catch { return s; } };
  */
 export function previewSpec(link, resolve) {
 	if (!link) return null;
+	if (link.kind === 'xref') {
+		const host = resolve.label?.(link.key) ?? null;
+		if (!host) return { kind: 'unresolved', name: link.key, label: link.key, message: `No label “${link.key}” in this note` };
+		return { kind: 'block', path: resolve.current, text: host.text, label: host.label };
+	}
 	let target;
 	let heading;
 	if (link.kind === 'markdown') {

@@ -289,3 +289,19 @@ body[data-theme='light'] .le-frame { color-scheme: light; }
 	margin-bottom: 4px;
 	cursor: pointer;
 }
+
+/* Cross-references (§5.13): reference chips show the number the engine will
+   print; a missing label is the key in the danger colour; a numberless one
+   "??". Numbered headings get the engine's prefix; an @begin(equation) its
+   "(n)" at the right, as reading mode's .eqn-number. */
+.le-ref.le-chip { background: none; padding: 0; color: var(--clew-accent); cursor: pointer; }
+.le-ref.le-chip:hover { text-decoration: underline; }
+.le-ref-missing.le-chip { color: var(--clew-danger); text-decoration: underline dotted; }
+.le-ref-numberless.le-chip, .le-ref-uncounted.le-chip { color: var(--clew-danger); }
+.le-heading-number { background: none !important; padding: 0 0.35em 0 0 !important; color: var(--clew-text-muted); font: inherit; }
+.le-math-block[data-le-tag] { position: relative; }
+.le-math-block[data-le-tag]::after {
+	content: attr(data-le-tag);
+	position: absolute; right: 0.5em; top: 50%; transform: translateY(-50%);
+	color: var(--clew-text-normal);
+}

@@ -23,19 +23,22 @@ import { literalAt } from './literal-at.js';
 import { linkPreview } from './link-preview.js';
 import { vaultStore } from '../state/vault-store.js';
 import { settingsStore } from '../state/settings-store.js';
+import { labelPreview } from './live/numbering.js';
 
 /** What is drawn as a link, in either mode. */
-const LINK_SELECTOR = '.le-link, .le-wikilink, .le-embed-chip, .jmd-wikilink-bracket, .jmd-wikilink-target, .jmd-wikilink-alias, .cmt-link, .cmt-url';
+const LINK_SELECTOR = '.le-link, .le-wikilink, .le-embed-chip, .le-ref, .jmd-wikilink-bracket, .jmd-wikilink-target, .jmd-wikilink-alias, .cmt-link, .cmt-url, .jmd-directive-name, .jmd-directive-bracket, .jmd-directive-punct';
 const MOD_KEYS = new Set(['Meta', 'Control']);
 
 /** `'hover' | 'mod' | 'off'`. */
 export const previewMode = () => settingsStore.get('linkPreview') ?? 'hover';
 
 /** The vault's resolvers, for previewSpec. */
-export const vaultResolvers = (current) => ({
+export const vaultResolvers = (current, doc = null) => ({
 	note: (name) => vaultStore.resolveNoteName(name),
 	file: (name) => vaultStore.resolveFileName(name),
 	current,
+	// A reference's label lives in the note being edited (v1: per note).
+	label: (key) => (doc ? labelPreview(doc, key, current) : null),
 });
 
 /** Which note each view shows — the pool says (pool.js), since a state
@@ -93,19 +96,32 @@ export function linkHover() {
 			if (found.key === this.key) return;
 			this.key = found.key;
 			const path = notePaths.get(this.view) ?? null;
-			linkPreview().hover(previewSpec(found.link, vaultResolvers(path)), found.rect, path, { now });
+			linkPreview().hover(previewSpec(found.link, vaultResolvers(path, this.view.state.doc)), found.rect, path, { now });
 		}
 
 		linkUnder({ x, y, target }) {
-			const el = (target?.nodeType === 1 ? target : target?.parentElement)?.closest?.(LINK_SELECTOR);
+			const node = target?.nodeType === 1 ? target : target?.parentElement;
 			const { view } = this;
+			let el = node?.closest?.(LINK_SELECTOR);
+			// A reference's KEY is unpainted text in source mode (only the
+			// sigil, name and brackets are classed): accept the bare line,
+			// and let the geometry below decide.
+			const bare = !el && node?.closest?.('.cm-line') && !node.closest('.le-cell-editor') ? node.closest('.cm-line') : null;
+			el ??= bare;
 			// A table cell edited in place is its own editor (not in v1).
 			if (!el || !view.contentDOM.contains(el) || el.closest('.le-cell-editor')) return null;
 			const pos = view.posAtCoords({ x, y });
 			if (pos === null || literalAt(view.state, pos)) return null;
 			const line = view.state.doc.lineAt(pos);
 			const link = linkAt(line.text, pos - line.from);
-			if (!link) return null;
+			if (!link || (bare && link.kind !== 'xref')) return null;
+			if (bare) {
+				// posAtCoords snaps to the nearest position: be sure the
+				// pointer is really over the reference's text.
+				const a = view.coordsAtPos(line.from + link.from, 1);
+				const b = view.coordsAtPos(line.from + link.to, -1);
+				if (!a || !b || y < a.top || y > b.bottom || (a.top === b.top && (x < a.left || x > b.right))) return null;
+			}
 			return { link, key: `${line.from + link.from}:${line.text.slice(link.from, link.to)}`, rect: el.getBoundingClientRect() };
 		}
 	});

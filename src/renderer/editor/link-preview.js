@@ -162,12 +162,12 @@ class ClewLinkPreview extends FloatingPane {
 			const what = /\.[A-Za-z0-9]+$/.test(spec.name) && !/\.(md|jmd)$/i.test(spec.name) ? 'file' : 'note';
 			const line = document.createElement('span');
 			line.className = 'link-preview-card-title';
-			line.textContent = `No ${what} called ${spec.name}`;
+			line.textContent = spec.message ?? `No ${what} called ${spec.name}`;
 			const hint = document.createElement('span');
 			hint.className = 'link-preview-card-hint';
-			hint.textContent = what === 'note' ? 'Click to create it' : 'Nothing in the vault has that name';
+			hint.textContent = spec.message ? 'Add @label[…] where it should point' : what === 'note' ? 'Click to create it' : 'Nothing in the vault has that name';
 			this.card.replaceChildren(line, hint);
-			this.card.disabled = what !== 'note';
+			this.card.disabled = what !== 'note' || Boolean(spec.message);
 			this.#height = 0;
 		} else if (!sameTarget || !this.frameHash) {
 			const result = await this.renderIntoFrame(spec.text, sourcePath);

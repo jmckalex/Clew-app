@@ -97,8 +97,9 @@ export const FORMAT_MENU = [
 			{ separator: true },
 			{ id: 'format:footnote', label: 'Footnote — [fn: …]' },
 			{ id: 'format:citation', label: 'Citation — \\cite{…}' },
-			{ id: 'format:label', label: 'Label — :label[key]' },
-			{ id: 'format:reference', label: 'Reference — :ref[key]' },
+			{ id: 'format:label', label: 'Label — @label[key]' },
+			{ id: 'format:reference', label: 'Reference — @ref[key]' },
+			{ id: 'format:cref', label: 'Typed Reference — @cref[key]' },
 			{ separator: true },
 			{ id: 'format:toc', label: 'Table of Contents — {{TOC}}' },
 			{ id: 'format:today', label: "Today's Date — :today" },
@@ -137,5 +138,5 @@ export const CELL_SAFE_COMMANDS = new Set([
 	'edit:format-strong', 'edit:format-intense', 'edit:format-italic', 'format:underline',
 	'edit:format-highlight', 'edit:format-strike', 'format:subscript', 'format:superscript',
 	'edit:format-code', 'edit:format-math', 'edit:insert-wikilink', 'format:insert-link',
-	'format:footnote', 'format:citation', 'format:label', 'format:reference', 'format:today',
+	'format:footnote', 'format:citation', 'format:label', 'format:reference', 'format:cref', 'format:Cref', 'format:today',
 ]);

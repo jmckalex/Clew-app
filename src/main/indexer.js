@@ -23,7 +23,7 @@ import { compileExcludes } from './vault-excludes.js';
 // The ignore rules live in vault-excludes.js now — one list, consulted by
 // every walk, and overridable per vault. This file used to keep a second
 // copy of it, which is exactly how two walks come to disagree.
-const CACHE_VERSION = 1;
+const CACHE_VERSION = 2; // 2: labels (cross-references)
 
 // Drawings are indexed alongside notes. A .excalidraw.md already qualified by
 // extension (and was being scanned as raw markdown, so its base64 blob was

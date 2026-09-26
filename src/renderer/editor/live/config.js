@@ -24,6 +24,7 @@ import { Facet } from '@codemirror/state';
  * @property {boolean} renderEmbeds   engine frames for embeds and media
  * @property {number} frameCap        live block documents per editor
  * @property {string[]} richFences    extra fence names plugins render
+ * @property {Map<string, object>} numbered  environments plugins number (§5.13)
  * @property {string|null} notePath   the note this editor holds (vault-relative)
  * @property {string|null} tabId      the tab it is in (frames act on this pane)
  */
@@ -37,6 +38,7 @@ export const DEFAULT_LIVE_CONFIG = Object.freeze({
 	renderEmbeds: true,
 	frameCap: 16,
 	richFences: [],
+	numbered: new Map(),
 	notePath: null,
 	tabId: null,
 });
@@ -52,7 +54,7 @@ export const liveConfigFacet = Facet.define({
  * @param {{ get(key: string): any }} vaultSettings
  * @returns {LiveConfig}
  */
-export function readLiveConfig(settings, vaultSettings) {
+export function readLiveConfig(settings, vaultSettings, declarations = { fences: [], numbered: new Map() }) {
 	const cap = Number(settings.get('liveFrameCap'));
 	return {
 		normalSyntax: vaultSettings.get('normalSyntax') === true,
@@ -61,7 +63,8 @@ export function readLiveConfig(settings, vaultSettings) {
 		renderFences: settings.get('liveRenderFences') !== false,
 		renderEmbeds: settings.get('liveRenderEmbeds') !== false,
 		frameCap: Number.isFinite(cap) ? Math.min(64, Math.max(4, Math.round(cap))) : 16,
-		richFences: [],
+		richFences: declarations.fences,
+		numbered: declarations.numbered,
 		notePath: null,
 		tabId: null,
 	};

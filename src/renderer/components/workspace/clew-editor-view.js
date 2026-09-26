@@ -70,7 +70,17 @@ class ClewEditorView extends ClewElement {
 		});
 		// Source ↔ live is a flip of THIS view (the tab group keeps it
 		// mounted for both), so the mode is followed here.
-		this.listen(workspaceStore, 'layout-changed', () => this.#applyMode());
+		this.listen(workspaceStore, 'layout-changed', () => {
+			this.#applyMode();
+			// Back to an editor jump's origin (tree.js#recordAnchorJump).
+			const saved = workspaceStore.findTab(this.tabId)?.tab.view;
+			const view = editorPool.get(this.tabId)?.view;
+			if (saved?.pendingLine && view && saved.mode !== 'reading') {
+				const line = saved.pendingLine;
+				delete saved.pendingLine;
+				this.#landOn(view, line);
+			}
+		});
 		this.listen(settingsStore, 'settings-changed', (key) => {
 			if (key === 'editorToolbar') this.#syncToolbar();
 		});

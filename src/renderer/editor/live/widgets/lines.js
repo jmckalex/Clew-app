@@ -129,18 +129,20 @@ export class EnvHeadWidget extends KeyedWidget {
 	 * @param {string} caption - its `[content]`, or ''
 	 * @param {string} attrs - its `{attrs}` summary, or ''
 	 * @param {string} note - an extra word ("LaTeX only")
+	 * @param {string} [numbered] - what the engine prints for it, "Theorem 2"
+	 *   (live/numbering.js), shown in place of the bare name
 	 */
-	constructor(name, caption, attrs, note) {
-		super(`${name}|${caption}|${attrs}|${note}`);
-		Object.assign(this, { name, caption, attrs, note });
+	constructor(name, caption, attrs, note, numbered = '') {
+		super(`${name}|${caption}|${attrs}|${note}|${numbered}`);
+		Object.assign(this, { name, caption, attrs, note, numbered });
 	}
 
 	toDOM() {
 		const el = document.createElement('span');
 		el.className = 'le-env-head le-reveal-on-click';
 		const name = document.createElement('span');
-		name.className = 'le-env-name';
-		name.textContent = this.name;
+		name.className = `le-env-name${this.numbered ? ' le-env-numbered' : ''}`;
+		name.textContent = this.numbered || this.name;
 		el.append(name);
 		if (this.caption) {
 			const caption = document.createElement('span');

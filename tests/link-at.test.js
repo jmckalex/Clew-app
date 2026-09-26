@@ -71,3 +71,17 @@ test('refused: unresolved by name; URLs, mailto and |external not at all', () =>
 	assert.equal(spec('[me](mailto:a@b.c)', 'me'), null);
 	assert.equal(previewSpec(null, resolve), null);
 });
+
+test('references: the four spellings, @ and :, and what they preview', () => {
+	for (const form of ['ref', 'cref', 'Cref']) {
+		for (const sigil of ['@', ':']) {
+			const l = at(`See ${sigil}${form}[thm-a] here`, 'thm');
+			assert.deepEqual([l.kind, l.form, l.key], ['xref', form, 'thm-a']);
+		}
+	}
+	assert.equal(at('an email@ref[x]', 'x]'), null, 'not after a word');
+	assert.equal(at('`@ref[x]`', 'x]'), null, 'inside code');
+	const withLabel = { ...resolve, label: (key) => (key === 'thm-a' ? { text: 'SRC', label: 'Theorem 1' } : null) };
+	assert.deepEqual(previewSpec(at('@cref[thm-a]', 'thm'), withLabel), { kind: 'block', path: 'Here.md', text: 'SRC', label: 'Theorem 1' });
+	assert.equal(previewSpec(at('@ref[none]', 'none'), withLabel).kind, 'unresolved');
+});

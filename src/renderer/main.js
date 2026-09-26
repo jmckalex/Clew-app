@@ -122,6 +122,7 @@ window.__clew = { linkPreview, previewPane, workspaceStore, vaultStore, vaultSet
 // Live edit's in-place table cells, for scenarios (smoke/live-table-edit-scenario.js).
 import('./editor/live/table-cell-editor.js').then((m) => { window.__clew.activeCellView = m.activeCellView; });
 import('./commands/registry.js').then((registry) => { window.__clew.registry = registry; });
+import('./editor/live/numbering.js').then((m) => { window.__clew.numbering = m; });
 
 // ---- boot -----------------------------------------------------------------
 

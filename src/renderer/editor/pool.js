@@ -27,12 +27,13 @@ import { destroyCellEditor } from './live/table-cell-editor.js';
 import { minimalChange } from './minimal-change.js';
 import { readLiveConfig } from './live/config.js';
 import { setViewNotePath } from './link-hover.js';
+import { pluginEngineDeclarations, onPluginEngineDeclarations } from '../plugins.js';
 
 /** Live edit refuses documents above this size (plan §9); source mode
  *  degrades on its own past the same threshold (jmd/overlay.js). */
 export const LIVE_BIG_DOC = 500000;
 const LIVE_SETTINGS = new Set(['liveReveal', 'liveRenderMath', 'liveRenderFences', 'liveRenderEmbeds', 'liveFrameCap']);
-const liveConfig = () => readLiveConfig(settingsStore, vaultSettingsStore);
+const liveConfig = () => readLiveConfig(settingsStore, vaultSettingsStore, pluginEngineDeclarations());
 
 /** The vault's dialect switch, as the grammar wants it. */
 const normalSyntax = () => vaultSettingsStore.get('normalSyntax') === true;
@@ -63,6 +64,8 @@ class EditorPool extends Emitter {
 		settingsStore.on('settings-changed', (key) => {
 			if (LIVE_SETTINGS.has(key)) this.reconfigureLive();
 		});
+		// A plugin declaring fences or numbered environments came or went.
+		onPluginEngineDeclarations(() => this.reconfigureLive());
 	}
 
 	/**

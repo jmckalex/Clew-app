@@ -33,6 +33,7 @@ import { calloutFolded } from './block-field.js';
 import { ImageWidget } from './widgets/image.js';
 import { imageSpec } from './images.js';
 import { ChipWidget } from './widgets/chip.js';
+import { numberDocument, refDisplay, headText, typedRefText } from './numbering.js';
 import { vaultStore } from '../../state/vault-store.js';
 import { citationLabel, citationsReady } from '../complete/citations.js';
 
@@ -65,6 +66,9 @@ function build(view) {
 	const text = (r) => doc.sliceString(r.from, r.to);
 	/** Ranges replaced whole: nothing inside them is decorated. */
 	const replaced = [];
+
+	// What the engine will number, and what each label resolves to (§5.13).
+	const numbering = numberDocument(doc, config.numbered?.size ? { numbered: config.numbered } : undefined);
 
 	// Footnotes are numbered in document order, as the engine numbers them.
 	const footnoteNumber = new Map();
@@ -183,9 +187,13 @@ function build(view) {
 					cls: 'le-today', text: new Date().toLocaleDateString(), title: text(c),
 				}));
 				return;
-			case 'label':
-				widget(c.from, c.to, new ChipWidget({ cls: 'le-label', text: `⚓ ${content}`, title: text(c) }));
+			case 'label': {
+				const target = numbering.labels.get(content);
+				const says = target?.status === 'ok' && target.number
+					? typedRefText(target.type, target.number, true) : 'no number (a reference prints ??)';
+				widget(c.from, c.to, new ChipWidget({ cls: 'le-label', text: `⚓ ${content}`, title: `label ${content} — ${says}` }));
 				return;
+			}
 			case 'TeX':
 				c.hidden.forEach(hide);
 				mark(c.content?.from ?? c.from, c.content?.to ?? c.from, 'le-tex-only', { title: 'LaTeX only' });
@@ -195,11 +203,17 @@ function build(view) {
 				return;
 			case 'ref':
 			case 'cref':
-			case 'Cref':
+			case 'Cref': {
 				if (!c.content) break;
-				c.hidden.forEach(hide);
-				mark(c.content.from, c.content.to, 'le-ref', { 'data-le-ref': content, title: `${c.name}: ${content}` });
+				// The number the engine will print (numbering.js); a click
+				// jumps to the label (events.js), ⌥-click edits.
+				const shown = refDisplay(numbering, content, c.name);
+				widget(c.from, c.to, new ChipWidget({
+					cls: `le-ref le-ref-${shown.state}`, text: shown.text, title: shown.tip,
+					reveal: false, data: { leRef: content },
+				}));
 				return;
+			}
 			default:
 		}
 		if (c.content) {
@@ -226,10 +240,18 @@ function build(view) {
 			if (c.tier !== 'A' || !inView(c.lineFrom, c.lineTo)) continue;
 			const hidden = !live.revealed.has(c.id);
 			switch (c.kind) {
-				case 'heading':
+				case 'heading': {
 					lineClass(c.from, `le-h le-h${c.depth}`);
 					if (hidden) c.hidden.forEach(hide);
+					// `Headings: numeric`: the number the engine prefixes.
+					const numbered = hidden && numbering.headingsNumeric && numbering.lines.get(doc.lineAt(c.from).number);
+					if (numbered && c.hidden[0]) {
+						out.push(Decoration.widget({
+							widget: new ChipWidget({ cls: 'le-heading-number', text: `${numbered.number}.`, reveal: false }), side: 1,
+						}).range(c.hidden[0].to));
+					}
 					break;
+				}
 				case 'align':
 					lineClass(c.from, `le-align-${c.align}`);
 					if (hidden) c.hidden.forEach(hide);
@@ -293,8 +315,9 @@ function build(view) {
 					if (!hidden) break;
 					const caption = c.content ? doc.sliceString(c.content.start ?? c.content.from, c.content.end ?? c.content.to) : '';
 					const attrs = c.attrs ? doc.sliceString(c.attrs.start ?? c.attrs.from, c.attrs.end ?? c.attrs.to) : '';
+					const entry = numbering.lines.get(doc.lineAt(c.openLine.from).number);
 					widget(c.openLine.from, c.openLine.to, new EnvHeadWidget(name, caption, attrs,
-						c.texOnly ? 'LaTeX only' : c.htmlOnly ? 'HTML only' : ''));
+						c.texOnly ? 'LaTeX only' : c.htmlOnly ? 'HTML only' : '', entry ? headText(entry) : ''));
 					if (c.closeLine && c.closeLine.to > c.closeLine.from) widget(c.closeLine.from, c.closeLine.to, new EnvFootWidget());
 					break;
 				}

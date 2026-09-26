@@ -63,3 +63,12 @@ test('a literal <br> is a line break (a table cell writes its breaks so)', () =>
 test('an escaped pipe shows as a pipe', () => {
 	assert.equal(show(tokens('a\\|b')), '"a" "|" "b"');
 });
+
+test('references and labels: the number the engine prints, the key for a label', () => {
+	const doc = '@begin(theorem){#t}\nx\n@end(theorem)\n\nSee @ref[t], :cref[t], @ref[gone] and @label[here].';
+	const from = doc.indexOf('See');
+	const state = EditorState.create({ doc, extensions: [noteMarkdown()] });
+	const ts = inlineTokens(state.doc, from, doc.length, liveModel(state));
+	assert.equal(show(ts), '"See " ref[1] ", " ref[theorem 1] ", " ref[??] " and " label[⚓ here] "."');
+	assert.equal(ts.find((t) => t.key === 'gone').state, 'missing');
+});

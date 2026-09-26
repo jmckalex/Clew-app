@@ -354,11 +354,16 @@ export function navigateTab(state, tabId, path, kind = 'note') {
  * the spot the reader left becomes a Back entry. Same path, same kind —
  * only the remembered line differs, which restore() carries in `view`.
  */
-export function recordAnchorJump(state, tabId, fromLine, toLine) {
+export function recordAnchorJump(state, tabId, fromLine, toLine, { editor = false } = {}) {
 	const found = findTab(state.root, tabId);
 	if (!found || found.tab.pinned) return false;
 	const { tab } = found;
-	tab.history.back.push({ path: tab.path, kind: tab.kind, view: { ...tab.view, cursorLine: fromLine } });
+	// An EDITOR jump (a cross-reference chip, jump-to-label) leaves a
+	// pendingLine in the entry: the editor view lands on it when Back
+	// restores it (clew-editor-view.js), as inverse search does.
+	const back = { ...tab.view, cursorLine: fromLine };
+	if (editor) back.pendingLine = fromLine;
+	tab.history.back.push({ path: tab.path, kind: tab.kind, view: back });
 	if (tab.history.back.length > HISTORY_LIMIT) tab.history.back.shift();
 	tab.history.forward = [];
 	tab.view = { ...tab.view, cursorLine: toLine };

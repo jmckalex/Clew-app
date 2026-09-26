@@ -29,6 +29,10 @@ import {
 	insertRow, deleteRow, insertColumn, deleteColumn, moveRow, moveColumn, setAlignment,
 } from '../editor/tables.js';
 import { notice } from '../plugins.js';
+import { numberDocument, typedRefText } from '../editor/live/numbering.js';
+import { openListModal } from '../components/modals/list-modal.js';
+import { workspaceStore } from '../state/workspace-store.js';
+import { EditorView } from '@codemirror/view';
 import { registerCommand, buildContext } from './registry.js';
 import { editorPool } from '../editor/pool.js';
 
@@ -379,6 +383,25 @@ function toggleTask(view) {
 	return true;
 }
 
+/** A list of the note's labels (§5.13) — kind, number, title — to jump to;
+ *  Back returns. */
+function jumpToLabel(view) {
+	const numbering = numberDocument(view.state.doc);
+	const items = [...numbering.labels].map(([key, t]) => ({
+		label: key,
+		detail: `${t.status === 'ok' && t.number ? typedRefText(t.type, t.number, true) : 'no number'}${t.title ? ` — ${t.title}` : ''}`,
+		run: () => {
+			const from = view.state.doc.lineAt(view.state.selection.main.head).number;
+			const tab = workspaceStore.activeTab();
+			if (tab) workspaceStore.recordAnchorJump(tab.id, from, t.line, { editor: true });
+			const at = view.state.doc.line(Math.min(t.line, view.state.doc.lines)).from;
+			view.dispatch({ selection: { anchor: at }, effects: EditorView.scrollIntoView(at, { y: 'center' }) });
+			view.focus();
+		},
+	}));
+	openListModal({ placeholder: 'Jump to a label in this note…', items, emptyText: 'No labels in this note' });
+}
+
 // ---- the commands ----------------------------------------------------------
 
 export function registerFormatCommands() {
@@ -450,10 +473,16 @@ export function registerFormatCommands() {
 			fn: (v) => insertInline(v, '[fn: ', ']', 'Footnote text') },
 		{ id: 'format:citation', name: 'Insert citation (\\cite{…})',
 			fn: (v) => { insertInline(v, '\\cite{', '}'); startCompletion(v); } },
-		{ id: 'format:label', name: 'Insert label (:label[key])',
-			fn: (v) => insertInline(v, ':label[', ']', 'key') },
-		{ id: 'format:reference', name: 'Insert reference (:ref[key])',
-			fn: (v) => insertInline(v, ':ref[', ']', 'key') },
+		// Cross-references (§5.13): Clew WRITES the @ forms; the colon twins
+		// stay readable and rendered. A reference opens label completion.
+		{ id: 'format:label', name: 'Insert label (@label[key])',
+			fn: (v) => insertInline(v, '@label[', ']', '') },
+		{ id: 'format:reference', name: 'Insert reference (@ref[key])',
+			fn: (v) => { insertInline(v, '@ref[', ']', ''); startCompletion(v); } },
+		{ id: 'format:cref', name: 'Insert typed reference (@cref[key])',
+			fn: (v) => { insertInline(v, '@cref[', ']', ''); startCompletion(v); } },
+		{ id: 'format:Cref', name: 'Insert capitalised typed reference (@Cref[key])',
+			fn: (v) => { insertInline(v, '@Cref[', ']', ''); startCompletion(v); } },
 		{ id: 'format:toc', name: 'Insert table of contents ({{TOC}})', fn: (v) => insertBlock(v, '{{TOC}}') },
 		{ id: 'format:today', name: "Insert today's date (:today)", fn: (v) => insertInline(v, ':today', '') },
 
@@ -530,6 +559,7 @@ export function registerFormatCommands() {
 		{ id: 'format:indent', name: 'Indent list item / lines', fn: (v) => indentMore(v) },
 		{ id: 'format:outdent', name: 'Outdent list item / lines', fn: (v) => indentLess(v) },
 		{ id: 'editor:toggle-task', name: 'Toggle task checkbox', hotkeys: ['Mod-Enter'], fn: (v) => toggleTask(v) },
+		{ id: 'editor:jump-to-label', name: 'Jump to label…', main: (v) => jumpToLabel(v) },
 	];
 
 	for (const { id, name, hotkeys, fn, main: onMain } of commands) {

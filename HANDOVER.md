@@ -53,6 +53,10 @@ intended guide-note changes, committed (runs used scratch copies).
   moved onto it). Measuring turned up a live-edit gap the design had
   assumed away: ArrowUp/Down jumped clean over every block widget —
   `live/keys.js` fixes it. `preview-pane-scenario.js` passes every step.
+- **Cross-references** (§5.13): numbers the engine will print, shown
+  while writing — chips, env heads, equation tags, numbered headings,
+  completion, jump + Back, hover. `numbers-match=true` against the
+  engine's own document. Plugins' `fences`/`numbered` manifest keys.
 - **Pre-existing, not a regression**: `figures-edit-scenario` phase 3
   (`key-changed=false` — an edited ```tikz in READING mode keeps its old
   picture) fails identically at `c6f3169`, before this session's work

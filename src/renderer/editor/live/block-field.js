@@ -35,6 +35,7 @@ import { inlineTokens } from './inline-dom.js';
 import { splitRow, alignmentOf } from '../tables.js';
 import { cellRanges, isExtendedTable, CELL_EDIT_LIMITS } from './table-cell-model.js';
 import { activeCellOf } from './active-cell.js';
+import { numberDocument } from './numbering.js';
 
 /** Toggle a foldable callout: `{ id, folded }`. */
 export const setCalloutFold = StateEffect.define();
@@ -66,6 +67,7 @@ function build(state) {
 	const out = [];
 	const sel = state.selection.ranges;
 	const text = (a, b) => doc.sliceString(a, b);
+	const numbering = numberDocument(doc, config.numbered?.size ? { numbered: config.numbered } : undefined);
 	const block = (c, widget) =>
 		out.push(Decoration.replace({ widget, block: true }).range(c.lineFrom, c.lineTo));
 
@@ -114,7 +116,10 @@ function build(state) {
 				const tex = c.environment
 					? `\\begin{${c.env}}\n${text(c.body.start ?? c.body.from, c.body.end ?? c.body.to)}\n\\end{${c.env}}`
 					: text(c.body.from, c.body.to);
-				block(c, new MathWidget(tex, true, text(c.from, c.to), true));
+				// `@begin(equation)` is numbered; `$$…$$` is not (numbering.js).
+				const tag = c.env === 'equation' && c.environment
+					? numbering.lines.get(doc.lineAt(c.from).number)?.number ?? '' : '';
+				block(c, new MathWidget(tex, true, text(c.from, c.to), true, tag));
 				break;
 			}
 			case 'toc':

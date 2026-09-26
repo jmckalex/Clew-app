@@ -180,8 +180,8 @@ class WorkspaceStore extends Emitter {
 		this.#commit();
 	}
 
-	recordAnchorJump(tabId, fromLine, toLine) {
-		if (tree.recordAnchorJump(this.state, tabId, fromLine, toLine)) this.#commit();
+	recordAnchorJump(tabId, fromLine, toLine, options) {
+		if (tree.recordAnchorJump(this.state, tabId, fromLine, toLine, options)) this.#commit();
 	}
 
 	goBack(tabId) {

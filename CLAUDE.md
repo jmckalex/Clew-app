@@ -79,7 +79,7 @@ note API, plugins, and every settings key.
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
   dialect scanner's constructs and grammar, live edit's model, reveal rule,
-  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets — 798 tests. DOM/UI work is
+  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion — 812 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
@@ -630,6 +630,14 @@ except where the selection touches a construct. The durable design is
   pane and the link preview share `components/chrome/floating-pane.js` —
   extend that base, never copy it. `live/keys.js` makes ArrowUp/Down stop
   at a block widget's edge (CodeMirror's vertical motion jumps over it).
+- **Cross-references** (§5.13): `editor/live/numbering.js` MIRRORS the
+  engine's post-processor numbering over the note's text (per note, keyed
+  by line; `typedRefText` imported from the vendored crossref.js); chips,
+  env heads, equation tags, heading prefixes, completion, jump and hover all
+  read it. Parity with the engine is ASSERTED by crossref-scenario.js
+  (`numbers-match=true`), never assumed — change a rule only with the
+  engine's source open. Plugins declare `fences`/`numbered` in their
+  engine surface for the editor to see.
 - Settings: `defaultEditMode`, `liveReveal`, `liveRender{Math,Fences,Embeds}`,
   `liveFrameCap`, `editorToolbar(+Prev)`, `editorToolbarGroups`,
   `selectionBubble`, `slashCommands`, `linkPreview`, `previewPane`; `newTabMode` accepts `live`. Documents over 500 KB

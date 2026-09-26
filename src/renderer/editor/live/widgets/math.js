@@ -22,22 +22,26 @@ export class MathWidget extends WidgetType {
 	 * @param {boolean} display - display style (`$$…$$`, `\[…\]`, environments)
 	 * @param {string} source - the construct's full source, shown while pending
 	 * @param {boolean} [block] - a block replacement (its own line or lines)
+	 * @param {string} [tag] - an `@begin(equation)`'s number, shown "(n)" at
+	 *   the right as the engine's .eqn-number (numbering.js)
 	 */
-	constructor(tex, display, source, block = false) {
+	constructor(tex, display, source, block = false, tag = '') {
 		super();
 		this.tex = tex;
 		this.display = display;
 		this.source = source;
 		this.block = block;
+		this.tag = tag;
 	}
 
 	eq(other) {
-		return other.tex === this.tex && other.display === this.display && other.block === this.block;
+		return other.tex === this.tex && other.display === this.display && other.block === this.block && other.tag === this.tag;
 	}
 
 	toDOM(view) {
 		const el = document.createElement(this.block ? 'div' : 'span');
 		el.className = `le-math le-reveal-on-click${this.display ? ' le-math-display' : ''}${this.block ? ' le-math-block' : ''}`;
+		if (this.tag) el.dataset.leTag = `(${this.tag})`;
 		if (!this.fill(el) ) {
 			el.classList.add('le-math-pending');
 			el.textContent = this.source;

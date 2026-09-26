@@ -27,6 +27,8 @@ import { setCalloutFold, calloutFolded } from './block-field.js';
 import { liveStateField } from './reveal-field.js';
 import { activateCell } from './table-cell-editor.js';
 import { openTableMenu } from '../toolbar/popovers.js';
+import { numberDocument } from './numbering.js';
+import { workspaceStore } from '../../state/workspace-store.js';
 
 const TARGETS = '[data-le-cell],[data-le-task],[data-le-fold],[data-le-copy],[data-le-goto],[data-le-command],[data-le-href],[data-le-target],[data-le-tag],[data-le-ref],[data-le-blockid],.le-reveal-on-click';
 
@@ -121,10 +123,16 @@ export const liveEvents = Prec.high(EditorView.domEventHandlers({
 			return true;
 		}
 		if (el.dataset.leRef) {
-			const text = view.state.doc.toString();
-			const at = text.search(new RegExp(`:label\\[${el.dataset.leRef.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\]`));
-			placeCursor(view, at === -1 ? view.posAtDOM(el) : at);
-			if (at !== -1) view.dispatch({ effects: EditorView.scrollIntoView(at, { y: 'center' }) });
+			// Jump to what the reference names (numbering.js knows where
+			// every label is), leaving a Back entry, as a TOC jump does.
+			const target = numberDocument(view.state.doc).labels.get(el.dataset.leRef);
+			if (!target) { placeCursor(view, view.posAtDOM(el)); return true; }
+			const from = view.state.doc.lineAt(view.state.selection.main.head).number;
+			const at = view.state.doc.line(Math.min(target.line, view.state.doc.lines)).from;
+			const tab = workspaceStore.activeTab();
+			if (tab) workspaceStore.recordAnchorJump(tab.id, from, target.line, { editor: true });
+			view.dispatch({ selection: { anchor: at }, effects: EditorView.scrollIntoView(at, { y: 'center' }) });
+			view.focus();
 			return true;
 		}
 		placeCursor(view, view.posAtDOM(el));

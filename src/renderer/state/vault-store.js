@@ -69,6 +69,12 @@ class VaultStore extends Emitter {
 		return this.index[path]?.blocks ?? [];
 	}
 
+	/** Cross-reference labels in a note: [{key, kind, line, col, title, host}]
+	 *  — see note-metadata.js. */
+	labelsFor(path) {
+		return this.index[path]?.labels ?? [];
+	}
+
 	/** Map of tag -> {count, notes:[path]} over the whole vault (nested tags kept whole). */
 	tagIndex() {
 		const map = new Map();

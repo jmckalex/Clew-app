@@ -27,6 +27,7 @@ import { markdownKeymap } from '@codemirror/lang-markdown';
 import { clewEditorTheme, clewHighlighting } from './theme.js';
 import { wikilinkCompletions } from './complete/wikilinks.js';
 import { slashCompletions } from './complete/slash-commands.js';
+import { crossrefCompletions } from './complete/crossrefs.js';
 import { tagCompletions } from './complete/tags.js';
 import { wikilinkClick } from './wikilink-click.js';
 import { linkHover } from './link-hover.js';
@@ -81,7 +82,7 @@ export function makeNoteState(doc, handlerRef, { normalSyntax = false } = {}) {
 			clewEditorTheme,
 			jmdOverlay(),
 			jmdFolding(),
-			autocompletion({ override: [wikilinkCompletions, tagCompletions, citationCompletions, slashCompletions] }),
+			autocompletion({ override: [wikilinkCompletions, tagCompletions, citationCompletions, crossrefCompletions, slashCompletions] }),
 			wikilinkClick(),
 			// Hover a link to preview it (link-hover.js; both modes).
 			linkHover(),
