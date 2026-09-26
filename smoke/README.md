@@ -1,5 +1,9 @@
 # Reusable smoke scenarios
 
+**The whole live-edit sweep in one command:** `node scripts/build.js &&
+smoke/live-sweep.sh [out-dir]` — every live-edit scenario below on a fresh
+fixture (about 15 minutes), then the cross-reference parity verdict.
+
 Scenarios for the harness documented in CLAUDE.md (`CLEW_SMOKE=/out.png
 CLEW_SMOKE_SCRIPT=<scenario> CLEW_SMOKE_VAULT=<vault> electron .`) —
 committed so sessions stop rewriting them. Always pass
