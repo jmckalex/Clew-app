@@ -293,20 +293,28 @@ captures (so positions cannot disagree), each:
 
 | kind | parts | emitted by |
 | --- | --- | --- |
-| `italic` | `body` | the `/…/` pass |
-| `highlight` | `body` | `==…==` |
+| `italic` | `body` (`close` null when a blank line ended it) | the `/…/` pass |
+| `highlight` | `body` (likewise) | `==…==` |
 | `mustache` | `name` | `{{…}}` |
-| `wikilink` / `embed` | `target`, `heading?`, `blockId?`, `alias?` (each `{start,end}`), `aliasText` | wikilink pass (`![[` → `embed`) |
-| `tag` | `name` | tag pass |
-| `cite` | `command` (e.g. `citep`), `keys: [{start,end}]` | `\cite{}` family |
-| `footnote` | `label?`, `group?`, `body`, `multiline: bool` | footnote pass |
-| `directiveBlock` | `name`, `attrs?`, `colons`, `bodyStart`, `bodyEnd`, `closeLine` (`close` null when unclosed) | `:::name` pass |
-| `directiveInline` | `name`, `content`, `attrs?`, `block: bool` (`::name[…]` vs `:name[…]`) | inline directive pass |
-| `directiveAt` | `name`, `text?`, `attrs?`, `block: bool` (`@name+[…]`) | `@name[…]` pass |
-| `environment` | `name`, `attrs?`, `bodyStart`, `bodyEnd` (`close` null when unclosed) | `@begin/@end` pass |
-| `metaHeader` | `bodyStart`, `bodyEnd` | metadata header pass |
+| `wikilink` / `embed` | `target`, `heading`, `blockId`, `alias` (ranges or null), `aliasText` (string); `open` is `[[` or `![[` | wikilink pass |
+| `tag` | `name` (no `#`) | tag pass |
+| `cite` | `command` (e.g. `citep`, no backslash), `notes: [range]` (the `[pre][post]` interiors), `keys: [range]` (one per comma-separated key) | `\cite{}` family |
+| `footnote` | `label`, `group`, `body` (null when unclosed — the opener alone), `multiline: bool` | footnote pass |
+| `directiveBlock` | `name` (null for a bare `:::`), `content`, `attrs`, `colons`, `body` (`close` null when unclosed, running to EOF) | `:::name` pass, incl. the verbatim `:::TiKZ`/`:::mermaid` |
+| `directiveInline` | `name`, `content`, `attrs`, `block: bool` (`::name[…]` vs `:name[…]`) | inline directive pass |
+| `directiveAt` | `name`, `content`, `attrs`, `block: bool` (`@name+[…]`) | `@name[…]` pass |
+| `environment` | `name`, `content`, `attrs`, `body` (`close` null when unclosed) | `@begin/@end` pass, incl. the verbatim TeX/mermaid bodies |
+| `metaHeader` | `body` (`open` null for a fence-less legacy header) | metadata header pass |
 | `htmlBlock` / `scriptBlock` / `styleBlock` | — | HTML/script/style passes |
-| `math` | `display: bool`, `body`, `env?` (for `\begin{align}`) | the math-segments pass already run first |
+| `math` | `display: bool`, `body`, `env` (name or null; for an environment `body` is the whole `\begin…\end`, `open`/`close` the commands) | the math-segments pass already run first |
+
+As built (Phase 0): every part is a `{start, end}` range or null — no
+bare `bodyStart`/`bodyEnd` numbers; `content`/`attrs` are the INTERIORS of
+the `[…]`/`{…}` groups; a block's `body` runs from the line after its
+opener to the newline before its closer. The array is sorted by `start`,
+outer before inner. `scan-cache.js#scanFor(doc)` is the one memoised scan
+(overlay's non-degraded path and folding use it). The typedef in
+`jmarkdown-scan.js` is the reference.
 
 Keep `captures` byte-identical (the 100-odd scanner tests stay green; add
 `tests/jmarkdown-constructs.test.js`). The scanner is Clew's own copy of the

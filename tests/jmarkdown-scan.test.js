@@ -52,7 +52,7 @@ function owned(scan, text, frag) {
 
 test('empty input scans to nothing', () => {
 	const scan = scanJmarkdown('');
-	assert.deepEqual(scan, { captures: [], regions: [], folds: [], injections: [] });
+	assert.deepEqual(scan, { captures: [], regions: [], folds: [], injections: [], constructs: [] });
 });
 
 /* ── metadata header ─────────────────────────────────────────────────── */
