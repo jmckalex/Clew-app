@@ -19,6 +19,7 @@
 // The targets are read from `data-le-*` attributes the inline layer put on
 // the marks and widgets, never re-parsed from the text here.
 import { EditorView } from '@codemirror/view';
+import { Prec } from '@codemirror/state';
 import * as actions from '../../commands/actions.js';
 import { openExternal } from '../../lib/external-links.js';
 import { runCommand } from '../../commands/registry.js';
@@ -33,7 +34,9 @@ function placeCursor(view, pos) {
 	view.focus();
 }
 
-export const liveEvents = EditorView.domEventHandlers({
+// High precedence: source mode's own ⌘-click handler (wikilink-click.js)
+// would otherwise claim a ⌘-click first and open the link in place.
+export const liveEvents = Prec.high(EditorView.domEventHandlers({
 	mousedown(event, view) {
 		if (event.button !== 0) return false;
 		const el = event.target.closest?.(TARGETS);
@@ -119,4 +122,4 @@ export const liveEvents = EditorView.domEventHandlers({
 		placeCursor(view, view.posAtDOM(el));
 		return true;
 	},
-});
+}));
