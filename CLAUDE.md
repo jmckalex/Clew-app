@@ -77,7 +77,8 @@ note API, plugins, and every settings key.
   canvas model, diary, frontmatter, plugins discovery, query/leaflet/exif
   parsers, Excalidraw round-trip, markdown tables, callouts, block
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
-  embed graph and the embed keyword syntax, the shell sessions, the watch order — 644 tests. DOM/UI work is
+  embed graph and the embed keyword syntax, the shell sessions, the watch order, the
+  dialect scanner's constructs and grammar, live edit's model and reveal rule — 721 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
