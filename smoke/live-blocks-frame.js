@@ -9,4 +9,5 @@ const content = Math.ceil(Math.max(0, ...[...document.body.children]
 const refused = document.querySelector('.clew-embed-refused, .clew-figure-refused');
 console.log(`smoke-lb-frame ${SMOKE_FRAME.slice(0, 6)}: text=${JSON.stringify(text)}`
 	+ ` refused-by-name=${Boolean(refused)} has-UPDATED=${document.body.innerText.includes('UPDATED')}`
+	+ (document.body.innerText.includes('styled') ? ` styled=${[...document.querySelectorAll('em, strong')].find((e) => e.textContent === 'styled')?.tagName.toLowerCase() ?? 'none'}` : '')
 	+ ` mermaid-svg=${Boolean(document.querySelector('.mermaid svg'))} content=${content} frame=${innerHeight}`);

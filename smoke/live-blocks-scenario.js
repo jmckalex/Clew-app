@@ -49,7 +49,7 @@ log(`first-frames=${frames().length} measured=${document.querySelectorAll('.le-f
 log(`frame-scheme=${frames().every((f) => getComputedStyle(f).colorScheme === (document.body.dataset.theme ?? 'dark'))}`);
 log(`kinds=${[...document.querySelectorAll('.le-frame-slot')].map((s) => s.dataset.kind).slice(0, 6).join(',')}`);
 
-await ipc.invoke('clew:note-write', { path: 'Child.md', content: '# Child\n\nUPDATED child text.\n' });
+await ipc.invoke('clew:note-write', { path: 'Child.md', content: '# Child\n\nUPDATED child text, *styled*.\n' });
 log('child-rewritten');
 
 const mermaidSlot = document.querySelector('.le-frame-slot[data-kind="mermaid"]');
@@ -73,6 +73,7 @@ window.__clewSmokeInput = [
 	{ wait: 2500 },
 	...Array.from({ length: 3 }, () => ({ wheel: { x: Math.round(qr.left + qr.width / 2), y: 500, deltaY: -550 } })),
 	{ wait: 3000 },
+	{ wait: 6000 },                                   // the normalSyntax re-render (a worker build per block)
 ];
 setTimeout(() => {
 	const frame = [...document.querySelectorAll('.le-frames iframe')].find((f) => f.dataset.frameId === mermaidId);
@@ -91,4 +92,9 @@ setTimeout(() => {
 		return b && Math.abs(a.top - b.top) <= 1 && Math.abs(a.height - b.height) <= 1;
 	});
 	log(`after-roundtrip frames=${again.length} heights-match=${again.length > 0 && again.every(Boolean)}`);
+	// Last: a vault switch that reconfigures the ENGINE must reach every
+	// frame (not only dependent ones) — the frame script below then finds
+	// `*styled*` rendered as <em>, standard markdown's reading, not the
+	// dialect's <strong>.
+	window.__clew.vaultSettingsStore.set('normalSyntax', true).then(() => log('normal-syntax-set'));
 }, 8500);

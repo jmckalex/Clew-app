@@ -95,6 +95,10 @@ export class RenderService {
 	/** Bumped on every file change: a DEPENDENT fragment's key carries it, so
 	 *  a cached render of `![[Note]]` is never served after Note changed. */
 	#fragmentEpoch = 0;
+	/** Bumped on every reconfigure: in EVERY fragment key, so a block whose
+	 *  rendering changed with the config (normalSyntax, a TeX fragment, a
+	 *  plugin) gets a NEW hash — a caller comparing hashes sees the change. */
+	#configGeneration = 0;
 
 	/** dist/ directory (engine assets: wikilinks.js, clew-template.html). */
 	constructor(distDir) {
@@ -132,6 +136,7 @@ export class RenderService {
 		this.#notes.clear();
 		this.#fragments.clear();
 		this.#fragmentEpoch++;
+		this.#configGeneration++;
 		for (const relPath of this.#subscribed.keys()) {
 			this.render(relPath).catch(() => {});
 		}
@@ -453,7 +458,7 @@ export class RenderService {
 
 	#fragmentKey(text, { sourcePath = null, dependent = isDependentFragment(text), document = false }) {
 		return crypto.createHash('sha1')
-			.update(`${document ? 'doc' : 'frag'}\0${sourcePath ?? ''}\0${dependent ? this.#fragmentEpoch : ''}\0${text}`)
+			.update(`${document ? 'doc' : 'frag'}\0${this.#configGeneration}\0${sourcePath ?? ''}\0${dependent ? this.#fragmentEpoch : ''}\0${text}`)
 			.digest('hex').slice(0, 20);
 	}
 

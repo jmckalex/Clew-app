@@ -38,10 +38,15 @@ import { blockUrl, blockDocumentUrl } from '../../lib/preview-url.js';
 import { effectiveChords } from '../../commands/registry.js';
 import { ipc, CH } from '../../ipc.js';
 import { settingsStore } from '../../state/settings-store.js';
+import { vaultSettingsStore } from '../../state/vault-settings-store.js';
 import { isDependentFragment } from '../../../shared/fragment-deps.js';
 
 const HOST_SOURCE = 'clew-preview-host';
 const RESTALE_MS = 300;
+/** Settings that reconfigure the ENGINE (ipc.js / settings.js): every block
+ *  may render differently afterwards, dependent or not. */
+const ENGINE_VAULT_KEYS = new Set(['texFragments', 'normalSyntax', 'jmarkdownProject', 'pandocCitations', 'plugins', 'bibliography', 'bibliographyStyle']);
+const ENGINE_APP_KEYS = new Set(['texFragments']);
 
 /** POST a block's text; resolves to its document hash. */
 async function renderBlock(text, sourcePath) {
@@ -68,8 +73,19 @@ class FrameLayer {
 		this.offKv = ipc.on(CH.EV_KV_CHANGED, (payload) => this.#broadcast({ type: 'event', name: 'kv', payload }));
 		this.offTheme = settingsStore.on('settings-changed', (key) => {
 			if (key === 'theme') this.#broadcast({ type: 'theme', theme: document.body.dataset.theme ?? 'dark' });
+			// A global TeX fragment: main reconfigures on its own schedule
+			// (settingsStore emits before the write lands), so wait longer.
+			if (ENGINE_APP_KEYS.has(key)) this.#restaleAll(900);
+		});
+		// The per-vault switches that reconfigure the engine. The store emits
+		// after main has written the setting and reconfigured, so a re-POST
+		// renders under the new configuration (its key is new: render-service
+		// keys every fragment by the configuration generation).
+		this.offVault = vaultSettingsStore.on('vault-settings-changed', (key) => {
+			if (ENGINE_VAULT_KEYS.has(key)) this.#restaleAll(RESTALE_MS);
 		});
 		this.restaleTimer = null;
+		this.allTimer = null;
 		this.#sync();
 	}
 
@@ -87,7 +103,9 @@ class FrameLayer {
 		this.offFile?.();
 		this.offKv?.();
 		this.offTheme?.();
+		this.offVault?.();
 		clearTimeout(this.restaleTimer);
+		clearTimeout(this.allTimer);
 		this.layer.remove();
 		this.records.clear();
 	}
@@ -310,9 +328,20 @@ class FrameLayer {
 		this.restaleTimer = setTimeout(() => this.#restale(), RESTALE_MS);
 	}
 
-	async #restale() {
+	/** Every frame re-renders (the engine was reconfigured), debounced — a
+	 *  fragment edited in settings commits per pause, not per keystroke. */
+	#restaleAll(delay) {
+		clearTimeout(this.allTimer);
+		this.allTimer = setTimeout(() => this.#restale({ all: true }), delay);
+	}
+
+	async #restale({ all = false } = {}) {
 		for (const record of this.records.values()) {
-			if (!record.dependent || !record.iframe) continue;
+			if (!record.iframe) {
+				record.hash = null; // re-POSTed whenever it is next created
+				continue;
+			}
+			if (!all && !record.dependent) continue;
 			let hash;
 			try { hash = await renderBlock(record.text, this.config.notePath); } catch { continue; }
 			if (hash === record.hash || !record.iframe) continue;

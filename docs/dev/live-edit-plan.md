@@ -1142,6 +1142,19 @@ block: `body { margin: 0; padding: 0 }`, `overflow: hidden`, and no
 Everything the engine refuses by name renders its refusal inside the
 frame, exactly as reading mode shows it.
 
+As built (review after Phase 5): the fragment-edit row's trigger
+(`EV_RENDER_DONE`) never fires for a live-edit note, because the layer does
+not RENDER_SUBSCRIBE. The replacement: the frame layer re-renders EVERY
+frame when a setting that reconfigures the engine changes — the vault's
+`texFragments`, `normalSyntax`, `jmarkdownProject`, `pandocCitations`,
+`plugins`, `bibliography*` (vault-settings-store) and the global
+`texFragments` (settings-store, later, since that store emits before main
+has written). And render-service now keys EVERY fragment by a configuration
+generation bumped in `reconfigure()`: without it the same text kept the same
+hash after a reconfigure, and the layer's "hash unchanged → skip" never
+morphed. `live-blocks-scenario` flips normalSyntax last and asserts the
+Child embed's `*styled*` became `<em>` (`strong` with the listener removed).
+
 ---
 
 ## 8. Settings (all app-global unless noted)
