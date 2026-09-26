@@ -1089,6 +1089,61 @@ it, open its PDF. Designed by the planning session; built overnight.
   input throughout) and `citations-fullcite-scenario.js` (the formatted
   hover, with a bibliography named).
 
+### 5.15 PDF annotations → note
+
+What you highlighted in a PDF becomes a note you can link to, quote from,
+and re-run. Designed by the planning session; built overnight.
+
+**As built** (deviations ◆):
+
+- **Viewer** (`preview-client/pdf-core.js`, from the EmbedPDF master's own
+  types — `plugin-annotation`, `plugin-scroll`, `engine.getPageGeometry` /
+  `getTextSlices`): `handle.listAnnotations()` waits for the annotation
+  plugin's `loaded` event, then maps `getAnnotations()` (subtype 9–12
+  highlight/underline/squiggly/strikeout, 1 note, 3 freetext, 15 ink;
+  popups, links and replies skipped) to `{id, page, kind, text, contents,
+  color}`. A markup annotation's `text` is the document text under its
+  `segmentRects` — the glyphs whose centres fall inside, as one
+  `getTextSlices` slice (the selection plugin's own method); `custom.text`
+  (what the UI stored at creation) is the fallback. Reading order: page,
+  then top-down (EmbedPDF's y grows downward). `scrollToPage`,
+  `currentPage`, and `createAnnotations(specs)` for scenarios.
+- **Page host** (`pdf-page.js`): answers `list-annotations` /
+  `pdf-page` / `test-create-annotations` — from its PARENT only ◆ (any
+  frame holding a reference could otherwise post to it). The design said
+  "and pdf-embed.js" ◆: note embeds are not asked — the command works on
+  the file tab.
+- **Losing an edit on a tab switch** ◆ (measured, and not new): the viewer
+  autosaves on a 2.5 s debounce, and an unloading document takes its pending
+  timer with it — a highlight made just before its PDF tab was rebuilt was
+  LOST (the viewer held 3 of 4). The list request now flushes a pending save
+  first, so the command never names an annotation the PDF will not keep.
+  The general case (switching away within 2.5 s of an edit) is left for
+  the owner — see HANDOVER.
+- **Page anchors**: `[[x.pdf#page=N]]` — `actions.openWikilink` opens the
+  PDF tab and `showPdfPage` records `pdfPage` in the tab (a viewer built
+  later opens there via `pdfViewerUrl(url, {page})`) and asks the viewer,
+  which scrolls UNTIL `currentPage` says so ◆ (a scroll asked for before the
+  pages are laid out lands nowhere — it worked only when a log line slowed
+  the page; measured) and answers `pdf-page-shown`; the host asks until it
+  does. Reading mode's links go through the same `openWikilink`. The
+  live-edit chip's "p. 12" is not built ◆ — the note writes `|p. N` aliases.
+- **The command** `pdf:extract-annotations` (palette, on an active PDF tab)
+  and the explorer's "Extract annotations to a note" on a `.pdf`
+  (`renderer/pdf-annotations.js`): asks the tab's viewer (opening a tab if
+  none), then `shared/pdf-annotations-note.js#annotationsNote(pdfPath,
+  annotations, existing)` — pure, tested. `<pdf> — Annotations.md` beside
+  the PDF: frontmatter `source`, `extracted` (LOCAL date ◆ — toISOString
+  named yesterday past midnight), `## Page N`, and per annotation ONE
+  blockquote ◆ — text, comment and `[[x.pdf#page=N|p. N]] ^pdf-<id>` inside
+  it, so the block id names all three (the design had the comment as a
+  following paragraph, outside the block the id names). Re-running merges:
+  existing ids untouched, new ones under their page in order, nothing
+  deleted, byte-identical when nothing is new.
+- **Smoke**: `pdf-annotations-scenario.js` over `make-pdf-vault.mjs` — a
+  four-page PDF written by hand (the demo's sample.pdf has one page, and a
+  two-page one could not scroll page 2 to the top).
+
 ## 6. The toolbar
 
 ### 6.1 Principles
@@ -1733,6 +1788,8 @@ still prefer, and changing one is a small, local edit.
 | MathJax macros | one page-wide MathJax: macros leak across notes (documented) | a per-note InputJax |
 | Tables | edited in place on a click; Esc, ⌥-click or "Edit as source" for the source; reflow once on leaving | reveal source on click; never reflow automatically |
 | Reading mode's bar | a slim bar with the mode switch | none |
+| Annotation entries | one blockquote per annotation (text, comment, page link, block id) | the comment as a paragraph after the quote |
+| Annotation colours | plain blockquotes | callouts by colour |
 | The Refs panel | always present; Library always, "This note" behind bibliographyPanel | gated as before |
 | Library search | every term a substring | fuzzy |
 | Citation hover without a named bibliography | the .bib's author-year and title on a card | nothing |

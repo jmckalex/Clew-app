@@ -79,7 +79,7 @@ note API, plugins, and every settings key.
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
   dialect scanner's constructs and grammar, live edit's model, reveal rule,
-  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion — 812 tests. DOM/UI work is
+  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes — 821 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
@@ -644,6 +644,13 @@ except where the selection touches a construct. The durable design is
   a cite chip opens it; hovering previews `\fullcite` (engine-formatted when
   the vault names a bibliography). BIB_ENTRIES entries carry `bib` (their
   .bib) and `pdf` (the resolved `file` field) — `file` is BibTeX's own.
+- **PDF annotations → note** (§5.15): the viewer (pdf-core.js) lists its
+  annotations with the text under them (engine glyph geometry +
+  getTextSlices) when pdf-page.js is asked by its PARENT;
+  `renderer/pdf-annotations.js` + the pure `shared/pdf-annotations-note.js`
+  write or MERGE `<pdf> — Annotations.md` (never deleting). The viewer's
+  autosave is a 2.5 s debounce that an unloading document drops — flush it
+  before relying on an annotation. `[[x.pdf#page=N]]` opens a PDF tab there.
 - Settings: `defaultEditMode`, `liveReveal`, `liveRender{Math,Fences,Embeds}`,
   `liveFrameCap`, `editorToolbar(+Prev)`, `editorToolbarGroups`,
   `selectionBubble`, `slashCommands`, `linkPreview`, `previewPane`, `graphReferences`; `newTabMode` accepts `live`. Documents over 500 KB

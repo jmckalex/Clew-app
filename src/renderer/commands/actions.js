@@ -178,7 +178,12 @@ export async function openWikilink(target, { newTab = false, mode } = {}) {
 		const filePath = vaultStore.resolveFileName(name);
 		if (filePath) {
 			if (isCanvasPath(filePath)) workspaceStore.openCanvas(filePath, { newTab });
-			else workspaceStore.openFile(filePath, { newTab });
+			else {
+				const tab = workspaceStore.openFile(filePath, { newTab });
+				// `[[paper.pdf#page=12]]` (§5.15): open, or scroll, there.
+				const page = /^page=(\d+)$/.exec(heading ?? '')?.[1];
+				if (page && /\.pdf$/i.test(filePath) && tab) showPdfPage(tab.id, Number(page));
+			}
 			return;
 		}
 	}
@@ -444,3 +449,29 @@ export function splitTarget(target) {
 }
 
 export { isNotePath };
+
+/**
+ * Put a PDF tab on `page`: remembered in the tab (a viewer built later opens
+ * there) and told to a viewer already showing (pdf-page.js scrolls).
+ */
+export function showPdfPage(tabId, page) {
+	workspaceStore.updateTabView(tabId, { pdfPage: page });
+	// The tab's view may be rebuilt as it activates, its viewer still
+	// loading: ask until the viewer says it is there (pdf-page.js answers
+	// once its document is open), for a few seconds.
+	let done = false;
+	const onMessage = (event) => {
+		if (event.data?.source === 'clew-preview' && event.data.type === 'pdf-page-shown' && event.data.page === page) done = true;
+	};
+	window.addEventListener('message', onMessage);
+	let tries = 0;
+	const ask = () => {
+		if (done || tries++ > 40) { window.removeEventListener('message', onMessage); return; }
+		for (const frame of document.querySelectorAll('clew-file-view iframe.pdf-frame')) {
+			if (frame.closest('clew-file-view')?.tabId !== tabId) continue;
+			frame.contentWindow?.postMessage({ source: 'clew-preview-host', type: 'pdf-page', page }, '*');
+		}
+		setTimeout(ask, 250);
+	};
+	ask();
+}

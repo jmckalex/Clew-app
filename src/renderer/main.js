@@ -123,6 +123,7 @@ window.__clew = { linkPreview, previewPane, workspaceStore, vaultStore, vaultSet
 import('./editor/live/table-cell-editor.js').then((m) => { window.__clew.activeCellView = m.activeCellView; });
 import('./commands/registry.js').then((registry) => { window.__clew.registry = registry; });
 import('./editor/live/numbering.js').then((m) => { window.__clew.numbering = m; });
+import('./pdf-annotations.js').then((m) => { window.__clew.pdfAnnotations = m; });
 
 // ---- boot -----------------------------------------------------------------
 

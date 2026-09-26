@@ -94,3 +94,10 @@ test('citations: the family, keys split, and what they preview', () => {
 	assert.equal(previewSpec(l, cite).message, 'Knuth 1984 — TeX', 'no bibliography named: the .bib fields on a card');
 	assert.match(previewSpec(at('\\cite{nobody}', 'nobody'), cite).message, /No entry “nobody”/);
 });
+
+test('a PDF page anchor parses as the heading part', () => {
+	const t = parseTarget('paper.pdf#page=12');
+	assert.deepEqual([t.target, t.heading], ['paper.pdf', 'page=12']);
+	const l = at('See [[paper.pdf#page=12]] there', 'paper');
+	assert.deepEqual([l.target, l.heading], ['paper.pdf', 'page=12']);
+});

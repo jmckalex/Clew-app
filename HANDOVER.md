@@ -67,6 +67,12 @@ intended guide-note changes, committed (runs used scratch copies).
   hover → `\fullcite` or the .bib's fields, the graph's References switch.
   The Refs tab is no longer gated (only its "This note" mode is).
   Reading-mode citation hover is built but not scenario-asserted.
+- **PDF annotations → note** (§5.15): `PDF: extract annotations to a note`
+  (palette, explorer menu); merges on re-run; `[[x.pdf#page=N]]` opens at
+  the page. FOUND, not new: the PDF viewer's 2.5 s autosave debounce is
+  dropped when its document unloads — an annotation made just before its
+  tab is switched away is LOST (measured). The command flushes first; the
+  general fix (flush on hide, or a shorter debounce) is the owner's call.
 - **Pre-existing, not a regression**: `figures-edit-scenario` phase 3
   (`key-changed=false` — an edited ```tikz in READING mode keeps its old
   picture) fails identically at `c6f3169`, before this session's work

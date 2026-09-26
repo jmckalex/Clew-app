@@ -27,6 +27,7 @@ import { settingsStore } from '../state/settings-store.js';
 import { bookmarkStore } from '../state/bookmark-store.js';
 import { editorPool } from '../editor/pool.js';
 import { openQuickSwitcher } from '../components/modals/clew-quick-switcher.js';
+import { extractAnnotations } from '../pdf-annotations.js';
 import { openListModal } from '../components/modals/list-modal.js';
 import { openHistoryModal } from '../components/modals/clew-history-modal.js';
 import { ipc, CH } from '../ipc.js';
@@ -164,6 +165,10 @@ export function registerBuiltinCommands() {
 			} },
 
 		// navigation
+		// §5.15: the active PDF tab's annotations, as a note beside it.
+		{ id: 'pdf:extract-annotations', name: 'PDF: extract annotations to a note',
+			when: (ctx) => ctx.activeTabKind === 'file' && /\.pdf$/i.test(ctx.activeTab?.path ?? ''),
+			run: (ctx) => extractAnnotations(ctx.activeTab.path) },
 		{ id: 'nav:quick-switcher', name: 'Open quick switcher', hotkeys: ['Mod-o'], when: needsVault,
 			inModal: false, run: () => openQuickSwitcher() },
 		{ id: 'nav:back', name: 'Navigate back', hotkeys: ['Mod-[', 'Mod-Alt-ArrowLeft'], when: needsVault,
