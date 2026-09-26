@@ -1,4 +1,4 @@
-# Handover — 2026-09-26, `feat/live-edit` (live edit BUILT — phases 0–7 done, unmerged; the manual on a matching docs branch)
+# Handover — 2026-09-26, `feat/live-edit` (live edit BUILT — phases 0–7, plus tables edited in place; unmerged; the manual on a matching docs branch)
 
 Session-rollover state for the live-edit branch, in the worktree
 `../Clew-app-live-edit`. The durable design is `docs/dev/live-edit.md`
@@ -29,6 +29,12 @@ intended guide-note changes, committed (runs used scratch copies).
 - The planning session reviewed phase 5 and found one real gap (frames
   never re-rendered after an engine reconfigure); fixed in `e0a5f44`, with
   a second bug it hid (§2).
+- **Tables are edited in place** (`c10f524`, owner's request after the
+  build): designed by the planning session at this session's request, built
+  here — `docs/dev/live-edit.md` §5.5a is the section as built, with its
+  deviations from the design. `live-table-edit-scenario.js` (ten steps, real
+  input) passes, and so does the sweep of the earlier scenarios. Manual:
+  `60162dd` on the docs branch (a Tables section, a screenshot).
 
 ## 1. STILL OPEN
 
@@ -42,14 +48,17 @@ intended guide-note changes, committed (runs used scratch copies).
   them); copy/paste of concealed ranges yields source; IME composition in a
   concealed word; zoom levels; a live pane beside a reading pane in sync;
   drag-and-drop of an image into a live note; the properties panel and the
-  properties widget editing the same note.
+  properties widget editing the same note; IME composition in a table
+  cell; typing fast in a cell of a wide table (each keystroke patches the
+  table widget).
 - **Decisions in force** (`docs/dev/live-edit.md` §12) — none has been
   exercised by the owner yet: plain click follows a concealed link (⌥-click
   edits, ⌘-click new tab); remote images not loaded in the editor; ⌘⇧E;
   new tabs still source; `|live` office embeds as thumbnails; MathJax macros
   shared across notes; tables edit as source; reading mode's slim bar.
-- **Follow-ons deliberately left out** (same §12): slash commands, in-place
-  table cells, multi-line footnote concealment, Meta Bind widgets in prose,
+- **Follow-ons deliberately left out** (same §12): slash commands, table
+  drag handles, multi-cell selection and pasting a grid into cells,
+  multi-line footnote concealment, Meta Bind widgets in prose,
   plugin-declared rich fence names (the Charts plugin's ```chart stays a
   code fence in live edit — plugins declare no fence names; a manifest
   `fences` key is the obvious shape), persisting frame heights across
@@ -84,6 +93,14 @@ intended guide-note changes, committed (runs used scratch copies).
   mode. Numbers and methods in `smoke/README.md`.
 - An unknown callout type is a plain quote, not `note`; source mode's
   ⌘-click handler outranked live edit's until given `Prec.high`.
+- Tables in place: CodeMirror DOES patch a block widget with `updateDOM`
+  when its text changes, so a nested editor mounted inside survives
+  typing (`same-node=true`). The NOTE editor's theme rules reach a nested
+  editor (descendant selectors) — a one-line cell stood ~40vh tall under
+  the note's `.cm-content` padding. A table reflow rewrites lines wholesale,
+  so the caret must be put back into its cell. A reload from disk replaced
+  the whole document; it is now the smallest change
+  (`editor/minimal-change.js`), which also keeps the cursor steady.
 
 ## 3. Running things in THIS worktree
 
