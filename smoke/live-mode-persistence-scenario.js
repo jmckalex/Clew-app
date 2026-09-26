@@ -5,7 +5,7 @@
 // Fixture (regenerate before run 1; run 2 reuses it):
 //
 //   mkdir -p /tmp/lm-vault && node -e "let s='# Persist\n\n';
-//     for (let i = 1; i <= 40; i++) s += 'Paragraph ' + i + ' with *strong* words.\n\n';
+//     for (let i = 1; i <= 60; i++) s += 'Line ' + i + ' of one long paragraph, with *strong* words.\n';
 //     require('fs').writeFileSync('/tmp/lm-vault/Persist.md', s)"
 //
 // Run 1 opens Persist.md in SOURCE, then by real input: ⌘⇧E → live
@@ -16,7 +16,11 @@
 // Run 2 (same vault): `run2 restored: mode=reading editMode=live`; ⌘E →
 // `run2 back: mode=live cm-live=true` (back to LIVE, not source — the point
 // of editMode); ⌘E again to reading, then ⌘-click a paragraph in the
-// preview (inverse search) → `run2 inverse: mode=live line=<n> text=Paragraph …`.
+// preview (inverse search) → `run2 inverse: mode=live line=3 text=Line 1 of one`
+// (the paragraph's first line). ONE paragraph on purpose: the click is made
+// at a fixed point in the frame, and a ⌘-click on the gap BETWEEN paragraphs
+// does nothing — with separate paragraphs the run passed or failed by where
+// the gaps fell (reading mode's bar moving the page 36px was enough).
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const { workspaceStore, editorPool, vaultStore } = window.__clew;
 const log = (s) => console.log('smoke-lm: ' + s);
@@ -36,9 +40,9 @@ const restored = tabOf();
 if (!restored) {
 	// ---- run 1 ----
 	const tab = workspaceStore.openNote('Persist.md', { newTab: true, defaultMode: 'source' });
-	await until(() => document.querySelector('.cm-content')?.textContent.includes('Paragraph 3'));
+	await until(() => document.querySelector('.cm-content')?.textContent.includes('Line 3 '));
 	const host = hostOf(tab.id);
-	const line = [...document.querySelectorAll('.cm-line')].find((l) => l.textContent.startsWith('Paragraph 2'));
+	const line = [...document.querySelectorAll('.cm-line')].find((l) => l.textContent.startsWith('Line 2 '));
 	const r = line.getBoundingClientRect();
 	window.__clewSmokeInput = [
 		{ click: { x: Math.round(r.left + 30), y: Math.round(r.top + r.height / 2) } },
@@ -83,6 +87,6 @@ if (!restored) {
 		const view = editorPool.get(t.id)?.view;
 		const head = view?.state.selection.main.head ?? 0;
 		const line = view?.state.doc.lineAt(head);
-		log(`run2 inverse: mode=${t.view.mode} line=${line?.number} text=${line?.text.slice(0, 14)}`);
+		log(`run2 inverse: mode=${t.view.mode} line=${line?.number} text=${line?.text.slice(0, 13)}`);
 	}, 7500);
 }
