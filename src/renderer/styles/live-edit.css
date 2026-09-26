@@ -250,3 +250,6 @@ body[data-theme='light'] .le-frame { color-scheme: light; }
 	font-size: 0.8em;
 }
 .le-frame-slot.is-measured .le-frame-skeleton { border-color: transparent; color: transparent; }
+/* A callout's text is prose, as in reading mode — not the quote face that
+   lang-markdown puts on every span of a blockquote. */
+.cm-live .le-callout .cmt-quote { color: inherit; }

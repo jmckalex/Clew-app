@@ -1208,6 +1208,11 @@ every open live editor (`editorPool.reconfigureLive()`); changing
   selection). For documents over 100k chars, compute block replacements
   only within viewport ± 20k chars snapped to construct boundaries (the
   overlay's degrade pattern) — accept edge artefacts.
+- **As built — measured, not windowed** (`live-perf-scenario.js`): a
+  keystroke in live edit costs ~0.4 ms more than in source on a 12 KB note
+  and ~2.2 ms more on a 207 KB one (medians 3.5 vs 3.1, 14.4 vs 12.2 ms), so
+  the block field stays whole-document; the viewport window above was not
+  needed.
 - **`BIG_DOC` (500k)**: live edit refuses — the tab shows source with a
   one-line notice ("Live edit is off for documents over 500 KB"); the mode
   stays `live` in the workspace so a smaller revision turns it back on.
