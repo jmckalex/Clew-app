@@ -44,6 +44,7 @@ class ClewEditorView extends ClewElement {
 		if (!this.isConnected || this.tabId !== tabId || !entry.view) return;
 
 		this.replaceChildren(entry.view.dom);
+		this.#applyMode();
 		this.#restoreViewState(entry.view);
 		this.#syncConflictBanner();
 
@@ -55,6 +56,9 @@ class ClewEditorView extends ClewElement {
 		this.listen(editorPool, 'conflict-changed', ({ tabId: changed }) => {
 			if (changed === this.tabId) this.#syncConflictBanner();
 		});
+		// Source ↔ live is a flip of THIS view (the tab group keeps it
+		// mounted for both), so the mode is followed here.
+		this.listen(workspaceStore, 'layout-changed', () => this.#applyMode());
 
 		// Scroll sync with preview panes showing the same note.
 		this.#scrollDOM = entry.view.scrollDOM;
@@ -76,6 +80,27 @@ class ClewEditorView extends ClewElement {
 			entry.view.dom.removeEventListener('focusin', this.#onFocusIn);
 			entry.view.dom.removeEventListener('focusout', this.#onFocusOut);
 		}
+	}
+
+	/** Put the pooled editor in this tab's mode: source or live edit. */
+	#applyMode() {
+		const tab = workspaceStore.findTab(this.tabId)?.tab;
+		if (!tab || tab.view.mode === 'reading') return;
+		const wanted = tab.view.mode === 'live' ? 'live' : 'source';
+		const applied = editorPool.setMode(this.tabId, wanted);
+		this.dataset.mode = applied ?? wanted;
+		this.#syncBigDocNotice(wanted === 'live' && applied === 'source');
+	}
+
+	/** Live edit refuses a very large document; say so where it shows. The
+	 *  tab keeps `mode: 'live'`, so a smaller revision turns it back on. */
+	#syncBigDocNotice(show) {
+		this.querySelector(':scope > .live-refused-banner')?.remove();
+		if (!show) return;
+		const banner = document.createElement('div');
+		banner.className = 'conflict-banner live-refused-banner';
+		banner.textContent = 'Live edit is off for documents over 500 KB — showing source.';
+		this.prepend(banner);
 	}
 
 	/** Show/hide the "file changed on disk" banner for an unresolved conflict. */

@@ -21,6 +21,15 @@ import { ipc, CH } from '../ipc.js';
 import { makeNoteState, markdownCompartment } from './editor.js';
 import { noteMarkdown } from './jmd/markdown-config.js';
 import { vaultSettingsStore } from '../state/vault-settings-store.js';
+import { settingsStore } from '../state/settings-store.js';
+import { liveCompartment, liveEdit } from './live/index.js';
+import { readLiveConfig } from './live/config.js';
+
+/** Live edit refuses documents above this size (plan §9); source mode
+ *  degrades on its own past the same threshold (jmd/overlay.js). */
+export const LIVE_BIG_DOC = 500000;
+const LIVE_SETTINGS = new Set(['liveReveal', 'liveRenderMath', 'liveRenderFences', 'liveRenderEmbeds', 'liveFrameCap']);
+const liveConfig = () => readLiveConfig(settingsStore, vaultSettingsStore);
 
 /** The vault's dialect switch, as the grammar wants it. */
 const normalSyntax = () => vaultSettingsStore.get('normalSyntax') === true;
@@ -46,7 +55,50 @@ class EditorPool extends Emitter {
 			const effects = markdownCompartment.reconfigure(noteMarkdown({ normalSyntax: normalSyntax() }));
 			for (const entry of this.#entries.values()) entry.view?.dispatch({ effects });
 			this.#stateCache.clear();
+			this.reconfigureLive();
 		});
+		settingsStore.on('settings-changed', (key) => {
+			if (LIVE_SETTINGS.has(key)) this.reconfigureLive();
+		});
+	}
+
+	/**
+	 * Put a tab's editor in source or live edit: a reconfiguration of the
+	 * live compartment of the SAME view (live/index.js). Returns the mode
+	 * actually applied — 'source' for a live request over a document larger
+	 * than LIVE_BIG_DOC, which the caller tells the user about.
+	 *
+	 * @param {string} tabId
+	 * @param {'source'|'live'} mode
+	 * @returns {'source'|'live'|null} null when the tab has no editor yet
+	 */
+	setMode(tabId, mode) {
+		const entry = this.#entries.get(tabId);
+		if (!entry?.view) return null;
+		const effective = mode === 'live' && entry.view.state.doc.length <= LIVE_BIG_DOC ? 'live' : 'source';
+		if (entry.mode !== effective) {
+			entry.mode = effective;
+			entry.view.dispatch({
+				effects: liveCompartment.reconfigure(effective === 'live' ? liveEdit(liveConfig()) : []),
+			});
+			this.emit('mode-changed', { tabId, mode: effective });
+		}
+		return effective;
+	}
+
+	/** The mode a tab's editor is in ('source' | 'live'), or null. */
+	modeOf(tabId) {
+		return this.#entries.get(tabId)?.mode ?? null;
+	}
+
+	/** Live settings changed: rebuild every live editor's bundle. */
+	reconfigureLive() {
+		const config = liveConfig();
+		for (const entry of this.#entries.values()) {
+			if (entry.mode === 'live' && entry.view) {
+				entry.view.dispatch({ effects: liveCompartment.reconfigure(liveEdit(config)) });
+			}
+		}
 	}
 
 	/**
@@ -104,6 +156,9 @@ class EditorPool extends Emitter {
 
 		if (entry.view) entry.view.setState(state);
 		else entry.view = new EditorView({ state });
+		// A cached state carries whatever its live compartment held when it
+		// was banked; the next setMode decides afresh.
+		entry.mode = null;
 		entry.handlerRef = handlerRef;
 		entry.dirty = false;
 		entry.conflict = null;

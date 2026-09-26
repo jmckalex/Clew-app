@@ -212,6 +212,16 @@ export function registerBuiltinCommands() {
 			run: () => actions.closeOtherPane() },
 		{ id: 'workspace:toggle-mode', name: 'Toggle reading mode', hotkeys: ['Mod-e'], when: needsNote,
 			run: () => actions.toggleReadingMode() },
+		// Live edit (docs/dev/live-edit-plan.md): ⌘⇧E flips source ↔ live;
+		// the three explicit modes are for the menu's radios and the palette.
+		{ id: 'workspace:toggle-live', name: 'Toggle live edit / source', hotkeys: ['Mod-Shift-e'], when: needsNote,
+			run: () => actions.toggleLiveEdit() },
+		{ id: 'workspace:mode-source', name: 'View mode: source', when: needsNote,
+			run: () => actions.setViewMode('source') },
+		{ id: 'workspace:mode-live', name: 'View mode: live edit', when: needsNote,
+			run: () => actions.setViewMode('live') },
+		{ id: 'workspace:mode-reading', name: 'View mode: reading', when: needsNote,
+			run: () => actions.setViewMode('reading') },
 		// The shell panel. Ctrl-` is every editor's terminal chord, and it is
 		// free here — Clew's own chords are all Mod-based.
 		{ id: 'shell:toggle', name: 'Toggle shell panel', hotkeys: ['Ctrl-`'], when: needsVault,
@@ -308,7 +318,7 @@ export function openCommandPalette() {
 	openListModal({ placeholder: 'Run a command…', items });
 }
 
-function prettifyChord(chord) {
+export function prettifyChord(chord) {
 	const isMac = navigator.platform.startsWith('Mac');
 	return chord
 		.replace('Mod', isMac ? '⌘' : 'Ctrl')

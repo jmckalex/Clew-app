@@ -361,7 +361,8 @@ if (process.env.CLEW_SMOKE) {
 				// routes there (measured 2026-09-01) while the debugger's
 				// Input domain hit-tests properly. A scenario queues
 				// window.__clewSmokeInput = [{click:{x,y}} | {text:'abc'} |
-				// {combo:{key:'s',modifiers:2}} | {wait:ms}] (modifiers CDP
+				// {combo:{key:'s',modifiers:2}} | {wait:ms}] — a click may carry
+				// `modifiers` too, e.g. {click:{x,y},modifiers:4} (modifiers CDP
 				// bitmask: Alt 1, Ctrl 2, Meta 4, Shift 8).
 				// window.__clewSmokeClipboard (string) preloads the clipboard;
 				// CLEW_SMOKE_CLIPBOARD=1 dumps clipboard text afterwards.
@@ -407,7 +408,9 @@ if (process.env.CLEW_SMOKE) {
 						if (ev.wait) { await sleep(ev.wait); continue; }
 						if (ev.click || ev.tripleClick) {
 							const { x, y } = ev.click ?? ev.tripleClick;
-							const base = { x, y, pointerType: 'mouse' };
+							// `modifiers` on a click event (same CDP bitmask) makes it
+							// a ⌘-click etc. — e.metaKey in the page (inverse search).
+							const base = { x, y, pointerType: 'mouse', modifiers: ev.modifiers ?? 0 };
 							const clicks = ev.tripleClick ? 3 : 1;
 							await dbg.sendCommand('Input.dispatchMouseEvent', { type: 'mouseMoved', button: 'none', ...base });
 							for (let count = 1; count <= clicks; count++) {

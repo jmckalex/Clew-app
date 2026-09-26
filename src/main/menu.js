@@ -56,6 +56,8 @@ const defaultState = () => ({
 	noteActive: false,
 	tabOpen: false,
 	readingMode: false,
+	/** the active note tab's 'source' | 'live' | 'reading', or null */
+	viewMode: null,
 	pinned: false,
 	bookmarked: false,
 	leftSidebar: true,
@@ -287,6 +289,15 @@ class AppMenu {
 				c('app:command-palette', 'Command Palette…', { chord: 'Mod-p' }),
 				{ type: 'separator' },
 				c('workspace:toggle-mode', 'Reading Mode', { chord: 'Mod-e', needs: 'note', type: 'checkbox', checked: s.readingMode }),
+				c('workspace:toggle-live', 'Live Edit', { chord: 'Mod-Shift-e', needs: 'note', type: 'checkbox', checked: s.viewMode === 'live' }),
+				{
+					label: 'Mode',
+					submenu: [
+						c('workspace:mode-source', 'Source', { needs: 'note', type: 'radio', checked: s.viewMode === 'source' }),
+						c('workspace:mode-live', 'Live Edit', { needs: 'note', type: 'radio', checked: s.viewMode === 'live' }),
+						c('workspace:mode-reading', 'Reading', { needs: 'note', type: 'radio', checked: s.viewMode === 'reading' }),
+					],
+				},
 				c('view:properties', 'Properties Panel', { needs: 'vault' }),
 				{ type: 'separator' },
 				{

@@ -18,7 +18,15 @@ import { writeFileAtomic } from './fs-utils.js';
 const DEFAULTS = {
 	recentVaults: [],
 	openVaults: [], // one window each, restored at launch
-	newTabMode: 'source',
+	newTabMode: 'source', // 'source' | 'live' | 'reading'
+	// Live edit (docs/dev/live-edit-plan.md §8). defaultEditMode: where ⌘E
+	// returns from reading for a tab that has no editing mode of its own.
+	defaultEditMode: 'source',
+	liveReveal: 'construct', // 'construct' | 'line'
+	liveRenderMath: true,
+	liveRenderFences: true,
+	liveRenderEmbeds: true,
+	liveFrameCap: 16,
 	explorerOpenMode: 'new-tab', // how newly created note tabs open ('source'|'reading')
 	diaryMode: 'files', // 'files' = one note per day, 'log' = single log note
 	diaryLogFile: 'Diary.md',

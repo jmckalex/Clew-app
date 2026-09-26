@@ -11,6 +11,7 @@
 // Shared UI actions, callable from the interim global keymap, the preview
 // bridge (forwarded chords), and — later — the real command registry.
 import { workspaceStore } from '../state/workspace-store.js';
+import { settingsStore } from '../state/settings-store.js';
 import { vaultStore, isNotePath } from '../state/vault-store.js';
 import { editorPool } from '../editor/pool.js';
 import { createTab } from '../workspace/tree.js';
@@ -62,11 +63,44 @@ export function closeOtherPane() {
 	for (const id of closed) editorPool.close(id);
 }
 
+/** The editing mode a tab without one of its own returns to (settings). */
+export function defaultEditMode() {
+	return settingsStore.get('defaultEditMode') === 'live' ? 'live' : 'source';
+}
+
+/** The editing mode this tab last used: 'source' or 'live'. */
+export function editModeOf(tab) {
+	return tab?.view?.editMode === 'live' || tab?.view?.editMode === 'source'
+		? tab.view.editMode : defaultEditMode();
+}
+
+/** ⌘E: reading ↔ the tab's own editing mode (source or live). */
 export function toggleReadingMode() {
 	const tab = workspaceStore.activeTab();
 	if (tab?.kind !== 'note') return;
-	if (tab.view.mode !== 'reading') editorPool.flush(tab.id);
-	workspaceStore.setTabMode(tab.id, tab.view.mode === 'reading' ? 'source' : 'reading');
+	if (tab.view.mode === 'reading') {
+		workspaceStore.setTabMode(tab.id, editModeOf(tab));
+	} else {
+		editorPool.flush(tab.id);
+		workspaceStore.setTabMode(tab.id, 'reading');
+	}
+}
+
+/** ⌘⇧E: source ↔ live. From reading it goes to the OTHER editing mode —
+ *  the chord names a flip, and reading has nothing of its own to flip. */
+export function toggleLiveEdit() {
+	const tab = workspaceStore.activeTab();
+	if (tab?.kind !== 'note') return;
+	const current = tab.view.mode === 'reading' ? editModeOf(tab) : tab.view.mode;
+	setViewMode(current === 'live' ? 'source' : 'live');
+}
+
+/** Put the active note tab in one of the three modes. */
+export function setViewMode(mode) {
+	const tab = workspaceStore.activeTab();
+	if (tab?.kind !== 'note' || !['source', 'live', 'reading'].includes(mode)) return;
+	if (mode === 'reading' && tab.view.mode !== 'reading') editorPool.flush(tab.id);
+	workspaceStore.setTabMode(tab.id, mode);
 }
 
 function openSingletonTab(kind) {
@@ -212,10 +246,10 @@ export function jumpToLine(tabId, line) {
 	}
 }
 
-/** Open a note in source mode with the cursor on `line`. */
+/** Open a note in its editing mode with the cursor on `line`. */
 export function openNoteAtLine(path, line) {
 	const tab = workspaceStore.openNote(path);
-	workspaceStore.setTabMode(tab.id, 'source');
+	workspaceStore.setTabMode(tab.id, editModeOf(tab));
 	jumpToLine(tab.id, line);
 }
 

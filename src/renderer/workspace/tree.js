@@ -14,8 +14,13 @@
 //
 //   SplitNode    { type:'split', id, dir:'row'|'col', sizes:[…], children:[…] }
 //   TabGroupNode { type:'tabs',  id, tabs:[Tab], activeTabId }
-//   Tab          { id, kind:'note'|…, path?, view:{mode,cursor?,scrollTop?},
+//   Tab          { id, kind:'note'|…, path?, view:{mode,editMode?,cursor?,scrollTop?},
 //                  history:{back:[], forward:[]} }
+//
+// A note tab's `view.mode` is 'source' | 'live' | 'reading'; `view.editMode`
+// is the EDITING mode it last used ('source' | 'live'), which is where ⌘E
+// returns to from reading. Absent (a workspace saved before live edit
+// existed) means the caller's default.
 
 let idCounter = 1;
 const nextId = (prefix) => `${prefix}${idCounter++}`;
@@ -166,7 +171,10 @@ function openPath(state, path, kind, { newTab = false, defaultMode = null } = {}
 	// The new-tab default mode applies only to freshly created note tabs;
 	// navigation-in-place inherits the pane's mode, and explicit per-call
 	// modes are applied by the caller (openWikilink, the note API).
-	if (kind === 'note' && defaultMode) tab.view.mode = defaultMode;
+	if (kind === 'note' && defaultMode) {
+		tab.view.mode = defaultMode;
+		if (defaultMode !== 'reading') tab.view.editMode = defaultMode;
+	}
 	return openTab(state, group.id, tab);
 }
 
@@ -277,6 +285,7 @@ export function splitWithClone(state, targetGroupId, edge, tabId) {
 	}
 	const clone = createTab(source.kind, source.path);
 	clone.view = { ...clone.view, mode: source.view?.mode ?? clone.view.mode };
+	if (source.view?.editMode) clone.view.editMode = source.view.editMode;
 	const newGroup = splitGroup(state, targetGroupId, edge, clone);
 	normalize(state);
 	return newGroup;
@@ -335,7 +344,9 @@ export function navigateTab(state, tabId, path, kind = 'note') {
 	tab.history.forward = [];
 	tab.path = path;
 	tab.kind = kind;
-	tab.view = { mode: tab.view.mode };
+	tab.view = tab.view.editMode
+		? { mode: tab.view.mode, editMode: tab.view.editMode }
+		: { mode: tab.view.mode };
 }
 
 /**

@@ -157,11 +157,12 @@ class ClewPreviewView extends ClewElement {
 				workspaceStore.recordAnchorJump(this.tabId, msg.fromLine, msg.toLine);
 				break;
 			case 'source-line-click': {
-				// Inverse search: flip this tab to source mode at the clicked line.
+				// Inverse search: flip this tab to its editing mode at the
+				// clicked line.
 				const found = workspaceStore.findTab(this.tabId);
 				if (found) {
 					found.tab.view.pendingLine = Math.max(1, msg.line);
-					workspaceStore.setTabMode(this.tabId, 'source');
+					workspaceStore.setTabMode(this.tabId, actions.editModeOf(found.tab));
 				}
 				break;
 			}

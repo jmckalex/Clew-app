@@ -32,6 +32,7 @@ import { attachments } from './attachments.js';
 import { citationCompletions } from './complete/citations.js';
 import { jmdOverlay } from './jmd/overlay.js';
 import { noteMarkdown } from './jmd/markdown-config.js';
+import { liveCompartment } from './live/index.js';
 import { jmdFolding } from './jmd/folding.js';
 import { tableKeymap } from './tables.js';
 import { autoFillHandler } from './fill.js';
@@ -70,6 +71,9 @@ export function makeNoteState(doc, handlerRef, { normalSyntax = false } = {}) {
 			// The dialect's grammar corrections and fence languages
 			// (jmd/markdown-config.js).
 			markdownCompartment.of(noteMarkdown({ normalSyntax })),
+			// Live edit (editor/live/): empty in source mode; the pool swaps
+			// the bundle in (editorPool.setMode).
+			liveCompartment.of([]),
 			clewHighlighting,
 			clewEditorTheme,
 			jmdOverlay(),

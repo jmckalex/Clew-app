@@ -62,7 +62,7 @@ class ClewSettingsView extends ClewElement {
 			this.#section('Appearance', [
 				this.#selectRow('Theme', 'theme', [['dark', 'Dark'], ['light', 'Light']]),
 				this.#selectRow('New note tabs open in', 'newTabMode',
-					[['source', 'Source (edit) mode'], ['reading', 'Reading mode']]),
+					[['source', 'Source mode'], ['live', 'Live edit'], ['reading', 'Reading mode']]),
 				this.#selectRow('Explorer click opens files', 'explorerOpenMode',
 					[['new-tab', 'In a new tab'], ['replace', 'In the current tab (Obsidian-style)']]),
 				this.#numberRow('Editor font size (px)', 'editorFontSize', 16, 10, 28),
@@ -71,6 +71,16 @@ class ClewSettingsView extends ClewElement {
 				this.#checkRow('Auto-fill while typing', 'autoFill'),
 				this.#selectRow('PDF paper size (reading-view export)', 'printPaperSize',
 					[['a4', 'A4'], ['letter', 'US Letter'], ['legal', 'US Legal'], ['tabloid', 'Tabloid']]),
+			]),
+			this.#section('Live edit', [
+				this.#selectRow('⌘E returns from reading mode to', 'defaultEditMode',
+					[['source', 'Source mode'], ['live', 'Live edit']]),
+				this.#selectRow('Reveal syntax for', 'liveReveal',
+					[['construct', 'The construct under the cursor'], ['line', 'The whole line']]),
+				this.#checkRow('Typeset math in place', 'liveRenderMath'),
+				this.#checkRow('Render diagram and query fences in place', 'liveRenderFences'),
+				this.#checkRow('Render embeds and media in place', 'liveRenderEmbeds'),
+				this.#numberRow('Rendered blocks kept alive (advanced)', 'liveFrameCap', 16, 4, 64),
 			]),
 			this.#section('Diary', [
 				this.#selectRow('Mode', 'diaryMode',
