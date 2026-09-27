@@ -172,6 +172,43 @@ const x = 1;
 Last line.
 `);
 
+// Nested.md (live-nested-fence-scenario.js): emphasis nested both ways,
+// and a code fence whose closer must not read as a blank line.
+writeFileSync(join(dir, 'Nested.md'), `# Nested
+
+Boldface and /*italics*/, then */strong italics/* here.
+
+- [ ] What should I do? *Boldface* and /*tasked*/.
+- [ ] Should I do this?
+
+\`\`\`javascript
+let i = 10;
+function foo() {
+}
+\`\`\`
+
+Last line.
+`);
+
+// Headerless.md (live-headerless-table-scenario.js): the engine's two
+// headerless forms — pure pipes (the owner's grades table), separator-first.
+writeFileSync(join(dir, 'Headerless.md'), `# Headerless
+
+The categories:
+
+| *Description* | *Grade* |
+| Lively and perceptive | 80 |
+| Reasonable | 65 |
+
+Between the tables.
+
+|:---|---:|
+| left | 1 |
+| more | 2 |
+
+Last line.
+`);
+
 // Cells.md (live-table-edit-scenario.js): a plain table to edit in place.
 writeFileSync(join(dir, 'Cells.md'), `# Cells
 

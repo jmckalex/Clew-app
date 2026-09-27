@@ -19,6 +19,40 @@ Bugs from your hands-on testing, each fixed and asserted by a scenario:
   - The sidebar toggles moved from ⌘B / ⌘⇧B to ⌘⌥B / ⌘⌥⇧B.
   - Manual: `462cbd2`.
 
+- **Headerless tables**: your grades table was bare
+  pipes because it has no `|---|` line. The engine renders it as a
+  headerless table, but lezer parses it as a paragraph. Both of the engine's
+  headerless forms (pure pipe rows; a separator line first) are now drawn and
+  edited in place with the full Table menu.
+  - Tests: `tests/headerless-tables.test.js`, 14 tests, including PARITY
+    against the engine's own tokenizer.
+  - Scenario: `live-headerless-table-scenario.js` (in the sweep).
+  - Docs: design §5.5a; the manual's live-edit Tables section (docs branch);
+    the demo's `Guide/Live Edit`.
+  - Also: empty cells keep a line's height (the row Tab appends was flat).
+  - Deliberately not done: source mode's Tab/Enter keymap stays GFM-only
+    (Enter after a single `| a |` line must still start a new line), and
+    multi-row GFM headers are untouched.
+
+- **Nested emphasis and the fence's blank line** (
+  `live-nested-fence-scenario.js`, in the sweep):
+  - `/*italics*/` drew bold but upright. `.cmt-emphasis` (lezer's class for
+    `*x*`) set `font-style: normal`, which un-slanted the italic span around
+    it. Measured by injecting the old rule: the computed style reads `normal`.
+  - `*/italics/*` got no italic at all: the scanner opened an italic only
+    after whitespace. **Owner's rule (2026-09-27): the editor always follows
+    the engine.** The scanner's italic is now the engine's regex
+    (`/([^/.?!]+[.?!]?)/` at every slash the lexer reaches), so `and/or/not`,
+    `/usr/bin`, `1/2 or 3/4` and a bare URL's path italicise as they render.
+    `\/` is the author's escape. Exempt, as in the engine: escaped slashes,
+    link destinations, autolinks and HTML tags. Checked with the FULL
+    engine (a bare URL is not linked; its `b` italicises). Tests:
+    `jmarkdown-scan.test.js` (the engine's cases, plus parity with its
+    tokenizer). Manual: editing.html and dialect.html.
+  - A code fence showed a blank line under its code. The concealed closer
+    was a full-height line; it is now a 10px pad, full height again when
+    revealed (§5.2's fence row, ◆).
+
 Still open from those runs:
 
 - **Function names.** In highlighted fences a function name (`foo`) takes

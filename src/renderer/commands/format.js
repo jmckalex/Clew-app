@@ -286,23 +286,25 @@ function refocus(main) {
 /**
  * A structural table operation on the table under the active cell or the
  * cursor (tables.js does the work; table-cell-editor.js#applyStructure
- * writes it and lands in the right cell). Rows are LOGICAL (header 0).
+ * writes it and lands in the right cell). Rows are LOGICAL: a GFM table's
+ * header is row 0; a headerless table has no header rows (`h` is 0).
  */
 function tableOp(view, op) {
 	const t = tableTarget(view);
 	if (!t) return false;
 	const rows = t.ranges.rows.length;
 	const { row, col } = t;
+	const h = t.ranges.headerRows;
 	const at = (table, r) => rowIndex(table, r);
 	const ops = {
-		'row-above': [(tb) => insertRow(tb, row === 0 ? tb.delimiterRow + 1 : at(tb, row)), () => ({ row: Math.max(1, row), col })],
-		'row-below': [(tb) => insertRow(tb, row === 0 ? tb.delimiterRow + 1 : at(tb, row) + 1), () => ({ row: row + 1, col })],
-		'delete-row': [(tb) => (row === 0 ? tb : deleteRow(tb, at(tb, row))), () => ({ row: Math.min(row, rows - 2), col })],
+		'row-above': [(tb) => insertRow(tb, row < h ? tb.delimiterRow + 1 : at(tb, row)), () => ({ row: Math.max(h, row), col })],
+		'row-below': [(tb) => insertRow(tb, row < h ? tb.delimiterRow + 1 : at(tb, row) + 1), () => ({ row: row < h ? h : row + 1, col })],
+		'delete-row': [(tb) => (row < h ? tb : deleteRow(tb, at(tb, row))), () => ({ row: Math.max(0, Math.min(row, rows - 2)), col })],
 		'col-left': [(tb) => insertColumn(tb, col), () => ({ row, col })],
 		'col-right': [(tb) => insertColumn(tb, col + 1), () => ({ row, col: col + 1 })],
 		'delete-col': [(tb) => deleteColumn(tb, col), () => ({ row, col: Math.max(0, col - 1) })],
-		'row-up': [(tb) => (row < 2 ? tb : moveRow(tb, at(tb, row), at(tb, row - 1))), () => ({ row: row - 1, col })],
-		'row-down': [(tb) => (row < 1 || row >= rows - 1 ? tb : moveRow(tb, at(tb, row), at(tb, row + 1))), () => ({ row: row + 1, col })],
+		'row-up': [(tb) => (row <= h ? tb : moveRow(tb, at(tb, row), at(tb, row - 1))), () => ({ row: row - 1, col })],
+		'row-down': [(tb) => (row < h || row >= rows - 1 ? tb : moveRow(tb, at(tb, row), at(tb, row + 1))), () => ({ row: row + 1, col })],
 		'col-move-left': [(tb) => moveColumn(tb, col, col - 1), () => ({ row, col: col - 1 })],
 		'col-move-right': [(tb) => moveColumn(tb, col, col + 1), () => ({ row, col: col + 1 })],
 		'align-left': [(tb) => setAlignment(tb, col, 'left'), () => ({ row, col })],

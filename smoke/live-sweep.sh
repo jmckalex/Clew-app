@@ -15,6 +15,8 @@ run() { local n=$1 v=$2; shift 2; env CLEW_SMOKE_LOG=1 CLEW_SMOKE=$S/$n.png CLEW
 rsync -a --exclude .clew demo-vault/ $S/v-le/; run live-edit $S/v-le
 node smoke/make-live-vault.mjs $S/v-ll >/dev/null; run live-lines $S/v-ll
 node smoke/make-live-vault.mjs $S/v-te >/dev/null; run live-table-edit $S/v-te
+node smoke/make-live-vault.mjs $S/v-hl >/dev/null; run live-headerless-table $S/v-hl
+node smoke/make-live-vault.mjs $S/v-nf >/dev/null; run live-nested-fence $S/v-nf
 node smoke/make-hover-vault.mjs $S/v-lp; run link-preview $S/v-lp CLEW_SMOKE_FRAME_SCRIPT=smoke/link-preview-frame.js CLEW_SMOKE_FRAME_MATCH=__clew_block__
 node smoke/make-live-vault.mjs $S/v-pp >/dev/null; run preview-pane $S/v-pp CLEW_SMOKE_FRAME_SCRIPT=smoke/preview-pane-frame.js CLEW_SMOKE_FRAME_MATCH=__clew_block__
 node smoke/make-crossref-vault.mjs $S/v-xr; run crossref $S/v-xr CLEW_SMOKE_FRAME_SCRIPT=smoke/crossref-frame.js CLEW_SMOKE_FRAME_MATCH=vault/

@@ -189,7 +189,7 @@ function tableWidget(state, c, model) {
 	const last = doc.lineAt(c.to).number;
 	const ranges = cellRanges(doc, first, last);
 	const rows = ranges.rows.map((row, r) => ({
-		header: r === 0,
+		header: r < ranges.headerRows,
 		cells: row.map((cell) => ({
 			tokens: inlineTokens(doc, cell.from, cell.to, model),
 			offset: cell.from - c.lineFrom,
@@ -201,10 +201,16 @@ function tableWidget(state, c, model) {
 	const cols = Math.max(0, ...ranges.rows.map((r) => r.length));
 	const extended = isExtendedTable(lines);
 	const tooBig = ranges.rows.length > CELL_EDIT_LIMITS.rows || cols > CELL_EDIT_LIMITS.cols;
+	// Editing finds a table by its run of pipe-led lines (tables.js#
+	// tableAround); a table it would not find the same (GFM rows without a
+	// leading pipe, a separator-first body with a prose line) is drawn only.
+	const pipeLed = (n) => /^\s*\|/.test(doc.line(n).text);
+	let found = !(first > 1 && pipeLed(first - 1)) && !(last < doc.lines && pipeLed(last + 1));
+	for (let n = first; found && n <= last; n += 1) found = pipeLed(n);
 	const cell = activeCellOf(state);
 	const active = cell && cell.from >= c.from && cell.to <= c.to ? { row: cell.row, col: cell.col } : null;
 	return new TableWidget(doc.sliceString(c.from, c.to), rows, align, {
-		editable: !extended && !tooBig && Boolean(ranges.delimiterLine),
+		editable: !extended && !tooBig && found,
 		reason: extended ? 'Extended table (merged cells or widths) — edited as source'
 			: tooBig ? `Large table (over ${CELL_EDIT_LIMITS.rows} rows or ${CELL_EDIT_LIMITS.cols} columns) — edited as source` : '',
 		active,

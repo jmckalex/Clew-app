@@ -78,6 +78,12 @@ columns and alignment, *Esc* for the source. Practise here:
 | apple | red | 3 |
 | pear | green | 5 |
 
+A table needs no header: rows of pipes on their own are a table too, and
+every row is an ordinary one.
+
+| Mercury | 0.39 AU |
+| Venus | 0.72 AU |
+
 $$
 \newcommand{\half}{\tfrac{1}{2}}
 \int_0^1 x \, dx = \half

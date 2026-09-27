@@ -294,7 +294,9 @@ function build(view) {
 						const line = doc.line(n);
 						if (!inView(line.from, line.to)) continue;
 						const edge = line.from === c.openLine.from ? ' le-fence-open'
-							: c.closeLine && line.from === c.closeLine.from ? ' le-fence-close' : '';
+							// Concealed, the closer is only the box's rounded foot — not a
+							// blank line under the code (reading mode draws none).
+							: c.closeLine && line.from === c.closeLine.from ? ` le-fence-close${hidden ? ' le-fence-foot-line' : ''}` : '';
 						lineClass(line.from, `le-fence${edge}`);
 					}
 					if (!hidden) break;

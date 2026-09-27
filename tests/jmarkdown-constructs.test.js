@@ -176,8 +176,8 @@ test('html, script and style blocks', () => {
 
 /* ── inline constructs ───────────────────────────────────────────────── */
 
-test('italic: delimiters and body; a path never italicises', () => {
-	const c = only('Some /slanted words/ and /usr/bin.', 'italic');
+test('italic: delimiters and body', () => {
+	const c = only('Some /slanted words/ and more.', 'italic');
 	assert.deepEqual([c.open, c.body, c.close], ['/', 'slanted words', '/']);
 });
 

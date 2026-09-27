@@ -52,7 +52,7 @@ import {
 import {
 	cellRanges, cellAt, neighbour, escapeCellText, forwardChanges, isExtendedTable,
 } from './table-cell-model.js';
-import { tableAround, formatTable, insertRow as insertRowAt } from '../tables.js';
+import { tableAround, isRenderedTable, formatTable, insertRow as insertRowAt } from '../tables.js';
 
 /** @type {WeakMap<EditorView, EditorView>} note editor → its cell editor */
 const editors = new WeakMap();
@@ -167,7 +167,7 @@ export function tableTarget(main) {
 	const lineNo = state.doc.lineAt(pos).number;
 	const lines = state.doc.toString().split('\n');
 	const table = tableAround(lines, lineNo - 1);
-	if (!table || table.delimiterRow < 0) return null;
+	if (!isRenderedTable(table, lines)) return null;
 	const first = table.from + 1;
 	const last = table.to + 1;
 	const ranges = cellRanges(state.doc, first, last);
@@ -201,7 +201,7 @@ function reflowChange(state, cell) {
 	const lineNo = state.doc.lineAt(cell.from).number;
 	const lines = state.doc.toString().split('\n');
 	const table = tableAround(lines, lineNo - 1);
-	if (!table || table.delimiterRow < 0) return null;
+	if (!isRenderedTable(table, lines)) return null;
 	const own = lines.slice(table.from, table.to + 1);
 	if (isExtendedTable(own)) return null;
 	const formatted = formatTable(table).join('\n');

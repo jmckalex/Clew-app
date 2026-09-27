@@ -1310,62 +1310,52 @@ function highlights(ctx, S) {
 }
 
 /**
- * `/italic/` spans, with Sublime's three exits: a closing `/` before
- * whitespace or trailing punctuation; an *abort* on a mid-word or
- * space-then-word slash (`/usr/bin` never italicises); and a blank
- * line, which ends the span like the Sublime context's pop. `\/` is an
- * escaped slash. Not owned — a nested `*bold*` keeps its grammar face.
+ * `/italic/` spans, exactly as the ENGINE reads them (owner's rule,
+ * 2026-09-27: the editor always follows the engine). Its tokenizer
+ * (vendor/jmarkdown/src/syntax-modifications.js#italics) is a bare regex,
+ * `/([^/.?!]+[.?!]?)/`, tried at every slash the inline lexer reaches — no
+ * word boundaries, so `and/or/not`, `/usr/bin` and `1/2 or 3/4` italicise
+ * too, and `\/` is how an author says a slash is only a slash. A slash the
+ * lexer never reaches cannot open one: an escaped `\/`, a slash inside a
+ * link's destination, or an autolink or HTML tag (each consumed whole by an
+ * earlier token). A BARE URL is not one: the engine does not link it, and
+ * `https://a.com/b/c` italicises its `b` (measured with the engine itself). The body is raw text up to the next slash of
+ * any kind — escaped or not — and no further than the paragraph. Not owned:
+ * a nested `*bold*` keeps its grammar face.
  */
+const ITALIC = /\/([^/.?!]+[.?!]?)\//y;
+const LEXED_WHOLE = [
+	/\]\([^)\n]*\)/g, // a link's destination (its text is lexed, and may hold one)
+	/<[A-Za-z/!?][^>\n]*>/g, // an HTML tag or an autolink
+];
+
 function italics(ctx, S) {
-	const re = /(^|\s)\/(?=[^\s/])/g;
-	let m;
-	while ((m = re.exec(S))) {
-		const open = m.index + m[1].length;
-		if (isClaimed(ctx, open)) continue;
-		let j = open + 1;
-		let closed = -1;
-		let aborted = false;
-		while (j < S.length) {
-			const c = S[j];
-			if (c === '\\' && S[j + 1] === '/') {
-				j += 2;
-				continue;
-			}
-			if (c === '/') {
-				const next = S[j + 1];
-				if (next === undefined || /[\s.,;:!?)]/.test(next)) {
-					closed = j;
-				} else {
-					aborted = true;
-				}
-				break;
-			}
-			if (c === '\n') {
-				const blankAt = /^[ \t]*(\n|$)/.test(S.slice(j + 1)) ? j : -1;
-				if (blankAt !== -1) {
-					closed = blankAt; // partial span, no closing punct
-					break;
-				}
-			}
-			j += 1;
-		}
-		if (aborted || closed === -1) continue;
+	const whole = [];
+	for (const re of LEXED_WHOLE) {
+		re.lastIndex = 0;
+		for (let m = re.exec(S); m; m = re.exec(S)) whole.push([m.index, m.index + m[0].length]);
+	}
+	const unreached = (pos) => whole.some(([a, b]) => pos >= a && pos < b);
+	for (let open = S.indexOf('/'); open !== -1; open = S.indexOf('/', open + 1)) {
+		if (isClaimed(ctx, open) || unreached(open)) continue;
+		let backslashes = 0;
+		for (let k = open - 1; k >= 0 && S[k] === '\\'; k -= 1) backslashes += 1;
+		if (backslashes % 2 === 1) continue;
+		ITALIC.lastIndex = open;
+		const m = ITALIC.exec(S);
+		// A blank line ends the paragraph, and the engine lexes one at a time.
+		if (!m || /\n[ \t]*\n/.test(m[1])) continue;
+		const closed = open + m[0].length - 1;
 		cap(ctx, open, open + 1, 'jmd-punct');
 		cap(ctx, open + 1, closed, 'jmd-italic');
-		const shut = S[closed] === '/';
-		construct(ctx, 'italic', open, shut ? closed + 1 : closed, {
+		cap(ctx, closed, closed + 1, 'jmd-punct');
+		construct(ctx, 'italic', open, closed + 1, {
 			open: { start: open, end: open + 1 },
-			close: shut ? { start: closed, end: closed + 1 } : null,
+			close: { start: closed, end: closed + 1 },
 			body: { start: open + 1, end: closed },
 		});
-		if (S[closed] === '/') {
-			cap(ctx, closed, closed + 1, 'jmd-punct');
-			claim(ctx, open, closed + 1);
-			re.lastIndex = closed + 1;
-		} else {
-			claim(ctx, open, closed);
-			re.lastIndex = closed;
-		}
+		claim(ctx, open, closed + 1);
+		open = closed;
 	}
 }
 

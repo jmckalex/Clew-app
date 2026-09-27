@@ -218,3 +218,10 @@ test('memoised per document version', () => {
 	assert.equal(liveModel(state), liveModel(state));
 	assert.notEqual(liveModel(state), liveModel(state, { normalSyntax: true }));
 });
+
+test('nested emphasis: italic around strong, and strong around italic', () => {
+	assert.deepEqual(model('Boldface and /*italics*/.\n').map((c) => [c.kind, c.text]),
+		[['italic', '/*italics*/'], ['strong', '*italics*']]);
+	assert.deepEqual(model('a */italics/* b\n').map((c) => [c.kind, c.text]),
+		[['strong', '*/italics/*'], ['italic', '/italics/']]);
+});

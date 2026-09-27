@@ -522,7 +522,7 @@ Nested lists inside quotes/callouts compose (the line classes stack).
 | `$$…$$`, `\[…\]`, `\begin{align}…` | block **MathWidget** (display) | source, `jmd-math` face | click → reveals |
 | table | block **TableWidget** (§5.5a) | source, formatted by nothing (never rewrite on reveal) | click on a cell → cursor to that cell's source start |
 | image alone on a line (`![alt](src)`, `![[img.png\|320x60]]`) | block **ImageWidget** (§5.5b) | source | click → reveals; ⌥-click opens the file |
-| code fence | NEVER concealed body: `CodeText` stays source with fence-language highlighting; opener line replaced by **FenceHead** (language badge + copy button; `CodeInfo` text hidden), closer by **FenceFoot** (thin rule); lines get `le-fence` (mono, background) | opener/closer shown | copy button copies `CodeText` |
+| code fence | NEVER concealed body: `CodeText` stays source with fence-language highlighting; opener line replaced by **FenceHead** (language badge + copy button; `CodeInfo` text hidden), closer by **FenceFoot**, its line collapsed to a 10px pad finishing the box (`le-fence-foot-line`) — ◆ full height again when revealed, the one line whose height changes on entering (as built it was a full blank line under the code, which reading mode never draws; the owner's report, 2026-09-27); lines get `le-fence` (mono, background) | opener/closer shown | copy button copies `CodeText` |
 | rich fences (`mermaid tikz latex tex metapost leaflet query tasks kanban dataview dataviewjs base ad-* meta-bind(-button/-embed/-js/-js-view)` + any language a plugin's engine surface registers — the list lives in `live/rich-fences.js`, imported by the toolbar too. Plugins do NOT declare fence names today (the Charts manifest has only `surfaces`); the model takes `richFences` as config, and how a plugin supplies it — a manifest `fences` key? — is still open, §12) | Tier C frame (§7) when `liveRenderFences`; else as code fence | source | — |
 | `:::name` … `:::` (generic: theorem, abstract, title-box, comment, HTML, custom) | opener line → **EnvHead** widget (`name` + attrs summary as a caption, left rule), closer → **EnvFoot**; body lines `le-env le-env-<name>` (left rule `--clew-accent`); `:::TeX` body additionally `le-tex-only` (dimmed, head says "LaTeX only"); `:::comment` dimmed; nesting via `data-depth` from colon count | source | — |
 | `@begin(name)`…`@end(name)` | same as above; `@begin(equation\|align\|…)` (the `MATH_ENVIRONMENT_NAMES`) → display MathWidget wrapping the body in `\begin{name}…\end{name}` | source | — |
@@ -622,7 +622,27 @@ stays the only model and the only undo history.
   EXTENDED table (the engine's colspan `| a || b |`, rowspan cell ending in
   `^`, widths `|---30%---|` — read from marked-extended-tables-headerless),
   which `formatTable` would square away; and a table over 200 rows or 40
-  columns. Headerless tables have no lezer Table node and stay prose.
+  columns.
+- **Headerless tables** (added 2026-09-27, the owner's report: a grades table
+  of bare pipe rows showed as text). The engine renders two forms GFM does
+  not — pure pipe rows, and a separator line first — and lezer parses both
+  as a paragraph. `tables.js#headerlessTables` holds the engine's rules
+  (its tokenizer's regexes, copied from marked-extended-tables-headerless);
+  `model.js#pipeTables` runs them over each paragraph outside a quote and
+  adds `table` constructs with `headerless: 'pipes' | 'separator'`.
+  `tests/headerless-tables.test.js` asserts PARITY by lexing the same
+  documents with the engine's own extension (skipped where the engine master
+  is absent). `cellRanges` skips a separator on the FIRST line (unless the
+  real delimiter follows it) and reports `headerRows` (0 here); every
+  "never the header" rule — insert/delete/move row, the commands' logical
+  rows — reads that count instead of assuming row 0. The last row of a
+  headerless table is never deleted. Alignment on a pure-pipe table adds a
+  separator line (the separator-first form: still headerless, now aligned).
+  A table is edited in place only when its lines are exactly the run of
+  pipe-led lines editing finds (`tableAround`); otherwise it is drawn only.
+  Source mode's Tab/Enter keymap stays GFM-only: a single `| a |` line is a
+  table to the engine, and Enter after one must still start a new line.
+  Scenario: `smoke/live-headerless-table-scenario.js`.
 - Clicking: a plain click edits the cell in place; ⌥-click reveals the source
   at that cell (⌥ means "the source" everywhere in live edit).
 - Scenario: `smoke/live-table-edit-scenario.js` (ten steps, real input for

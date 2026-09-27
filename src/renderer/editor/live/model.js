@@ -46,6 +46,7 @@ import { scanFor } from '../jmd/scan-cache.js';
 import { MATH_ENVIRONMENT_NAMES } from '../jmd/math-segments.js';
 import { resolveType } from '../../../engine/callouts.js';
 import { IMAGE_EXT } from '../../../shared/file-types.js';
+import { headerlessTables } from '../tables.js';
 import {
 	isRichFence, RICH_DIRECTIVES, RICH_ENVIRONMENTS, RICH_HTML,
 } from './rich-fences.js';
@@ -310,6 +311,7 @@ function build(doc, tree, config) {
 					return;
 				case 'Paragraph':
 					terms(from, to);
+					if (!ancestors(node, 'Blockquote')) pipeTables(from, to);
 					return;
 				default:
 			}
@@ -390,6 +392,23 @@ function build(doc, tree, config) {
 			const line = doc.line(n);
 			const m = TERM.exec(line.text);
 			if (m) add('term', 'A', 'line', line.from, line.to, { term: { from: line.from, to: line.from + m[1].length } });
+		}
+	}
+
+	// The engine's headerless tables (tables.js#headerlessTables): lezer
+	// knows only GFM's, so these arrive as paragraph lines. A line the
+	// paragraph starts partway along (after a list marker) holds no row.
+	function pipeTables(from, to) {
+		const first = lineOf(from).number;
+		const lines = [];
+		for (let n = first; n <= lineOf(to).number; n += 1) {
+			const line = doc.line(n);
+			lines.push(line.from >= from || text(line.from, from).trim() === '' ? line : null);
+		}
+		for (const t of headerlessTables(lines.map((l) => l?.text ?? null))) {
+			const a = lines[t.first].from;
+			const b = lines[t.last].to;
+			add('table', 'B', 'block', a, b, { hidden: [{ from: a, to: b }], headerless: t.form });
 		}
 	}
 

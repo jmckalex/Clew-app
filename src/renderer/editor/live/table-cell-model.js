@@ -20,8 +20,9 @@
 // the padding spaces trimmed; an empty cell is the empty range just after the
 // first space (or just after the pipe when there is no space).
 //
-// Rows here are LOGICAL: the header is row 0, the delimiter line is skipped,
-// body rows follow.
+// Rows here are LOGICAL: the delimiter line is skipped, so a GFM table's
+// header is row 0 and its body follows; a headerless table (the engine's
+// separator-first or pure-pipe form, tables.js#headerlessTables) is all body.
 
 /** Tables above these sizes are edited as source (a rendering bound). */
 export const CELL_EDIT_LIMITS = { rows: 200, cols: 40 };
@@ -65,20 +66,25 @@ function lineCells(text) {
 /**
  * The cell ranges of the table on lines [firstLine, lastLine] (1-based) of
  * `doc` (a CodeMirror Text): `rows[row][col] = {from, to}` in document
- * offsets, the delimiter line skipped.
+ * offsets, the delimiter line skipped. `headerRows` is how many rows sit
+ * above it — 0 for a headerless table, whose separator (if any) is its first
+ * line. A first line that merely LOOKS like a separator is a header when the
+ * real delimiter follows it.
  */
 export function cellRanges(doc, firstLine, lastLine) {
 	const rows = [];
 	let delimiterLine = null;
 	for (let n = firstLine; n <= lastLine; n += 1) {
 		const line = doc.line(n);
-		if (delimiterLine === null && n > firstLine && isDelimiter(line.text)) {
+		const opener = n === firstLine && n < lastLine && !isDelimiter(doc.line(n + 1).text);
+		if (delimiterLine === null && (n > firstLine || opener) && isDelimiter(line.text)) {
 			delimiterLine = n;
 			continue;
 		}
 		rows.push(lineCells(line.text).map((c) => ({ from: line.from + c.from, to: line.from + c.to })));
 	}
-	return { rows, delimiterLine };
+	const headerRows = delimiterLine === null ? 0 : delimiterLine - firstLine;
+	return { rows, delimiterLine, headerRows };
 }
 
 /** The cell holding `pos` (boundaries inclusive), or null. */

@@ -75,6 +75,98 @@ export function tableAround(lines, lineNo) {
 	return { from, to, rows, align, delimiterRow };
 }
 
+// ---- the engine's headerless tables ------------------------------------------
+//
+// marked-extended-tables-headerless.js renders two table forms GFM does not
+// know, and lezer therefore parses as a paragraph:
+//
+//   separator-first        pure pipes
+//   | :--- | ---: |        | Apples  | 12 |
+//   | L    | R    |        | Bananas | 8  |
+//
+// Neither has a header row. The rules below are the engine's own (its
+// tokenizer's regexes, copied), so live edit draws a table exactly where
+// reading mode will.
+
+/** Form B's row: pipes at both ends, something between. */
+const PIPE_ROW = /^ *\|.+\| *$/;
+/** Form A's opener: the engine's ALIGN, anchored — and holding a pipe, or it is a setext rule. */
+const ALIGN_LINE = /^ {0,3}(?:\| *)?:?-+(?: *(?:100|[1-9][0-9]?%) *-+)?:? *(?:\| *:?-+(?: *(?:100|[1-9][0-9]?%) *-+)?:? *)*(?:\| *)?$/;
+/** A separator anywhere in a pipe run: the run is then GFM's, not form B's. */
+const SEP_ROW = /^ *\|?( *:?-+(?:[ ]*(?:100|[1-9][0-9]?)%[ ]*-+)?:? *\|)*( *:?-+(?:[ ]*(?:100|[1-9][0-9]?)%[ ]*-+)?:? *)\|? *$/;
+/** A separator straight after a pipe run: that run is a GFM header. */
+const SEP_AFTER = /^ {0,3}(?:\| *)?:?-+:? *(?:\| *:?-+:? *)*(?:\| *)? *$/;
+
+const isAlignLine = (line) => line.includes('|') && ALIGN_LINE.test(line);
+
+/** A row's column count as the engine counts it (a colspan `||` counts twice). */
+function engineColumns(row) {
+	const cells = [...row.trim().matchAll(/(?:[^|\\]|\\.?)+(?:\|+|$)/g)].map((m) => m[0]);
+	if (cells.length && !cells[0].trim()) cells.shift();
+	if (cells.length && !cells[cells.length - 1].trim()) cells.pop();
+	return cells.reduce((n, cell) => n + Math.max(cell.length - cell.replace(/\|+$/, '').length, 1), 0);
+}
+
+const alignColumns = (line) => line.replace(/ *(?:100|[1-9][0-9]?%) */g, '')
+	.replace(/^ *\|? */, '').replace(/ *\| *$/, '').split(/ *\| */).length;
+
+/**
+ * The headerless tables among a paragraph's lines: `[{first, last, form}]`,
+ * indices into `lines`, form 'separator' | 'pipes'. A `null` line is one
+ * that cannot hold a table row (it begins with a list marker, say) and
+ * bounds a run like a blank line.
+ *
+ * As in the engine, a separator-first table's body runs to the end of the
+ * paragraph, prose lines included; a pure-pipe table is the run of pipe rows,
+ * and is not one at all when a separator sits in or right after the run
+ * (that is GFM's header-and-delimiter shape, which lezer owns).
+ */
+export function headerlessTables(lines) {
+	const out = [];
+	let i = 0;
+	while (i < lines.length) {
+		const line = lines[i];
+		if (line == null) { i += 1; continue; }
+		// A pipe on the line above makes the separator a GFM delimiter.
+		const prev = i > 0 ? lines[i - 1] : null;
+		if (isAlignLine(line) && (prev == null || !prev.includes('|'))) {
+			let j = i + 1;
+			while (j < lines.length && lines[j] != null && lines[j].trim() !== '' && !/^ {4}/.test(lines[j])) j += 1;
+			if (j > i + 1 && engineColumns(lines[i + 1]) === alignColumns(line)) {
+				out.push({ first: i, last: j - 1, form: 'separator' });
+				i = j;
+				continue;
+			}
+		}
+		if (PIPE_ROW.test(line)) {
+			let j = i;
+			while (j + 1 < lines.length && lines[j + 1] != null && PIPE_ROW.test(lines[j + 1])) j += 1;
+			const after = lines[j + 1];
+			const gfm = lines.slice(i, j + 1).some((l) => SEP_ROW.test(l)) || (after != null && SEP_AFTER.test(after));
+			if (!gfm) out.push({ first: i, last: j, form: 'pipes' });
+			i = j + 1;
+			continue;
+		}
+		i += 1;
+	}
+	return out;
+}
+
+/** How many header rows a table (tableAround's shape) has: none when headerless. */
+export const headerRows = (table) => (table.delimiterRow > 0 ? table.delimiterRow : 0);
+
+/**
+ * Is tableAround's table one the engine renders: GFM (a header, then the
+ * delimiter row), or all of it one headerless table?
+ */
+export function isRenderedTable(table, lines) {
+	if (!table) return false;
+	if (table.delimiterRow >= 1) return true;
+	const own = lines.slice(table.from, table.to + 1);
+	const found = headerlessTables(own);
+	return found.length === 1 && found[0].first === 0 && found[0].last === own.length - 1;
+}
+
 /** Visible width, counting a CJK/emoji character as two columns. */
 export function displayWidth(text) {
 	let width = 0;
@@ -113,7 +205,8 @@ export function formatTable(table) {
 	const columns = Math.max(...table.rows.map((r) => r.length));
 	const widths = [];
 	for (let c = 0; c < columns; c++) {
-		let width = 3;   // '---' is the narrowest legal delimiter
+		// '---' is the narrowest legal delimiter; a pure-pipe table has none.
+		let width = table.delimiterRow >= 0 ? 3 : 1;
 		table.rows.forEach((row, r) => {
 			if (r === table.delimiterRow) return;
 			width = Math.max(width, displayWidth(row[c] ?? ''));
@@ -148,18 +241,24 @@ const cloneTable = (table) => ({
 	align: [...table.align],
 });
 
-/** An empty row inserted at `at` (never above the header). */
+/** An empty row inserted at `at` (never above the header, nor a headerless table's separator). */
 export function insertRow(table, at) {
 	const next = cloneTable(table);
-	const where = Math.max(1, Math.min(at, next.rows.length));
+	const floor = table.delimiterRow >= 1 ? 1 : table.delimiterRow + 1;
+	const where = Math.max(floor, Math.min(at, next.rows.length));
 	next.rows.splice(where, 0, Array.from({ length: columnCount(table) }, () => ''));
 	if (next.delimiterRow >= where) next.delimiterRow += 1;
 	return next;
 }
 
-/** Row `at` removed — never the header or the delimiter row. */
+/**
+ * Row `at` removed — never a header or the delimiter row, nor a headerless
+ * table's last row (the lines left would be no table at all).
+ */
 export function deleteRow(table, at) {
-	if (at <= 0 || at === table.delimiterRow || at >= table.rows.length) return table;
+	if (at < headerRows(table) || at === table.delimiterRow || at >= table.rows.length) return table;
+	const body = table.rows.length - (table.delimiterRow >= 0 ? 1 : 0) - headerRows(table);
+	if (headerRows(table) === 0 && body <= 1) return table;
 	const next = cloneTable(table);
 	next.rows.splice(at, 1);
 	if (next.delimiterRow > at) next.delimiterRow -= 1;
@@ -190,7 +289,7 @@ export function deleteColumn(table, at) {
 
 /** Body row `from` moved to index `to` (header and delimiter stay put). */
 export function moveRow(table, from, to) {
-	const body = (i) => i > 0 && i !== table.delimiterRow && i < table.rows.length;
+	const body = (i) => i >= headerRows(table) && i !== table.delimiterRow && i < table.rows.length;
 	if (!body(from) || !body(to) || from === to) return table;
 	const next = cloneTable(table);
 	const [row] = next.rows.splice(from, 1);
@@ -214,9 +313,18 @@ export function moveColumn(table, from, to) {
 	return next;
 }
 
-/** Column `col`'s alignment: 'left' | 'center' | 'right' | null. */
+/**
+ * Column `col`'s alignment: 'left' | 'center' | 'right' | null. A pure-pipe
+ * table has no row to hold one, so it gains a separator first — the engine's
+ * separator-first form, still headerless.
+ */
 export function setAlignment(table, col, align) {
 	const next = cloneTable(table);
+	if (next.delimiterRow < 0) {
+		if (align === null) return table;
+		next.rows.unshift(Array.from({ length: columnCount(table) }, () => '---'));
+		next.delimiterRow = 0;
+	}
 	while (next.align.length <= col) next.align.push(null);
 	next.align[col] = align;
 	return next;
