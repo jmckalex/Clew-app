@@ -128,6 +128,27 @@ function changeLines(view, mapFn) {
 const BLOCK_PREFIX_RE = /^(\s*)(?:[-*+][ \t]+\[[ xX]\][ \t]+|[-*+][ \t]+|\d+[.)][ \t]+|>[ \t]+)/;
 const stripPrefix = (text) => text.replace(BLOCK_PREFIX_RE, '$1');
 
+/**
+ * On an EMPTY line (or a selection of nothing but blank lines) a line
+ * command has nothing to wrap, and used to do nothing at all — which is
+ * where you start a list, and where the `//` menu always leaves you. There
+ * it writes the marker and puts the cursor where the text goes.
+ *
+ * @returns {boolean} whether it handled the line
+ */
+function startOnEmptyLine(view, before, after = '') {
+	const lines = selectedLines(view.state);
+	if (!lines.every((l) => l.text.trim() === '')) return false;
+	const line = lines[0];
+	const indent = /^\s*/.exec(line.text)[0];
+	view.dispatch({
+		changes: { from: line.from, to: lines.at(-1).to, insert: indent + before + after },
+		selection: { anchor: line.from + indent.length + before.length },
+	});
+	view.focus();
+	return true;
+}
+
 /** Toggle a list/quote prefix on the selected lines. */
 function toggleLinePrefix(view, kind) {
 	const detect = {
@@ -136,6 +157,8 @@ function toggleLinePrefix(view, kind) {
 		numbered: /^\s*\d+[.)][ \t]/,
 		quote: /^\s*>[ \t]/,
 	}[kind];
+	const start = kind === 'bullet' ? '- ' : kind === 'task' ? '- [ ] ' : kind === 'numbered' ? '1. ' : '> ';
+	if (startOnEmptyLine(view, start)) return;
 	const lines = selectedLines(view.state).map((l) => l.text);
 	const allAlready = lines.every((t) => t.trim() === '' || detect.test(t));
 	changeLines(view, (text, i) => {
@@ -171,6 +194,7 @@ const stripAlign = (text) => {
 };
 
 function toggleAlign(view, kind) {
+	if (kind !== 'clear' && startOnEmptyLine(view, '>> ', kind === 'center' ? ' <<' : '')) return;
 	const lines = selectedLines(view.state).map((l) => l.text);
 	const detect = kind === 'center'
 		? (t) => CENTER_RE.test(t)
