@@ -19,7 +19,7 @@ Bugs from your hands-on testing, each fixed and asserted by a scenario:
   - The sidebar toggles moved from ⌘B / ⌘⇧B to ⌘⌥B / ⌘⌥⇧B.
   - Manual: `462cbd2`.
 
-- **Headerless tables**: your grades table was bare
+- `45789a2` (manual `af06a5e`) — **headerless tables**: your grades table was bare
   pipes because it has no `|---|` line. The engine renders it as a
   headerless table, but lezer parses it as a paragraph. Both of the engine's
   headerless forms (pure pipe rows; a separator line first) are now drawn and
@@ -34,8 +34,8 @@ Bugs from your hands-on testing, each fixed and asserted by a scenario:
     (Enter after a single `| a |` line must still start a new line), and
     multi-row GFM headers are untouched.
 
-- **Nested emphasis and the fence's blank line** (
-  `live-nested-fence-scenario.js`, in the sweep):
+- `45789a2` (manual `af06a5e`) — **nested emphasis and the fence's blank line**
+  (`live-nested-fence-scenario.js`, in the sweep):
   - `/*italics*/` drew bold but upright. `.cmt-emphasis` (lezer's class for
     `*x*`) set `font-style: normal`, which un-slanted the italic span around
     it. Measured by injecting the old rule: the computed style reads `normal`.
@@ -55,6 +55,15 @@ Bugs from your hands-on testing, each fixed and asserted by a scenario:
 
 Still open from those runs:
 
+- **The sweep's speed (offered, awaiting a yes/no).** It measured ~8 minutes
+  on 2026-09-27, not the ~15 it used to take: 21 scenarios, each booting a
+  fresh Electron (~5–10 s) and waiting on real rendering (link-preview ~75 s
+  incl. its deliberate 30 s blank-out, preview-pane ~55 s of wasm TeX,
+  live-perf ~55 s, crossref ~30 s), strictly in sequence. Two offers: give
+  each run its own `CLEW_USER_DATA` in `live-sweep.sh` and run them in
+  parallel (probably 2–3 minutes), and/or drop `live-perf` from the default
+  sweep (a benchmark, not a correctness check).
+
 - **Function names.** In highlighted fences a function name (`foo`) takes
   `jmd-function`, whose colour is close to plain code's. The owner may want
   a distinct theme colour.
@@ -65,8 +74,9 @@ Still open from those runs:
 
 Continuing to debug live edit? Start from this file and
 `docs/dev/live-edit.md`, and rerun everything with
-`node scripts/build.js && smoke/live-sweep.sh` (it prints each scenario's
-lines; compare them with `smoke/README.md`).
+`node scripts/build.js && smoke/live-sweep.sh` (~8 minutes; it prints each
+scenario's lines; compare them with `smoke/README.md`). 838 tests at
+`45789a2`.
 
 ---
 

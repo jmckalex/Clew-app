@@ -2,7 +2,7 @@
 # The live sweep: every live-edit scenario on a fresh fixture, printing each
 # scenario's assertion lines, then the cross-reference parity verdict.
 #
-#   node scripts/build.js && smoke/live-sweep.sh [out-dir]   (~15 minutes)
+#   node scripts/build.js && smoke/live-sweep.sh [out-dir]   (~8 minutes, measured 2026-09-27)
 #
 # Each block is one scenario's README recipe; logs and screenshots land in
 # out-dir (default /tmp/clew-sweep). Compare the lines with smoke/README.md.
