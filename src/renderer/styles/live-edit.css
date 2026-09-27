@@ -170,6 +170,8 @@
 .le-env-foot { display: inline-block; }
 .le-tex-only-block, .le-env-comment { opacity: 0.55; }
 .le-dt { font-weight: 600; }
+/* The concealed `::` becomes a dash between the term and its definition. */
+.le-dt-sep.le-chip { background: none; padding: 0 0.45em; color: var(--clew-text-faint); }
 
 /* ---- blocks ---- */
 .le-hr { padding: 8px 24px; cursor: pointer; }

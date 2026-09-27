@@ -469,8 +469,11 @@ export function registerFormatCommands() {
 		{ id: 'format:numbered-list', name: 'Format: numbered list', fn: (v) => toggleLinePrefix(v, 'numbered') },
 		{ id: 'format:task-list', name: 'Format: task list', fn: (v) => toggleLinePrefix(v, 'task') },
 		{ id: 'format:blockquote', name: 'Format: blockquote', fn: (v) => toggleLinePrefix(v, 'quote') },
+		// The engine's description list is `Term:: definition` (description-
+		// lists.js); this wrote Pandoc's two-line `Term` / `: definition`,
+		// which the engine does not read (the owner's report, 2026-09-27).
 		{ id: 'format:description-list', name: 'Insert description list',
-			fn: (v) => insertBlock(v, 'Term\n: Definition of the term.', 'Term') },
+			fn: (v) => insertBlock(v, 'Term:: Definition of the term.', 'Term') },
 		{ id: 'format:horizontal-rule', name: 'Insert horizontal rule', fn: (v) => insertBlock(v, '---') },
 
 		// Alignment.

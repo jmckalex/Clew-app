@@ -55,7 +55,7 @@ export const FORMAT_MENU = [
 			{ id: 'format:numbered-list', label: 'Numbered List' },
 			{ id: 'format:task-list', label: 'Task List — [ ]' },
 			{ id: 'format:blockquote', label: 'Blockquote' },
-			{ id: 'format:description-list', label: 'Description List — term : definition' },
+			{ id: 'format:description-list', label: 'Description List — term:: definition' },
 			{ separator: true },
 			{ id: 'format:horizontal-rule', label: 'Horizontal Rule' },
 		],

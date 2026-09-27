@@ -21,8 +21,14 @@ clew-preview-pane .preview-pane-body {
 clew-preview-pane[data-kind='math-inline'] .preview-pane-body { padding: 4px 10px; }
 clew-preview-pane .preview-pane-math {
 	color: var(--clew-text-normal);
+	/* Wide formulas scroll sideways, never vertically: MathJax's SVG
+	   overflows its box by a pixel, and an overflow-x: auto container then
+	   grew a vertical scrollbar whose thumb sat after the formula like a
+	   stray cursor (the owner's report, 2026-09-27). */
 	overflow-x: auto;
+	overflow-y: hidden;
 }
+clew-preview-pane[data-kind^='math'] .preview-pane-body { overflow: hidden; }
 clew-preview-pane .preview-pane-math mjx-container[display='true'] { margin: 4px 0; }
 clew-preview-pane .preview-pane-frame {
 	display: block;

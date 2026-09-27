@@ -88,3 +88,8 @@
 .jmd-function { color: var(--clew-link); }
 .jmd-variable, .jmd-type { color: var(--clew-text-normal); }
 .jmd-comment { color: var(--clew-text-faint); font-style: italic; }
+
+/* Fence code highlighted by highlight.js (editor/code-highlight.js): the
+   token's jmd-* colour wins over the fence's single text colour, whichever
+   way CodeMirror nests the two spans. */
+.cm-line .cm-code-token * { color: inherit !important; }

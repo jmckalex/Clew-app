@@ -327,9 +327,19 @@ function build(view) {
 					if (c.closeLine && c.closeLine.to > c.closeLine.from) widget(c.closeLine.from, c.closeLine.to, new EnvFootWidget());
 					break;
 				}
-				case 'term':
+				case 'term': {
+					// `Term:: definition` (the engine's description list): the
+					// term bold, the `::` concealed like any markup, the
+					// definition after it set apart as reading mode's <dd> is.
 					mark(c.term.from, c.term.to, 'le-dt');
+					if (!hidden) break;
+					const sep = /^::[ \t]*/.exec(doc.sliceString(c.term.to, c.to));
+					if (sep) {
+						widget(c.term.to, c.term.to + sep[0].length, new ChipWidget({ cls: 'le-dt-sep', text: '—' }));
+						mark(c.term.to + sep[0].length, c.to, 'le-dd');
+					}
 					break;
+				}
 				default:
 			}
 		}

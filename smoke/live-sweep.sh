@@ -19,6 +19,7 @@ node smoke/make-hover-vault.mjs $S/v-lp; run link-preview $S/v-lp CLEW_SMOKE_FRA
 node smoke/make-live-vault.mjs $S/v-pp >/dev/null; run preview-pane $S/v-pp CLEW_SMOKE_FRAME_SCRIPT=smoke/preview-pane-frame.js CLEW_SMOKE_FRAME_MATCH=__clew_block__
 node smoke/make-crossref-vault.mjs $S/v-xr; run crossref $S/v-xr CLEW_SMOKE_FRAME_SCRIPT=smoke/crossref-frame.js CLEW_SMOKE_FRAME_MATCH=vault/
 node smoke/make-live-vault.mjs $S/v-sm >/dev/null; run slash-menu $S/v-sm
+mkdir -p $S/v-fdm && printf '%s\n' '# Fixes' '' '```javascript' 'let i = 10;' 'function foo() {}' '```' '' 'Consider which $10\\alpha+$ holds.' '' '' 'Last line.' > $S/v-fdm/Fixes.md; run fence-dl-math $S/v-fdm
 mkdir -p $S/v-el && printf '%s\n' '# Empty lines' '' 'Last line.' > $S/v-el/Empty.md; run empty-line-format $S/v-el
 node smoke/make-live-vault.mjs $S/v-fn >/dev/null; run live-footnotes $S/v-fn
 node smoke/make-citations-vault.mjs $S/v-ci; run citations $S/v-ci
