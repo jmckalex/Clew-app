@@ -1,315 +1,447 @@
-# Handover — 2026-09-26 (0.10.0 built for all four platforms, mac signed/notarized/stapled and boot-verified; 20 commits unpushed; the website is NOT live; live edit BUILT on `feat/live-edit`, unmerged)
+# Since the morning report — 2026-09-27 (the owner testing live edit)
 
-Session-rollover state. Durable architecture, conventions and gotchas live
-in **CLAUDE.md** (trust it; it gained the shell panel and the watch-order
-policy this session); the original design plan is at
-`~/.claude/plans/groovy-forging-shell.md`. This file is rewritten each
-session — keep it short, and prefer deleting a settled item to explaining
-it again.
+**Merged into `main` on 2026-09-27** (`git merge --no-ff feat/live-edit`); the two worktrees can be removed.
+
+Bugs from your hands-on testing, each fixed and asserted by a scenario:
+
+- `a14a0c4` — **empty lines.** The list buttons, quote, and `//` → Center /
+  Right did nothing on an EMPTY line; they now write their marker
+  (`empty-line-format-scenario.js`).
+- `52c625a`, three fixes (`fence-dl-math-scenario.js`):
+  - The inline-maths preview pane showed a scrollbar thumb, which looked
+    like a stray cursor.
+  - The description-list insert wrote Pandoc's form; it now writes the
+    engine's `Term:: definition`, and live edit shows **Term** — definition.
+  - Code fences are highlighted in the editor with highlight.js (the
+    library reading mode uses), mapped onto the jmd-* token colours
+    (`editor/code-tokens.js`, `editor/code-highlight.js`).
+- `c3b4616` — **shortcuts for every text style** (`format-chords-scenario.js`):
+  - ⌘B strong, ⌘⇧B intense, ⌘I italic, ⌘U underline, ⌘⇧H highlight,
+    ⌘⇧X strike, ⌘⇧C code, ⌘⇧M maths, ⌘⌥↓ / ⌘⌥↑ sub/superscript.
+  - The sidebar toggles moved from ⌘B / ⌘⇧B to ⌘⌥B / ⌘⌥⇧B.
+  - Manual: `462cbd2`.
+
+- `45789a2` (manual `af06a5e`) — **headerless tables**: your grades table was bare
+  pipes because it has no `|---|` line. The engine renders it as a
+  headerless table, but lezer parses it as a paragraph. Both of the engine's
+  headerless forms (pure pipe rows; a separator line first) are now drawn and
+  edited in place with the full Table menu.
+  - Tests: `tests/headerless-tables.test.js`, 14 tests, including PARITY
+    against the engine's own tokenizer.
+  - Scenario: `live-headerless-table-scenario.js` (in the sweep).
+  - Docs: design §5.5a; the manual's live-edit Tables section (docs branch);
+    the demo's `Guide/Live Edit`.
+  - Also: empty cells keep a line's height (the row Tab appends was flat).
+  - Deliberately not done: source mode's Tab/Enter keymap stays GFM-only
+    (Enter after a single `| a |` line must still start a new line), and
+    multi-row GFM headers are untouched.
+
+- `45789a2` (manual `af06a5e`) — **nested emphasis and the fence's blank line**
+  (`live-nested-fence-scenario.js`, in the sweep):
+  - `/*italics*/` drew bold but upright. `.cmt-emphasis` (lezer's class for
+    `*x*`) set `font-style: normal`, which un-slanted the italic span around
+    it. Measured by injecting the old rule: the computed style reads `normal`.
+  - `*/italics/*` got no italic at all: the scanner opened an italic only
+    after whitespace. **Owner's rule (2026-09-27): the editor always follows
+    the engine.** The scanner's italic is now the engine's regex
+    (`/([^/.?!]+[.?!]?)/` at every slash the lexer reaches), so `and/or/not`,
+    `/usr/bin`, `1/2 or 3/4` and a bare URL's path italicise as they render.
+    `\/` is the author's escape. Exempt, as in the engine: escaped slashes,
+    link destinations, autolinks and HTML tags. Checked with the FULL
+    engine (a bare URL is not linked; its `b` italicises). Tests:
+    `jmarkdown-scan.test.js` (the engine's cases, plus parity with its
+    tokenizer). Manual: editing.html and dialect.html.
+  - A code fence showed a blank line under its code. The concealed closer
+    was a full-height line; it is now a 10px pad, full height again when
+    revealed (§5.2's fence row, ◆).
+
+Still open from those runs:
+
+- **The sweep's speed (offered, awaiting a yes/no).** It measured ~8 minutes
+  on 2026-09-27, not the ~15 it used to take: 21 scenarios, each booting a
+  fresh Electron (~5–10 s) and waiting on real rendering (link-preview ~75 s
+  incl. its deliberate 30 s blank-out, preview-pane ~55 s of wasm TeX,
+  live-perf ~55 s, crossref ~30 s), strictly in sequence. Two offers: give
+  each run its own `CLEW_USER_DATA` in `live-sweep.sh` and run them in
+  parallel (probably 2–3 minutes), and/or drop `live-perf` from the default
+  sweep (a benchmark, not a correctness check).
+
+- **Function names.** In highlighted fences a function name (`foo`) takes
+  `jmd-function`, whose colour is close to plain code's. The owner may want
+  a distinct theme colour.
+- **Reflow widths.** `editor-hotkeys-scenario`'s reflow widths follow the
+  fill column in the app's REAL settings (the harness shares userData
+  unless `CLEW_USER_DATA` is set). They read [79,40] on this machine;
+  that's not a regression.
+
+Continuing to debug live edit? Start from this file and
+`docs/dev/live-edit.md`, and rerun everything with
+`node scripts/build.js && smoke/live-sweep.sh` (~8 minutes; it prints each
+scenario's lines; compare them with `smoke/README.md`). 838 tests at
+`45789a2`.
+
+---
+
+# Morning report — the night of 2026-09-26/27 (read this first)
+
+**Everything in the overnight brief shipped, in order, each phase with its
+acceptance met: nothing was stashed or skipped.** Both worktrees are clean.
+Nothing is pushed or merged. The rest of this file is the running record
+below this report.
+
+## What shipped
+
+| Phase | Clew-app | Manual (Clew-docs) | Scenario (last line) |
+| --- | --- | --- | --- |
+| §5.12 live preview pane | `818cf32` | `9db33b9` | preview-pane: `smoke-pp-frame …: has-Added=true has-Zed=true svg-has-Zed=true` |
+| §5.13 cross-references | `bb3c94a`, fix `a477326` | `462d47a`, `e40f633` | crossref: `numbers-match=true` |
+| multi-paragraph footnotes (amendment) | `91819ed` | `b5325a0` | live-footnotes: `concealed=true title-updated=true` |
+| §5.14 citations as objects | `b52b9e1` | `a2a297f` | citations: `pandoc cited-in=[2,1,2]`; citations-fullcite: the engine's formatted entry |
+| §5.15 PDF annotations → note | `55a5cbb` | `0b89d07` | pdf-annotations: `smoke-pa-frame: page=3 annotations=4` |
+| §5.16 sidenotes | `cbd973c` | `5d3c47f` | sidenotes: `narrow sidenotes=0 end-list-visible=true` |
+
+Before the night, and still unmerged: the `//` menu (`2c7d8a8`) and link
+hover previews (`64fb7b2`); manual `8e5981e` and `e334eb3`.
+
+Each phase's design is written "as built" in `docs/dev/live-edit.md`, in
+§5.12–§5.16. Deviations are marked ◆, and new decisions have rows in §12.
+
+- **Tests:** 821 green. `node scripts/build.js` green.
+- **The live sweep:** every live-edit scenario unchanged; `live-perf` at
+  baseline — 3.1 ms median per keystroke on Diagrams.md and 14.7 ms on the
+  207 KB note in live edit, against 3.5 and 14.4 when the branch began.
+
+## Re-run everything
+
+```
+cd ../Clew-app-live-edit && node scripts/build.js && smoke/live-sweep.sh
+```
+
+That is about 15 minutes: 16 scenarios on fresh fixtures, then the
+cross-reference parity verdict. Compare each scenario's lines with its row in
+`smoke/README.md`.
+
+## Screenshots to look at
+
+All are in `../Clew-docs-live-edit/site/manual/images/`:
+
+- `live-preview-pane.png`
+- `crossref-preview.png`
+- `citations-library.png`
+- `pdf-annotations.png`
+- `sidenotes-live.png`
+- `sidenotes-reading.png`
+
+From before the night: `link-preview.png` and `live-edit-slash.png`.
+
+## Found tonight, and not built by me — decide or file
+
+1. **PDF annotations can be lost (older than tonight).** The PDF viewer
+   autosaves after a 2.5 s pause, and a document that unloads loses its
+   pending save. So a highlight made within 2.5 s of switching away from
+   its tab is gone; I measured the viewer holding 3 of 4. The new
+   extraction command flushes first, so its notes never name a lost
+   annotation. The general fix is yours to choose: flush on
+   `visibilitychange`/`pagehide` (a write started from an unload isn't
+   guaranteed), keep PDF frames alive like the office dock, or shorten the
+   debounce.
+2. **Engine bug, for upstream.** A reference to an `@label` inside a
+   footnote prints `??`. The post-processor's footnote branch looks for
+   `[id^="footnote-"]`, but endnotes carry `id="fn-…"`, so the branch
+   never runs. Clew mirrors the engine as it behaves, and the crossref
+   fixture asserts it, so a fix upstream will show there as a failure to
+   update.
+3. **Engine behaviour worth knowing.** Under `Headings: numeric`, the
+   generated `<h1>Endnotes</h1>` is numbered too. At the end of a note that
+   changes nothing. Where `@endnotes` places it mid-note, every later
+   heading is one higher in the export than Clew shows. This isn't
+   mirrored; it's a known gap, recorded in §5.13.
+4. **The manual was wrong, and is fixed.** It said `@ref` on an equation
+   reads "(2)"; the engine prints the bare "2". The demo's Math and
+   Theorems note named its theorem with `title="…"`, which the engine
+   ignores; it now uses `[…]`.
+5. **A live-edit gap, fixed.** Arrow keys jumped clean over every block
+   widget (display maths, a frame, a table), so none of them could be
+   reached from the keyboard. `live/keys.js` fixes it (§5.12). The §5.9
+   claim that arrow keys "need nothing special" held for inline constructs
+   only.
+6. **Older than the branch.** `figures-edit-scenario` phase 3 fails
+   identically at `c6f3169`: an edited ```tikz in reading mode keeps its
+   old picture. Not investigated.
+
+## Decisions taken by default (the alternatives are in §12)
+
+- **Preview pane:**
+  - it sits below its block, at the text column's width;
+  - inline maths shows above its line;
+  - it redraws on a 150 / 400 / 700 ms typing pause (maths / mermaid / TeX);
+  - query, Dataview and Bases blocks are not previewed;
+  - Escape hides it until the cursor leaves that construct;
+  - it works in source mode too.
+- **Cross-references:**
+  - Clew writes the `@` forms; there's no sigil setting;
+  - completion lists this note's labels only;
+  - an unknown or unnumbered reference shows `??` in red, as the engine
+    prints it;
+  - custom environments are numbered only when a plugin manifest declares
+    them (`numbered`), and are otherwise shown as "?".
+- **Citations:**
+  - the Refs panel is always present — the Library always, "This note"
+    only behind `bibliographyPanel`;
+  - Library search matches substring terms, not fuzzy (fuzzy found "alex"
+    inside "LaTeX");
+  - without a bibliography named in vault settings, a citation's hover
+    shows the `.bib` fields on a card. A note's own `Bibliography:` header
+    isn't seen by the fragment render.
+- **PDF annotations:** each entry is one blockquote (text, comment, page
+  link, block id) so its `^pdf-` id names all of it, with plain quotes and
+  no colours. The design had the comment as a separate paragraph.
+- **Sidenotes:** `auto` means a pane ≥ 960 px wide with ≥ 220 px of margin.
+  A site export is untouched.
+
+## Also changed, beyond the letter of the brief
+
+- **Plugin manifests.** A plugin's engine surface may declare `fences` and
+  `numbered`; the demo's Charts plugin declares `"fences": ["chart"]`.
+- **Back after a jump.** A cross-reference jump leaves a Back entry that the
+  editor honours: `recordAnchorJump(…, {editor: true})` stores a
+  `pendingLine`.
+- **The References panel** is always in the right sidebar.
+- **The index cache** is at version 3, so existing vaults re-scan once, to
+  pick up labels and citations.
+- **`window.__clew`** now also exposes `numbering`, `pdfAnnotations`,
+  `linkPreview` and `previewPane`, for scenarios.
+
+## How to merge
+
+Merge both branches together:
+
+1. In `../Clew-app`, on `main`: `git merge --no-ff feat/live-edit`.
+2. In `../Clew-docs`, on `main`: `git merge --no-ff feat/live-edit`. Mind
+   your uncommitted edits to `HANDOVER.md`, `Makefile` and `README.md`
+   there; commit or stash them first.
+3. `git worktree remove ../Clew-app-live-edit ../Clew-docs-live-edit`.
+
+Then run `npm test`, `node scripts/build.js`, and the sweep above on `main`.
+
+## State at the end of the night
+
+- **Clew-app** `feat/live-edit`: clean. HEAD is the commit holding this
+  report.
+- **Clew-docs** `feat/live-edit`: clean, at `5d3c47f`.
+- **Stashes:** none left. One was used briefly, to verify §5.14 without
+  §5.15's work in progress, and was dropped.
+
+---
+
+# Handover — 2026-09-26, `feat/live-edit` (live edit BUILT — phases 0–7, plus tables edited in place; unmerged; the manual on a matching docs branch)
+
+Session-rollover state for the live-edit branch, in the worktree
+`../Clew-app-live-edit`. The durable design is `docs/dev/live-edit.md`
+(the plan, turned into the design as built; its §12 lists the decisions in
+force); the short form is CLAUDE.md's "Live edit" subsection. What `main`
+was doing when the branch left it is in `git show ed2aabc:HANDOVER.md`
+(summarised in §5) — this branch changed none of it.
 
 ## 0. Where things stand
 
-Tree CLEAN, 644 tests green, `node scripts/build.js` passes,
-`make check-links` clean in Clew-docs.
+**The feature is complete** against the plan's phases 0–7: 756 tests green
+(644 at the branch point), `node scripts/build.js` passes, and every
+scenario in §3's sweep passes at `647de91`. Demo and study vaults: only the
+intended guide-note changes, committed (runs used scratch copies).
 
-**This session (the eighth) built two things and corrected one lie in the
-manual.**
-
-1. **A shell panel** (`c96c0f5`) — ⌃` opens a real terminal, under a real
-   pty, at the vault root, pinned under the workspace. §2.
-2. **The watcher was taught where to spend its budget** (`941d3ec`) —
-   markdown first, then the documents Clew edits, then everything else
-   breadth-first. The owner's policy, after a measurement showed the old
-   behaviour watching 6 of a vault's 81 notes. §3.
-3. Plus `701c37c` (the smoke harness was dispatching fake keyCodes — it had
-   been dropping every hyphen a scenario typed, for as long as the
-   `{text:…}` path has existed) and `aa51a70` (documentation: the shell
-   panel, and two exclusion traps a real vault found).
-
-**0.10.0 is cut for all four targets** — §4. The mac universal image is
-signed, notarized, stapled, and verified by BOOTING it, not just by
-`codesign`.
-
-**The website is not live**, and an earlier claim of mine in this session
-that it was serving a stale manual was WRONG — §5. Nothing is published.
-
-**A ninth session (same day) wrote no code and one plan**: live edit mode
-— Obsidian's Live Preview — on branch `feat/live-edit`, in a sibling
-worktree, with a kickoff brief for the model that builds it. **A tenth
-(Opus 5.5, in that worktree, the same day) BUILT it**: 20 commits, phases
-0–7 complete, 756 tests, plus the manual on a matching `feat/live-edit`
-branch in `../Clew-docs-live-edit`. Both UNMERGED. §10.
+- **Clew-app `feat/live-edit`** — 19 commits over `main` (`bf5c853` …
+  `647de91`), not merged, not pushed. `git log --oneline main..feat/live-edit`
+  reads as the build history, one phase per commit or two, plus fixes the
+  review and the docs turned up.
+- **Clew-docs `feat/live-edit`** — in a SECOND worktree,
+  `../Clew-docs-live-edit` (the owner's own `../Clew-docs` checkout, with
+  its uncommitted HANDOVER/Makefile/README edits, was left on main and
+  untouched): `e8065a5` adds the chapter *Live edit and the toolbar*
+  (`site/manual/live-edit.html`, two screenshots) and updates the editor,
+  reading-mode, settings-and-hotkeys and plugins chapters. `make og-tags`
+  run; `make check-links` clean except the four `downloads/` binaries that
+  are never staged in a fresh tree.
+- The planning session reviewed phase 5 and found one real gap (frames
+  never re-rendered after an engine reconfigure); fixed in `e0a5f44`, with
+  a second bug it hid (§2).
+- **Tables are edited in place** (`c10f524`, owner's request after the
+  build): designed by the planning session at this session's request, built
+  here — `docs/dev/live-edit.md` §5.5a is the section as built, with its
+  deviations from the design. `live-table-edit-scenario.js` (ten steps, real
+  input) passes, and so does the sweep of the earlier scenarios. Manual:
+  `60162dd` on the docs branch (a Tables section, a screenshot).
+- **The `//` menu** (owner's request, 2026-09-26): Obsidian's slash
+  commands, triggered by `//` because `/` is the dialect's italic — design
+  in `docs/dev/live-edit.md` §6.9, decision row in §12.
+  `slash-menu-scenario.js` passes all eight steps; 783 tests. Manual: the
+  docs branch's live-edit chapter gains a section and a screenshot.
+- **Link hover previews** (owner's request via the planning session,
+  2026-09-26): source, live and reading mode — `docs/dev/live-edit.md`
+  §5.11 as built, with its deviations marked; decision row in §12.
+  `link-preview-scenario.js` passes every step; the sweep (live-edit,
+  live-lines, live-toolbar, live-table-edit, math-highlight, slash-menu)
+  unchanged; live-perf within noise. 791 tests. The harness gained
+  `{move:{x,y}}`.
+- **The live preview pane** (§5.12, planning session's design): maths and
+  diagrams rendered beside their source while the cursor is in them, both
+  editing modes. Built on a new shared floating-pane base (the link preview
+  moved onto it). Measuring turned up a live-edit gap the design had
+  assumed away: ArrowUp/Down jumped clean over every block widget —
+  `live/keys.js` fixes it. `preview-pane-scenario.js` passes every step.
+- **Cross-references** (§5.13): numbers the engine will print, shown
+  while writing — chips, env heads, equation tags, numbered headings,
+  completion, jump + Back, hover. `numbers-match=true` against the
+  engine's own document. Plugins' `fences`/`numbered` manifest keys.
+- **Multi-paragraph footnotes** (owner's amendment): concealed to a badge
+  like a one-line note — an inline replacement across line breaks from the
+  block field; nothing inside drawn while concealed; numbered once in the
+  model. `live-footnotes-scenario.js`. The §1.1 non-goal and the §5.2 row
+  are corrected.
+- **Citations as objects** (§5.14): citations indexed, the Refs panel's
+  Library (who cites what, Insert/Copy/PDF/DOI), chip click → the entry,
+  hover → `\fullcite` or the .bib's fields, the graph's References switch.
+  The Refs tab is no longer gated (only its "This note" mode is).
+  Reading-mode citation hover is built but not scenario-asserted.
+- **PDF annotations → note** (§5.15): `PDF: extract annotations to a note`
+  (palette, explorer menu); merges on re-run; `[[x.pdf#page=N]]` opens at
+  the page. FOUND, not new: the PDF viewer's 2.5 s autosave debounce is
+  dropped when its document unloads — an annotation made just before its
+  tab is switched away is LOST (measured). The command flushes first; the
+  general fix (flush on hide, or a shorter debounce) is the owner's call.
+- **Sidenotes** (§5.16): footnotes in the right margin of a wide pane, in
+  reading mode and live edit; setting `sidenotes` (auto/on/off).
+- **Pre-existing, not a regression**: `figures-edit-scenario` phase 3
+  (`key-changed=false` — an edited ```tikz in READING mode keeps its old
+  picture) fails identically at `c6f3169`, before this session's work
+  (checked in a scratch worktree, 2026-09-26). Not investigated further.
 
 ## 1. STILL OPEN
 
-Nothing blocked in the code. Two things wait on the owner and gate
-everything downstream — and one build waits on a session:
+- **Merging** is the owner's call: `feat/live-edit` → `main` in Clew-app,
+  and the docs branch → `main` in Clew-docs, together (the manual must not
+  describe an unmerged feature, nor the app ship one the manual does not
+  describe). Then `git worktree remove` both worktrees.
+- **The owner's QA pass** (not automatable; the plan's list): typing feel at
+  speed in a long note; ⌘Z across a conceal/reveal; ⌘F over concealed text
+  (matches inside widgets do not highlight — moving the selection reveals
+  them); copy/paste of concealed ranges yields source; IME composition in a
+  concealed word; zoom levels; a live pane beside a reading pane in sync;
+  drag-and-drop of an image into a live note; the properties panel and the
+  properties widget editing the same note; IME composition in a table
+  cell; typing fast in a cell of a wide table (each keystroke patches the
+  table widget).
+- **Decisions in force** (`docs/dev/live-edit.md` §12) — none has been
+  exercised by the owner yet: plain click follows a concealed link (⌥-click
+  edits, ⌘-click new tab); remote images not loaded in the editor; ⌘⇧E;
+  new tabs still source; `|live` office embeds as thumbnails; MathJax macros
+  shared across notes; tables edited in place; reading mode's slim bar; the
+  `//` trigger; link previews on plain hover (500 ms, 440 × ≤360 px, reading
+  mode included).
+- **Follow-ons deliberately left out** (same §12): table
+  drag handles, multi-cell selection and pasting a grid into cells,
+  multi-line footnote concealment, Meta Bind widgets in prose,
+  plugin-declared rich fence names (the Charts plugin's ```chart stays a
+  code fence in live edit — plugins declare no fence names; a manifest
+  `fences` key is the obvious shape), persisting frame heights across
+  reopenings, block drag handles, a focus mode.
 
-- **Live edit mode is BUILT and UNMERGED**: `feat/live-edit` in
-  `../Clew-app-live-edit` (34 commits to `8ed451b`, 821 tests green, build
-  green — the mode, the toolbar, in-place tables, the `//` menu, link hover
-  previews, and the OVERNIGHT run of 2026-09-26/27: the live preview pane,
-  cross-references, multi-paragraph footnotes, citations as objects, PDF
-  annotations → note, sidenotes — each designed by the planning session,
-  built by the build session, verified commit by commit) and
-  `feat/live-edit` in `../Clew-docs-live-edit` (the manual: 11 commits,
-  eight screenshots). **Read the morning report at the top of the branch's
-  HANDOVER.md first** — five findings for the owner, one an engine bug
-  for upstream and one a pre-existing PDF-annotation data-loss window.
-  `smoke/live-sweep.sh` re-runs every live-edit scenario (~15 min). Merge both TOGETHER — the manual must not describe an unmerged
-  feature — then `git worktree remove` both. The branch's own
-  `HANDOVER.md` carries the QA list and the decisions to exercise (§10).
+## 2. What the build taught (measured)
 
-- **The GoDaddy DNS change.** All four names still resolve to GoDaddy
-  parking. Until they point at the droplet there is no site, no
-  certificate, and no download.
-- **19 commits unpushed** on a repo that now HAS a remote (§6).
+- `documentElement.scrollHeight` never drops below an iframe's viewport: a
+  block frame must report its BODY's height (84px block in a 240px frame
+  said 236).
+- A block document's MathJax/mermaid config comes free by building it as a
+  FULL engine document; a client only starts mermaid once the host answers
+  `ready` with a `theme`.
+- An iframe element's `color-scheme` must match its document's, or Chromium
+  paints an opaque slab behind a transparent page.
+- CodeMirror's `cm-widgetBuffer` images (1em, `text-top`) lifted a concealed
+  heading 1px; tamed in live-edit.css.
+- MathJax's `tex2svg` does not install its stylesheet — without it the
+  assistive MathML shows and every formula reads twice.
+- CodeMirror's drawn margin can hold more small frames than the cap (17 at
+  80px); eviction must include drawn-but-off-screen frames, and "pinned
+  within three screens" needs the height map (`lineBlockAt`), not the DOM.
+- After `renderService.reconfigure()` the same text kept the same fragment
+  hash; every fragment key now carries a configuration generation.
+- Every reader of `global.current_file` is Clew's own code, so a fragment's
+  note travels in a `<key>.source` sidecar — no engine change, which also
+  kept clear of the owner's uncommitted edits in the master's `index.js`.
+- A plain `|` inside a wikilink in a GFM table splits the cell (Obsidian too;
+  write `[[Note\|alias]]`); the table keymap then reformats around the split.
+- Cost per keystroke: live adds ~0.4 ms (12 KB note) and ~2.2 ms (207 KB)
+  over source's 3.1 / 12.2 ms; 16 block frames ≈ 22 MB each over reading
+  mode. Numbers and methods in `smoke/README.md`.
+- An unknown callout type is a plain quote, not `note`; source mode's
+  ⌘-click handler outranked live edit's until given `Prec.high`.
+- Tables in place: CodeMirror DOES patch a block widget with `updateDOM`
+  when its text changes, so a nested editor mounted inside survives
+  typing (`same-node=true`). The NOTE editor's theme rules reach a nested
+  editor (descendant selectors) — a one-line cell stood ~40vh tall under
+  the note's `.cm-content` padding. A table reflow rewrites lines wholesale,
+  so the caret must be put back into its cell. A reload from disk replaced
+  the whole document; it is now the smallest change
+  (`editor/minimal-change.js`), which also keeps the cursor steady.
 
-## 2. The shell panel
+## 3. Running things in THIS worktree
 
-⌃` (View → Shell Panel) opens a terminal under the workspace. The owner's
-two decisions: **one shell per WINDOW, at the vault root**, and **no
-restrictions — it is their shell**. Height and open state live in the
-workspace, per vault; the session outlives the panel being hidden (a build
-that runs while you go back to writing is the whole point) and is reaped by
-`session.js#dispose`.
+- `npm install` here did not fetch Electron's binary; `node
+  node_modules/electron/install.js` fixed it.
+- The smoke command, all env in one go (fixtures in a scratchpad):
 
-They also named the mechanism to copy: their own jmacs/Godot editor,
-`~/Source/jmacs/main/apps/desktop/src/shell.js` (NOT `~/Source/Godot`,
-which is the engine). It earns the copying — **a pty with no native
-addon**: the child is `python3 -c <script>` calling stdlib `pty.fork()`.
-node-pty would be a compiled module rebuilt per Electron version per
-platform. Two details in that script are load-bearing and both fail
-SILENTLY; `tests/shell-core.test.js` pins each:
+  ```sh
+  CLEW_SMOKE_LOG=1 CLEW_USER_DATA=$S/ud CLEW_SMOKE=$S/out.png \
+    CLEW_SMOKE_SCRIPT=smoke/live-edit-scenario.js CLEW_SMOKE_VAULT=$S/vault \
+    perl -e 'alarm shift; exec @ARGV' 120 \
+    node_modules/electron/dist/Electron.app/Contents/MacOS/Electron . > $S/out.log 2>&1
+  ```
 
-- SIGTERM is reset to `SIG_DFL` **before** the fork. A child spawned by
-  Electron can inherit an ignored disposition across exec, which makes
-  `kill()` a no-op and leaks the pty with its shell inside.
-- Resizing rides a **sidechannel on fd 3** (`<cols>:<rows>` → `TIOCSWINSZ`
-  → SIGWINCH), never down the pty, where it would be typed input.
+- The sweep that passed at `647de91`: `live-edit`, `live-lines`,
+  `live-tables`, `live-blocks` (+frame, `CLEW_SMOKE_FRAME_MATCH=__clew_block__`),
+  `live-toolbar` (`CLEW_SMOKE_MENU=1`), `live-mode-persistence` ×2,
+  `normal-syntax`, `block-endpoint` (+frame), `math-highlight`,
+  `footnote-highlight`, `fence-highlight`, `editor-hotkeys`,
+  `reading-scroll`, `embed-refresh`; `embed-collapse` and `live-perf` ran
+  clean earlier in the session. Every recipe is in `smoke/README.md` or the
+  scenario's header (`make-live-vault.mjs` builds the live fixtures).
+- A scenario can only queue input ONCE (read after it returns): take every
+  point in the layout the clicks will meet, and order clicks so no earlier
+  one moves a later target.
 
-Shape: `main/shell-core.js` (electron-free, 17 unit tests, one running a
-REAL pty and asserting the double echo), six `clew:shell-*` channels,
-handlers keyed on the session id, and
-`renderer/components/workspace/clew-shell-panel.js` (xterm.js + fit addon)
-in a new `.center-column`. `smoke/shell-panel-scenario.js` drives it.
+## 4. Small residue
 
-Three things the build taught:
+- `fence-highlight-scenario.js`'s header expects `jmd-string` > 0; it is 0
+  at `ed2aabc` too (the fixture's only quotes are on a fence INFO line).
+  Stale expectation.
+- A ⌘-click (inverse search) on the GAP between two paragraphs in reading
+  mode does nothing — the client wants a stamped ancestor. Pre-existing; the
+  persistence scenario tripped on it (§3's last bullet).
+- An embedding canvas card is now keyed by the file epoch (re-renders after
+  any file change) — a behaviour change for canvas, an improvement.
+- Source mode's dialect colouring still does not fully follow the vault's
+  normalSyntax (the grammar does; the overlay does not).
+- `smoke/live-lines-scenario.js`'s header claims `height-stable` in prose
+  only; the README row carries the 1px story.
 
-1. **The grid must be monospace.** It was wired to `--clew-editor-font`,
-   which is Avenir Next; xterm sizes one cell from the font and puts every
-   character in its own cell, so a proportional face leaves a gap around
-   each letter. The owner spotted it in the first screenshot.
-   `--clew-mono-font` fixed it — and the same box went from 61 columns to
-   92, which is the same fact from the other side.
-2. **The harness was dispatching fake keyCodes** — `-` as 45, which is
-   Insert, so xterm swallowed every hyphen; named keys as 0, so `Enter` was
-   not Enter. Fixed in main.js (`NAMED_KEYS`, `PUNCT_KEYS`). Every scenario
-   that types punctuation was affected and nobody had noticed.
-3. **A scenario must not assume a fresh workspace** (§9).
+## 5. Main's own open items (unchanged by this branch; full text in `git show ed2aabc:HANDOVER.md`)
 
-## 3. Where the watcher's budget goes
-
-The manual used to claim "your own notes are reached first". False, and
-measurably: chokidar takes what its walk meets, so on ph226-426 the budget
-was spent inside a font icon set after **6 of the vault's 81 notes**. I
-documented the truth; the owner chose the other repair — "watch all the
-markdown documents first, then develop a heuristic for the other document
-types that need to be watched, and then do everything else on a
-breadth-first-search policy."
-
-`fs-utils.js#watchOrder`/`#watchPlan` decide what the budget buys BEFORE
-chokidar walks, which costs nothing because Clew already walks the vault
-for the tree — `tree()` collects the file list on the way past, and the
-order is the only thing the watcher could not have worked out for itself.
-Tiers: notes (`.md`/`.jmd`), then documents Clew EDITS (canvas, base, bib,
-pdf, office, excalidraw), then everything else breadth-first.
-
-**The heuristic worth remembering is the one about what is NOT a tier.**
-Giving every image a high tier hands the budget straight back to the icon
-set that caused the problem — 20,000 `.svg` files are 20,000 images. Depth
-answers it instead: a vault's own attachments sit beside its notes, a
-vendored library is five or six folders down. At equal depth, a file Clew
-has a use for goes first.
-
-| vault | walk order | planned |
-| --- | --- | --- |
-| ph226-426 (41,318 files) | 6/81 notes, 1/288 documents | **81/81, 288/288** |
-| ph341 (40,350 files) | 15/42 notes, 6/151 documents | **42/42, 151/151** |
-| demo-vault (61 files) | everything | everything (nothing to pay) |
-
-Two implementation notes. The plan claims each file WITH its ancestor
-directories, because chokidar cannot descend into a directory it was told
-to ignore. And it governs the SCAN only: after `ready` the budget alone
-applies, or a file created during the session would be in no plan and never
-watched.
-
-`renderer/lib/file-types.js` moved to `src/shared/` (re-exported from its
-old path, so no caller changed): main cannot import a renderer module, and
-two copies of "what is an image" would drift.
-
-**The owner's `*/libs` lesson, worth carrying.** They set
-`"hidden": ["*/libs"]` on ph226-426 and were still told 6,863 files were
-being watched. Two reasons, and the second is the surprising one: `*` is
-exactly one folder deep (theirs live at two depths), and — because every
-`libs` is a symlink to ONE shared tree and Clew's walk realpath-dedupes —
-excluding one route excludes nothing, the walk simply arrives by another.
-With `**/libs` the vault is 1,446 files. Both traps are now in the manual,
-the demo guide and the Settings placeholder.
-
-## 4. 0.10.0 — four artefacts, one of them signed
-
-| artefact | size | state |
-| --- | --- | --- |
-| `Clew-0.10.0-universal.dmg` | 307 MB | signed · notarized · stapled |
-| `Clew Setup 0.10.0.exe` | 183 MB | NSIS x64, unsigned (no Windows cert) |
-| `Clew-0.10.0.AppImage` | 214 MB | ELF x86-64 |
-| `clew_0.10.0_amd64.deb` | 169 MB | well-formed |
-
-Built by `node scripts/package.js --dmg --sign --notarize --universal` then
-`npm run package:win` / `package:linux`. The version bump is package.json
-ONLY — Clew-docs still says 0.9.0 in its Makefile, README and the landing
-page's four download links, deliberately (§5).
-
-Verified: `stapler validate` + `spctl -a -t open` on the IMAGE; the same
-two plus `codesign -dv` on the `Clew.app` INSIDE it (so a dragged copy
-launches offline); `flags=0x10000(runtime)` with all four entitlements;
-`lipo -archs` = `x86_64 arm64` on the main binary, all four helpers and the
-Electron framework; and the PACKAGED binary booted under `CLEW_SMOKE` over
-the figures fixture — 13/13 `mpw-ok`, `pending=0`, LuaLaTeX ×2 + LuaTeX,
-`cache-probe first=engine second=cache`.
-
-**That last check failed the first time and the failure was not the
-build.** Eight figures pending, five `latex made no progress for 20000 ms`.
-The run came straight after three back-to-back packaging runs with the load
-average at ~20, and mp-tikz-wasm's watchdog is 20 s of no progress from a
-worker; an arm64 control passed 13/13 at load ~6, and the SAME universal
-binary passed 13/13 at load ~4 ten minutes later. Now a standing rule (§9).
-
-Superseded artefacts still in `out/`, deliberately untouched — ask before
-deleting: `Clew-0.9.0-universal.dmg` (26 Aug), `Clew-0.9.0-arm64.dmg`
-(25 Sep 12:52, signed and stapled, never shipped), `Clew-0.10.0-arm64.dmg`
-(the evening's first cut), and the 2 Sep 0.9.0 win/linux artefacts.
-
-## 5. The website: not live, and I said otherwise
-
-**Correction, for the record.** Earlier this session I said the droplet was
-"serving the pre-today manual" and that clew-app.com "documents a Clew
-without the shell panel". Both wrong. `make dns-check`:
-
-```
-WRONG  clew-app.com      -> 13.248.243.5     (GoDaddy parking)
-WRONG  www.clew-app.com  -> 76.223.105.230
-WRONG  clew-app.net      -> 15.197.148.33
-WRONG  www.clew-app.net  -> 3.33.130.190
-```
-
-What is true: the droplet holds a staged copy (`/var/www/clew-app.com`,
-landing page 17 Sep, manual 35 files, `downloads/` synced 23 Sep with the
-**26 August** universal dmg and the 2 Sep win/linux ones). nginx serves it
-on port 80 by name. No traffic reaches it, there is no clew-app.com
-certificate in `/etc/letsencrypt/live/`, and the config has no 443 block —
-so an https request for the domain, if DNS did point here, would fall to
-the `jmckalex` default_server. What I fetched over https was GoDaddy's
-parking page: hence `<title>clew-app.com</title>` and a certificate GoDaddy
-issued for the parked name. The inference "the files are on the droplet, so
-the droplet is serving them" is the whole of the mistake.
-
-**The order, once DNS moves** (`make dns-check` is the gate, and it prints
-the right IP — 139.59.191.156; an older handover said 144.126.236.254,
-which was wrong): `dns-check` → `nginx-install` → `sync` → `tls`. Note that
-`nginx-install` OVERWRITES the live config, so after `tls` has rewritten it
-with the 443 blocks, running `nginx-install` again would remove them —
-`make nginx-diff` is there to show that drift.
-
-**Not yet synced even to the staging copy**: five manual pages
-(links-and-embeds, panels, search, settings-and-hotkeys, vaults-and-files)
-and `images/shell-panel.png`.
-
-**Before 0.10.0 can be a download**: bump `VERSION` in the docs Makefile,
-the README's two mentions, and the landing page's four hrefs + two version
-strings; `make stage-downloads`; `make check-links`; `make sync` and
-`make sync-downloads` (~870 MB).
+- The GoDaddy DNS change — the website is NOT live until it lands.
+- `main` is 20 commits ahead of `origin` and not tracking it; Clew-docs has
+  no remote at all. The owner's to sort out; this branch never pushed.
+- Offers awaiting a yes/no: the link face on plain `[text]`; a manual line
+  on `\[ \begin{align*} … \]` in LaTeX export. `font=note` waits on
+  mp-tikz-wasm 0.3.0. The graphicx driver line for mp-tikz-wasm. The three
+  dev docs (`docs/dev/live-edit.md` is now a fourth). Win/linux artefacts
+  untested at runtime.
 
 ## 6. Owner's own actions
 
-- **Live edit**: try it on a real vault (⌘⇧E; the demo's `Guide/Live
-  Edit`), run the QA list in the branch HANDOVER §1, decide the defaults
-  in `docs/dev/live-edit.md` §12 (plain click follows a concealed link,
-  ⌥-click edits; remote images not loaded; new tabs still open in source;
-  `|live` office embeds as thumbnails; MathJax macros shared across
-  notes; tables edit as source), then merge both branches together and
-  remove the two worktrees.
-- **The DNS change** (above). Everything about publishing waits on it.
-- **Clew-app is PUSHED** (planning session, 2026-09-26, on the owner's
-  ask): `main` and `feat/live-edit` to
-  `https://github.com/jmckalex/Clew-app.git`, both tracking `origin`.
-  **Clew-docs is NOT** — it still has no remote; creating a public
-  repository is an action the assistant's permissions refuse, so the
-  owner must create `jmckalex/Clew-docs` (from `../Clew-docs`: `gh repo
-  create jmckalex/Clew-docs --public --source=. --remote=origin --push`,
-  then `git push -u origin feat/live-edit`). Until then the manual's
-  commits exist only on this Mac, and the droplet is not a copy (§5).
-- Two offers still waiting on a yes or no: the stray link face on plain
-  `[text]` brackets, and a manual line about `\[ \begin{align*} … \]`
-  rendering in the preview but failing a LaTeX export.
-- **`font=note` waits on a release.** The manifest is pinned to
-  mp-tikz-wasm 0.2.1; when 0.3.0 exists, re-pin
-  `src/shared/mptikz-manifest.json` — that is the whole job.
-- mp-tikz-wasm (owner's project), still parked: the **graphicx driver
-  line**. `\rotatebox` does nothing because `graphics.cfg` picks
-  `dvips.def` for any DVI engine, whose PostScript specials need
-  Ghostscript. Verified fix, for the library to prepend beside its
-  `\def\pgfsysdriver` line:
-  `\ifx\PassOptionsToPackage\undefined\else\PassOptionsToPackage{dvisvgm}{graphics}\PassOptionsToPackage{dvisvgm}{color}\PassOptionsToPackage{dvisvgm}{xcolor}\fi`
-  — rotate/scale/colour on both LaTeX engines, plain TeX untouched, an
-  explicit `[dvips]` overridden. `\PassOptionsToPackage` takes ONE package
-  name; a comma list silently passes nothing.
-- **Decide on the dev docs** (asked, answered yes, never written): three
-  on-demand topic docs — `docs/dev/rendering-pipeline.md`,
-  `docs/dev/editor.md`, `docs/dev/figures.md` — indexed from CLAUDE.md,
-  under the same "not finished until it matches" rule as the manual.
-- Win/linux artefacts are cross-built from macOS and **still untested at
-  runtime**; the Windows installer is unsigned.
+- Try live edit on a real vault (⌘⇧E; the demo's `Guide/Live Edit`), run
+  the QA list in §1, and decide the §12 defaults.
+- Merge both branches together, then remove the two worktrees.
 
-## 7. Small residue (none blocks anything)
-
-- A TeX fragment name containing a comma can never be asked for (the
-  attribute is a comma list). The settings row says so; nothing stops the
-  name being typed.
-- `show=code` never builds a figure, so a bad fragment name in a
-  `show=code` block is not refused — by construction, and harmless.
-- A site export of a note containing a vault-path `@reveal` is untested.
-- `marked-token-position@undefined` — electron-builder's warning on every
-  package. Harmless (the engine is staged separately); the fix is upstream
-  in the jmarkdown master's package.json, then `npm run sync-engine`.
-
-Carried over, still true: `:::TiKZ` / `@begin(…)` BODIES keep the overlay's
-uniform `jmd-embedded` face (only fences got grammars); `show=` is the
-preview's only, a LaTeX export of `show=code` still draws the picture; a
-plain `[text]` in prose still wears the link face in the source pane; the
-library's element for a LaTeX document is still `<tikz-diagram>`; a wrapped
-latex snippet's line width is standalone's 345pt; the engine's HTML
-pretty-printer re-indents a figure's source; plugin checkbox toggles need a
-vault reopen; rename of an OPEN pdf/office/canvas tab leaves it on the old
-path; executable extensions refused by `open-file.js` unreviewed; the
-history switch discards a hand-edited tuning object; LibreOffice
-keyboard/clipboard and office-convert unverifiable here; kanban card drag
-write path; warm-cache query renders emit no EV_RENDER_DONE.
-
-## 8. The owner works in this tree concurrently
-
-Tree CLEAN apart from this file. `zeta-assets/` and `mptikz-assets/` are
-deliberate and gitignored. Never switch THIS tree off main — which is why
-`feat/live-edit` lives in a WORKTREE (`git worktree list`; do not remove
-it). Live testing flips demo widgets — reset `status:`/`done:`/`^motto`
-baselines, and the foldable embed in `Guide/Links and Embeds.md`, before
-committing demo files.
-
-In Clew-docs the owner has uncommitted edits to `HANDOVER.md`, `Makefile`
-and `README.md` — leave them alone.
-
-## 9. Standing session rules (they keep earning their keep)
+## 7. Standing session rules (they keep earning their keep)
 
 - **NEVER `git add -A`** — stage explicit paths. (Broken repeatedly this
   session. The commits are clean because the tree happened to be, which is
@@ -420,90 +552,3 @@ and `README.md` — leave them alone.
   RESETS its scroll; CDP keystrokes need the caret's viewport coords for
   the focusing click; `CLEW_SMOKE_LOG=1` prefixes scenario `console.log`
   with `[smoke:info]`.
-
-## 10. Live edit mode — BUILT on `feat/live-edit`, unmerged
-
-**Built 2026-09-26 by a separate Opus 5.5 session in the worktree**, with
-the planning session watching each commit (every one re-tested on an
-isolated extract; every `git add` an explicit path; nothing outside the
-worktree touched). One correction was sent and applied (`e0a5f44`): the
-frame layer had dropped `RENDER_SUBSCRIBE`, so a TeX-fragment or
-`normalSyntax` change no longer re-rendered live-edit frames — fixing it
-also uncovered that `render-service` keyed fragments by text alone, so a
-reconfigure returned the OLD hash; every fragment key now carries a
-configuration generation. The plan below became `docs/dev/live-edit.md`
-(the design as built, decisions in its §12); the kickoff brief is deleted;
-CLAUDE.md has a "Live edit" subsection. Measured on the way: live edit
-costs ~0.4 ms/keystroke on a 12 KB note and ~2.2 ms on a 207 KB one; 16
-block documents cost ~22 MB each over reading mode; CodeMirror's
-`cm-widgetBuffer` lifts a concealed heading's line by 1px unless the
-images sit on the baseline. **In-place table editing** followed the same
-evening (`c10f524`, `c6f3169`; design in `docs/dev/live-edit.md` §5.5a as
-built): one nested CodeMirror view per note editor mounted into the
-active cell, its document a projection of the cell's span, every
-keystroke forwarded to the note's document (one model, one undo history),
-the table pinned concealed by an `activeCell` slot in the reveal field,
-`updateDOM` sparing the active cell (measured: CodeMirror does call it —
-the cell editor is the same element across typing). Two corrections from
-the watching session were applied: a `<br>` in a cell drew as text; and
-the disk reload used to replace the whole document (now the smallest
-change, `editor/minimal-change.js`, which steadies the cursor in source
-mode too). Then the **`//` menu** (`2c7d8a8`, the Format menu at the
-cursor) and **link hover previews** (`64fb7b2`, design in
-`docs/dev/live-edit.md` §5.11): a vault link hovered for 500 ms previews
-as `![[path#…|bare]]` through the block endpoint, in one popover per
-window that never takes focus, in source, live and reading mode; setting
-`linkPreview: hover | mod | off`; the smoke harness gained `{move:{x,y}}`.
-Both branches were pushed at the end of the tenth session (§6). Then the
-**overnight run** (2026-09-26/27, the owner's approval after reading the
-brief): §5.12 preview pane `818cf32`, §5.13 cross-references `bb3c94a` +
-`a477326` (parity with the engine's own numbers asserted, not assumed),
-multi-paragraph footnotes `91819ed`, §5.14 citations `b52b9e1`, §5.15 PDF
-annotations `55a5cbb`, §5.16 sidenotes `cbd973c`, the morning report
-`245be68`, `smoke/live-sweep.sh` `8ed451b`. Every phase's scenario passed
-with real input; nothing stashed or skipped. The rest of this section is
-the plan's history.
-
-The owner asked (2026-09-26) for a plan for an Obsidian-style **live edit
-mode** — syntax concealed and rendered in place except under the cursor —
-covering the whole jmarkdown dialect, with a proper toolbar, detailed
-enough for Opus 5.5 to build. Two documents, both on the branch (now
-committed there, and since superseded as described above):
-
-- `docs/dev/live-edit-plan.md` (1,291 lines) — the design: a third
-  `tab.view.mode`, a CodeMirror `Compartment` over the SAME EditorView
-  (no second editor, no round trip — the file stays the model), the
-  reveal rule as a pure function, a construct model built from the lezer
-  tree plus the jmd scanner (which must grow structured `constructs`),
-  three rendering tiers (decorations; renderer-built tables/images;
-  engine-rendered block FRAMES through the existing `__clew_fragment__`
-  path, hoisted into a layer inside the scroller because CodeMirror
-  recycles widget DOM and any DOM move reloads an iframe), MathJax in the
-  app page for all math, a declarative registry-driven toolbar with a
-  pure overflow layout, settings, tests, smoke scenarios, manual and
-  demo-vault work, seven phases with acceptance criteria, and eight
-  owner decisions with defaults.
-- `docs/dev/live-edit-kickoff.md` — the brief to point the build session
-  at: setup in the worktree, reading order, rules, phase order, first
-  hour.
-
-Decisions taken in the plan that the owner may want to re-open (§13
-there): clicking a concealed link FOLLOWS it (⌥-click edits); remote
-`http(s)` images stay unloaded (CSP unchanged); ⌘⇧E toggles live/source;
-new tabs still default to source; `|live` office embeds render as
-thumbnails in live edit; MathJax macro state is shared across notes;
-tables edit as source on activation. Owner's question answered in that
-session: building on something other than CodeMirror would be HARDER
-(every alternative makes a rich tree the model and round-trips the
-dialect lossily) — cut scope (phase 5, the bubble) rather than substrate.
-
-Two prerequisites the plan names that touch other trees: the scanner
-grows `constructs` (Clew's own copy; offer upstream to jmacs after), and
-ONE additive engine change — a `currentFile` build option so a fragment
-render can set `global.current_file` — goes to the jmarkdown master and
-is re-synced; only phase 5 needs it, and until then Dataview `this` and
-`![[#Heading]]` self-embeds are refused by name inside a frame.
-
-The worktree has no `node_modules`; `npm install` there first. It shares
-the engine master and the EmbedPDF master with this tree, so `npm run dev`
-re-syncs as usual.

@@ -27,6 +27,7 @@ import { readNoteFonts } from './note-fonts.js';
 import { settings } from './settings.js';
 import { engineExtensionEntries } from './plugins.js';
 import { writeFileAtomic } from './fs-utils.js';
+import { isDependentFragment } from '../shared/fragment-deps.js';
 
 const WORKER_PATH = paths.engineWorker;
 
@@ -88,9 +89,16 @@ export class RenderService {
 	/** per-path render bookkeeping: {mtimeMs, htmlFile, inflight: Promise|null, dirty} */
 	#notes = new Map();
 	#rebuildTimers = new Map();
-	/** fragment cache: hash(text) → html string (canvas cards; bounded) */
+	/** fragment cache: key → html string (canvas cards, live-edit blocks; bounded) */
 	#fragments = new Map();
 	#fragmentInflight = new Map();
+	/** Bumped on every file change: a DEPENDENT fragment's key carries it, so
+	 *  a cached render of `![[Note]]` is never served after Note changed. */
+	#fragmentEpoch = 0;
+	/** Bumped on every reconfigure: in EVERY fragment key, so a block whose
+	 *  rendering changed with the config (normalSyntax, a TeX fragment, a
+	 *  plugin) gets a NEW hash — a caller comparing hashes sees the change. */
+	#configGeneration = 0;
 
 	/** dist/ directory (engine assets: wikilinks.js, clew-template.html). */
 	constructor(distDir) {
@@ -127,6 +135,8 @@ export class RenderService {
 		this.#spawnStandby();
 		this.#notes.clear();
 		this.#fragments.clear();
+		this.#fragmentEpoch++;
+		this.#configGeneration++;
 		for (const relPath of this.#subscribed.keys()) {
 			this.render(relPath).catch(() => {});
 		}
@@ -407,30 +417,77 @@ export class RenderService {
 	 * fragment mode: body HTML only, no template. Same worker pipeline and
 	 * engine config as note renders (wikilinks, fences, normalSyntax), so a
 	 * card renders exactly like the same text would in a note. Cached by
-	 * content hash — a canvas reopening re-renders nothing.
+	 * content hash — a canvas reopening re-renders nothing — unless the text
+	 * reads other files (fragment-deps.js), whose key then carries the file
+	 * epoch so any file change retires it.
+	 *
+	 * `sourcePath` (vault-relative) is the note the snippet belongs to. It is
+	 * part of the key and is left beside the temp file as `<key>.source`,
+	 * which engine/vault-model.js#currentFilePath reads — so Dataview `this`,
+	 * Bases' `this.file`, Meta Bind and a kanban board see the note.
+	 *
+	 * @param {string} text
+	 * @param {{ sourcePath?: string|null, dependent?: boolean }} [options]
+	 * @returns {Promise<string>} the body HTML
 	 */
-	async renderFragment(text) {
-		if (!this.vaultRoot) throw new Error('no vault open');
-		const key = crypto.createHash('sha1').update(text).digest('hex').slice(0, 20);
+	renderFragment(text, options = {}) {
+		return this.#cachedBuild(text, { ...options, document: false });
+	}
+
+	/**
+	 * Render a snippet as a FULL preview document — the engine's own
+	 * template, exactly as a note gets it (MathJax config, mermaid, CSS) —
+	 * for live edit's block frames. protocol.js serves it at
+	 * `__clew_block__/<key>` with the preview client injected. Resolves to
+	 * the key; `blockDocument(key)` returns the HTML while it is cached.
+	 *
+	 * @param {string} text
+	 * @param {{ sourcePath?: string|null, dependent?: boolean }} [options]
+	 * @returns {Promise<string>} the block's key
+	 */
+	async renderBlock(text, options = {}) {
+		const key = this.#fragmentKey(text, { ...options, document: true });
+		await this.#cachedBuild(text, { ...options, document: true });
+		return key;
+	}
+
+	/** A built block document by key, or undefined once evicted. */
+	blockDocument(key) {
+		return this.#fragments.get(key);
+	}
+
+	#fragmentKey(text, { sourcePath = null, dependent = isDependentFragment(text), document = false }) {
+		return crypto.createHash('sha1')
+			.update(`${document ? 'doc' : 'frag'}\0${this.#configGeneration}\0${sourcePath ?? ''}\0${dependent ? this.#fragmentEpoch : ''}\0${text}`)
+			.digest('hex').slice(0, 20);
+	}
+
+	#cachedBuild(text, options) {
+		if (!this.vaultRoot) return Promise.reject(new Error('no vault open'));
+		const key = this.#fragmentKey(text, options);
 		const cached = this.#fragments.get(key);
-		if (cached !== undefined) return cached;
+		if (cached !== undefined) return Promise.resolve(cached);
 		const inflight = this.#fragmentInflight.get(key);
 		if (inflight) return inflight;
 
-		const job = this.#buildFragment(key, text).finally(() => {
+		const job = this.#buildFragment(key, text, options).finally(() => {
 			this.#fragmentInflight.delete(key);
 		});
 		this.#fragmentInflight.set(key, job);
 		return job;
 	}
 
-	async #buildFragment(key, text) {
+	async #buildFragment(key, text, { sourcePath = null, document = false } = {}) {
 		const generation = this.#generation;
 		const dir = path.join(this.vaultRoot, '.clew', 'cache', 'fragments');
 		fs.mkdirSync(dir, { recursive: true });
 		const mdFile = path.join(dir, `${key}.md`);
 		const htmlFile = path.join(dir, `${key}.html`);
+		const sourceFile = path.join(dir, `${key}.source`);
 		fs.writeFileSync(mdFile, text);
+		// Which note the snippet belongs to: engine/vault-model.js#currentFilePath
+		// reads this, so Dataview `this` & co. see the note, not the temp file.
+		if (sourcePath) fs.writeFileSync(sourceFile, sourcePath);
 
 		const standby = this.#takeStandby();
 		const child = await standby.ready;
@@ -447,7 +504,7 @@ export class RenderService {
 				options: {
 					to: 'html',
 					output: htmlFile,
-					fragment: true,
+					fragment: !document,
 					normalSyntax: this.#vaultOptions.normalSyntax === true,
 				},
 			});
@@ -458,6 +515,7 @@ export class RenderService {
 		const html = fs.readFileSync(htmlFile, 'utf8');
 		fs.rmSync(mdFile, { force: true });
 		fs.rmSync(htmlFile, { force: true });
+		fs.rmSync(sourceFile, { force: true });
 		// Bounded cache: drop the oldest half when it grows past 500 entries.
 		if (this.#fragments.size > 500) {
 			const keys = [...this.#fragments.keys()].slice(0, 250);
@@ -481,6 +539,7 @@ export class RenderService {
 
 	/** Called by the vault watcher on every content change. */
 	onFileChanged(relPath) {
+		this.#fragmentEpoch++;
 		if (this.#subscribed.has(relPath)) {
 			clearTimeout(this.#rebuildTimers.get(relPath));
 			this.#rebuildTimers.set(relPath, setTimeout(() => {

@@ -4,7 +4,12 @@ tags: [guide]
 # Settings and Hotkeys
 
 **⌘,** opens Settings: theme (dark/light), how new note tabs open
-(source or reading mode), editor font size and line
+(source, live edit or reading mode), the **Live edit** section (where ⌘E
+returns to from reading mode, whether the cursor reveals a construct or
+its whole line, whether maths, diagrams and embeds render in place, and
+how many rendered blocks stay alive), the **Editor toolbar** section
+(when it shows, the selection bubble, which groups and in what order),
+editor font size and line
 width, daily-note folder/format/template, attachment and templates
 folders — and the **hotkey editor**: filter to a command, press **Set**,
 type the new chord. Custom bindings are marked, conflicts show in red,
@@ -18,8 +23,9 @@ The **This vault** section holds per-vault settings (stored in
 
 - **Standard Markdown syntax** — disables the jmarkdown inline dialect so
   `*italic*` and `**bold**` behave like everywhere else, while keeping
-  math, citations, diagrams, and theorems (renders *and* exports honor
-  it; the editor's dialect highlighting doesn't adapt yet).
+  math, citations, diagrams, and theorems (renders, exports, live edit
+  and the toolbar honor it; source mode's dialect colouring doesn't fully
+  adapt yet).
 - **jmarkdown project** — for vaults that are jmarkdown manuscripts, it
   re-enables the engine's own-line `[[file.md]]` inclusion, so reading
   mode transcludes chapters exactly the way the CLI build does. The
@@ -39,11 +45,15 @@ The **This vault** section holds per-vault settings (stored in
 | ⌘O / ⌘P | Quick switcher / command palette |
 | ⌘N | New note |
 | ⌘E | Toggle reading mode |
+| ⌘⇧E | Toggle live edit / source |
+| ⌥⇧T | Focus the editor toolbar |
+| ⌘↩ | Toggle the task on this line |
 | ⌘⇧F / ⌘F | Search vault / search note |
 | ⌘⌥← ⌘⌥→ | History back / forward |
 | ⌘T ⌘W ⌃Tab | New / close / cycle tabs |
 | ⌘\ ⌘⇧\ | Split right / down |
-| ⌘B ⌘⇧B | Toggle left / right sidebar |
+| ⌘⌥B ⌘⌥⇧B | Toggle left / right sidebar |
+| ⌘B ⌘I ⌘U | Strong, italic, underline (⌘⇧B intense, ⌘⇧H highlight, ⌘⇧X strike, ⌘⇧C code, ⌘⇧M maths, ⌘⌥↓ ⌘⌥↑ sub/superscript) |
 | ⌃\` | Toggle the shell panel (and put the caret in it) |
 | ⌘G | Graph view |
 | ⌘⇧D | Daily note |

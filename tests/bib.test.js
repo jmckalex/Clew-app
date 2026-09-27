@@ -10,7 +10,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseBib } from '../src/shared/bib.js';
+import { parseBib, bibFilePath } from '../src/shared/bib.js';
 
 const SAMPLE = `
 @book{lewis1969,
@@ -51,4 +51,18 @@ test('author shortening: two names use &, three+ use et al.', () => {
 test('entries without blank-line separation still parse', () => {
 	const entries = parseBib('@book{a,\n year={1}\n}\n@book{b,\n year={2}\n}');
 	assert.deepEqual(entries.map((e) => e.key), ['a', 'b']);
+});
+
+test('file, url and doi fields; the doi without its resolver', () => {
+	const [e] = parseBib('@article{a, author={Alexander, J.}, title={T}, year={2023}, file={:a.pdf:PDF}, url={https://x.org/a}, doi={https://doi.org/10.1/x}}');
+	assert.deepEqual([e.file, e.url, e.doi], [':a.pdf:PDF', 'https://x.org/a', '10.1/x']);
+});
+
+test('bibFilePath: Zotero, JabRef, plain, escaped drive, several files', () => {
+	assert.equal(bibFilePath(':papers/x.pdf:PDF'), 'papers/x.pdf');
+	assert.equal(bibFilePath('Full Text PDF:files/12/Smith.pdf:application/pdf'), 'files/12/Smith.pdf');
+	assert.equal(bibFilePath('papers/y.pdf'), 'papers/y.pdf');
+	assert.equal(bibFilePath('C\\:\\\\Users\\\\a.pdf'), 'C:\\Users\\a.pdf');
+	assert.equal(bibFilePath('snap:s.html:text/html;pdf:p.pdf:PDF'), 'p.pdf', 'the PDF, not the first file');
+	assert.equal(bibFilePath(''), null);
 });

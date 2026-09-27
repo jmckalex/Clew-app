@@ -44,8 +44,9 @@ const TOOLS = {
 		{ id: 'outgoing', label: 'Out', element: 'clew-outgoing-links' },
 		{ id: 'tags', label: 'Tags', element: 'clew-tag-pane' },
 		{ id: 'outline', label: 'Outline', element: 'clew-outline' },
-		// Gated on the vault's bibliographyPanel setting (see #refreshVaultTools).
-		{ id: 'bibliography', label: 'Refs', element: 'clew-bibliography', when: (vs) => vs?.bibliographyPanel === true },
+		// Always there (§5.14): its Library needs no render; its "This note"
+		// mode stays behind the vault's bibliographyPanel setting.
+		{ id: 'bibliography', label: 'Refs', element: 'clew-bibliography' },
 		{ id: 'props', label: 'Props', element: 'clew-properties' },
 		{
 			id: 'graph', label: 'Graph', element: 'clew-graph-view',
@@ -173,11 +174,14 @@ class ClewApp extends ClewElement {
 		}
 	}
 
-	/** Open the search tool (left sidebar) and focus its input. */
-	openSearch() {
+	/** Open the search tool (left sidebar) and focus its input — with a
+	 *  query already in it when one is given (live edit's tag clicks). */
+	openSearch(query) {
 		workspaceStore.setSidebar('left', { open: true, activeTool: 'search' });
 		requestAnimationFrame(() => {
-			this.querySelector('clew-search-panel')?.focusInput();
+			const panel = this.querySelector('clew-search-panel');
+			if (typeof query === 'string') panel?.setQuery(query);
+			panel?.focusInput();
 		});
 	}
 

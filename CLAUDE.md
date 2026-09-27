@@ -77,15 +77,20 @@ note API, plugins, and every settings key.
   canvas model, diary, frontmatter, plugins discovery, query/leaflet/exif
   parsers, Excalidraw round-trip, markdown tables, callouts, block
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
-  embed graph and the embed keyword syntax, the shell sessions, the watch order — 644 tests. DOM/UI work is
+  embed graph and the embed keyword syntax, the shell sessions, the watch order, the
+  dialect scanner's constructs and grammar, live edit's model, reveal rule,
+  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer) — 838 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
-  [CLEW_SMOKE_FRAME_SCRIPT=frame.js] [CLEW_SMOKE_VAULT=/path/vault]
-  electron .` — SMOKE_VAULT opens exactly that vault, never touching the
+  [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
+  [CLEW_SMOKE_VAULT=/path/vault] electron .` — SMOKE_VAULT opens exactly that vault, never touching the
   user's restored vault set (always pass it). Boots the app, runs the
   scenario in the renderer (dev hook `window.__clew` exposes the stores,
   registry, ipc), optionally drives the preview iframe's document via
-  webFrameMain, screenshots, and exits HARD (`app.exit` after flushing
+  webFrameMain (with FRAME_MATCH: EVERY clew-preview frame whose URL
+  contains the substring, in turn — live edit's `__clew_block__` frames —
+  the script seeing `SMOKE_FRAME`, the URL's last segment, to tag its
+  lines), screenshots, and exits HARD (`app.exit` after flushing
   editors — the office close guards would otherwise hang the harness on
   their own success). More knobs, all documented in main.js:
   `CLEW_SMOKE_LOG=1` (every console line), `CLEW_SMOKE_METRICS=/p.json`
@@ -98,8 +103,9 @@ note API, plugins, and every settings key.
   a native menu is an OS-level window that capturePage cannot see, so
   this is the only assertion a menu change can carry), and REAL input:
   a scenario queues `window.__clewSmokeInput =
-  [{click:{x,y}} | {tripleClick:{x,y}} | {text:'abc'} |
-  {combo:{key,modifiers}} | {wait:ms}]`, dispatched over CDP
+  [{click:{x,y}} | {tripleClick:{x,y}} | {move:{x,y}} | {text:'abc'} |
+  {combo:{key,modifiers}} | {wait:ms}]` (`move` is a bare pointer move —
+  hover; `modifiers` on it makes a ⌘-hover), dispatched over CDP
   `Input.dispatch*` — `webContents.sendInputEvent` NEVER reaches OOPIFs
   (i.e. every preview iframe), and combos need real modifier keydowns
   around the letter. Each key carries a REAL `keyCode`, because xterm —
@@ -537,6 +543,123 @@ browser-window-focus).
   `.clew/workspace.json`), so a scenario over a reused fixture must set a
   known state before driving the chord — the second run otherwise opens
   with the panel already showing and the chord closes it.
+
+### Live edit (`src/renderer/editor/live/`, `editor/toolbar/`)
+
+Obsidian's Live Preview: markup concealed and the result drawn in place
+except where the selection touches a construct. The durable design is
+`docs/dev/live-edit.md`; the rules that bite:
+
+- **One EditorView.** A tab's `view.mode` is `source | live | reading`,
+  `view.editMode` the editing mode ⌘E returns to. Live is `liveEdit(config)`
+  swapped into the pooled state's `liveCompartment` by
+  `editorPool.setMode` — no second editor, no second state; the tab group
+  treats source and live as ONE view (no remount). The markdown grammar
+  sits in `markdownCompartment` (`jmd/markdown-config.js#noteMarkdown`,
+  also what the grammar tests parse with), reconfigured on a
+  `normalSyntax` flip via `state/vault-settings-store.js`.
+- **One model.** `live/model.js#liveModel(state, config)` merges the lezer
+  tree (incl. `jmd/subsup-parser.js` — `_x`/`^x`/`^id` as the engine reads
+  them) with the scanner's `constructs` (`jmd/scan-cache.js`, one memoised
+  scan shared with the overlay and folding) into records carrying their
+  delimiters (`hidden`) and REVEAL EXTENTS; `live/reveal.js` is then a pure
+  range test. `reveal-field.js` holds model + revealed set, replaced only
+  when either changes — providers compare by identity.
+- **Two providers, by CodeMirror's rule.** Anything that changes vertical
+  structure (block widgets, replacements across lines) comes from the
+  StateField `block-field.js`; inline marks/widgets and LINE decorations
+  from the ViewPlugin `inline-layer.js` over visibleRanges, which must
+  never replace across a line break. Line classes (heading size, list
+  indent, callout tint) apply in BOTH states — entering a line never
+  changes its height (CodeMirror's `cm-widgetBuffer` images lifted a
+  heading 1px until live-edit.css tamed them).
+- **Tier C frames are hoisted.** Engine-only blocks render through
+  `POST/GET __clew_block__` (protocol.js; a FULL engine document through
+  `wrapPreviewDocument`, the same injection notes get) into iframes that
+  live in ONE layer inside the scroller (`frame-layer.js`), positioned over
+  placeholders the block field reserves — never inside widgets (CodeMirror
+  recycles widget DOM; a moved iframe reloads). Created for drawn
+  placeholders only, capped at `liveFrameCap`, pinned kinds kept within
+  three screens (height-map distance); sizes come back as `size` messages
+  (the client in `data-clew-block` mode reports the BODY's height —
+  documentElement.scrollHeight never shrinks below the frame). The frame
+  element's `color-scheme` must match its document's or Chromium paints an
+  opaque slab. Messages go through `live/frame-host.js`, the switch
+  clew-preview-view shares. A fragment's note travels in a `<key>.source`
+  sidecar read by `engine/vault-model.js#currentFilePath` (no engine
+  change); every fragment key carries the render-service configuration
+  generation, and the layer re-renders all frames on the vault/app settings
+  that reconfigure the engine.
+- **The toolbar** is `toolbar-spec.js` (items are COMMAND ids),
+  `toolbar-state.js` / `toolbar-layout.js` (pure, tested), the
+  `<clew-editor-toolbar>` element, `popover.js`/`popovers.js` (Insert and
+  Block reuse `shared/format-spec.js`), and `<clew-selection-bubble>`.
+  `editor/toggle-wrap.js` unwraps from a bare cursor inside a construct.
+  Plugin API 2: `clew.toolbar.addButton`.
+- **Tables are edited in place** (live edit §5.5a): the active cell is note
+  state (`live/active-cell.js`, pinned concealed by the reveal rule), and a
+  nested cell editor (`live/table-cell-editor.js`) mounted in its `<td>`
+  forwards every keystroke to the note — one document, one undo history; the
+  widget's `updateDOM` never touches that cell, and leaving reflows once. The
+  note editor's theme rules reach nested editors (descendant selectors) —
+  override them for anything mounted inside it.
+- **The `//` menu** (`editor/complete/slash-spec.js` pure +
+  `slash-commands.js`, a completion source in the note AND cell editors,
+  so source mode too): Obsidian's slash commands, triggered by `//` at a
+  line start or after whitespace because `/` is the dialect's italic
+  (`//` never is — the engine's italic needs a non-slash between). It
+  offers the Format menu (`shared/format-spec.js`) and nothing else, so
+  menu, palette and this cannot drift; accepting deletes what was typed
+  and runs the command. `CELL_SAFE_COMMANDS` lives in format-spec.js.
+- **Link hover previews** (live edit §5.11; source, live AND reading
+  mode): `editor/link-at.js` is the ONE reader of links (pure; ⌘-click in
+  source mode uses it too) and decides what a link previews;
+  `<clew-link-preview>` (`editor/link-preview.js`) is the window's one
+  popover and owns all timing; `editor/link-hover.js` reports the link
+  under the pointer from the editor, `preview-client/client.js` from
+  reading mode (`link-hover`/`link-unhover`). A note previews as
+  `![[path#heading|bare]]` through the block endpoint, in ONE iframe kept
+  across hovers and blanked 30 s after closing. The plugin has no
+  `update` — keep it that way; a keystroke must not pay for hovering.
+- **The live preview pane** (§5.12; source mode AND live edit): while the
+  cursor is in a formula or a diagram block, `<clew-preview-pane>` shows
+  the current source rendered — maths via `typesetTex` (the widget's own
+  cached call), diagrams via the block endpoint morphed into ONE iframe.
+  Targets are `editor/preview-target.js` (pure); the plugin
+  (`preview-pane-plugin.js`) runs only on selection/doc/focus changes. The
+  pane and the link preview share `components/chrome/floating-pane.js` —
+  extend that base, never copy it. `live/keys.js` makes ArrowUp/Down stop
+  at a block widget's edge (CodeMirror's vertical motion jumps over it).
+- **Cross-references** (§5.13): `editor/live/numbering.js` MIRRORS the
+  engine's post-processor numbering over the note's text (per note, keyed
+  by line; `typedRefText` imported from the vendored crossref.js); chips,
+  env heads, equation tags, heading prefixes, completion, jump and hover all
+  read it. Parity with the engine is ASSERTED by crossref-scenario.js
+  (`numbers-match=true`), never assumed — change a rule only with the
+  engine's source open. Plugins declare `fences`/`numbered` in their
+  engine surface for the editor to see.
+- **Citations as objects** (§5.14): the index holds `citations` (pandoc
+  forms flagged — `citedBy` honours pandocCitations); the Refs panel's
+  Library lists every .bib entry with who cites it and Insert/Copy/PDF/DOI;
+  a cite chip opens it; hovering previews `\fullcite` (engine-formatted when
+  the vault names a bibliography). BIB_ENTRIES entries carry `bib` (their
+  .bib) and `pdf` (the resolved `file` field) — `file` is BibTeX's own.
+- **PDF annotations → note** (§5.15): the viewer (pdf-core.js) lists its
+  annotations with the text under them (engine glyph geometry +
+  getTextSlices) when pdf-page.js is asked by its PARENT;
+  `renderer/pdf-annotations.js` + the pure `shared/pdf-annotations-note.js`
+  write or MERGE `<pdf> — Annotations.md` (never deleting). The viewer's
+  autosave is a 2.5 s debounce that an unloading document drops — flush it
+  before relying on an annotation. `[[x.pdf#page=N]]` opens a PDF tab there.
+- **Sidenotes** (§5.16): footnotes in the margin when the pane is wide —
+  reading mode clones the engine's endnotes into a `data-clew-keep` layer
+  (the end list hidden by a body class; print/export untouched), live edit
+  draws concealed notes' first paragraphs in a scroller layer
+  (`live/sidenotes.js`). Setting `sidenotes`.
+- Settings: `defaultEditMode`, `liveReveal`, `liveRender{Math,Fences,Embeds}`,
+  `liveFrameCap`, `editorToolbar(+Prev)`, `editorToolbarGroups`,
+  `selectionBubble`, `slashCommands`, `linkPreview`, `previewPane`, `graphReferences`, `sidenotes`; `newTabMode` accepts `live`. Documents over 500 KB
+  fall back to source with a banner. Scenarios: `live-*` in smoke/ (README).
 
 ### Note API (scripts in rendered notes)
 

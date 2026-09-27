@@ -12,6 +12,7 @@
 // collapse; context menus offer create/rename/trash/reveal; renames are
 // inline. (Drag-to-move folders/files arrives with M3.)
 import { ClewElement } from '../base/clew-element.js';
+import { extractAnnotations } from '../../pdf-annotations.js';
 import { vaultStore, isNotePath } from '../../state/vault-store.js';
 import { isViewablePath, isCanvasPath } from '../../lib/file-types.js';
 import { icon } from '../../lib/icons.js';
@@ -446,6 +447,10 @@ class ClewFileExplorer extends ClewElement {
 				} },
 				{ separator: true },
 			);
+			// A PDF's highlights and notes, as a note beside it (§5.15).
+			if (/\.pdf$/i.test(entry.path)) {
+				items.push({ label: 'Extract annotations to a note', click: () => extractAnnotations(entry.path) }, { separator: true });
+			}
 		}
 		if (entry.type === 'folder') {
 			items.push(

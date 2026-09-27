@@ -19,14 +19,9 @@
 // business and is tested there; these tests are about the grammar.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
-import { jmdFootnotes } from '../src/renderer/editor/jmd/footnote-parser.js';
-import { jmdMath } from '../src/renderer/editor/jmd/math-parser.js';
+import { noteMarkdown } from '../src/renderer/editor/jmd/markdown-config.js';
 
-const parser = markdown({
-	base: markdownLanguage,
-	extensions: [{ remove: ['IndentedCode', 'SetextHeading'] }, jmdFootnotes, jmdMath],
-}).language.parser;
+const parser = noteMarkdown().language.parser;
 
 /** The text of every node of `name`. */
 function textsOf(doc, name) {

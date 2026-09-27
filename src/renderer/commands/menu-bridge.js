@@ -36,6 +36,8 @@ export function installMenuBridge() {
 			noteActive: ctx.notePath !== null,
 			tabOpen: ctx.activeTab != null,
 			readingMode: ctx.activeTab?.kind === 'note' && ctx.activeTab.view.mode === 'reading',
+			viewMode: ctx.activeTab?.kind === 'note' ? (ctx.activeTab.view.mode ?? 'source') : null,
+			toolbarVisible: (settingsStore.get('editorToolbar') ?? 'live') !== 'never',
 			pinned: !!ctx.activeTab?.pinned,
 			bookmarked: ctx.notePath !== null && bookmarkStore.has(ctx.notePath),
 			leftSidebar: !!workspaceStore.state.sidebars.left?.open,

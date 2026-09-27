@@ -19,13 +19,9 @@
 // what the editor sees.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
-import { jmdFootnotes } from '../src/renderer/editor/jmd/footnote-parser.js';
+import { noteMarkdown } from '../src/renderer/editor/jmd/markdown-config.js';
 
-const parser = markdown({
-	base: markdownLanguage,
-	extensions: [{ remove: ['IndentedCode', 'SetextHeading'] }, jmdFootnotes],
-}).language.parser;
+const parser = noteMarkdown().language.parser;
 
 /** Every node in the tree, as `{name, from, to, text}`. */
 function nodes(doc) {

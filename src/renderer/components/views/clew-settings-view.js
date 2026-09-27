@@ -13,12 +13,14 @@
 import { ClewElement } from '../base/clew-element.js';
 import { settingsStore } from '../../state/settings-store.js';
 import { vaultStore } from '../../state/vault-store.js';
+import { vaultSettingsStore } from '../../state/vault-settings-store.js';
 import { allCommands, chordOf } from '../../commands/registry.js';
 import { debounce } from '../../lib/debounce.js';
 import { invalidateNoteApiGate } from '../../note-api.js';
 import { ipc, CH } from '../../ipc.js';
 import { createCodeEditor } from '../../editor/mini-editor.js';
 import { fragmentKey } from '../../../engine/tex-fragments.js';
+import { TOOLBAR_GROUPS } from '../../editor/toolbar/toolbar-spec.js';
 
 const isMac = navigator.platform.startsWith('Mac');
 
@@ -61,15 +63,38 @@ class ClewSettingsView extends ClewElement {
 			this.#section('Appearance', [
 				this.#selectRow('Theme', 'theme', [['dark', 'Dark'], ['light', 'Light']]),
 				this.#selectRow('New note tabs open in', 'newTabMode',
-					[['source', 'Source (edit) mode'], ['reading', 'Reading mode']]),
+					[['source', 'Source mode'], ['live', 'Live edit'], ['reading', 'Reading mode']]),
 				this.#selectRow('Explorer click opens files', 'explorerOpenMode',
 					[['new-tab', 'In a new tab'], ['replace', 'In the current tab (Obsidian-style)']]),
 				this.#numberRow('Editor font size (px)', 'editorFontSize', 16, 10, 28),
 				this.#numberRow('Editor line width (em)', 'editorLineWidth', 44, 20, 120),
 				this.#numberRow('Fill column (hard-wrap)', 'fillColumn', 72, 40, 120),
 				this.#checkRow('Auto-fill while typing', 'autoFill'),
+				this.#selectRow('Link previews on hover', 'linkPreview',
+					[['hover', 'Always'], ['mod', navigator.platform.startsWith('Mac') ? 'With ⌘ held' : 'With Ctrl held'], ['off', 'Off']]),
+				this.#selectRow('Live preview of maths and diagrams while editing', 'previewPane',
+					[['on', 'On'], ['off', 'Off']]),
+				this.#selectRow('Footnotes in the margin (sidenotes)', 'sidenotes',
+					[['auto', 'When the pane is wide enough'], ['on', 'Always'], ['off', 'Never']]),
 				this.#selectRow('PDF paper size (reading-view export)', 'printPaperSize',
 					[['a4', 'A4'], ['letter', 'US Letter'], ['legal', 'US Legal'], ['tabloid', 'Tabloid']]),
+			]),
+			this.#section('Live edit', [
+				this.#selectRow('⌘E returns from reading mode to', 'defaultEditMode',
+					[['source', 'Source mode'], ['live', 'Live edit']]),
+				this.#selectRow('Reveal syntax for', 'liveReveal',
+					[['construct', 'The construct under the cursor'], ['line', 'The whole line']]),
+				this.#checkRow('Typeset math in place', 'liveRenderMath'),
+				this.#checkRow('Render diagram and query fences in place', 'liveRenderFences'),
+				this.#checkRow('Render embeds and media in place', 'liveRenderEmbeds'),
+				this.#numberRow('Rendered blocks kept alive (advanced)', 'liveFrameCap', 16, 4, 64),
+			]),
+			this.#section('Editor toolbar', [
+				this.#selectRow('Show the toolbar', 'editorToolbar',
+					[['live', 'In live edit'], ['always', 'In live edit and source mode'], ['never', 'Never']]),
+				this.#checkRow('Selection bubble over selected text', 'selectionBubble'),
+				this.#checkRow('// menu: type // for the Format menu', 'slashCommands'),
+				this.#toolbarGroupsRow(),
 			]),
 			this.#section('Diary', [
 				this.#selectRow('Mode', 'diaryMode',
@@ -248,7 +273,7 @@ class ClewSettingsView extends ClewElement {
 					if (box.checked) enabledSet.add(plugin.id);
 					else enabledSet.delete(plugin.id);
 					box.disabled = true;
-					ipc.invoke(CH.VAULT_SETTINGS_SET, { key: 'plugins', value: [...enabledSet] })
+					vaultSettingsStore.set('plugins', [...enabledSet])
 						.finally(() => { box.disabled = false; });
 				});
 				section.append(row);
@@ -287,7 +312,7 @@ class ClewSettingsView extends ClewElement {
 		// Long, because saving re-walks the vault: tree, watcher and index.
 		const save = debounce(() => {
 			const value = box.value.split('\n').map((line) => line.trim()).filter(Boolean);
-			ipc.invoke(CH.VAULT_SETTINGS_SET, { key, value }).catch(() => {});
+			vaultSettingsStore.set(key, value).catch(() => {});
 		}, 900);
 		box.addEventListener('input', save);
 		box.addEventListener('blur', () => save.flush());
@@ -320,9 +345,7 @@ class ClewSettingsView extends ClewElement {
 			input.disabled = false;
 		}).catch(() => {});
 		const save = debounce(() => {
-			ipc.invoke(CH.VAULT_SETTINGS_SET, { key, value: input.value.trim() }).finally(() => {
-				window.dispatchEvent(new CustomEvent('clew:vault-settings-changed', { detail: { key } }));
-			});
+			vaultSettingsStore.set(key, input.value.trim()).catch(() => {});
 		}, 500);
 		input.addEventListener('input', save);
 		input.addEventListener('blur', () => save.flush());
@@ -346,11 +369,11 @@ class ClewSettingsView extends ClewElement {
 		}).catch(() => {});
 		box.addEventListener('change', () => {
 			box.disabled = true;
-			ipc.invoke(CH.VAULT_SETTINGS_SET, { key, value: box.checked })
+			vaultSettingsStore.set(key, box.checked)
+				.catch(() => {})
 				.finally(() => {
 					box.disabled = false;
 					invalidateNoteApiGate();
-					window.dispatchEvent(new CustomEvent('clew:vault-settings-changed', { detail: { key } }));
 				});
 		});
 		return [row, hint];
@@ -428,7 +451,7 @@ class ClewSettingsView extends ClewElement {
 		const persist = debounce(() => {
 			const value = entries.map(({ name, text }) => ({ name, text }));
 			if (scope === 'global') settingsStore.set('texFragments', value);
-			else ipc.invoke(CH.VAULT_SETTINGS_SET, { key: 'texFragments', value }).catch(() => {});
+			else vaultSettingsStore.set('texFragments', value).catch(() => {});
 		}, 900);
 
 		const refresh = () => {
@@ -692,6 +715,46 @@ class ClewSettingsView extends ClewElement {
 		input.addEventListener('blur', () => save.flush());
 		input.addEventListener('keydown', (e) => e.stopPropagation());
 		return this.#row(label, input);
+	}
+
+	/** The toolbar's groups: shown or not, and their order (▲▼). The mode
+	 *  switch is not listed — it cannot be hidden. */
+	#toolbarGroupsRow() {
+		const wrap = document.createElement('div');
+		wrap.className = 'settings-row settings-row-stacked toolbar-groups-setting';
+		const all = TOOLBAR_GROUPS.filter((g) => g.id !== 'mode');
+		const draw = () => {
+			const saved = settingsStore.get('editorToolbarGroups');
+			const order = Array.isArray(saved) ? saved.filter((id) => all.some((g) => g.id === id)) : all.map((g) => g.id);
+			const hidden = all.filter((g) => !order.includes(g.id)).map((g) => g.id);
+			const rows = [...order, ...hidden].map((id, i, list) => {
+				const group = all.find((g) => g.id === id);
+				const row = document.createElement('div');
+				row.className = 'toolbar-group-row';
+				row.dataset.group = id;
+				const box = Object.assign(document.createElement('input'), { type: 'checkbox', checked: order.includes(id) });
+				const name = Object.assign(document.createElement('span'), { textContent: group.label });
+				const up = Object.assign(document.createElement('button'), { textContent: '▲', title: 'Move up', disabled: i === 0 });
+				const down = Object.assign(document.createElement('button'), { textContent: '▼', title: 'Move down', disabled: i === list.length - 1 });
+				const save = (next) => { settingsStore.set('editorToolbarGroups', next); draw(); };
+				box.addEventListener('change', () => save(box.checked ? [...order, id] : order.filter((x) => x !== id)));
+				const move = (d) => {
+					const next = [...list];
+					[next[i], next[i + d]] = [next[i + d], next[i]];
+					save(next.filter((x) => order.includes(x)));
+				};
+				up.addEventListener('click', () => move(-1));
+				down.addEventListener('click', () => move(1));
+				row.append(box, name, up, down);
+				return row;
+			});
+			const reset = Object.assign(document.createElement('button'), { textContent: 'Reset', className: 'toolbar-groups-reset' });
+			reset.addEventListener('click', () => { settingsStore.set('editorToolbarGroups', null); draw(); });
+			const label = Object.assign(document.createElement('div'), { className: 'settings-label', textContent: 'Groups, in order' });
+			wrap.replaceChildren(label, ...rows, reset);
+		};
+		draw();
+		return wrap;
 	}
 
 	#numberRow(label, key, fallback, min, max) {

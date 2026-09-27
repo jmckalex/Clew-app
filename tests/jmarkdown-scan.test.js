@@ -20,6 +20,10 @@
  */
 
 import { test } from 'node:test';
+import { existsSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import assert from 'node:assert/strict';
 
 import { scanJmarkdown } from '../src/renderer/editor/jmd/jmarkdown-scan.js';
@@ -52,7 +56,7 @@ function owned(scan, text, frag) {
 
 test('empty input scans to nothing', () => {
 	const scan = scanJmarkdown('');
-	assert.deepEqual(scan, { captures: [], regions: [], folds: [], injections: [] });
+	assert.deepEqual(scan, { captures: [], regions: [], folds: [], injections: [], constructs: [] });
 });
 
 /* ── metadata header ─────────────────────────────────────────────────── */
@@ -258,30 +262,57 @@ test('an unclosed ==highlight ends at the blank line', () => {
 	assert.equal(faceOf(scan, text, 'Next paragraph.'), null);
 });
 
-test('/italic/ spans close before whitespace or trailing punctuation', () => {
+test('/italic/ spans: two on a line', () => {
 	const text = 'Some /italic words/, then /more/.\n';
 	const scan = scanJmarkdown(text);
 	assert.equal(faceOf(scan, text, 'italic words'), 'jmd-italic');
 	assert.equal(faceOf(scan, text, 'more'), 'jmd-italic');
 });
 
-test('mid-word slashes abort: /usr/bin is never italic', () => {
-	const text = 'Look in /usr/bin and /etc/hosts for it.\n';
-	const scan = scanJmarkdown(text);
-	assert.equal(scan.captures.filter((c) => c.face === 'jmd-italic').length, 0);
+// Italics follow the ENGINE (owner's rule, 2026-09-27): its tokenizer is a
+// bare regex tried at every slash the lexer reaches, so a slash inside a word
+// italicises too, and `\/` is the author's way out. These expectations are
+// the engine's own output (syntax-modifications.js, via marked); the parity
+// test below re-derives them where the engine master is installed.
+const ENGINE_ITALICS = [
+	['Look in /usr/bin and /etc/hosts for it.', ['usr', 'etc']],
+	['Either and/or/not will do.', ['or']],
+	['Buy 1/2 or 3/4 of it.', ['2 or 3']],
+	['Escaped \\/usr\\/bin is a path.', []],
+	// The body stops at the next slash, escaped or not.
+	['An /italic with \\/escaped\\/ slashes/ here.', ['italic with \\']],
+	['In strong */both/* and (/aside/) and "/quoted/" and _/under/_.', ['both', 'aside', 'quoted', 'under']],
+	['A link [text](http://a.com/b/c) and /this/.', ['this']],
+	['A URL https://a.com/b/c here and /that/.', ['b', 'that']],
+	['Tag <b>x</b> and <http://a/b/c> ok.', []],
+	['/Hello, world./ and /e.g. this/ and /why?/ yes.', ['Hello, world.', ' and ']],
+	['Across\nlines /a\nb/ ok.', ['a\nb']],
+	['Para /a\n\nb/ no.', []],
+	['Double // slash.', []],
+	['Text [a/b/c](dest) here.', ['b']],
+];
+const italicBodies = (text) => scanJmarkdown(text).constructs
+	.filter((c) => c.kind === 'italic').map((c) => text.slice(c.body.start, c.body.end));
+
+test('italics: the engine\'s rule, case by case', () => {
+	for (const [text, want] of ENGINE_ITALICS) assert.deepEqual(italicBodies(text), want, text);
 });
 
-test('escaped slashes stay inside an italic span', () => {
-	const text = 'An /italic with \\/escaped\\/ slashes/ here.\n';
-	const scan = scanJmarkdown(text);
-	assert.equal(faceOf(scan, text, 'escaped'), 'jmd-italic');
-	assert.equal(faceOf(scan, text, 'slashes'), 'jmd-italic');
-});
+const MARKED = path.join(process.env.JMARKDOWN_SRC
+	?? path.join(os.homedir(), 'Sites', 'jmckalex', 'software', 'jmarkdown'),
+'node_modules', 'marked', 'lib', 'marked.esm.js');
 
-test('fractions like 1/2 never open an italic span', () => {
-	const text = 'Buy 1/2 or 3/4 of it.\n';
-	const scan = scanJmarkdown(text);
-	assert.equal(scan.captures.filter((c) => c.face === 'jmd-italic').length, 0);
+test('italics: parity with the engine\'s own tokenizer', { skip: !existsSync(MARKED) && 'the engine master (and its marked) is not on this machine' }, async () => {
+	const { Marked } = await import(pathToFileURL(MARKED).href);
+	const { italics, strong } = await import('../vendor/jmarkdown/src/syntax-modifications.js');
+	globalThis.global ??= globalThis;
+	const marked = new Marked();
+	marked.use({ extensions: [italics, strong] });
+	for (const [text] of ENGINE_ITALICS) {
+		const engine = [];
+		marked.walkTokens(marked.lexer(text), (t) => { if (t.type === 'italics') engine.push(t.text); });
+		assert.deepEqual(italicBodies(text), engine, text);
+	}
 });
 
 test('citations: command, pre/post notes, keys', () => {

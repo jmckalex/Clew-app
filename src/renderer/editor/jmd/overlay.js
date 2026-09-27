@@ -43,6 +43,7 @@
 // own inline passes.
 import { ViewPlugin, Decoration } from '@codemirror/view';
 import { scanJmarkdown } from './jmarkdown-scan.js';
+import { scanFor } from './scan-cache.js';
 
 // Above this size the full-document scan starts to cost real time on
 // every edit, so the plugin degrades: it scans only the viewport plus a
@@ -67,7 +68,8 @@ function markFor(face) {
 /**
  * The jmarkdown dialect overlay extension.
  *
- * The scan is memoised by document reference: it reruns only when the
+ * The scan is memoised by document reference (scan-cache.js, shared
+ * with folding and live edit): it reruns only when the
  * document changes (`docChanged`); a viewport change merely rebuilds
  * the decoration set — for the newly visible ranges — from the cached
  * scan. Decorations are built ONLY for `view.visibleRanges`, so a long
@@ -120,7 +122,7 @@ export function jmdOverlay() {
 				return;
 			}
 			if (doc === this.scanDoc) return;
-			this.scan = scanJmarkdown(doc.toString());
+			this.scan = scanFor(doc);
 			this.scanDoc = doc;
 			this.scanFrom = 0;
 			this.scanTo = doc.length;

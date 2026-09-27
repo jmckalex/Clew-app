@@ -75,3 +75,30 @@ test('frontmatter keys are not parsed as tags or headings', () => {
 	assert.ok(meta.tags.some((t) => t.tag === 't'));
 	assert.equal(meta.headings.length, 0);
 });
+
+test('labels: every source form, their hosts, and what is not a label', () => {
+	const text = '---\nHeadings: numeric\n---\n# Doc\n\n## Setup @label[sec-setup]\n\n@begin(theorem)[Main]{#thm-main}\nText :label[inner]\n@end(theorem)\n\n@begin(equation){id=eq:a}\nx @label[nope]\n@end(equation)\n\n:::figure[Cap]{.wide #fig-1}\n![](x.png)\n:::\n\n@begin(table)[T]{#b title="x"}\n| a |\n@end(table)\n\nA loose @label[loose] and `@label[code]` and $@label[m]$.\n\nA note[fn: see @label[fnl]].\n\n```\n@label[fenced]\n```\n\nNot an email@label[x] either.\n';
+	const labels = extractNoteMetadata(text).labels;
+	const by = Object.fromEntries(labels.map((l) => [l.key, l]));
+	assert.deepEqual(Object.keys(by), ['sec-setup', 'thm-main', 'inner', 'eq:a', 'fig-1', 'b', 'loose', 'fnl']);
+	assert.deepEqual([by['sec-setup'].kind, by['sec-setup'].title], ['section', 'Setup']);
+	assert.deepEqual([by['thm-main'].kind, by['thm-main'].title, by['thm-main'].host], ['theorem', 'Main', { from: 8, to: 10 }]);
+	assert.deepEqual([by.inner.kind, by.inner.host], ['theorem', { from: 8, to: 10 }], 'the colon twin, hosted by its theorem');
+	assert.equal(by['eq:a'].kind, 'equation');
+	assert.deepEqual([by['fig-1'].kind, by['fig-1'].title], ['figure', 'Cap']);
+	assert.equal(by.b.kind, 'table', '{#a title="x"}');
+	assert.equal(by.loose.kind, 'plain');
+	assert.equal(by.fnl.kind, 'footnote');
+});
+
+test('citations: the \\cite family, multi-key, pandoc forms flagged, and what is not one', () => {
+	const text = 'A \\cite{alexander2023} and \\citep[p. 3][]{knuth84, lamport94} and \\fullcite*{x}.\n\n'
+		+ 'Pandoc [see @smith2020, p. 4; @jones] and bare @doe2019. but me@example.com is mail.\n\n'
+		+ '@begin(theorem)\nx\n@end(theorem) and @label[k] are directives.\n\n'
+		+ '`\\cite{incode}` and $\\cite{inmath}$\n\n```\n\\cite{fenced}\n```\n';
+	const cites = extractNoteMetadata(text).citations;
+	const keys = cites.map((c) => `${c.key}${c.pandoc ? '*' : ''}`);
+	assert.deepEqual(keys, ['alexander2023', 'knuth84', 'lamport94', 'x', 'smith2020*', 'jones*', 'doe2019*']);
+	assert.equal(cites.find((c) => c.key === 'knuth84').command, 'citep');
+	assert.equal(cites.find((c) => c.key === 'x').command, 'fullcite');
+});

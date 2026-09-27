@@ -14,6 +14,7 @@ import { ipc, CH } from './ipc.js';
 import { vaultStore } from './state/vault-store.js';
 import { workspaceStore } from './state/workspace-store.js';
 import { settingsStore } from './state/settings-store.js';
+import { vaultSettingsStore } from './state/vault-settings-store.js';
 import { bookmarkStore } from './state/bookmark-store.js';
 import { editorPool } from './editor/pool.js';
 import * as actions from './commands/actions.js';
@@ -25,11 +26,17 @@ import { initPlugins } from './plugins.js';
 import { installPdfSaveBridge, installOfficeSaveBridge, installOfficeThumbBridge, installExcalidrawSaveBridge, installExcalidrawLibraryBridge, installExcalidrawResolveBridge } from './pdf-save.js';
 import { officeDock } from './office-dock.js';
 import './components/chrome/clew-app.js';
+import './editor/toolbar/clew-selection-bubble.js';
+import { linkPreview } from './editor/link-preview.js';
+import { previewPane } from './editor/preview-pane.js';
 
 // ---- IPC events → stores --------------------------------------------------
 
 ipc.on(CH.EV_VAULT_OPENED, async ({ vault, tree }) => {
 	editorPool.flushAll();
+	// Before the workspace restores: the editors it opens await this (the
+	// grammar depends on the vault's normalSyntax).
+	vaultSettingsStore.load();
 	setPreviewSession(vault?.sessionId);
 	vaultStore.setVault(vault);
 	vaultStore.setTree(tree);
@@ -106,8 +113,17 @@ officeDock.init();
 // ---- dev hook -------------------------------------------------------------
 
 // Exposed for dev-tools poking and the CLEW_SMOKE scenario scripts.
-window.__clew = { workspaceStore, vaultStore, editorPool, settingsStore, ipc, actions, officeDock };
+// One selection bubble per window (docs/dev/live-edit.md §6.7).
+document.body.append(document.createElement('clew-selection-bubble'));
+linkPreview(); // <clew-link-preview>, the window's one link popover
+previewPane(); // <clew-preview-pane>, the window's one live preview pane
+
+window.__clew = { linkPreview, previewPane, workspaceStore, vaultStore, vaultSettingsStore, editorPool, settingsStore, ipc, actions, officeDock };
+// Live edit's in-place table cells, for scenarios (smoke/live-table-edit-scenario.js).
+import('./editor/live/table-cell-editor.js').then((m) => { window.__clew.activeCellView = m.activeCellView; });
 import('./commands/registry.js').then((registry) => { window.__clew.registry = registry; });
+import('./editor/live/numbering.js').then((m) => { window.__clew.numbering = m; });
+import('./pdf-annotations.js').then((m) => { window.__clew.pdfAnnotations = m; });
 
 // ---- boot -----------------------------------------------------------------
 

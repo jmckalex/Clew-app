@@ -360,8 +360,10 @@ if (process.env.CLEW_SMOKE) {
 				// cross-origin iframe (an OOPIF), and sendInputEvent never
 				// routes there (measured 2026-09-01) while the debugger's
 				// Input domain hit-tests properly. A scenario queues
-				// window.__clewSmokeInput = [{click:{x,y}} | {text:'abc'} |
-				// {combo:{key:'s',modifiers:2}} | {wait:ms}] (modifiers CDP
+				// window.__clewSmokeInput = [{click:{x,y}} | {move:{x,y}} | {text:'abc'} |
+				// {combo:{key:'s',modifiers:2}} | {wait:ms}] — a click may carry
+				// `modifiers` too, e.g. {click:{x,y},modifiers:4}; and
+				// {wheel:{x,y,deltaY}} scrolls (modifiers CDP
 				// bitmask: Alt 1, Ctrl 2, Meta 4, Shift 8).
 				// window.__clewSmokeClipboard (string) preloads the clipboard;
 				// CLEW_SMOKE_CLIPBOARD=1 dumps clipboard text afterwards.
@@ -405,9 +407,29 @@ if (process.env.CLEW_SMOKE) {
 					};
 					for (const ev of inputEvents) {
 						if (ev.wait) { await sleep(ev.wait); continue; }
+						if (ev.wheel) {
+							// {wheel:{x,y,deltaY}}: a real wheel tick at a point —
+							// the only way to prove a wheel over a cross-origin
+							// frame chains to the scroller beneath it.
+							const { x, y, deltaY = 0, deltaX = 0 } = ev.wheel;
+							await dbg.sendCommand('Input.dispatchMouseEvent', { type: 'mouseMoved', button: 'none', x, y });
+							await dbg.sendCommand('Input.dispatchMouseEvent', { type: 'mouseWheel', x, y, deltaX, deltaY });
+							continue;
+						}
+						if (ev.move) {
+							// {move:{x,y}, modifiers?}: the pointer to a point, nothing
+							// pressed — hover (link previews). `modifiers` (the CDP
+							// bitmask) makes it a ⌘-hover: e.metaKey in the page.
+							const { x, y } = ev.move;
+							await dbg.sendCommand('Input.dispatchMouseEvent', { type: 'mouseMoved', button: 'none', x, y, modifiers: ev.modifiers ?? 0 });
+							await sleep(ev.delay ?? 30);
+							continue;
+						}
 						if (ev.click || ev.tripleClick) {
 							const { x, y } = ev.click ?? ev.tripleClick;
-							const base = { x, y, pointerType: 'mouse' };
+							// `modifiers` on a click event (same CDP bitmask) makes it
+							// a ⌘-click etc. — e.metaKey in the page (inverse search).
+							const base = { x, y, pointerType: 'mouse', modifiers: ev.modifiers ?? 0 };
 							const clicks = ev.tripleClick ? 3 : 1;
 							await dbg.sendCommand('Input.dispatchMouseEvent', { type: 'mouseMoved', button: 'none', ...base });
 							for (let count = 1; count <= clicks; count++) {
@@ -487,12 +509,26 @@ if (process.env.CLEW_SMOKE) {
 				}
 				// Optionally drive the preview iframe's document (cross-origin from
 				// the app, but reachable from main via webFrameMain).
+				// CLEW_SMOKE_FRAME_MATCH=<substring>: run it in EVERY
+				// clew-preview:// frame whose URL contains the substring (live
+				// edit's block frames, `__clew_block__`), one after another; the
+				// script sees `SMOKE_FRAME` — the URL's last path segment — to
+				// prefix its lines with.
 				if (process.env.CLEW_SMOKE_FRAME_SCRIPT) {
 					const frameScript = fs.readFileSync(process.env.CLEW_SMOKE_FRAME_SCRIPT, 'utf8');
-					const frame = primary.webContents.mainFrame.frames
-						.find((f) => f.url.startsWith('clew-preview:'));
-					if (frame) await frame.executeJavaScript(`(async () => { ${frameScript} })()`);
-					else console.error('smoke: no preview frame found');
+					const match = process.env.CLEW_SMOKE_FRAME_MATCH;
+					const previews = primary.webContents.mainFrame.framesInSubtree
+						.filter((f) => f.url.startsWith('clew-preview:'));
+					const frames = match
+						? previews.filter((f) => f.url.includes(match))
+						: previews.filter((f) => f.parent === primary.webContents.mainFrame).slice(0, 1);
+					if (frames.length === 0) console.error('smoke: no preview frame found');
+					if (match) console.log(`smoke-frames: ${frames.length} matching ${match}`);
+					for (const frame of frames) {
+						const tag = new URL(frame.url).pathname.split('/').filter(Boolean).pop() ?? '';
+						await frame.executeJavaScript(
+							`(async () => { const SMOKE_FRAME = ${JSON.stringify(tag)}; ${frameScript} })()`);
+					}
 					await new Promise((r) => setTimeout(r, 1500));
 				}
 				await new Promise((r) => setTimeout(r, 800));
