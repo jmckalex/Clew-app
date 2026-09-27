@@ -1,3 +1,41 @@
+# Since the morning report — 2026-09-27 (the owner testing live edit)
+
+Bugs from your hands-on testing, each fixed and asserted by a scenario:
+
+- `a14a0c4` — **empty lines.** The list buttons, quote, and `//` → Center /
+  Right did nothing on an EMPTY line; they now write their marker
+  (`empty-line-format-scenario.js`).
+- `52c625a`, three fixes (`fence-dl-math-scenario.js`):
+  - The inline-maths preview pane showed a scrollbar thumb, which looked
+    like a stray cursor.
+  - The description-list insert wrote Pandoc's form; it now writes the
+    engine's `Term:: definition`, and live edit shows **Term** — definition.
+  - Code fences are highlighted in the editor with highlight.js (the
+    library reading mode uses), mapped onto the jmd-* token colours
+    (`editor/code-tokens.js`, `editor/code-highlight.js`).
+- `c3b4616` — **shortcuts for every text style** (`format-chords-scenario.js`):
+  - ⌘B strong, ⌘⇧B intense, ⌘I italic, ⌘U underline, ⌘⇧H highlight,
+    ⌘⇧X strike, ⌘⇧C code, ⌘⇧M maths, ⌘⌥↓ / ⌘⌥↑ sub/superscript.
+  - The sidebar toggles moved from ⌘B / ⌘⇧B to ⌘⌥B / ⌘⌥⇧B.
+  - Manual: `462cbd2`.
+
+Still open from those runs:
+
+- **Function names.** In highlighted fences a function name (`foo`) takes
+  `jmd-function`, whose colour is close to plain code's. The owner may want
+  a distinct theme colour.
+- **Reflow widths.** `editor-hotkeys-scenario`'s reflow widths follow the
+  fill column in the app's REAL settings (the harness shares userData
+  unless `CLEW_USER_DATA` is set). They read [79,40] on this machine;
+  that's not a regression.
+
+Continuing to debug live edit? Start from this file and
+`docs/dev/live-edit.md`, and rerun everything with
+`node scripts/build.js && smoke/live-sweep.sh` (it prints each scenario's
+lines; compare them with `smoke/README.md`).
+
+---
+
 # Morning report — the night of 2026-09-26/27 (read this first)
 
 **Everything in the overnight brief shipped, in order, each phase with its
