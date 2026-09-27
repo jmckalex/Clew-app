@@ -20,6 +20,7 @@ node smoke/make-live-vault.mjs $S/v-pp >/dev/null; run preview-pane $S/v-pp CLEW
 node smoke/make-crossref-vault.mjs $S/v-xr; run crossref $S/v-xr CLEW_SMOKE_FRAME_SCRIPT=smoke/crossref-frame.js CLEW_SMOKE_FRAME_MATCH=vault/
 node smoke/make-live-vault.mjs $S/v-sm >/dev/null; run slash-menu $S/v-sm
 mkdir -p $S/v-fdm && printf '%s\n' '# Fixes' '' '```javascript' 'let i = 10;' 'function foo() {}' '```' '' 'Consider which $10\\alpha+$ holds.' '' '' 'Last line.' > $S/v-fdm/Fixes.md; run fence-dl-math $S/v-fdm
+mkdir -p $S/v-fc && printf '%s\n' '# Chords' '' 'word' '' 'Last.' > $S/v-fc/Chords.md; run format-chords $S/v-fc
 mkdir -p $S/v-el && printf '%s\n' '# Empty lines' '' 'Last line.' > $S/v-el/Empty.md; run empty-line-format $S/v-el
 node smoke/make-live-vault.mjs $S/v-fn >/dev/null; run live-footnotes $S/v-fn
 node smoke/make-citations-vault.mjs $S/v-ci; run citations $S/v-ci

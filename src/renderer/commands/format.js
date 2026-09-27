@@ -446,16 +446,20 @@ export function registerFormatCommands() {
 		// Inline styles (legacy edit:* ids kept for existing rebindings).
 		// Under the vault's normalSyntax the same commands write standard
 		// markdown: strong is `**`, italic `*` (the engine's reading there).
-		{ id: 'edit:format-strong', name: 'Format: strong (*text*)', fn: (v) => toggleWrap(v, normalSyntax() ? '**' : '*') },
-		{ id: 'edit:format-intense', name: 'Format: intense (**text**)', fn: (v) => toggleWrap(v, '**') },
-		{ id: 'edit:format-italic', name: 'Format: italic (/text/)', fn: (v) => toggleWrap(v, normalSyntax() ? '*' : '/') },
-		{ id: 'format:underline', name: 'Format: underline (__text__)', fn: (v) => toggleWrap(v, '__') },
-		{ id: 'edit:format-highlight', name: 'Format: highlight (==text==)', fn: (v) => toggleWrap(v, '==') },
-		{ id: 'edit:format-strike', name: 'Format: strikethrough (~text~)', fn: (v) => toggleWrap(v, '~') },
-		{ id: 'format:subscript', name: 'Format: subscript (_{text})', fn: (v) => toggleWrap(v, '_{', '}') },
-		{ id: 'format:superscript', name: 'Format: superscript (^{text})', fn: (v) => toggleWrap(v, '^{', '}') },
-		{ id: 'edit:format-code', name: 'Format: inline code', fn: (v) => toggleWrap(v, '`') },
-		{ id: 'edit:format-math', name: 'Format: inline math ($x$)', fn: (v) => toggleWrap(v, '$') },
+		// The usual editor chords (⌘B bold, ⌘I italic, ⌘U underline); the
+		// dialect's extra styles on ⌘⇧ + a mnemonic letter; sub/superscript
+		// on ⌘⌥↓/↑ (the punctuation chords Word uses — ⌘= — are zoom here,
+		// and ⌥ turns punctuation into other characters on a Mac keyboard).
+		{ id: 'edit:format-strong', name: 'Format: strong (*text*)', hotkeys: ['Mod-b'], fn: (v) => toggleWrap(v, normalSyntax() ? '**' : '*') },
+		{ id: 'edit:format-intense', name: 'Format: intense (**text**)', hotkeys: ['Mod-Shift-b'], fn: (v) => toggleWrap(v, '**') },
+		{ id: 'edit:format-italic', name: 'Format: italic (/text/)', hotkeys: ['Mod-i'], fn: (v) => toggleWrap(v, normalSyntax() ? '*' : '/') },
+		{ id: 'format:underline', name: 'Format: underline (__text__)', hotkeys: ['Mod-u'], fn: (v) => toggleWrap(v, '__') },
+		{ id: 'edit:format-highlight', name: 'Format: highlight (==text==)', hotkeys: ['Mod-Shift-h'], fn: (v) => toggleWrap(v, '==') },
+		{ id: 'edit:format-strike', name: 'Format: strikethrough (~text~)', hotkeys: ['Mod-Shift-x'], fn: (v) => toggleWrap(v, '~') },
+		{ id: 'format:subscript', name: 'Format: subscript (_{text})', hotkeys: ['Mod-Alt-ArrowDown'], fn: (v) => toggleWrap(v, '_{', '}') },
+		{ id: 'format:superscript', name: 'Format: superscript (^{text})', hotkeys: ['Mod-Alt-ArrowUp'], fn: (v) => toggleWrap(v, '^{', '}') },
+		{ id: 'edit:format-code', name: 'Format: inline code', hotkeys: ['Mod-Shift-c'], fn: (v) => toggleWrap(v, '`') },
+		{ id: 'edit:format-math', name: 'Format: inline math ($x$)', hotkeys: ['Mod-Shift-m'], fn: (v) => toggleWrap(v, '$') },
 
 		// Headings.
 		...[1, 2, 3, 4, 5, 6].map((level) => ({

@@ -52,7 +52,8 @@ The **This vault** section holds per-vault settings (stored in
 | ⌘⌥← ⌘⌥→ | History back / forward |
 | ⌘T ⌘W ⌃Tab | New / close / cycle tabs |
 | ⌘\ ⌘⇧\ | Split right / down |
-| ⌘B ⌘⇧B | Toggle left / right sidebar |
+| ⌘⌥B ⌘⌥⇧B | Toggle left / right sidebar |
+| ⌘B ⌘I ⌘U | Strong, italic, underline (⌘⇧B intense, ⌘⇧H highlight, ⌘⇧X strike, ⌘⇧C code, ⌘⇧M maths, ⌘⌥↓ ⌘⌥↑ sub/superscript) |
 | ⌃\` | Toggle the shell panel (and put the caret in it) |
 | ⌘G | Graph view |
 | ⌘⇧D | Daily note |

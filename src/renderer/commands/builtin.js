@@ -258,9 +258,11 @@ export function registerBuiltinCommands() {
 					requestAnimationFrame(() => document.querySelector('clew-shell-panel')?.focusTerminal());
 				}
 			} },
-		{ id: 'workspace:toggle-left-sidebar', name: 'Toggle left sidebar', hotkeys: ['Mod-b'],
+		// ⌘B / ⌘⇧B are strong and intense (format.js) — the chord every editor
+		// gives bold; the sidebars moved to ⌘⌥B / ⌘⌥⇧B (2026-09-27).
+		{ id: 'workspace:toggle-left-sidebar', name: 'Toggle left sidebar', hotkeys: ['Mod-Alt-b'],
 			run: () => toggleSidebar('left') },
-		{ id: 'workspace:toggle-right-sidebar', name: 'Toggle right sidebar', hotkeys: ['Mod-Shift-b'],
+		{ id: 'workspace:toggle-right-sidebar', name: 'Toggle right sidebar', hotkeys: ['Mod-Alt-Shift-b'],
 			run: () => toggleSidebar('right') },
 
 		// editing
@@ -350,6 +352,8 @@ export function prettifyChord(chord) {
 		.replace('Shift', '⇧')
 		.replace('ArrowLeft', '←')
 		.replace('ArrowRight', '→')
+		.replace('ArrowUp', '↑')
+		.replace('ArrowDown', '↓')
 		.replaceAll('-', isMac ? '' : '+');
 }
 
