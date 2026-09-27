@@ -16,7 +16,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 
 import { scanJmarkdown } from '../src/renderer/editor/jmd/jmarkdown-scan.js';
 
@@ -273,7 +273,12 @@ test('every construct delimiter sits on a painted capture (the demo vault)', () 
 	// delimiter live edit hides must be a span the overlay paints. Checked
 	// over every note of the demo vault, which is the dialect's showcase.
 	const root = new URL('../demo-vault/', import.meta.url);
-	const notes = readdirSync(root, { recursive: true }).filter((p) => /\.(md|jmd)$/.test(p));
+	// Notes only: the vault's own `.clew/` state is not the showcase, and a
+	// note-history folder is a DIRECTORY named like its note
+	// (`.clew/history/Guide/Widgets.md/`), which read as a note is EISDIR —
+	// found the first time this ran over a vault that had been used.
+	const notes = readdirSync(root, { recursive: true })
+		.filter((p) => /\.(md|jmd)$/.test(p) && !p.startsWith('.clew/') && statSync(new URL(p, root)).isFile());
 	let total = 0;
 	const kinds = new Set();
 	for (const note of notes) {
