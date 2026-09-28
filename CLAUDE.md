@@ -232,8 +232,8 @@ browser-window-focus).
   LaTeX export (user's own config) never sees this file. A ```latex
   snippet is wrapped in `standalone` + `varwidth` and runs on LuaLaTeX; a
   complete document (`\documentclass`) is typeset as written, one SVG per
-  page; ```tex runs on plain LuaTeX (needs 0.2.1 as PUBLISHED — before
-  its LuaTeX rule fix every DVI rule trapped the wasm module under both
+  page; ```tex runs on plain LuaTeX (needs 0.2.1 or later as PUBLISHED —
+  before 0.2.1's LuaTeX rule fix every DVI rule trapped the wasm module under both
   LuaTeX formats). Every block takes
   `show=figure|code|both` (bare `code`/`both` too): code is marked's OWN
   `code` token (returned outright, or attached as a child token), so it
@@ -254,8 +254,8 @@ browser-window-focus).
   for `+opentype` ONLY when a marked figure is on the page AND the staged
   build's `bundles/index.json` lists the bundle (a findable luaotfload
   costs every LuaTeX run ~180 ms; asking for a bundle that is not there
-  fails the whole engine — the pinned 0.2.1 has none, so marked figures
-  are then refused BY NAME). The list is read once by auto.js, so a marked
+  fails the whole engine — 0.2.1 had none, so a build staged from it
+  refuses marked figures BY NAME; the pinned 0.3.0 has it). The list is read once by auto.js, so a marked
   figure arriving later reloads the preview once. The faces come from
   `main/note-fonts.js`: extracted at app start from the machine's own font
   folder (`Avenir Next.ttc` is a COLLECTION, and a collection is garbled
@@ -266,8 +266,10 @@ browser-window-focus).
   addFiles` BEFORE the loader is injected, and named to the render worker
   through `CLEW_NOTE_FONTS`. A site export bakes such figures as OUTLINES
   (`figure-bake.js`), never embedding Apple's or Microsoft's face in a
-  published page. The manifest is still pinned to 0.2.1: the feature is
-  live only where the master's `opentype-fonts` build is staged. The
+  published page. The manifest pins mp-tikz-wasm 0.3.0 (2026-09-28), the
+  first release carrying the `opentype` bundle, so the feature is live on
+  every machine that stages from the pin, not only where the master is
+  built. The
   mptikz root is served IMMUTABLE for a year (protocol.js) and its URLs
   carry no version, so a restaged or upgraded build would be served
   stale: `main/asset-stamp.js` stamps the engines + bundle indexes + app

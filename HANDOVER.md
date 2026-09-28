@@ -430,8 +430,8 @@ intended guide-note changes, committed (runs used scratch copies).
 - `main` is 20 commits ahead of `origin` and not tracking it; Clew-docs has
   no remote at all. The owner's to sort out; this branch never pushed.
 - Offers awaiting a yes/no: the link face on plain `[text]`; a manual line
-  on `\[ \begin{align*} … \]` in LaTeX export. `font=note` waits on
-  mp-tikz-wasm 0.3.0. The graphicx driver line for mp-tikz-wasm. The three
+  on `\[ \begin{align*} … \]` in LaTeX export. `font=note` no longer
+  waits: mp-tikz-wasm 0.3.0 is published and pinned (2026-09-28). The graphicx driver line for mp-tikz-wasm. The three
   dev docs (`docs/dev/live-edit.md` is now a fourth). Win/linux artefacts
   untested at runtime.
 

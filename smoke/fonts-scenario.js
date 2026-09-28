@@ -6,10 +6,9 @@
 //
 // Fixture: smoke/make-figures-vault.mjs <dir> — Fonts.md. Fresh
 // CLEW_USER_DATA: the result cache would otherwise answer for the engine.
-// Needs a staged build carrying the `opentype` bundle (the owner's master on
-// the opentype-fonts branch; the pinned 0.2.1 does not have it — then every
-// marked figure must show the by-name refusal instead, and the control must
-// still render).
+// Needs a staged build carrying the `opentype` bundle — the pinned 0.3.0
+// does (0.2.1 did not); on a build without it every marked figure must show
+// the by-name refusal instead, and the control must still render.
 //
 // Expect, from the frame script: `loader bundles="+opentype"`, four
 // `[data-opentype]` figures each `text>0` with an `@font-face` in its SVG,
