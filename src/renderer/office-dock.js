@@ -117,7 +117,16 @@ class OfficeDock extends Emitter {
 		}, 700);
 		try {
 			this.#engine = await ipc.invoke(CH.OFFICE_ENGINE_DOWNLOAD);
-		} catch { /* status poll already painted the failure */ } finally {
+		} catch {
+			// A failed file resolves with lastError (zeta-assets.js); only a
+			// rejection lands here — the engine folder could not be made, or
+			// the call itself failed — and it can beat the first 700 ms poll,
+			// leaving the optimistic `downloading` to say "Starting…" for
+			// ever. Ask for the real state; if even that fails, stop claiming
+			// a download.
+			this.#engine = await ipc.invoke(CH.OFFICE_ENGINE_STATUS)
+				.catch(() => ({ ...(this.#engine ?? {}), downloading: false }));
+		} finally {
 			clearInterval(poll);
 			this.emit('changed');
 		}
