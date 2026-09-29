@@ -58,11 +58,13 @@ bundle, so `font=note` works from a fresh install; proven by staging from
 the pinned archive with the master bypassed and the fonts scenario over
 that tree), `c699565` (0.11.0).
 
-**0.11.1 artefacts in `out/`** (the ten 0.11.0 files were removed on the
-owner's word, 2026-09-29 — moved to `~/.Trash/Clew 0.11.0 artefacts/`,
-rebuildable from `c699565`; `out/mac-universal/` still holds the unpacked
-0.11.0 universal app, 745 MB, awaiting the owner's word; the 0.10.0 and
-0.9.0 files are untouched — ask before deleting):
+**0.11.1 artefacts in `out/`** — all that is left there besides the unpacked
+apps and electron-builder's yml files. On the owner's word (2026-09-29)
+everything older went to the Trash, recoverable until it is emptied: the
+0.11.0 files in `~/.Trash/Clew 0.11.0 artefacts/` (1.3 GB; rebuildable from
+`c699565`), and the 0.10.0 and 0.9.0 artefacts, the unpacked 0.11.0
+universal app and `out/old/` (0.7.0 and 0.8.0) in `~/.Trash/Clew older
+builds/` (3.8 GB):
 
 | artefact | size | state |
 | --- | --- | --- |
@@ -198,9 +200,8 @@ on each image; `spctl -a -t exec`, `codesign -dv`, the entitlements,
 
 ## 4. Owner's own actions
 
-- Decide on `out/mac-universal/` (the unpacked 0.11.0 universal app) and the
-  0.10.0 / 0.9.0 artefacts; empty the Trash folder when sure. 0.11.1 is what
-  to publish when DNS moves.
+- Empty the two Trash folders when sure (§0). 0.11.1 is what to publish when
+  DNS moves.
 - Live in live edit for a week (`newTabMode: 'live'`), run the QA list, and
   decide the §12 defaults — the next bug reports come from there.
 - Create the Clew-docs remote and push; DNS; then `make sync` etc. per the
