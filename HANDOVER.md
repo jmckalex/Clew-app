@@ -156,6 +156,24 @@ build succeeded and waits for the owner to add it to the Internal group.
   and embed kind, what changes, migration paths, losses as owner
   questions), worked out with clew-ios-f4; BUILT before any embedded-app
   feature ships. Notes for it: the file:// survey and iOS's lessons.
+- **Message receivers check their sender** (2026-09-29, the iOS session's
+  finding, by code reading, not probed): the app page's bridges (PDF,
+  Excalidraw and office saves, the Excalidraw library, file resolution,
+  office thumbnails) acted on a message from ANY frame that could reach
+  `window.top` — a remote page a note embeds, on iPad a canvas web card.
+  Now `shared/message-guard.js`: bridges act only for the preview origin and
+  answer it; a document's host listeners (`client.js`, `api.js`, the viewer
+  pages' reply listeners) hear only the window they expect. Checked by
+  `bridges-scenario.js` and `office-bridges-scenario.js` (new: every
+  Excalidraw and office path, nested senders included) beside the full
+  check. Found on the way, NOT fixed (each its own item): (1) opening a
+  note that embeds a drawing EMPTIES the vault's Excalidraw library — the
+  read-only embed reports its empty library through `onLibraryChange`
+  (`src/excalidraw/page.js`, not gated by `viewMode`; measured 1 item
+  before, 0 after); (2) a LIVE office embed's edits never mark its note's
+  tab dirty — `zeta-modified` arrives (from the preview origin, 10 of them
+  in the run) but `officeDock.isDirty(tab)` stays false, so the close guard
+  would not ask; the save itself works.
 - **Wheel over the live preview pane** (fixed 2026-09-29): live-blocks'
   `scroll-chained=false` was real, not the invisible harness (a visible run
   agreed); bisected to 818cf32 — the pane floated over the frame and ate the

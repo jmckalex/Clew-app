@@ -757,7 +757,19 @@ except where the selection touches a construct. The durable design is
   first use (retry 1 s × 5, then fail), and a parent answers only its own
   child frame on the preview origin (`shared/caller-token.js`). The
   top-level print view is handed it by `print-pdf.js`'s self-post. Every new
-  render POST goes through renderPost/callerToken, or it gets a 403.
+  render POST goes through renderPost/callerToken, or it gets a 403. **A
+  window listens only to senders it can name** (`shared/message-guard.js`,
+  2026-09-29): any frame can post to `window.top` or its parent — a remote
+  page a note embeds, a canvas web card — so the app page's bridges
+  (`pdf-save.js`: PDF/Excalidraw/office saves, the Excalidraw library, file
+  resolution, office thumbnails; `pdf-frames.js`; the office dock's embed
+  branch) act only for `fromPreviewOrigin(event)` and answer `event.origin`,
+  never `'*'`; and a document's host listeners (`client.js`, `api.js`, the
+  viewer pages' reply listeners) accept only the window they expect — the
+  parent, or the window a request went to. Not "a frame the app created":
+  office live embeds and the Excalidraw/PDF viewers inside notes post to
+  window.top from two frames deep. A new listener follows the same rule
+  (`smoke/bridges-scenario.js`, `office-bridges-scenario.js`).
 - **PDFs are EmbedPDF, not Chromium's plugin** (MIT, Pdfium-in-wasm, ~9.5
   MB staged) — and not the npm build: the viewer is the owner's OCG/layers
   fork (EmbedPDF v2.15.0 + the ~/Source/pdfium-ocg patch series; the wasm

@@ -25,7 +25,8 @@ const pendingSaves = new Map();
 
 window.addEventListener('message', (event) => {
 	const msg = event.data;
-	if (!msg || msg.source !== 'clew-pdf-host' || msg.type !== 'pdf-save-result') return;
+	// From the window the save went to (window.parent), no other.
+	if (!msg || msg.source !== 'clew-pdf-host' || msg.type !== 'pdf-save-result' || event.source !== window.parent) return;
 	const pending = pendingSaves.get(msg.id);
 	if (!pending) return;
 	pendingSaves.delete(msg.id);

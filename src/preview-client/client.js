@@ -22,6 +22,7 @@ import { initPdfEmbeds, holdIfUnsaved } from './pdf-embed.js';
 import { initExcalidrawEmbeds } from './excalidraw-embed.js';
 import { initOfficeEmbeds } from './office-embed.js';
 import { figureMorph, initFigures, figuresPending } from './figures.js';
+import { fromWindow } from '../shared/message-guard.js';
 
 const HOST_SOURCE = 'clew-preview-host';
 const post = (msg) => window.parent.postMessage({ source: 'clew-preview', ...msg }, '*');
@@ -35,7 +36,11 @@ const BLOCK = document.documentElement.dataset.clewBlock === '1';
 
 window.addEventListener('message', (event) => {
 	const msg = event.data;
-	if (!msg || msg.source !== HOST_SOURCE) return;
+	// From the host — this document's PARENT — and nobody else: a frame this
+	// note embeds can post to its parent too, and a `render` from it would
+	// replace the note (shared/message-guard.js). In the print view the parent
+	// is this window itself, which is where main posts.
+	if (!msg || msg.source !== HOST_SOURCE || !fromWindow(event, window.parent)) return;
 	if (msg.type === 'render') applyRender(msg.html);
 	else if (msg.type === 'scroll-to-line') scrollToLine(msg.line, msg.behavior ?? 'auto');
 	else if (msg.type === 'theme') {

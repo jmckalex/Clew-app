@@ -26,6 +26,7 @@
 // the closing tab's frames, and the window's close handshake waits for all
 // of them (office-dock.js#onCloseRequested).
 import { workspaceStore } from './state/workspace-store.js';
+import { fromPreviewOrigin } from '../shared/message-guard.js';
 
 /** A lingering view waits at most this long; a normal save takes ~10 ms. */
 const LINGER_MS = 10_000;
@@ -37,7 +38,8 @@ const waiters = new Set(); // re-checked on every report
 
 window.addEventListener('message', (event) => {
 	const msg = event.data;
-	if (!msg || msg.source !== 'clew-pdf' || msg.type !== 'pdf-dirty' || !event.source) return;
+	// Only a viewer on the preview origin (shared/message-guard.js).
+	if (!msg || msg.source !== 'clew-pdf' || msg.type !== 'pdf-dirty' || !fromPreviewOrigin(event)) return;
 	if (msg.dirty) dirty.add(event.source);
 	else dirty.delete(event.source);
 	for (const check of [...waiters]) check();

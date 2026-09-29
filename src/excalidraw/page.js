@@ -59,7 +59,8 @@ const pending = new Map();
 
 window.addEventListener('message', (event) => {
 	const msg = event.data;
-	if (!msg || msg.source !== 'clew-excalidraw-host') return;
+	// From the window the request went to, no other.
+	if (!msg || msg.source !== 'clew-excalidraw-host' || event.source !== (window.top ?? window.parent)) return;
 	const entry = pending.get(msg.id);
 	if (!entry) return;
 	pending.delete(msg.id);

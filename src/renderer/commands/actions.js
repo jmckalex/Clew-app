@@ -22,6 +22,7 @@ import { ipc, CH } from '../ipc.js';
 import { parseProperties, applyProperties } from '../../shared/frontmatter.js';
 import { rewriteBlockText } from '../../shared/note-metadata.js';
 import { notice } from '../plugins.js';
+import { fromPreviewOrigin } from '../../shared/message-guard.js';
 
 export function closeActiveTab() {
 	const tab = workspaceStore.activeTab();
@@ -461,6 +462,7 @@ export function showPdfPage(tabId, page) {
 	// once its document is open), for a few seconds.
 	let done = false;
 	const onMessage = (event) => {
+		if (!fromPreviewOrigin(event)) return;
 		if (event.data?.source === 'clew-preview' && event.data.type === 'pdf-page-shown' && event.data.page === page) done = true;
 	};
 	window.addEventListener('message', onMessage);

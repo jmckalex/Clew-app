@@ -34,6 +34,7 @@ import { ipc, CH } from './ipc.js';
 import { workspaceStore } from './state/workspace-store.js';
 import { zetaOfficeUrl } from './lib/preview-url.js';
 import { hasUnsavedPdf, flushAllPdf } from './pdf-frames.js';
+import { fromPreviewOrigin } from '../shared/message-guard.js';
 
 const SAVE_TIMEOUT = 20000; // a big spreadsheet store is seconds, not minutes
 const ECHO_WINDOW = 3000; // watcher events this close to our save are the save
@@ -342,7 +343,9 @@ class OfficeDock extends Emitter {
 			}
 			return;
 		}
-		// Not the dock's frame: a live EMBED somewhere under this window.
+		// Not the dock's frame: a live EMBED somewhere under this window — on
+		// the preview origin, or it is not one of ours (shared/message-guard.js).
+		if (!fromPreviewOrigin(e)) return;
 		if (msg?.cmd === 'zeta-modified' && e.source) {
 			const entry = this.#embeds.get(e.source) ?? { dirty: false, waiters: [] };
 			entry.dirty = msg.state === true;
