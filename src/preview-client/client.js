@@ -22,6 +22,7 @@ import { initPdfEmbeds, holdIfUnsaved } from './pdf-embed.js';
 import { initExcalidrawEmbeds } from './excalidraw-embed.js';
 import { initOfficeEmbeds } from './office-embed.js';
 import { figureMorph, initFigures, figuresPending } from './figures.js';
+import { initTabbing, tabbingMorph } from './tabbing.js';
 import { fromWindow } from '../shared/message-guard.js';
 
 const HOST_SOURCE = 'clew-preview-host';
@@ -112,6 +113,10 @@ function applyRender(html) {
 				// the generic rule below can tell apart (figures.js).
 				const figure = figureMorph(fromEl, toEl);
 				if (figure !== null) return figure;
+				// A laid-out tabbing block whose source is unchanged keeps its
+				// layout (preview-client/tabbing.js); a changed one is redone.
+				const tab = tabbingMorph(fromEl, toEl);
+				if (tab !== null) return tab;
 				// Custom elements (vault scripts / Script: metadata) render
 				// their own content, which the incoming HTML doesn't carry —
 				// morphing their subtree would wipe it. Keep the element and
@@ -181,6 +186,7 @@ function applyRender(html) {
 		initCanvasEmbeds();
 		initLeafletMaps();
 		initFigures();
+		initTabbing();
 		initPdfEmbeds();
 		initExcalidrawEmbeds();
 		initOfficeEmbeds();
@@ -572,6 +578,7 @@ enableTaskCheckboxes();
 initCanvasEmbeds();
 initLeafletMaps();
 initFigures();
+initTabbing();
 initPdfEmbeds();
 initExcalidrawEmbeds();
 initOfficeEmbeds();

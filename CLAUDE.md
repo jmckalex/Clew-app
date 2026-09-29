@@ -80,7 +80,7 @@ note API, plugins, and every settings key.
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
   dialect scanner's constructs and grammar, live edit's model, reveal rule,
-  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token — 871 tests. DOM/UI work is
+  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX) — 888 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
@@ -301,6 +301,21 @@ browser-window-focus).
   reconfigures EVERY session); renaming one typesets nothing — identity is
   the TEXT, not the name — but leaves every figure still asking for the old
   name showing its refusal.
+- **Tabbing** (`src/engine/tabbing.js`, owner's ask 2026-09-30): all of
+  LaTeX's `tabbing` — ```` ```tabbing ```` fence or `@begin(tabbing)`, one
+  source line a row, `|=` `|>` `|<` `|+` `|-` `|'` `` |` `` `|[` `|]` and a
+  `|kill` ruler row, LaTeX's own commands accepted alongside (`\a=` etc. for
+  the accents they displace). The layout is latex.ltx's (`\@settab`,
+  `\@rtab`, `\@tablab`, …) as a PURE function, `layoutTabbing`, which
+  `preview-client/tabbing.js` runs over measured widths (a stop depends on
+  the rendered width before it; a ResizeObserver re-lays on fonts, maths,
+  resize; morph keeps a block whose source key is unchanged). Pieces are
+  `white-space: pre` — a trailing space is part of a width, as in TeX.
+  Self-contained so the jmarkdown backport is a MOVE; the LaTeX renderer
+  exists but a Clew export never loads Clew's engine extensions (export.js
+  runs the user's own config), so tabbing reaches LaTeX export only once
+  backported. Checked additive by `render-dump-scenario.js` (demo and study
+  vaults byte-identical before and after).
 - **`@reveal[…]`** (`src/engine/reveal-embed.js`, owner's ask 2026-09-25):
   a presentation as a live iframe. Registered as a named ENVIRONMENT in the
   config, which is why one entry serves `@reveal[…]`, `@reveal+[…]` and

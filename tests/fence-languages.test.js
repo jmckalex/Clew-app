@@ -16,6 +16,7 @@ import assert from 'node:assert/strict';
 import { StringStream } from '@codemirror/language';
 import { texMode } from '../src/renderer/editor/langs/tex-mode.js';
 import { metapostMode } from '../src/renderer/editor/langs/metapost-mode.js';
+import { tabbingMode } from '../src/renderer/editor/langs/tabbing-mode.js';
 import {
 	METAPOST_CONSTANTS, METAPOST_KEYWORDS, METAPOST_OPERATORS, METAPOST_TYPES,
 } from '../src/engine/metapost-words.js';
@@ -112,4 +113,14 @@ test('the MetaPost vocabulary is one word, one class', () => {
 	const all = [...METAPOST_KEYWORDS, ...METAPOST_TYPES, ...METAPOST_CONSTANTS, ...METAPOST_OPERATORS];
 	assert.equal(new Set(all).size, all.length, 'no word is in two lists');
 	for (const word of all) assert.match(word, /^[A-Za-z_]+$/, `${word} is a plain word`);
+});
+
+// ---- tabbing ----------------------------------------------------------------
+
+test('tabbing: the marks and the LaTeX commands are keywords; the text around them is plain', () => {
+	const t = tokens(tabbingMode, "Name: |= Street: |= Phone\nAlice \\> 12 Oak |' St \\\\\nMon |= 9 |kill\n$|x|$ \\a=o a\\|b");
+	assert.deepEqual(withTag(t, 'keyword'), ['|=', '|=', '\\>', "|'", '\\\\', '|=', '|kill']);
+	assert.deepEqual(withTag(t, 'string'), ['$|x|$']);
+	assert.deepEqual(withTag(t, 'atom'), ['\\a=']);
+	assert.deepEqual(withTag(t, 'escape'), ['\\|']);
 });
