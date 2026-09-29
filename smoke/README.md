@@ -169,6 +169,7 @@ charset="utf-8">` (without it an em dash arrives as `â€”`).
 | --- | --- | --- |
 | *(no script; no `CLEW_SMOKE_VAULT`, fresh `CLEW_USER_DATA`)* | `welcome-screen.png` | The welcome window itself. Cropped to the centre 1600×1000 (`sips -c 1000 1600`) for the manual. |
 | `welcome-note.js` | `welcome.jpg` (also `site/images/`) | The Welcome note in reading mode. |
+| `kanban-board.js` | `kanban-board.png` | study-vault's Pipeline board (`Papers/Pipeline.md`) in reading mode, sidebars closed — over a scratch copy of **study-vault** (not the demo vault), `.clew/workspace.json` deleted. All four columns show (the board widens to the pane since a65395c). |
 | `embed-frames.js` + `embed-frames-frame.js` | `embed-frames.png` | Links and Embeds guide scrolled to "How much frame an embed draws": the `quiet` and `bare` embeds. |
 | `figures.js` + `figures-show-frame.js` / `figures-latex-frame.js` | `figures-show.png` / `figures-latex.png` | Diagrams note; the frame script waits for `__clewFiguresPending() === 0` (up to 120 s cold) before scrolling to its heading. |
 | `fence-split.js` + `fence-split-frame.js` | `fence-split.png` | Diagrams note split: source (```tikz both, TeX-highlighted) beside reading mode. Splitting re-parents the editor and resets its scroll, so the scenario scrolls the source pane AFTER the split settles and the frame script scrolls the reading pane to the same block. |
