@@ -15,6 +15,7 @@
 // sessions (for IPC routing) and short session ids to sessions (for
 // clew-preview:// URLs, which must carry the vault identity because
 // protocol handlers cannot see which window issued a request).
+import crypto from 'node:crypto';
 import { VaultManager } from './vault.js';
 import { Indexer } from './indexer.js';
 import { RenderService } from './render-service.js';
@@ -24,14 +25,17 @@ import { shells } from './ipc.js';
 
 const byWebContents = new Map(); // webContents.id -> session
 const byId = new Map(); // session id -> session
-let counter = 0;
 
 export class VaultSession {
 	/** @type {import('electron').BrowserWindow} */
 	win = null;
 
 	constructor(win, distDir) {
-		this.id = `s${++counter}`;
+		// Unguessable (protocol hardening, 2026-09-29): the session id is the
+		// only part of a preview URL that is not the vault's own path, so a
+		// counter (s1, s2 …) made every one of them predictable. Nothing
+		// persists it — a render names it only for this session's lifetime.
+		this.id = `s${crypto.randomBytes(16).toString('hex')}`;
 		this.win = win;
 		// Captured now: webContents is unreachable once the window is destroyed,
 		// and dispose() runs from the 'closed' event.
