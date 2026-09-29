@@ -10,8 +10,13 @@
 // Expect: `frame-scheme=true`; `first-frames` ≥5 with `heights-match=true` (every visible frame
 // sits exactly on its placeholder, height from its own size report, ±1);
 // `max-frames<=16` over the whole run (the cap); click the mermaid's edge
-// strip → `revealed hidden-frame=true source-visible=true`; wheel over the
-// query frame → `scroll-chained=true`; ~1.5 screens down and back →
+// strip → `revealed hidden-frame=true source-visible=true`; a wheel where the
+// query frame was — the live preview pane floats there now, the cursor being
+// in the revealed mermaid source — → `pane-wheel hit=pane scrolled=true`
+// (the pane hands a wheel it cannot use to the note; before 2026-09-29 it ate
+// it, which is what `scroll-chained=false` had been measuring since the pane
+// arrived in 818cf32); three wheels over the frames further down →
+// `frame-wheel scrolled=true`; ~1.5 screens down and back →
 // `pinned-survived=true` (the PDF frame is the same element — a pinned kind
 // is kept within three screens; further away it is evictable, measured by
 // CodeMirror's height map);
@@ -81,7 +86,18 @@ setTimeout(() => {
 	log(`revealed hidden-frame=${!frame || frame.style.visibility === 'hidden'} source-visible=${sourceVisible}`);
 	window.__lbTop = view.scrollDOM.scrollTop;
 }, 1000);
-setTimeout(() => log(`scroll-chained=${view.scrollDOM.scrollTop > (window.__lbTop ?? 0)}`), 2300);
+const hitAt = (x, y) => {
+	const el = document.elementFromPoint(x, y);
+	return el?.closest('clew-preview-pane') ? 'pane' : el?.tagName === 'IFRAME' ? 'frame' : el?.closest('.cm-content') ? 'text' : el?.tagName.toLowerCase() ?? 'none';
+};
+const wheelX = Math.round(qr.left + qr.width / 2);
+setTimeout(() => { window.__lbHit = hitAt(wheelX, Math.round(qr.top + 20)); }, 1450);
+setTimeout(() => {
+	log(`pane-wheel hit=${window.__lbHit} scrolled=${view.scrollDOM.scrollTop > (window.__lbTop ?? 0)}`);
+	window.__lbDownFrom = view.scrollDOM.scrollTop;
+	window.__lbDownHit = hitAt(wheelX, 500);
+}, 2300);
+setTimeout(() => log(`frame-wheel hit=${window.__lbDownHit} scrolled=${view.scrollDOM.scrollTop > (window.__lbDownFrom ?? 0) + 800}`), 4600);
 setTimeout(() => {
 	log(`pinned-survived=${Boolean(pdfFrame && document.contains(pdfFrame))} max-frames=${maxFrames}`);
 	// Back at the top after the round trip: every drawn frame must sit on

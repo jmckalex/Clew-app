@@ -123,11 +123,13 @@ build succeeded and waits for the owner to add it to the Internal group.
   close, window close and a re-render without the embed 0→1/1
   (`smoke/pdf-flush-scenario.js`, `pdf-flush-close-scenario.js`). NOT
   covered: a window RELOAD (the app page itself goes), and a canvas embed's
-  morph-failed reload. **Open question:** `live-blocks-scenario`'s
-  `scroll-chained=true` reads false under the invisible harness, on builds
-  with and without the PDF change — either invisible runs break wheel
-  chaining over a frame or it failed before; one `CLEW_SMOKE_VISIBLE=1` run
-  (a window on screen ~40 s) decides it.
+  morph-failed reload.
+- **Wheel over the live preview pane** (fixed 2026-09-29): live-blocks'
+  `scroll-chained=false` was real, not the invisible harness (a visible run
+  agreed); bisected to 818cf32 — the pane floated over the frame and ate the
+  wheel. The pane now hands the note any wheel it cannot use
+  (`smoke/preview-pane-wheel-scenario.js`; live-blocks' check is now
+  `pane-wheel` + `frame-wheel`).
 - **Engine bug, for the jmarkdown master.** A reference to an `@label`
   inside a footnote prints `??`: the post-processor's footnote branch looks
   for `[id^="footnote-"]` but endnotes carry `id="fn-…"`. Clew mirrors the

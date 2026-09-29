@@ -651,6 +651,10 @@ except where the selection touches a construct. The durable design is
   pane and the link preview share `components/chrome/floating-pane.js` —
   extend that base, never copy it. `live/keys.js` makes ArrowUp/Down stop
   at a block widget's edge (CodeMirror's vertical motion jumps over it).
+  The pane is fixed, OUTSIDE the editor's scroller, so it passes a wheel it
+  cannot use to the note (its own overflow first; a gesture begun on it
+  stays latched until it pauses) — it ate every wheel from 818cf32 until
+  2026-09-29.
 - **Cross-references** (§5.13): `editor/live/numbering.js` MIRRORS the
   engine's post-processor numbering over the note's text (per note, keyed
   by line; `typedRefText` imported from the vendored crossref.js); chips,

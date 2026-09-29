@@ -870,6 +870,16 @@ goes away when the pointer does. Source mode, live edit AND reading mode.
 
 ### 5.12 The live preview pane
 
+*As built, 2026-09-29:* the pane is fixed and outside the editor's
+scroller, so a wheel over it reached nothing — the note stood still while
+the pointer was over the pane (measured by bisecting live-blocks'
+wheel check to 818cf32). It now passes a wheel it cannot use to the note:
+its body's own overflow (a diagram taller than the pane) scrolls first,
+natively, and a gesture that began there stays latched to it until its
+events pause for 150 ms, as the browser's scroll latching would. The body is
+sized to the frame PLUS its padding — sized to the frame alone, every
+diagram overflowed by 12 px, a phantom scroll that took the first wheel.
+
 Requested by the owner after the build (the idea is jmacs's live math
 tooltip; nothing there was taken as authoritative), designed by the planning
 session. While the cursor is inside a formula or a diagram block — its
