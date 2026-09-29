@@ -112,6 +112,23 @@ test('pruning drops beyond maxVersions and maxAgeDays, sparing the newest', () =
 	assert.equal(readSnapshot(root2, 'A.md', left[0].id), 'newer\n', 'newest spared');
 });
 
+test('same-second snapshots keep recency order after pruning', () => {
+	// A counter freed by pruning must not be reused: the next copy would sort
+	// below its elders, and `newest` — which gates the identical-content skip
+	// — would name an older version.
+	const root = makeVault();
+	const abs = path.join(root, 'A.md');
+	const opts = { minIntervalMinutes: 0, maxVersions: 2 };
+	const t = new Date(Date.now() - 10 * 60_000);
+	for (const text of ['v1\n', 'v2\n', 'v3\n', 'v4\n']) {
+		fs.writeFileSync(abs, text);
+		fs.utimesSync(abs, t, t);
+		assert.ok(snapshotBeforeWrite(root, 'A.md', opts), `snapshots ${text.trim()}`);
+	}
+	const list = listSnapshots(root, 'A.md');
+	assert.deepEqual(list.map((snap) => readSnapshot(root, 'A.md', snap.id)), ['v4\n', 'v3\n']);
+});
+
 test('renameHistory moves a note directory and a whole folder alike', () => {
 	const root = makeVault();
 	backdate(path.join(root, 'Sub', 'B.md'), 20);
