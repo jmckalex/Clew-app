@@ -752,6 +752,26 @@ td.clew-q-cell:hover { background: rgba(168, 130, 255, 0.08); }
 	overflow-x: auto;
 	margin: 0.8em 0;
 	padding-bottom: 6px;
+	/* As wide as its columns need, past the text column if need be — up to
+	   the pane, centred on the column — instead of hiding the last columns
+	   beyond its edge (the manual's screenshot showed 3 of 4). Never
+	   narrower than the column. (Card drags are native drag-and-drop, so the
+	   transform costs them nothing.) */
+	width: max-content;
+	min-width: 100%;
+	max-width: calc(100vw - 32px);
+	position: relative;
+	left: 50%;
+	transform: translateX(-50%);
+}
+/* A board that still does not fit says so: a classic scrollbar, always
+   visible (an overlay one hides until scrolled, and a mouse wheel cannot
+   scroll sideways — dragging the bar or shift-wheel can). */
+.clew-kanban::-webkit-scrollbar { height: 10px; }
+.clew-kanban::-webkit-scrollbar-track { background: transparent; }
+.clew-kanban::-webkit-scrollbar-thumb {
+	background: color-mix(in srgb, var(--preview-muted) 45%, transparent);
+	border-radius: 5px;
 }
 .kanban-col {
 	flex: 1 0 190px;
