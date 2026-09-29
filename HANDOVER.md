@@ -8,10 +8,13 @@ keep it short, and prefer deleting a settled item to explaining it again.
 
 ## 0. Where things stand
 
-`main` at `c699565` (0.11.0), pushed, tracking `origin/main`, 0 ahead. Tree
-clean apart from this file. **838 tests green, `node scripts/build.js`
-green.** Both worktrees (`../Clew-app-live-edit`, `../Clew-docs-live-edit`)
-are merged and can be removed; the `feat/live-edit` branches are on origin.
+`main` at `92bccee` (this file's previous rewrite, on `c699565` = 0.11.0),
+pushed, tracking `origin/main`, 0 ahead. Tree clean apart from this file.
+**838 tests green, `node scripts/build.js` green.** Both live-edit worktrees
+are REMOVED (2026-09-29; each was clean and its tip already in its repo's
+`main`). The `feat/live-edit` branches survive — here locally and on origin,
+in Clew-docs locally only — and are fully merged, so deleting them loses
+nothing.
 
 **Live edit is in `main`** — `254c198` merged the 40-commit branch
 (`--no-ff`): the mode, the toolbar, tables edited in place, the `//` menu,
@@ -37,7 +40,7 @@ untouched — ask before deleting):
 | artefact | size | state |
 | --- | --- | --- |
 | `Clew-0.11.0-universal.dmg` | 321 MB | signed · notarized · stapled; `spctl` accepts image AND the app inside (`Notarized Developer ID`); four entitlements; `x86_64 arm64` everywhere; carries `mptikz/bundles/opentype` |
-| `Clew-0.11.0-arm64.dmg`, `Clew-0.11.0-x64.dmg` | — | **in progress** at rollover (owner's ask: two single-arch images instead of the universal); same flags, `MPTIKZ_SRC=/nonexistent` so the pinned tree ships |
+| `Clew-0.11.0-arm64.dmg` / `Clew-0.11.0-x64.dmg` | 222 / 226 MB | the owner's ask (two single-arch images instead of the universal); signed · notarized · stapled; `spctl` accepts image AND the app inside (`Notarized Developer ID`); `arm64` / `x86_64`; four entitlements; carry `mptikz/bundles/opentype` — all verified 2026-09-29 |
 | `Clew Setup 0.11.0.exe` | 191 MB | NSIS, unsigned, untested at runtime |
 | `Clew-0.11.0.AppImage` / `clew_0.11.0_amd64.deb` | 224 / 177 MB | ELF x86-64 / well-formed; untested at runtime |
 
@@ -48,7 +51,8 @@ the live-edit block frames. Run, on a QUIET machine (load < 6):
 `figures-scenario` (assert every figure `mpw-ok`, `pending=0`,
 `cache-probe first=engine`) and `live-edit-scenario` against
 `out/mac-arm64/Clew.app/Contents/MacOS/Clew` with a fresh `CLEW_USER_DATA`.
-It was queued twice and cancelled twice for packaging load.
+It was queued twice and cancelled twice for packaging load; packaging has
+since finished, but the load average was still ~10 at 12:20 on 2026-09-29.
 
 **Clew-docs**: `main` at `eff4e7f` merges the manual's 13 live-edit commits;
 `make check-links` clean. The owner's uncommitted `HANDOVER.md`, `Makefile`,
@@ -153,9 +157,11 @@ with that session directly.
 --universal` (28 min: app notarized by electron-builder, image signed,
 `notarytool submit --wait` ~5 min, stapled twice), `--win`, `--linux`
 (~1 min each), sequentially — all three share `dist/` and the staging
-dirs. The engine and EmbedPDF re-syncs changed nothing (the masters' dirty
-trees were already what is vendored). `MPTIKZ_SRC=/nonexistent` makes
-packaging stage the PINNED archive rather than the owner's master build
+dirs. The single-arch images are the same command with `--arm64` / `--x64`
+in place of `--universal` (~20 min each); the x64 app lands in `out/mac/`,
+not `out/mac-x64/`. The engine and EmbedPDF re-syncs changed nothing (the
+masters' dirty trees were already what is vendored). `MPTIKZ_SRC=/nonexistent`
+makes packaging stage the PINNED archive rather than the owner's master build
 (identical content today, but the pin is the reproducible one). Verified:
 `stapler validate` + `spctl -a -t open` on the image, the same plus
 `codesign -dv` (`flags=0x10000(runtime)`, four entitlements) and
@@ -171,7 +177,6 @@ packaging stage the PINNED archive rather than the owner's master build
 - Create the Clew-docs remote and push; DNS; then `make sync` etc. per the
   0.10.0 handover's §5 order (`dns-check` → `nginx-install` → `sync` → `tls`).
 - Answer the offers in §1; file the engine bug upstream (one line).
-- `git worktree remove ../Clew-app-live-edit` and the docs one.
 
 ## 5. Small residue
 
