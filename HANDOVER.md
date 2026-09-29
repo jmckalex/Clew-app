@@ -1,4 +1,4 @@
-# Handover — 2026-09-29 (0.11.1 built, notarized and boot-tested; the fix round, the login shell and the Esc fix in main; Clew-docs still has no remote)
+# Handover — 2026-09-30 (the overnight queue landed, UNPUSHED: bridge receivers, library fix, frame-bridge + auto-update designs, stuck-preview watchdog, Pencil, scene PDFs, kanban, map measuring, tabbing)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it; it gained a "Live edit" subsection); the live
@@ -7,6 +7,45 @@ force and the follow-ons left out). This file is rewritten each session —
 keep it short, and prefer deleting a settled item to explaining it again.
 
 ## 0. Where things stand
+
+**The night of 2026-09-29/30 (the owner's overnight queue, run through the
+coordinator): twelve commits on `main`, NONE PUSHED** — `git push` is
+refused by this session's permission gate ("Modify Shared Resources") since
+`2e45098`; origin/main is `6cbe0d8` (the caller token). The owner pushes,
+or grants the permission, in the morning. In order:
+
+- `2e45098` message receivers act only for a sender they can name
+  (`shared/message-guard.js`; the iOS session's finding) and `84f975e` a
+  read-only drawing embed no longer empties the Excalidraw library —
+  iOS's sync #1 pinned `84f975e`.
+- `cd94f89` the frame-bridge DESIGN (`docs/dev/frame-bridge.md` §2 (c),
+  §3 Compatibility, §4 vault trust — the owner's "ask once per vault, per
+  device" — §5–§16 the bridge; 11 open questions for the owner) and
+  `e2e0992` the auto-update DESIGN (`docs/dev/auto-update.md`): design
+  only, both for the owner's approval.
+- `ffbf291` office-bridges scenario fix (a reported "live embed never
+  dirty" bug was the scenario's error).
+- `f1816ae` stuck-preview watchdog keyed on LOAD, and a new frame is never
+  `ready` until it says so (item 12).
+- `12b1734` PDF viewer handles published, the pen convention upstreamed as
+  `preview-client/pdf-pen.js` (items 10+11; Windows pen-and-touch
+  untested).
+- `71180c6` canvas-scene PDFs in the standard viewer, saving through
+  `window.top`, flushed however deep (item 15; `plugins: true` stays for
+  portals and notes' own raw PDF iframes — an owner choice).
+- `a65395c` kanban boards widen to the pane; `693c4fe` the map distance
+  tool measures at all (it never completed a measurement since `a4a6b48`).
+- `cd8c311` tabbing (§ in CLAUDE.md; demo `Guide/Tabbing.md`) — purely
+  additive by `render-dump-scenario.js`; LaTeX export only after the
+  jmarkdown backport. iOS's sync #2 pins `cd8c311`; src/, vendor/ and
+  demo-vault/ are frozen until the coordinator says its copy is done.
+- `2723e63` smoke/manual/kanban-board.js.
+
+Docs lines for every user-visible change went to the coordinator as text
+(Clew-docs writes its own tree — never edit or commit there, nor in
+Clew-iOS). **888 tests.**
+
+Earlier on 2026-09-29:
 
 `main` carries, after 0.11.0 (`c699565`), the owner-approved round of
 2026-09-29 (relayed by the coordinating session in `~/Source/Clew`): smoke
