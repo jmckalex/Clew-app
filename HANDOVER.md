@@ -8,9 +8,18 @@ keep it short, and prefer deleting a settled item to explaining it again.
 
 ## 0. Where things stand
 
-`main` at `92bccee` (this file's previous rewrite, on `c699565` = 0.11.0),
-pushed, tracking `origin/main`, 0 ahead. Tree clean apart from this file.
-**838 tests green, `node scripts/build.js` green.** Both live-edit worktrees
+`main` carries, after 0.11.0 (`c699565`), the owner-approved round of
+2026-09-29 (relayed by the coordinating session in `~/Source/Clew`): smoke
+runs made INVISIBLE, `smoke/boot-test.sh`, and the quick desktop fixes from
+Clew-iOS's upstream candidates — one shared boot tail for a reload,
+`dataviewJs` reconfiguring at once, a rejected office download repainting,
+same-second history ordering, an engaged canvas node's affordances and
+ring, floaters measuring the visual viewport, and the engine reached as
+`#jmarkdown/*` — plus the owner's own report that day: the shell panel now
+starts a LOGIN shell on macOS (a Dock-launched app has launchd's bare PATH,
+so `ls` → `gls` was not found). NOT pushed unless the log says so. **843
+tests green, `node scripts/build.js` green**; the live sweep ran hidden
+and green, cross-reference parity included. Both live-edit worktrees
 are REMOVED (2026-09-29; each was clean and its tip already in its repo's
 `main`). The `feat/live-edit` branches survive — here locally and on origin,
 in Clew-docs locally only — and are fully merged, so deleting them loses
@@ -44,15 +53,27 @@ untouched — ask before deleting):
 | `Clew Setup 0.11.0.exe` | 191 MB | NSIS, unsigned, untested at runtime |
 | `Clew-0.11.0.AppImage` / `clew_0.11.0_amd64.deb` | 224 / 177 MB | ELF x86-64 / well-formed; untested at runtime |
 
-**Not yet done for 0.11.0: the boot test.** A signed build is proved by
-BOOTING the packaged binary under `CLEW_SMOKE` (rule in §6), and this one
-has two new things under the hardened runtime — MathJax in the app page and
-the live-edit block frames. Run, on a QUIET machine (load < 6):
-`figures-scenario` (assert every figure `mpw-ok`, `pending=0`,
-`cache-probe first=engine`) and `live-edit-scenario` against
-`out/mac-arm64/Clew.app/Contents/MacOS/Clew` with a fresh `CLEW_USER_DATA`.
-It was queued twice and cancelled twice for packaging load; packaging has
-since finished, but the load average was still ~10 at 12:20 on 2026-09-29.
+**The 0.11.0 boot test is HALF done.** A signed build is proved by BOOTING
+the packaged binary under `CLEW_SMOKE` (rule in §6), and this one has two
+new things under the hardened runtime — MathJax in the app page and the
+live-edit block frames. Both scenarios ran against
+`out/mac-arm64/Clew.app/Contents/MacOS/Clew` with a fresh `CLEW_USER_DATA`
+at 12:39 on 2026-09-29 (load ~14):
+
+- `figures-scenario` PASSED: all 13 figures `mpw-ok` with `error=null`,
+  `pending=0`, `cache-probe first=engine second=cache ok=true`.
+- `live-edit-scenario` proved NOTHING: its vault was another scenario's
+  scratch fixture, not a demo-vault copy, so `Projects/Dialect Demo.md` was
+  ENOENT and the scenario threw on an empty document (`Invalid position 2 in
+  document of length 0`). Re-run it with **`smoke/boot-test.sh`**, which
+  builds each scenario's own fixture and checks the lines itself.
+
+The 12:39 run also launched on a machine the recipe forbids: its wait loop
+gave up after 60 × 20 s and launched ANYWAY, at load 14.71. That loop was
+never in the repo (an inline command); `smoke/boot-test.sh` replaces it and
+ABORTS — exit 3, nothing launched — when the load stays at 6 or above for
+20 minutes. The 0.11.0 package predates invisible smoke runs, so booting it
+still puts its window on screen for about a minute.
 
 **Clew-docs**: `main` at `eff4e7f` merges the manual's 13 live-edit commits;
 `make check-links` clean. The owner's uncommitted `HANDOVER.md`, `Makefile`,
@@ -63,14 +84,17 @@ public repository is an action the assistant's permissions refuse:
 landing page, deliberately: nothing is published until DNS moves (§5 of the
 0.10.0 handover, `git show ed2aabc:HANDOVER.md`).
 
-**Clew-iOS** mirrored the 0.3.0 pin itself (`faa3023` on its
-`live-p5-verify`; not pushed — a push there IS a TestFlight release). Live
-edit reaches the iPad through its next upstream sync; the owner is working
-with that session directly.
+**Clew-iOS** is synced through this repo's `e88aff6` as of 2026-09-29: its
+vendor/ is `ccf8dca` (live edit included) plus the 0.3.0 pin, which it
+mirrored as `faa3023`, and nothing in the synced dirs has changed here since.
+`faa3023` IS pushed (its `origin/main`) — a push there is a TestFlight
+release; per the coordinating session in `~/Source/Clew`, the Xcode Cloud
+build succeeded and waits for the owner to add it to the Internal group.
 
 ## 1. STILL OPEN
 
-- **The 0.11.0 boot test** (above) — before the release is called done.
+- **The 0.11.0 boot test's live-edit half** (above) — `smoke/boot-test.sh`
+  on a quiet machine, before the release is called done.
 - **The owner's QA pass of live edit** (not automatable): typing at speed in
   a long note; ⌘Z across a conceal/reveal; ⌘F over concealed text (matches
   inside widgets do not highlight — the selection moving reveals them);
@@ -169,7 +193,7 @@ makes packaging stage the PINNED archive rather than the owner's master build
 
 ## 4. Owner's own actions
 
-- Run the boot test (§0) once the machine is quiet; then the release is
+- Run `smoke/boot-test.sh` (§0) on a quiet machine; then the release is
   done. Decide whether the universal image ships alongside the two
   single-arch ones or is deleted.
 - Live in live edit for a week (`newTabMode: 'live'`), run the QA list, and
@@ -224,6 +248,9 @@ makes packaging stage the PINNED archive rather than the owner's master build
   engine tree needs `disable-library-validation`. Run the PACKAGED binary
   under `CLEW_SMOKE` with an isolated `CLEW_USER_DATA` and assert a latex
   figure reaches `mpw-ok`.
+- **A wait-for-quiet loop must ABORT on its timeout, never proceed** — the
+  one that "gave up waiting" launched at load 14.71. `smoke/boot-test.sh`
+  is the recipe; do not hand-roll another.
 - **…but do not run the figures check on a busy machine.** The mp-tikz-wasm
   watchdog fires after 20 s with no progress from a worker; straight after
   a packaging round (load ~25 measured this time) it reports `mpw-error: …
@@ -244,6 +271,11 @@ makes packaging stage the PINNED archive rather than the owner's master build
   windowing, the frame cap). A resource cap must not become a CORRECTNESS
   cap: bound the bulk operation, not the session.
 - **Check the baseline before believing a timing.**
+- **Smoke runs are invisible** (no window, no focus, no Dock icon; focus is
+  emulated over CDP) — `CLEW_SMOKE_VISIBLE=1` to watch one. A scenario
+  that needs the OS's own focus or a visible window must say so; none did
+  (2026-09-29, checked over the live sweep and the shell, toolbar-menu and
+  canvas runs).
 - **A smoke run's ENV is the whole safety net** — build the whole command,
   env and all, in ONE go; always pass `CLEW_SMOKE_VAULT`; `CLEW_USER_DATA`
   isolates a run and is where a scenario's GLOBAL settings are staged;
