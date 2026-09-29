@@ -32,6 +32,20 @@ fine — the same binary went 13/13 `mpw-ok` ten minutes later at load ~4.
 A timeout there is a claim about the machine until a quiet re-run agrees
 with it.
 
+**Runs are invisible** (owner's ask, 2026-09-29): under `CLEW_SMOKE` no
+window is shown, none takes focus, and no Dock icon appears — the app runs
+as a background element while whatever you were using stays frontmost. The
+page still paints (background throttling is off), `capturePage` still
+works (screenshots are 2560×1700 as before), and CDP focus emulation tells
+the page it has focus, which CodeMirror's `hasFocus` — and so the preview
+pane and the selection bubble — reads. `CLEW_SMOKE_VISIBLE=1` puts the
+window on screen again to watch a run. Separately, the harness's key
+events no longer reach the native menu (visible runs included, since that
+hand-off never depended on the window being shown): an unhandled CDP key
+carries no characters, and every ⌘ chord — a bare Meta keydown was enough
+— matched the menu's first item and opened "About Electron" on screen. A packaged build older than this change (0.11.0 is)
+still shows its window under the harness.
+
 | Scenario | What it drives | Vault it expects |
 | --- | --- | --- |
 | `atomic-save-scenario.js` | Types into `Test.md` via the editor pool, waits out the 1s auto-save, logs the dirty flag. Verify by reading the vault afterwards (content landed, no `.clew-tmp` litter). | any, containing `Test.md` |

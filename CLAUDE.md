@@ -92,7 +92,11 @@ note API, plugins, and every settings key.
   the script seeing `SMOKE_FRAME`, the URL's last segment, to tag its
   lines), screenshots, and exits HARD (`app.exit` after flushing
   editors — the office close guards would otherwise hang the harness on
-  their own success). More knobs, all documented in main.js:
+  their own success). Runs are INVISIBLE (2026-09-29): no window shown, no
+  focus taken, no Dock icon; CDP focus emulation tells the page it has
+  focus, and the harness's keys never reach the native menu (every ⌘ chord
+  used to open "About Electron"). More knobs, all documented in main.js:
+  `CLEW_SMOKE_VISIBLE=1` (show the window, to watch a run),
   `CLEW_SMOKE_LOG=1` (every console line), `CLEW_SMOKE_METRICS=/p.json`
   (app.getAppMetrics), `CLEW_SMOKE_CONFIRM=save|discard|cancel` (answers
   the office Save/Discard/Cancel dialog without UI),
