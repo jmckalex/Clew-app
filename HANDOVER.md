@@ -170,11 +170,14 @@ build succeeded and waits for the owner to add it to the Internal group.
   EMPTIED the vault's Excalidraw library — the read-only embed reported its
   empty library through `onLibraryChange` — FIXED the same night (gated on
   `viewMode`; measured 1 item before and after, where it was 1 then 0;
-  `bridges-scenario.js` asserts `library-after-embed=1`); (2) NOT yet
-  fixed, queued after the frame-bridge design: a LIVE office embed's edits
-  never mark its note's tab dirty — `zeta-modified` arrives (from the preview origin, 10 of them
-  in the run) but `officeDock.isDirty(tab)` stays false, so the close guard
-  would not ask; the save itself works.
+  `bridges-scenario.js` asserts `library-after-embed=1`). A second
+  "finding" — that a live office embed's edits never mark its note's tab
+  dirty — was the SCENARIO's error, not Clew's: it took the closed office
+  tab's window for the embed (the first to have announced itself), so its
+  embed checks re-read the tab's messages. With that fixed, the embed marks
+  its tab dirty and saves through the bridge from two frames deep
+  (`office-bridges-scenario.js`), and a one-off run measured the same
+  (`isDirty` true once the embed's edit arrives).
 - **Wheel over the live preview pane** (fixed 2026-09-29): live-blocks'
   `scroll-chained=false` was real, not the invisible harness (a visible run
   agreed); bisected to 818cf32 — the pane floated over the frame and ate the

@@ -49,13 +49,18 @@ const tabSaved = tabDirty ? await officeDock.save() : false;
 log(`tab ready=${tabReady} dirty=${tabDirty} saved=${tabSaved}`);
 workspaceStore.closeTab(tab.id, { force: true });
 await sleep(2000);
+// Only windows that announce themselves FROM HERE ON can be the embed: the
+// tab's own (closed) window is still in the set, and was the first match.
+readyFrom.clear();
+savedFrom.clear();
+modified.length = 0;
 
 // ---- a live embed, two frames deep ------------------------------------------
 const live = workspaceStore.openNote('Live.md', { newTab: true, defaultMode: 'reading' });
 workspaceStore.setTabMode(live.id, 'reading');
 let embedWin = null;
 const embedReady = await until(() => {
-	embedWin = [...readyFrom].find((w) => w && w !== dockWin()) ?? null;
+	embedWin = [...readyFrom].find((w) => w && !w.closed) ?? null;
 	return Boolean(embedWin);
 }, 300000);
 embedWin?.postMessage({ cmd: 'zeta-test-edit' }, '*');
