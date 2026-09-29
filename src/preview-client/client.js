@@ -582,3 +582,13 @@ initMetaBind();
 // print-pdf.js waits on this the way it waits on MathJax and mermaid.
 window.__clewFiguresPending = figuresPending;
 post({ type: 'ready' });
+// And again whenever the page is SHOWN after the first time — a restored
+// document (WebKit can move or restore a preview frame without re-running its
+// scripts, and the one-shot 'ready' above is then lost to the host; the iOS
+// session's patch, upstreamed). The first pageshow follows the load that just
+// posted it. A second 'ready' costs the host a theme and a chords message.
+let shownOnce = false;
+window.addEventListener('pageshow', () => {
+	if (shownOnce) post({ type: 'ready' });
+	shownOnce = true;
+});

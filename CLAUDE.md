@@ -335,7 +335,12 @@ browser-window-focus).
   checkbox enabling, mermaid theming. Chrome a plugin or vault script adds
   to the document is discarded by every morph unless it carries
   **`data-clew-keep`** — the opt-out that lets a banner, an overlay or a
-  PDF viewer survive a re-render instead of restarting. A bare **Esc**
+  PDF viewer survive a re-render instead of restarting. The reading view
+  rebuilds a frame that LOADED but never said `ready` (once per element and
+  note; `clew-preview-view.js#watchReady`) — WebKit drops postMessage both
+  ways for a custom-scheme iframe moved in the DOM — and the client says
+  `ready` again on a later `pageshow`; a new frame is never `ready` until it
+  says so. A bare **Esc**
   nothing in the document used goes UP to the host as `{type: 'escape'}`
   (an engaged canvas card leaves on it); code inside a preview that
   consumes Esc must say so with `preventDefault` — text fields, an open
