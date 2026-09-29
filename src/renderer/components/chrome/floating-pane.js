@@ -20,6 +20,7 @@
 // from disconnectedCallback, and may override `onFrameSize(height)` and
 // `onFrameMessage(msg)`.
 import { blockUrl, blockDocumentUrl } from '../../lib/preview-url.js';
+import { renderPost } from '../../lib/caller-token.js';
 import { viewportEdges } from '../../lib/viewport.js';
 import { effectiveChords } from '../../commands/registry.js';
 import { settingsStore } from '../../state/settings-store.js';
@@ -95,7 +96,7 @@ export class FloatingPane extends HTMLElement {
 		const generation = ++this.#generation;
 		let hash;
 		try {
-			const response = await fetch(blockUrl(), { method: 'POST', body: JSON.stringify({ text, sourcePath }) });
+			const response = await renderPost(blockUrl(), { text, sourcePath });
 			if (!response.ok) throw new Error(String(response.status));
 			hash = (await response.json()).hash;
 		} catch {

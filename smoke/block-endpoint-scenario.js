@@ -11,8 +11,10 @@
 //     > /tmp/block-vault/Child.md && printf '# Host\n' > /tmp/block-vault/Host.md
 //
 // Expect: `block-endpoint=200 json-hash=true`; `document=200 marked=true
-// client=true`; `missing=404`; `bad-json=400`; `escape=403` (a sourcePath
-// outside the vault is refused); `dependent-rekeyed=true` — after Child.md
+// client=true token-in-html=false`; `missing=404`; `bad-json=400`;
+// `escape=403` (a sourcePath outside the vault is refused); the caller token
+// (docs/dev/frame-bridge.md §1): `no-token=403 wrong-token=403
+// fragment-no-token=403 fragment-raw-text=400 fragment-token=200`; `dependent-rekeyed=true` — after Child.md
 // is rewritten, POSTing the same `![[Child]]` text yields a NEW hash whose
 // document says UPDATED (`fresh-has-UPDATED=true`), where a cache keyed on
 // the text alone would serve ORIGINAL; `plain-stable=true` for text that
@@ -30,8 +32,12 @@ const until = async (test, ms = 15000) => {
 await until(() => vaultStore.vault?.sessionId);
 const sid = vaultStore.vault.sessionId;
 const base = `clew-preview://vault/${sid}/__clew_block__`;
-const post = (body) => fetch(base, { method: 'POST', body: typeof body === 'string' ? body : JSON.stringify(body) });
+// The token this window was handed (VAULT_CURRENT is its own-window path);
+// the vault store itself never holds it.
+const token = (await ipc.invoke('clew:vault-current'))?.callerToken;
+const post = (body) => fetch(base, { method: 'POST', body: typeof body === 'string' ? body : JSON.stringify({ token, ...body }) });
 const log = (s) => console.log('smoke-block: ' + s);
+log(`token-handed=${typeof token === 'string' && token.length === 64} store-clean=${!('callerToken' in vaultStore.vault)}`);
 
 const mermaid = '```mermaid\ngraph LR\n  A --> B\n```\n';
 let res = await post({ text: mermaid, sourcePath: 'Host.md' });
@@ -40,10 +46,18 @@ log(`block-endpoint=${res.status} json-hash=${typeof hash === 'string' && hash.l
 
 res = await fetch(`${base}/${hash}`);
 const doc = await res.text();
-log(`document=${res.status} marked=${/<html[^>]*data-clew-block="1"/.test(doc)} client=${doc.includes('/__clew_preview__/client.js')}`);
+log(`document=${res.status} marked=${/<html[^>]*data-clew-block="1"/.test(doc)} client=${doc.includes('/__clew_preview__/client.js')} token-in-html=${doc.includes(token)}`);
 log(`missing=${(await fetch(`${base}/0000000000deadbeef00`)).status}`);
 log(`bad-json=${(await post('not json')).status}`);
 log(`escape=${(await post({ text: 'x', sourcePath: '../../etc/passwd' })).status}`);
+// The caller token: nothing renders without it, on either endpoint.
+const raw = (url, body) => fetch(url, { method: 'POST', body });
+const frag = `clew-preview://vault/${sid}/__clew_fragment__`;
+log(`no-token=${(await raw(base, JSON.stringify({ text: 'x', sourcePath: 'Host.md' }))).status}`
+	+ ` wrong-token=${(await raw(base, JSON.stringify({ token: '0'.repeat(64), text: 'x' }))).status}`
+	+ ` fragment-no-token=${(await raw(frag, JSON.stringify({ text: '# Card' }))).status}`
+	+ ` fragment-raw-text=${(await raw(frag, '# Card')).status}`
+	+ ` fragment-token=${(await raw(frag, JSON.stringify({ token, text: '# Card' }))).status}`);
 
 // Dependent text: the key must move when the file it embeds does.
 const embed = '![[Child]]\n';

@@ -137,12 +137,25 @@ build succeeded and waits for the owner to add it to the Internal group.
   "refuse an http(s) Origin" guard on those routes cannot be relied on (not
   probed further). It also means 2/3 in practice sends no
   Access-Control-Allow-Origin at all — and every consumer still works.
-  Telling callers apart needs a mechanism, the owner's choice: (a) a
-  per-session token the app page holds (via IPC) and the host hands to
-  preview documents, required on render POSTs; (b) the app page reaches the
-  renderer over IPC, never the protocol, and preview documents carry a
-  host-issued token; (c) the app page moves to its own custom origin (as
-  iOS's `clew-app://`). The frame-bridge design builds on whichever.
+  The owner chose (a), the caller token: designed with Clew-iOS as
+  `docs/dev/frame-bridge.md` §1 and BUILT on desktop (2026-09-29, the
+  caller-token commit; not pushed at the time of writing). The render POSTs run
+  nothing without the session's token; preview documents ask their parent
+  for it on first use, never served it. Checked against a full baseline
+  (t0 vs t1: protocol tour, live sweep, figures, global plugin, canvas,
+  PDF, live blocks — no difference but live-blocks' frame-set timing, seen
+  in earlier runs too; no CORS error) plus `block-endpoint-scenario.js`
+  (every refusal) and the new `caller-token-scenario.js` (every caller:
+  canvas tab, portal, reading view, live block frame, the PDF export). The
+  relay (a preview answering its own frames) is unit-tested only: no
+  nested document POSTs today (canvases render as a title box at cdepth 1).
+  **Next, owner's decision 2026-09-29: (c) as well**, by design — the app
+  page moves to `clew-app://app` so desktop can refuse null-origin reads
+  (no measurement or probing of the gap). Design only, as the first section
+  of frame-bridge.md after §1, with a Compatibility section (every frame
+  and embed kind, what changes, migration paths, losses as owner
+  questions), worked out with clew-ios-f4; BUILT before any embedded-app
+  feature ships. Notes for it: the file:// survey and iOS's lessons.
 - **Wheel over the live preview pane** (fixed 2026-09-29): live-blocks'
   `scroll-chained=false` was real, not the invisible harness (a visible run
   agreed); bisected to 818cf32 — the pane floated over the frame and ate the

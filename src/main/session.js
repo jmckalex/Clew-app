@@ -16,6 +16,7 @@
 // clew-preview:// URLs, which must carry the vault identity because
 // protocol handlers cannot see which window issued a request).
 import crypto from 'node:crypto';
+import { newCallerToken } from './caller-token.js';
 import { VaultManager } from './vault.js';
 import { Indexer } from './indexer.js';
 import { RenderService } from './render-service.js';
@@ -40,8 +41,14 @@ export class VaultSession {
 		// Captured now: webContents is unreachable once the window is destroyed,
 		// and dispose() runs from the 'closed' event.
 		this.wcId = win.webContents.id;
+		// The caller token (main/caller-token.js): what the render endpoints
+		// ask for. Per session — a window receives a vault only while it has
+		// none, and nothing closes one short of closing the window, so this is
+		// per vault open. Handed to this window only (vaults.ownInfo).
+		this.callerToken = newCallerToken();
 		this.vaults = new VaultManager();
 		this.vaults.sessionId = this.id;
+		this.vaults.callerToken = this.callerToken;
 		this.indexer = new Indexer();
 		this.renderService = new RenderService(distDir);
 		// Engine-emitted media URLs must carry the session id (preview URLs

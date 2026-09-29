@@ -35,6 +35,7 @@ import {
 } from './frames.js';
 import { handlePreviewMessage } from './frame-host.js';
 import { blockUrl, blockDocumentUrl } from '../../lib/preview-url.js';
+import { renderPost } from '../../lib/caller-token.js';
 import { effectiveChords } from '../../commands/registry.js';
 import { ipc, CH } from '../../ipc.js';
 import { settingsStore } from '../../state/settings-store.js';
@@ -52,10 +53,7 @@ const ENGINE_APP_KEYS = new Set(['texFragments']);
 
 /** POST a block's text; resolves to its document hash. */
 async function renderBlock(text, sourcePath) {
-	const response = await fetch(blockUrl(), {
-		method: 'POST',
-		body: JSON.stringify({ text, sourcePath }),
-	});
+	const response = await renderPost(blockUrl(), { text, sourcePath });
 	if (!response.ok) throw new Error(`block render failed (${response.status})`);
 	return (await response.json()).hash;
 }

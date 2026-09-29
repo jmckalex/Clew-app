@@ -90,7 +90,7 @@ change landed where it did.
 | Mode today | `workspace/tree.js` (`tab.view.mode: 'source'|'reading'`), `state/workspace-store.js#setTabMode`, `commands/actions.js#toggleReadingMode`, `components/workspace/clew-tab-group.js#render` (reading → `<clew-preview-view>`, else `<clew-editor-view>`), `main/menu.js` (View → "Reading Mode" checkbox), `main/settings.js` (`newTabMode: 'source'|'reading'`) | Every one of these grows a third value (§3.3). |
 | Editor view | `components/workspace/clew-editor-view.js` | Adopts the pooled DOM, conflict banner, view-state save/restore (`cursor`, `scrollTop`, `cursorLine`, `readingLine`, `pendingLine`), scroll-sync bus. Toolbar and mode effect hook in here. |
 | Preview view | `components/workspace/clew-preview-view.js` | The host side of the preview postMessage protocol (`ready`, `link-click`, `checkbox-toggle`, `task-toggle`, `field-edit`, `api-request`, `focused`, `chord`, `app-chord`, `scrolled`, `source-line-click`, `embed-collapse`, `morph-failed`, …). The block-frame layer needs the SAME switch (§7.4 factors it out). |
-| Fragment render | `main/protocol.js` (`POST …/<sid>/__clew_fragment__`), `main/render-service.js#renderFragment` | Text in, body HTML out; same worker pipeline and config as notes; cached by sha1(text), bounded 500. Origin-guarded (file:// and clew-preview:// only). `lib/preview-url.js#fragmentUrl()` exists. Fragment builds skip `data-source-line`. |
+| Fragment render | `main/protocol.js` (`POST …/<sid>/__clew_fragment__`), `main/render-service.js#renderFragment` | Text in (JSON `{ token, text }` — the caller token, docs/dev/frame-bridge.md §1), body HTML out; same worker pipeline and config as notes; cached by sha1(text), bounded 500. Runs nothing without the session's token (the Origin guard stays as a second layer). `lib/preview-url.js#fragmentUrl()` exists. Fragment builds skip `data-source-line`. |
 | App CSP | `src/renderer/index.html` | `script-src 'self' clew-preview://vault/__clew_assets__/ …; img-src 'self' data: clew-preview:; frame-src clew-preview:; connect-src 'self' clew-preview:`. MathJax in-app, vault images, block iframes and fragment fetches are all allowed today. Remote `http(s)` images are NOT (§12). |
 | MathJax in app | `lib/mathjax.js` | Lazy tex-svg from the preview assets, config mirrored from the engine default (`tags: 'ams'`). Used by canvas cards. Extend, don't duplicate (§5.6). |
 | Vault settings | `<vault>/.clew/vault-settings.json` via `CH.VAULT_SETTINGS_GET/SET` | `normalSyntax` flips the dialect to standard Markdown emphasis. The editor does not read it today; live edit must (§4.3). |
@@ -1560,9 +1560,10 @@ renderFragment(text, { sourcePath = null, dependent = false } = {})
 
 `protocol.js`, alongside `__clew_fragment__`:
 
-- `POST …/<sid>/__clew_block__` — body: JSON `{ text, sourcePath }`;
-  same origin guard and 100k limit; renders (or serves cached) and
-  responds `{ hash }`.
+- `POST …/<sid>/__clew_block__` — body: JSON `{ token, text, sourcePath }`
+  (sent with no Content-Type; `lib/caller-token.js#renderPost`); the same
+  caller-token check (docs/dev/frame-bridge.md §1) and 100k limit; renders
+  (or serves cached) and responds `{ hash }`.
 - `GET …/<sid>/__clew_block__/<hash>?src=<encoded sourcePath>&theme=<t>` —
   the block document: the fragment HTML wrapped by the same head/tail the
   note documents get. **Factor the wrapping** (`wrapPreviewDocument(html,

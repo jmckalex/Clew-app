@@ -80,7 +80,7 @@ note API, plugins, and every settings key.
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
   dialect scanner's constructs and grammar, live edit's model, reveal rule,
-  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer) — 862 tests. DOM/UI work is
+  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token — 871 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
@@ -745,7 +745,19 @@ except where the selection touches a construct. The durable design is
   and `null` — the app page, being file:// — every response leaving through
   `main/preview-cors.js#narrowCors`; any other origin gets no
   Access-Control-Allow-Origin. `null` cannot be refused while the app page
-  IS null (HANDOVER §1 has the options).
+  IS null (HANDOVER §1 has the options). **The render POSTs
+  (`__clew_fragment__`, `__clew_block__`) run nothing without the caller
+  token** (`docs/dev/frame-bridge.md` §1, agreed with Clew-iOS): 32 random
+  bytes per session (`main/caller-token.js`), handed to the window only on
+  its own-window paths (`vaults.ownInfo` — never `info`, which the open
+  handlers return to OTHER windows) and carried in the JSON body by
+  `renderer/lib/caller-token.js#renderPost`, with NO Content-Type (a JSON
+  type is preflighted on iOS, which answers no OPTIONS). Preview documents
+  are never SERVED it: `preview-client/caller-token.js` asks its parent on
+  first use (retry 1 s × 5, then fail), and a parent answers only its own
+  child frame on the preview origin (`shared/caller-token.js`). The
+  top-level print view is handed it by `print-pdf.js`'s self-post. Every new
+  render POST goes through renderPost/callerToken, or it gets a 403.
 - **PDFs are EmbedPDF, not Chromium's plugin** (MIT, Pdfium-in-wasm, ~9.5
   MB staged) — and not the npm build: the viewer is the owner's OCG/layers
   fork (EmbedPDF v2.15.0 + the ~/Source/pdfium-ocg patch series; the wasm
