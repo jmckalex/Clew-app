@@ -46,6 +46,14 @@ carries no characters, and every ⌘ chord — a bare Meta keydown was enough
 — matched the menu's first item and opened "About Electron" on screen. A packaged build older than this change (0.11.0 is)
 still shows its window under the harness.
 
+**The boot test for a signed build** is `smoke/boot-test.sh [binary]
+[out-dir]`: it waits for the 1-minute load average to drop below 6 and
+ABORTS (exit 3, nothing launched) if it has not within 20 minutes — never
+proceeds on a timeout — then runs the figures and live-edit scenarios
+against the packaged binary, each on its own fixture with a fresh
+`CLEW_USER_DATA`, and checks their assertion lines (exit 0 passed, 1
+failed).
+
 | Scenario | What it drives | Vault it expects |
 | --- | --- | --- |
 | `atomic-save-scenario.js` | Types into `Test.md` via the editor pool, waits out the 1s auto-save, logs the dirty flag. Verify by reading the vault afterwards (content landed, no `.clew-tmp` litter). | any, containing `Test.md` |

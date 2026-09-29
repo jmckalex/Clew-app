@@ -69,7 +69,8 @@ note API, plugins, and every settings key.
   staples to the image, and the .app inside is stapled first, so a dragged
   copy launches offline). A signed build is not proved by `codesign
   --verify` — boot the PACKAGED binary under CLEW_SMOKE and check a
-  ```latex figure typesets, because the hardened runtime is what breaks the
+  ```latex figure typesets (`smoke/boot-test.sh`, which refuses a busy
+  machine rather than run on one), because the hardened runtime is what breaks the
   forked worker or the wasm (entitlements.mac.plist says which entitlement
   carries which).
 - **Tests:** `npm test` (`node --test`, files in `tests/`): workspace tree,
