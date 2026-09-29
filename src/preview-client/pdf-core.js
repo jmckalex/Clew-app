@@ -9,6 +9,10 @@
 // Annotations autosave INTO the vault's PDF file, the way Clew-iOS does it:
 // there is no Save button to miss, and the file on disk (and therefore
 // Finder, QuickLook, and a synced iPad) is never more than a debounce behind.
+import { viewerHandles } from './pdf-handles.js';
+// The pen convention (a pen draws, a finger pans) for every viewer built here.
+import './pdf-pen.js';
+
 const EMBEDPDF_ASSETS = '/__clew_assets__/embedpdf';
 const SAVE_DEBOUNCE_MS = 2500;
 
@@ -89,6 +93,7 @@ export async function createViewer({ target, src, onStatus = () => {} }) {
 		dispose() {
 			this.unlisten?.();
 			liveHandles.delete(this);
+			viewerHandles.delete(this);
 			const pending = this.flush?.();
 			clearTimeout(this.saveTimer);
 			const destroy = () => this.container?.destroy?.();
@@ -295,6 +300,9 @@ export async function createViewer({ target, src, onStatus = () => {} }) {
 		return made;
 	};
 
+	// Published (pdf-handles.js): the pen convention and the iOS port's own
+	// modules act on every live viewer through this set.
+	viewerHandles.add(handle);
 	// Spike instrumentation.
 	window.__clewPdfReady = (window.__clewPdfReady ?? 0) + 1;
 	window.__clewPdfLastMs = Math.round(performance.now() - started);

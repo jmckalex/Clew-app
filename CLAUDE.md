@@ -809,7 +809,11 @@ except where the selection touches a construct. The durable design is
   handshake wait for it; inside a preview the morph HOLDS an embed a
   re-render would discard (`pdf-embed.js#holdIfUnsaved` — EmbedPDF stops
   working once detached). visibilitychange flushes a document that lives
-  on hidden. Anything that removes a view must go through retire() and
+  on hidden. Every live viewer is in `preview-client/pdf-handles.js`
+  (`viewerHandles`, also `window.__clewPdfHandles`); `pdf-pen.js`, imported
+  by pdf-core, is the pen convention — after a pen has been seen, a finger
+  pans a viewer whose free-drag tool is armed, a mouse never affected (the
+  iOS port's module, upstreamed). Anything that removes a view must go through retire() and
   anything that finds "the view for a path" must skip
   `[data-clew-retiring]`. CJK fallback fonts are an app setting
   (`pdfCjkFonts`), downloaded on demand into userData by
