@@ -32,8 +32,7 @@ check as a production deploy, until the owner permitted it).
 after 0.11.1 was packaged — so NOT in 0.11.1): client.js forwards a bare Esc
 nothing inside the preview used; `smoke/canvas-esc-scenario.js`.
 
-**`main` is ahead of `origin/main`** by `5f38ce3` (0.11.1), `69ee318`,
-`7a0cb6f` and this file — the push is the owner's to say.
+**`main` pushed to `6c63132`** (owner's word via the coordinator).
 
 Both live-edit worktrees
 are REMOVED (2026-09-29; each was clean and its tip already in its repo's
@@ -59,8 +58,11 @@ bundle, so `font=note` works from a fresh install; proven by staging from
 the pinned archive with the master bypassed and the fonts scenario over
 that tree), `c699565` (0.11.0).
 
-**0.11.1 artefacts in `out/`** (the 0.11.0, 0.10.0 and 0.9.0 ones are still
-there, untouched — ask before deleting):
+**0.11.1 artefacts in `out/`** (the ten 0.11.0 files were removed on the
+owner's word, 2026-09-29 — moved to `~/.Trash/Clew 0.11.0 artefacts/`,
+rebuildable from `c699565`; `out/mac-universal/` still holds the unpacked
+0.11.0 universal app, 745 MB, awaiting the owner's word; the 0.10.0 and
+0.9.0 files are untouched — ask before deleting):
 
 | artefact | size | state |
 | --- | --- | --- |
@@ -196,8 +198,9 @@ on each image; `spctl -a -t exec`, `codesign -dv`, the entitlements,
 
 ## 4. Owner's own actions
 
-- Push `main` (§0), and decide what happens to the superseded artefacts in
-  `out/` (0.11.0, 0.10.0, 0.9.0); 0.11.1 is what to publish when DNS moves.
+- Decide on `out/mac-universal/` (the unpacked 0.11.0 universal app) and the
+  0.10.0 / 0.9.0 artefacts; empty the Trash folder when sure. 0.11.1 is what
+  to publish when DNS moves.
 - Live in live edit for a week (`newTabMode: 'live'`), run the QA list, and
   decide the §12 defaults — the next bug reports come from there.
 - Create the Clew-docs remote and push; DNS; then `make sync` etc. per the
