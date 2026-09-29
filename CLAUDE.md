@@ -80,7 +80,7 @@ note API, plugins, and every settings key.
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
   dialect scanner's constructs and grammar, live edit's model, reveal rule,
-  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer) — 857 tests. DOM/UI work is
+  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer) — 862 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
@@ -604,7 +604,12 @@ except where the selection touches a construct. The durable design is
   sidecar read by `engine/vault-model.js#currentFilePath` (no engine
   change); every fragment key carries the render-service configuration
   generation, and the layer re-renders all frames on the vault/app settings
-  that reconfigure the engine.
+  that reconfigure the engine. A block renders under its NOTE's citation
+  keys (`Bibliography`, `Resolve citations`, … — `shared/citation-keys.js`,
+  carried by `main/citation-header.js`, the bibliography path made
+  absolute): a `\cite` in an embed stayed raw in live edit until
+  2026-09-29. The layer ignores the note's own saves except when those keys
+  change, which re-renders every frame.
 - **The toolbar** is `toolbar-spec.js` (items are COMMAND ids),
   `toolbar-state.js` / `toolbar-layout.js` (pure, tested), the
   `<clew-editor-toolbar>` element, `popover.js`/`popovers.js` (Insert and
