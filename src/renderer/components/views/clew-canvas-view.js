@@ -778,7 +778,13 @@ class ClewCanvasView extends ClewElement {
 				+ ` style="stroke-width:${1.5 / z}"/>`);
 		};
 
-		if (soloNode && this.#tool === 'select' && !this.#drag) handleRect(model.nodeRect(soloNode));
+		// An ENGAGED node draws no geometry affordances: its content owns the
+		// pointer (a press on a handle's inner half went to the content, not
+		// the resize), and the handles vanishing is half of how engaging
+		// shows — the ring (canvas.css) is the other half. Disengaging, by any
+		// press outside it, brings them back.
+		const engaged = (node) => node && this.#engagedId === node.id;
+		if (soloNode && !engaged(soloNode) && this.#tool === 'select' && !this.#drag) handleRect(model.nodeRect(soloNode));
 		if (soloShape && this.#tool === 'select' && !this.#drag) {
 			if (soloShape.kind === 'line' || soloShape.kind === 'arrow') {
 				const size = 10 / z;
@@ -793,7 +799,7 @@ class ClewCanvasView extends ClewElement {
 		// Anchors on the hovered/selected node (for making connections).
 		const anchorTarget = this.#tool === 'select' && !this.#drag
 			? (this.#hoverId ? this.#nodeById(this.#hoverId) : soloNode) : null;
-		if (anchorTarget) {
+		if (anchorTarget && !engaged(anchorTarget)) {
 			for (const side of model.SIDES) {
 				const p = model.anchorHandlePoint(anchorTarget, side, 14 / z);
 				parts.push(`<circle class="canvas-anchor" cx="${p.x}" cy="${p.y}" r="${6 / z}" style="stroke-width:${1.5 / z}"/>`);
@@ -1720,12 +1726,14 @@ class ClewCanvasView extends ClewElement {
 		this.#disengage();
 		this.#engagedId = id;
 		this.#nodeEls.get(id)?.classList.add('is-engaged');
+		this.#syncOverlay(); // the handles and anchors go
 	}
 
 	#disengage() {
 		if (!this.#engagedId) return;
 		this.#nodeEls.get(this.#engagedId)?.classList.remove('is-engaged');
 		this.#engagedId = null;
+		this.#syncOverlay(); // … and come back
 	}
 
 	// ---- events: dblclick, keys, wheel, menu, paste ------------------------

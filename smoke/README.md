@@ -106,6 +106,7 @@ failed).
 | `watch-order-scenario.js` | Where the descriptor budget goes. Over a vault shaped like the one that earned the policy — a 12,000-file icon set sorting FIRST, the notes last — assert `notice` fires naming an icon file, `events` contains BOTH `zzz-notes/Note 20.md` (the last note in the vault, which plain walk order lost) and `Top.md`, and `new-file-seen=true` for a note created after the scan. Its header carries the fixture recipe; the run edits notes, so rebuild it each time. Do NOT assert on the watch-capped EVENT: the renderer's listener is registered at module load, before a scenario is injected, so the notice is already in the DOM. | one from that header's recipe |
 | `shell-panel-scenario.js` | The shell panel end to end, all by REAL input: ⌃` opens it and takes the caret (`open=true focused=true`, `cols`/`rows` well above 1 — 1×1 is a panel measured while `display:none`), `echo clew-smoke-shell-ok` + Enter must come back with `echoes=2` — a pty ECHOES what is typed, which is the whole difference from a pipe — and `pty=true`; then ⌃` from INSIDE the terminal gives `closed=true stray-backtick=false` (the window dispatcher claims the chord before xterm), and `alive=true` — the session outlives the panel being hidden. Every observation waits for its condition rather than firing on a clock: input starts only after the scenario returns, and the boot before it is not ours to time. The panel's open state is per VAULT, so the scenario closes it first — a reused fixture otherwise starts open and the chord closes it. | any disposable vault |
 | `global-plugin-scenario.js` + `global-plugin-frame.js` | A globally installed plugin, all three surfaces: discovered with `scope: global`, engine fence rendered, preview script served from `__clew_plugin_file__` with a working sibling fetch, app command registered. Needs `CLEW_USER_DATA=<dir>/userdata` so the install is isolated. | one from `make-global-plugin.mjs` |
+| `canvas-engage-scenario.js` | An ENGAGED canvas node (double-clicked: its content owns the pointer) draws no geometry affordances, and its ring shows on a coloured node too. Real input over two note cards: click `a` → `selected handles=8 anchors=4`; triple-click (the harness's double click) → `engaged handles=0 anchors=0 ring=3px accent=true`; click `b` → `moved a-engaged=false b-selected=true handles=8 anchors=4`; triple-click `b` → `plain engaged handles=0 anchors=0 ring=3px`. Before the fix (measured at `e88aff6`): `engaged handles=8 anchors=4 ring=2px` — the coloured node's selected ring outranked the engaged one. | one from `make-canvas-vault.mjs` |
 
 Helpers, plain node (no Electron):
 
@@ -120,6 +121,8 @@ Helpers, plain node (no Electron):
   control), `Highlight.md` (one fence per editor grammar, fitting one
   viewport) and `Edit.md` (one fence and one line of prose, which the
   edit scenario rewrites).
+- `make-canvas-vault.mjs <dir>` — the canvas-engage fixture: `Board.canvas`
+  holding two note cards, `a` coloured and `b` plain.
 - `make-global-plugin.mjs <dir> [--enabled]` — the global-plugin fixture:
   an isolated userData holding one installed plugin (all three surfaces)
   plus a vault using its fence. Without `--enabled` the vault opts out,
