@@ -335,7 +335,11 @@ browser-window-focus).
   checkbox enabling, mermaid theming. Chrome a plugin or vault script adds
   to the document is discarded by every morph unless it carries
   **`data-clew-keep`** — the opt-out that lets a banner, an overlay or a
-  PDF viewer survive a re-render instead of restarting.
+  PDF viewer survive a re-render instead of restarting. A bare **Esc**
+  nothing in the document used goes UP to the host as `{type: 'escape'}`
+  (an engaged canvas card leaves on it); code inside a preview that
+  consumes Esc must say so with `preventDefault` — text fields, an open
+  `<dialog>` and the PDF viewer are exempt by rule.
   Siblings: `canvas-embed.js` (live read-only canvas scenes w/ pan/zoom),
   `leaflet-maps.js` (maps; asset base parameterized for site export),
   `pdf-core.js`/`pdf-embed.js`/`pdf-page.js` (the PDF viewer, below),

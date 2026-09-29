@@ -352,6 +352,26 @@ window.addEventListener('keydown', (e) => {
 	}
 });
 
+// Esc belongs to the innermost thing that wants it, and this document's host
+// is the next one out: an ENGAGED canvas card leaves on it (builtin.js: one
+// press per step), which it could not while focus sat inside the card —
+// only chords above ever left this frame. So a bare Esc goes up UNLESS
+// something in here used it: whatever consumed it said so with
+// preventDefault (Web Awesome's widgets do; a map measurement does; a note
+// script can), a text field owns its own Esc, the PDF viewer owns every Esc
+// pressed inside it (EmbedPDF is vendored, and its handlers close menus
+// without saying so), and an open <dialog> closes first. Decided after the
+// event has been everywhere — a listener registered after this one may
+// still claim it. A host with no use for it ignores it.
+window.addEventListener('keydown', (e) => {
+	if (e.key !== 'Escape' || e.isComposing || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+	const owned = e.composedPath().some((el) => el instanceof Element
+		&& (el.matches('input, textarea, select') || el.isContentEditable
+			|| el.classList.contains('clew-pdf-inline')));
+	if (owned || document.querySelector('dialog[open]')) return;
+	setTimeout(() => { if (!e.defaultPrevented) post({ type: 'escape' }); }, 0);
+});
+
 // Clicking into the preview must focus its pane, exactly as clicking into an
 // editor does — the app's pointerdown tracking cannot see inside this iframe.
 window.addEventListener('pointerdown', () => post({ type: 'focused' }), true);

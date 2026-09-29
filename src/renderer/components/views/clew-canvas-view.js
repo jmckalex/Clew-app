@@ -2358,15 +2358,27 @@ class ClewCanvasView extends ClewElement {
 		const msg = event.data;
 		if (!msg || msg.source !== 'clew-preview') return;
 		let embed = null;
-		for (const candidate of this.#embeds.values()) {
+		let embedId = null;
+		for (const [id, candidate] of this.#embeds) {
 			if (candidate.iframe.contentWindow === event.source) {
 				embed = candidate;
+				embedId = id;
 				break;
 			}
 		}
 		if (!embed) return;
 
 		switch (msg.type) {
+			case 'escape':
+				// An Esc nothing inside the card used (client.js): the first step
+				// of the canvas's own Esc — leave the engaged node — with the
+				// caret back on the canvas, so the next press clears the
+				// selection there.
+				if (this.#engagedId === embedId) {
+					this.#disengage();
+					this.#els.viewport.focus({ preventScroll: true });
+				}
+				break;
 			case 'ready':
 				embed.ready = true;
 				this.#postEmbed(embed, { type: 'theme', theme: document.body.dataset.theme ?? 'dark' });
