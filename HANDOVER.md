@@ -1,4 +1,4 @@
-# Handover — 2026-09-29 (live edit MERGED into main; 0.11.0 cut and notarized, not yet boot-proven; the manual merged but Clew-docs still has no remote)
+# Handover — 2026-09-29 (0.11.1 built, notarized and boot-tested; the fix round, the login shell and the Esc fix in main; Clew-docs still has no remote)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it; it gained a "Live edit" subsection); the live
@@ -21,24 +21,21 @@ so `ls` → `gls` was not found). Pushed to `fc2c79f` (owner's decision via
 the coordinator). **843 tests green, `node scripts/build.js` green**; the
 live sweep ran hidden and green, cross-reference parity included.
 
-**0.11.1 — version committed (`5f38ce3`, NOT pushed), NOT BUILT.** The
-owner asked for the release to be rebuilt with this round; 0.11.1 rather
-than 0.11.0 so the notarized 0.11.0 files in `out/` stay put (no tag or
-published page names 0.11.0 — the newest tag is `v0.9.0`). The engine and
-EmbedPDF re-syncs changed nothing. The packaging run itself was refused by
-the assistant session's auto-mode permission check (a production deploy),
-so it is the owner's to run, sequentially, from a quiet-ish machine:
+**0.11.1 is BUILT, notarized and boot-tested** (§3) — the rebuild of the
+never-published 0.11.0 with this round; 0.11.1 rather than 0.11.0 so the
+notarized 0.11.0 files in `out/` stay put (no tag or published page names
+either — the newest tag is `v0.9.0`). Packaged in-session with the owner's
+permission (an earlier attempt was refused by the auto-mode permission
+check as a production deploy, until the owner permitted it).
 
-    cd ~/Source/Clew/Clew-app && export MPTIKZ_SRC=/nonexistent
-    node scripts/package.js --dmg --sign --notarize --universal   # ~28 min
-    node scripts/package.js --dmg --sign --notarize               # arm64, ~20
-    node scripts/package.js --dmg --sign --notarize --x64         # ~20
-    node scripts/package.js --win && node scripts/package.js --linux
-    smoke/boot-test.sh out/mac-arm64/Clew.app/Contents/MacOS/Clew
+**Esc leaves an engaged note card** (`7a0cb6f`, owner-approved, landed
+after 0.11.1 was packaged — so NOT in 0.11.1): client.js forwards a bare Esc
+nothing inside the preview used; `smoke/canvas-esc-scenario.js`.
 
-then push `5f38ce3` and this file. 0.11.1 boots INVISIBLY under the harness;
-the boot test waits for load < 6 and aborts rather than run on a busy
-machine. Both live-edit worktrees
+**`main` is ahead of `origin/main`** by `5f38ce3` (0.11.1), `69ee318`,
+`7a0cb6f` and this file — the push is the owner's to say.
+
+Both live-edit worktrees
 are REMOVED (2026-09-29; each was clean and its tip already in its repo's
 `main`). The `feat/live-edit` branches survive — here locally and on origin,
 in Clew-docs locally only — and are fully merged, so deleting them loses
@@ -62,37 +59,23 @@ bundle, so `font=note` works from a fresh install; proven by staging from
 the pinned archive with the master bypassed and the fonts scenario over
 that tree), `c699565` (0.11.0).
 
-**0.11.0 artefacts in `out/`** (the 0.10.0 and 0.9.0 ones are still there,
-untouched — ask before deleting):
+**0.11.1 artefacts in `out/`** (the 0.11.0, 0.10.0 and 0.9.0 ones are still
+there, untouched — ask before deleting):
 
 | artefact | size | state |
 | --- | --- | --- |
-| `Clew-0.11.0-universal.dmg` | 321 MB | signed · notarized · stapled; `spctl` accepts image AND the app inside (`Notarized Developer ID`); four entitlements; `x86_64 arm64` everywhere; carries `mptikz/bundles/opentype` |
-| `Clew-0.11.0-arm64.dmg` / `Clew-0.11.0-x64.dmg` | 222 / 226 MB | the owner's ask (two single-arch images instead of the universal); signed · notarized · stapled; `spctl` accepts image AND the app inside (`Notarized Developer ID`); `arm64` / `x86_64`; four entitlements; carry `mptikz/bundles/opentype` — all verified 2026-09-29 |
-| `Clew Setup 0.11.0.exe` | 191 MB | NSIS, unsigned, untested at runtime |
-| `Clew-0.11.0.AppImage` / `clew_0.11.0_amd64.deb` | 224 / 177 MB | ELF x86-64 / well-formed; untested at runtime |
+| `Clew-0.11.1-arm64.dmg` / `Clew-0.11.1-x64.dmg` | 222 / 226 MB | signed · notarized · stapled; `spctl` accepts image AND the app inside (`Notarized Developer ID`); `arm64` / `x86_64`; `flags=0x10000(runtime)`, four entitlements; version 0.11.1; carry `mptikz/bundles/opentype` (pinned 0.3.0) |
+| `Clew Setup 0.11.1.exe` | 191 MB | NSIS, unsigned, untested at runtime |
+| `Clew-0.11.1.AppImage` / `clew_0.11.1_amd64.deb` | 224 / 177 MB | ELF x86-64 / well-formed; untested at runtime |
 
-**The 0.11.0 boot test is HALF done.** A signed build is proved by BOOTING
-the packaged binary under `CLEW_SMOKE` (rule in §6), and this one has two
-new things under the hardened runtime — MathJax in the app page and the
-live-edit block frames. Both scenarios ran against
-`out/mac-arm64/Clew.app/Contents/MacOS/Clew` with a fresh `CLEW_USER_DATA`
-at 12:39 on 2026-09-29 (load ~14):
-
-- `figures-scenario` PASSED: all 13 figures `mpw-ok` with `error=null`,
-  `pending=0`, `cache-probe first=engine second=cache ok=true`.
-- `live-edit-scenario` proved NOTHING: its vault was another scenario's
-  scratch fixture, not a demo-vault copy, so `Projects/Dialect Demo.md` was
-  ENOENT and the scenario threw on an empty document (`Invalid position 2 in
-  document of length 0`). Re-run it with **`smoke/boot-test.sh`**, which
-  builds each scenario's own fixture and checks the lines itself.
-
-The 12:39 run also launched on a machine the recipe forbids: its wait loop
-gave up after 60 × 20 s and launched ANYWAY, at load 14.71. That loop was
-never in the repo (an inline command); `smoke/boot-test.sh` replaces it and
-ABORTS — exit 3, nothing launched — when the load stays at 6 or above for
-20 minutes. The 0.11.0 package predates invisible smoke runs, so booting it
-still puts its window on screen for about a minute.
+No universal image this time (owner's decision). **The boot test PASSED**
+(`smoke/boot-test.sh` on `out/mac-arm64/…/Clew`, 17:00 on 2026-09-29):
+all 13 figures `mpw-ok` with paths, `pending=0`, `cache-probe
+first=engine second=cache`, and every live-edit line — invisibly. Its
+first attempt ABORTED as designed (load still 11.6 after 20 minutes:
+Spotlight, CrashPlan and Kaspersky working through the new gigabyte in
+`out/`); the second waited 4 minutes for load 5.4 and ran. The 0.11.0
+boot test was never finished; 0.11.1 supersedes it.
 
 **Clew-docs**: `main` at `eff4e7f` merges the manual's 13 live-edit commits;
 `make check-links` clean. The owner's uncommitted `HANDOVER.md`, `Makefile`,
@@ -112,15 +95,6 @@ build succeeded and waits for the owner to add it to the Internal group.
 
 ## 1. STILL OPEN
 
-- **The release: 0.11.1 is to be built and boot-tested** (§0) — it
-  supersedes the 0.11.0 boot test, whose live-edit half was never run.
-- **Esc cannot leave an engaged NOTE card** — pre-existing (identical at
-  `e88aff6`), found by the docs session, owner's decision whether to fix.
-  Focus is inside the card's clew-preview iframe, and client.js forwards
-  only ⌘/⌃ chords to the host, so a bare Esc never reaches the canvas
-  (measured: engaged after two presses, no other input). The docs
-  session's first reading — "one Esc disengages AND deselects" — was its
-  scenario's later click on empty canvas, which does both.
 - **The owner's QA pass of live edit** (not automatable): typing at speed in
   a long note; ⌘Z across a conceal/reveal; ⌘F over concealed text (matches
   inside widgets do not highlight — the selection moving reveals them);
@@ -200,28 +174,30 @@ build succeeded and waits for the owner to add it to the Internal group.
   assert parity, never the plan's contract.
 - `figures-edit` phase 3 is the one sweep failure and predates the branch.
 
-## 3. Release 0.11.0 — how it was cut
+## 3. Release 0.11.1 — how it was cut
 
-`npm version 0.11.0 --no-git-tag-version` + commit; then
-`MPTIKZ_SRC=/nonexistent node scripts/package.js --dmg --sign --notarize
---universal` (28 min: app notarized by electron-builder, image signed,
-`notarytool submit --wait` ~5 min, stapled twice), `--win`, `--linux`
-(~1 min each), sequentially — all three share `dist/` and the staging
-dirs. The single-arch images are the same command with `--arm64` / `--x64`
-in place of `--universal` (~20 min each); the x64 app lands in `out/mac/`,
-not `out/mac-x64/`. The engine and EmbedPDF re-syncs changed nothing (the
-masters' dirty trees were already what is vendored). `MPTIKZ_SRC=/nonexistent`
-makes packaging stage the PINNED archive rather than the owner's master build
-(identical content today, but the pin is the reproducible one). Verified:
-`stapler validate` + `spctl -a -t open` on the image, the same plus
-`codesign -dv` (`flags=0x10000(runtime)`, four entitlements) and
-`lipo -archs` on the app, helpers and framework inside. NOT yet booted.
+`npm version 0.11.1 --no-git-tag-version` + commit; the engine and EmbedPDF
+re-syncs changed nothing; then, sequentially (they share `dist/` and the
+staging dirs), with `MPTIKZ_SRC=/nonexistent` so the PINNED mp-tikz-wasm
+archive is staged rather than the owner's master build:
+
+    node scripts/package.js --dmg --sign --notarize          # arm64, 17 min
+    node scripts/package.js --dmg --sign --notarize --x64    # 17 min
+    node scripts/package.js --win                            # < 1 min
+    node scripts/package.js --linux                          # < 1 min
+    smoke/boot-test.sh out/mac-arm64/Clew.app/Contents/MacOS/Clew
+
+35 minutes for the four. The x64 image comes out as `Clew-<v>.dmg` (its app
+in `out/mac/`); it was renamed `Clew-0.11.1-x64.dmg` like 0.11.0's — a
+rename does not touch a stapled ticket. `--universal` exists (~28 min) but
+was not wanted this time. Verified: `stapler validate` + `spctl -a -t open`
+on each image; `spctl -a -t exec`, `codesign -dv`, the entitlements,
+`lipo -archs`, the version and the opentype bundle on each app.
 
 ## 4. Owner's own actions
 
-- Run `smoke/boot-test.sh` (§0) on a quiet machine; then the release is
-  done. Decide whether the universal image ships alongside the two
-  single-arch ones or is deleted.
+- Push `main` (§0), and decide what happens to the superseded artefacts in
+  `out/` (0.11.0, 0.10.0, 0.9.0); 0.11.1 is what to publish when DNS moves.
 - Live in live edit for a week (`newTabMode: 'live'`), run the QA list, and
   decide the §12 defaults — the next bug reports come from there.
 - Create the Clew-docs remote and push; DNS; then `make sync` etc. per the
