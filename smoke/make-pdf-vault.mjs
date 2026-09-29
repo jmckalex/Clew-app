@@ -1,4 +1,4 @@
-// A vault for pdf-annotations-scenario.js: `node smoke/make-pdf-vault.mjs <dir>`.
+// A vault for pdf-annotations-scenario.js and pdf-flush-scenario.js: `node smoke/make-pdf-vault.mjs <dir>`.
 // Paper.pdf is written here, by hand — four pages of Helvetica text, no
 // annotations — so the scenario has a page 3 to link to (with room to
 // scroll it to the top) and known words to highlight. (The demo's
@@ -37,3 +37,6 @@ pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n${offsets.map((o) =>
 pdf += `trailer\n<< /Size ${objects.length + 1} /Root ${catalog} 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
 writeFileSync(join(dir, 'Paper.pdf'), pdf, 'latin1');
 writeFileSync(join(dir, 'Welcome.md'), '# Welcome\n\nThe paper: [[Paper.pdf]].\n');
+// pdf-flush-scenario.js: a note embedding the paper, and one to switch to.
+writeFileSync(join(dir, 'Embed.md'), '# Embed\n\n![[Paper.pdf]]\n');
+writeFileSync(join(dir, 'Other.md'), '# Other\n\nA tab to switch to.\n');

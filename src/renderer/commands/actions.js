@@ -467,7 +467,7 @@ export function showPdfPage(tabId, page) {
 	let tries = 0;
 	const ask = () => {
 		if (done || tries++ > 40) { window.removeEventListener('message', onMessage); return; }
-		for (const frame of document.querySelectorAll('clew-file-view iframe.pdf-frame')) {
+		for (const frame of document.querySelectorAll('clew-file-view:not([data-clew-retiring]) iframe.pdf-frame')) {
 			if (frame.closest('clew-file-view')?.tabId !== tabId) continue;
 			frame.contentWindow?.postMessage({ source: 'clew-preview-host', type: 'pdf-page', page }, '*');
 		}

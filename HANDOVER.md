@@ -118,12 +118,16 @@ build succeeded and waits for the owner to add it to the Internal group.
   panel always present; citation search by substring; PDF annotations as
   one blockquote per entry, no colours; sidenotes `auto` = ≥ 960 px pane
   with ≥ 220 px margin.
-- **PDF annotations can be lost — pre-existing.** The viewer autosaves 2.5 s
-  after a change and a document that unloads drops the pending save, so a
-  highlight made just before a tab switch is gone (measured 3 of 4 kept).
-  The extraction command flushes first. Fix is the owner's choice: flush on
-  `visibilitychange`/`pagehide`, keep PDF frames alive like the office
-  dock, or shorten the debounce.
+- **PDF annotations can no longer be lost to a closing viewer** (fixed
+  2026-09-29, option A + option 1): tab switch 0→4/4, embeds 0→4/4, tab
+  close, window close and a re-render without the embed 0→1/1
+  (`smoke/pdf-flush-scenario.js`, `pdf-flush-close-scenario.js`). NOT
+  covered: a window RELOAD (the app page itself goes), and a canvas embed's
+  morph-failed reload. **Open question:** `live-blocks-scenario`'s
+  `scroll-chained=true` reads false under the invisible harness, on builds
+  with and without the PDF change — either invisible runs break wheel
+  chaining over a frame or it failed before; one `CLEW_SMOKE_VISIBLE=1` run
+  (a window on screen ~40 s) decides it.
 - **Engine bug, for the jmarkdown master.** A reference to an `@label`
   inside a footnote prints `??`: the post-processor's footnote branch looks
   for `[id^="footnote-"]` but endnotes carry `id="fn-…"`. Clew mirrors the

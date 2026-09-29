@@ -18,7 +18,7 @@ import { initCanvasEmbeds, refreshCanvasEmbeds, broadcastThemeToNested } from '.
 import { initLeafletMaps } from './leaflet-maps.js';
 import { initQueryInteract } from './query-interact.js';
 import { initMetaBind } from './meta-bind.js';
-import { initPdfEmbeds } from './pdf-embed.js';
+import { initPdfEmbeds, holdIfUnsaved } from './pdf-embed.js';
 import { initExcalidrawEmbeds } from './excalidraw-embed.js';
 import { initOfficeEmbeds } from './office-embed.js';
 import { figureMorph, initFigures, figuresPending } from './figures.js';
@@ -165,6 +165,9 @@ function applyRender(html) {
 				// animation or media playback down with it. Opt in to
 				// surviving by setting data-clew-keep on the element.
 				if (node.nodeType === 1 && node.hasAttribute?.('data-clew-keep')) return false;
+				// An embedded PDF viewer holding an unsaved annotation stays,
+				// hidden, until the edit is written (pdf-embed.js).
+				if (holdIfUnsaved(node)) return false;
 				return true;
 			},
 		});

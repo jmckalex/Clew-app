@@ -37,6 +37,7 @@ import { openListModal } from '../modals/list-modal.js';
 import { previewUrl } from '../../lib/preview-url.js';
 import { handleApiRequest } from '../../note-api.js';
 import { icon } from '../../lib/icons.js';
+import { retire } from '../../pdf-frames.js';
 
 const HOST_SOURCE = 'clew-preview-host';
 const UNDO_LIMIT = 100;
@@ -645,7 +646,10 @@ class ClewCanvasView extends ClewElement {
 	}
 
 	#removeNodeEl(id) {
-		this.#nodeEls.get(id)?.remove();
+		// A card whose PDF viewer holds an unsaved annotation lingers, hidden,
+		// until it is written (pdf-frames.js).
+		const el = this.#nodeEls.get(id);
+		if (el) retire(el);
 		this.#nodeEls.delete(id);
 		const embed = this.#embeds.get(id);
 		if (embed) {

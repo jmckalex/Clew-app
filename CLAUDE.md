@@ -663,9 +663,8 @@ except where the selection touches a construct. The durable design is
   annotations with the text under them (engine glyph geometry +
   getTextSlices) when pdf-page.js is asked by its PARENT;
   `renderer/pdf-annotations.js` + the pure `shared/pdf-annotations-note.js`
-  write or MERGE `<pdf> — Annotations.md` (never deleting). The viewer's
-  autosave is a 2.5 s debounce that an unloading document drops — flush it
-  before relying on an annotation. `[[x.pdf#page=N]]` opens a PDF tab there.
+  write or MERGE `<pdf> — Annotations.md` (never deleting); it flushes the
+  viewer's pending autosave first. `[[x.pdf#page=N]]` opens a PDF tab there.
 - **Sidenotes** (§5.16): footnotes in the margin when the pane is wide —
   reading mode clones the engine's endnotes into a `data-clew-keep` layer
   (the end list hidden by a body class; print/export untouched), live edit
@@ -750,7 +749,19 @@ except where the selection touches a construct. The durable design is
   loaders read a `clew-preview://` path as base64. Annotations autosave
   into the vault's own PDF (2.5s debounce → `renderer/pdf-save.js` →
   `CH.PDF_WRITE` → `vault.writePdf`, which refuses anything that is not an
-  existing `.pdf` inside the vault). CJK fallback fonts are an app setting
+  existing `.pdf` inside the vault). **A frame being removed cannot save**
+  — its async export never completes and not even a synchronous
+  postMessage leaves it (measured 2026-09-29) — so nothing holding an
+  unsaved annotation is removed until it lands: each viewer document
+  reports `pdf-dirty`; `renderer/pdf-frames.js#retire` keeps an outgoing
+  tab view, live frame or canvas card hidden (display:none keeps it
+  loaded) and asks it to `pdf-flush`; a close guard and the window's close
+  handshake wait for it; inside a preview the morph HOLDS an embed a
+  re-render would discard (`pdf-embed.js#holdIfUnsaved` — EmbedPDF stops
+  working once detached). visibilitychange flushes a document that lives
+  on hidden. Anything that removes a view must go through retire() and
+  anything that finds "the view for a path" must skip
+  `[data-clew-retiring]`. CJK fallback fonts are an app setting
   (`pdfCjkFonts`), downloaded on demand into userData by
   `main/pdf-fonts.js` — 139 MB, so never shipped; `src/shared/pdf-fonts.json`
   (2.6 KB, regenerate with `scripts/gen-pdf-fonts.js`) names the files.

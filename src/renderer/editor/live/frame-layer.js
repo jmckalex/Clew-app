@@ -40,6 +40,7 @@ import { ipc, CH } from '../../ipc.js';
 import { settingsStore } from '../../state/settings-store.js';
 import { vaultSettingsStore } from '../../state/vault-settings-store.js';
 import { isDependentFragment } from '../../../shared/fragment-deps.js';
+import { retire } from '../../pdf-frames.js';
 
 const HOST_SOURCE = 'clew-preview-host';
 const RESTALE_MS = 300;
@@ -106,7 +107,7 @@ class FrameLayer {
 		this.offVault?.();
 		clearTimeout(this.restaleTimer);
 		clearTimeout(this.allTimer);
-		this.layer.remove();
+		retire(this.layer);
 		this.records.clear();
 	}
 
@@ -141,7 +142,7 @@ class FrameLayer {
 		}
 		for (const [id, record] of this.records) {
 			if (!seen.has(id)) {
-				record.iframe?.remove();
+				if (record.iframe) retire(record.iframe);   // a PDF edit still saving keeps it, hidden
 				this.records.delete(id);
 			}
 		}
@@ -227,7 +228,7 @@ class FrameLayer {
 			.filter((r) => r.iframe && rank(r) < 2 && !protectedPin(r))
 			.sort((a, b) => (a.pinned - b.pinned) || (rank(a) - rank(b)) || (a.lastVisible - b.lastVisible))[0];
 		if (!victim) return false;
-		victim.iframe.remove();
+		retire(victim.iframe);
 		victim.iframe = null;
 		victim.ready = false;
 		victim.state = 'idle';
