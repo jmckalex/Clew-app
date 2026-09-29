@@ -18,7 +18,9 @@
 //   `focus-in-toolbar=true` after ⌥⇧T and `focused-after-arrows=<label>`;
 //   `after-toggle mode=source toolbar=false` (⌘⇧E; shown in live only by
 //     default), `after-toggle mode=live toolbar=true`;
-//   `narrow overflow="…" mode-visible=true` in a pane split three ways.
+//   `narrow overflow="…" mode-visible=true` in a pane split three ways — at
+//     318 px the bar is on TWO rows and only what two rows cannot hold is in
+//     `…` (`history inline insert`; Lists wraps to row 2).
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const { workspaceStore, editorPool, actions } = window.__clew;
 const log = (s) => console.log('smoke-tb: ' + s);
@@ -26,8 +28,8 @@ const until = async (test, ms = 10000) => {
 	for (const t0 = Date.now(); Date.now() - t0 < ms; await sleep(50)) if (test()) return true;
 	return false;
 };
-// Full width: the smoke window is 1280px, and with both sidebars open the
-// pane is ~730px — where Lists and Insert rightly overflow.
+// Full width: the smoke window is 1280px; with both sidebars open the pane is
+// ~730px, where the bar wraps onto two rows.
 workspaceStore.setSidebar('left', { open: false });
 workspaceStore.setSidebar('right', { open: false });
 const tab = workspaceStore.openNote('Toolbar.md', { newTab: true, defaultMode: 'live' });

@@ -1226,8 +1226,9 @@ session; built overnight, after the multi-paragraph footnote correction
    `preventDefault()`, so the editor keeps its selection; popovers that
    need typing (link URL, code language search) take focus explicitly and
    return it to the editor on close.
-4. **Width-aware**: groups drop into an overflow menu by priority; the mode
-   switch never drops.
+4. **Width-aware**: too narrow for one row, the bar wraps onto a second
+   (2026-09-29); only past two rows do groups drop into an overflow menu by
+   priority; the mode switch never drops.
 5. **Declarative**: `toolbar-spec.js` is the single description; the
    element renders it; settings reorder/hide groups.
 6. **Dialect-aware**: labels and icons say what the dialect produces
@@ -1358,6 +1359,29 @@ element measures each group's width once per (font, zoom) via an offscreen
 render, and re-lays out on a `ResizeObserver` of the host. Overflowed
 groups render inside the `…` popover as vertical menus with the same
 buttons and states.
+
+**Two rows (owner's ask, 2026-09-29).** `layoutRows(groups, widths,
+available, { maxRows, previousRows, hysteresis, … }) → { rows, visible,
+overflow }` replaces hiding with wrapping; `layoutGroups` is its one-row
+case. Rows break at group boundaries in NATURAL order (greedy; no later
+group backfills an earlier row, so buttons stay where they were); the mode
+switch ends row 1 (top right, where it sits on one row). Only when two rows
+cannot hold everything does the priority rule above send groups to `…`,
+whose button is then reserved at the end of row 2. The ROW COUNT comes from
+the always-there groups only: a context group (the table tools, `when:
+inTable`) fits into those rows or goes to `…`, so entering a table never
+changes the bar's height (it did, in the first build, and every change
+moved the editor's scroll — which hides the selection bubble). Going back
+from two rows to one needs 8 px of slack (hysteresis). One row, plus `…`,
+while the visual viewport is shorter than `--toolbar-two-row-min-height`
+(560 px: an iPad with its keyboard up). The element measures the `…` button
+and its own padding (no desktop sizes assumed), places groups with CSS
+`order` around a zero-height `.toolbar-break`, sizes itself `rows ×
+--toolbar-row`, and on a change of rows dispatches `toolbar-resize {delta}`:
+`clew-editor-view` moves the editor's scroll by `delta` in the same frame,
+so the text below the bar holds still, and brings the caret back only if
+the new row covered it. Arrow keys follow VISUAL order (row by row, `…`
+last); Up/Down go to the nearest control on the other row.
 
 ### 6.5 The element (`<clew-editor-toolbar>`)
 
@@ -1799,7 +1823,7 @@ every open live editor (`editorPool.reconfigureLive()`); changing
 | `live-reveal.test.js` | `revealed()` for every level: cursor at `from`, at `to`, inside, adjacent-but-outside; multi-range; `line` mode; nesting independence. |
 | `inline-dom.test.js` | the token list for each supported inline kind; unsupported constructs pass through as text. |
 | `toolbar-state.test.js` | `deriveState` over fixtures: block types, inline sets (innermost wins), `inList`/`inTable`, normalSyntax relabelling. |
-| `toolbar-layout.test.js` | `layoutGroups`: fits/overflows by priority, `Infinity` never drops, `when`-false excluded, overflow button width accounted only when needed. |
+| `toolbar-layout.test.js` | `layoutGroups`: fits/overflows by priority, `Infinity` never drops, `when`-false excluded, overflow button width accounted only when needed. `layoutRows`: natural-order wrapping, no backfill, mode ends row 1, nothing hidden until two rows are full, the priority rule past them, one row under `maxRows: 1`, hysteresis, a context group never changing the row count. |
 | `format-toggle.test.js` | `toggleWrap` unwraps from an empty cursor inside a construct; wraps otherwise; multi-range. |
 | `workspace-tree.test.js` (+) | `mode: 'live'`; `editMode` set by `setTabMode`; clone carries it; serialize/hydrate round trip; legacy JSON without `editMode`. |
 | `fragment-dependent.test.js` | `isDependentFragment` for each trigger and for plain prose. |

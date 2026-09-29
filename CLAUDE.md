@@ -80,7 +80,7 @@ note API, plugins, and every settings key.
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
   dialect scanner's constructs and grammar, live edit's model, reveal rule,
-  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer) — 843 tests. DOM/UI work is
+  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer) — 852 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
@@ -610,7 +610,13 @@ except where the selection touches a construct. The durable design is
   `<clew-editor-toolbar>` element, `popover.js`/`popovers.js` (Insert and
   Block reuse `shared/format-spec.js`), and `<clew-selection-bubble>`.
   `editor/toggle-wrap.js` unwraps from a bare cursor inside a construct.
-  Plugin API 2: `clew.toolbar.addButton`.
+  Plugin API 2: `clew.toolbar.addButton`. Too narrow for one row, the bar
+  WRAPS onto two (`layoutRows`, natural order, the mode switch ending row
+  1); `…` only past two rows. The row count comes from the always-there
+  groups — a context group (the table tools) never changes the bar's
+  height — and a row change moves the editor's scroll by the same delta
+  (`toolbar-resize`), so text never jumps; heights are `--toolbar-row`
+  (a port sets that, never a fixed height).
 - **Tables are edited in place** (live edit §5.5a): the active cell is note
   state (`live/active-cell.js`, pinned concealed by the reveal rule), and a
   nested cell editor (`live/table-cell-editor.js`) mounted in its `<td>`
