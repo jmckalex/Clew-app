@@ -193,6 +193,7 @@ class ClewPreviewPane extends FloatingPane {
 			}
 			this.#shown = source;
 			this.body.style.height = '';
+			this.removeAttribute('data-overflows');
 		} else {
 			if (this.hidden) this.error.hidden = true;
 			const result = await this.renderIntoFrame(target.text, this.#path, { morph: true });
@@ -219,6 +220,10 @@ class ClewPreviewPane extends FloatingPane {
 		const style = getComputedStyle(this.body);
 		const padding = (parseFloat(style.paddingTop) || 0) + (parseFloat(style.paddingBottom) || 0);
 		this.body.style.height = `${Math.min(MAX_H, Math.max(MIN_H, h + padding))}px`;
+		// Whether the pane scrolls its own content: a touch port lets a drag
+		// over a pane that FITS fall through to the note (Clew-iOS, pointer:
+		// coarse → pointer-events: none unless [data-overflows]).
+		this.toggleAttribute('data-overflows', h + padding > MAX_H);
 	}
 
 	/**

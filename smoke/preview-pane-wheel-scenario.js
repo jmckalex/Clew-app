@@ -6,6 +6,7 @@
 //   mkdir -p <dir> && node -e "const fs=require('fs');
 //     const nodes=Array.from({length:14},(_,i)=>'  N'+i+' --> N'+(i+1)).join('\n');
 //     fs.writeFileSync('<dir>/Tall.md', '# Tall\n\nAbove.\n\n\`\`\`mermaid\ngraph TD\n'+nodes+'\n\`\`\`\n\n'
+//       + '\`\`\`mermaid\ngraph TD\n  S --> T\n\`\`\`\n\n'
 //       + Array.from({length:150},(_,i)=>'Line '+(i+1)+'.').join('\n\n')+'\n')"
 //
 // With the cursor in the fence (source mode) the pane shows the diagram,
@@ -14,6 +15,9 @@
 //   B — the same gesture on past the pane's bottom: `latched pane-at-end=true
 //       note-still=true` (a gesture that began on the pane stays there)
 //   C — a new gesture after a pause: `chained note-scrolled=true`
+// Then the pane's `data-overflows` mark (a touch port's cue): on the tall
+// diagram `overflows-attr=true`, moved to the small one `fits
+// overflows-attr=false`, and back `tall-again overflows-attr=true`.
 // Every tick is recorded as it lands, so the verdicts do not ride on a clock.
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const frames = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
@@ -53,7 +57,7 @@ window.__clewSmokeInput = [
 	...Array.from({ length: 12 }, () => tick(101)),   // B: same gesture, on past the end
 	{ wait: 600 },                                     // the gesture ends
 	...Array.from({ length: 3 }, () => tick(102)),    // C
-	{ wait: 800 },
+	{ wait: 7000 },                                    // the data-overflows checks below
 ];
 (async () => {
 	await until(() => rec.filter((x) => x.dy === 102).length === 3, 20000);
@@ -65,4 +69,17 @@ window.__clewSmokeInput = [
 	log(`own pane-scrolled=${a.pane > 0} note-still=${a.note === noteTop0}`);
 	log(`latched pane-at-end=${b.atEnd} note-still=${b.note === noteTop0}`);
 	log(`chained note-scrolled=${c.note > noteTop0} pane-shown=${!pane.hidden}`);
+	// The data-overflows mark, both ways.
+	log(`overflows-attr=${pane.hasAttribute('data-overflows')}`);
+	const moveTo = async (needle) => {
+		const pos = view.state.doc.toString().indexOf(needle) + 2;
+		view.dispatch({ selection: { anchor: pos }, scrollIntoView: true });
+		await sleep(1500);
+		await until(() => !pane.hidden && body().clientHeight > 0, 8000);
+		await sleep(300);
+	};
+	await moveTo('S --> T');
+	log(`fits overflows-attr=${pane.hasAttribute('data-overflows')} overflow=${body().scrollHeight - body().clientHeight}`);
+	await moveTo('N3 --> N4');
+	log(`tall-again overflows-attr=${pane.hasAttribute('data-overflows')}`);
 })();
