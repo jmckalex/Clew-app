@@ -33,6 +33,7 @@ import { sessionById } from './session.js';
 import { previewPluginScripts, enabledPlugins } from './plugins.js';
 import { settings } from './settings.js';
 import { fontsDir, fallbackConfig } from './pdf-fonts.js';
+import { narrowCors } from './preview-cors.js';
 
 const MIME = {
 	'.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript',
@@ -215,7 +216,7 @@ export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDi
 		return out;
 	}
 
-	protocol.handle(PREVIEW_SCHEME, async (request) => {
+	const serve = async (request) => {
 		try {
 			const url = new URL(request.url);
 			const pathname = decodeURIComponent(url.pathname).replace(/^\/+/, '');
@@ -410,5 +411,9 @@ export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDi
 			return new Response(`Preview error: ${String(err.message ?? err)}`,
 				{ status: 500, headers: { 'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*' } });
 		}
-	});
+	};
+	// Every response leaves through the one rule for who may read it across
+	// origins (preview-cors.js): the preview documents and the app page; no
+	// other origin gets an Access-Control-Allow-Origin.
+	protocol.handle(PREVIEW_SCHEME, async (request) => narrowCors(request.headers.get('origin'), await serve(request)));
 }

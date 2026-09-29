@@ -80,7 +80,7 @@ note API, plugins, and every settings key.
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
   dialect scanner's constructs and grammar, live edit's model, reveal rule,
-  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer) — 852 tests. DOM/UI work is
+  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer) — 857 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
@@ -735,6 +735,12 @@ except where the selection touches a construct. The durable design is
   `clew-preview://` origin (app is `file://`), `setWindowOpenHandler`
   denies all popups, and a `will-navigate` guard pins the app frame.
   Iframes carry `allow="fullscreen"` (EmbedPDF's control needs it).
+  Protocol hardening (2026-09-29): session ids are random (not s1, s2 …),
+  and a response may be READ across origins only by `clew-preview://vault`
+  and `null` — the app page, being file:// — every response leaving through
+  `main/preview-cors.js#narrowCors`; any other origin gets no
+  Access-Control-Allow-Origin. `null` cannot be refused while the app page
+  IS null (HANDOVER §1 has the options).
 - **PDFs are EmbedPDF, not Chromium's plugin** (MIT, Pdfium-in-wasm, ~9.5
   MB staged) — and not the npm build: the viewer is the owner's OCG/layers
   fork (EmbedPDF v2.15.0 + the ~/Source/pdfium-ocg patch series; the wasm
