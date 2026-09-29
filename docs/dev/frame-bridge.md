@@ -1,10 +1,10 @@
 # The frame bridge — design
 
-Status: §1 AGREED with the iOS session (2026-09-29) and BUILT on desktop
-(iOS's side is its own). Next, by the owner's decision: the app page's own
-origin (option (c), `clew-app://app`) and a Compatibility section, then
-the bridge itself (per-app identity, capabilities, grants, Tier 2) —
-design only until the owner approves it whole. §1 is a prerequisite: the
+Status (2026-09-30): §1 AGREED with the iOS session and BUILT on desktop;
+§2.8 step 0 BUILT; §2 (the app page's own origin), §3 (Compatibility), §4
+(vault trust — the owner's decision) and §5–§16 (the bridge) PROPOSED,
+worked through with the iOS session — design only until the owner approves
+it whole. §1 is a prerequisite: the
 bridge must stand on a protocol that can tell who is asking.
 
 ## 1. The caller token
@@ -140,7 +140,7 @@ before the engine.
   token stays on the POSTs — no rework.
 - **The frame bridge**: bridge apps never receive the session token. They
   reach Clew only through a host-issued `MessageChannel` port per embed
-  (per-app identity, §2 onward), and everything privileged is done by the
+  (per-app identity, §5 onward), and everything privileged is done by the
   host on their behalf. And they must never be SERVED under
   `clew-preview://vault/<sid>/…`: a frame loaded from such a URL reads the
   session id from its own `location`.
@@ -171,3 +171,792 @@ before the engine.
   frames, the preview pane, link previews) unchanged; a render POST from
   the app page without the token answers 403 (the endpoint's own regression
   test); a reading-view PDF of a note embedding a canvas prints its cards.
+
+## 2. The app page's own origin — option (c)
+
+Status: PROPOSED (2026-09-29), design only. The owner's decision: close the
+desktop null-origin read gap BY DESIGN — no measurement, no probing,
+assume the worst — by moving the app page off `file://` onto
+`clew-app://app`, the origin the iOS app page already has. To be BUILT
+before any embedded-app feature ships.
+
+### 2.1 Why
+
+The app page is `file://`, so its origin is `null`, the same value a
+sandboxed frame has. A response the app page must read therefore has to be
+readable by `null` (`main/preview-cors.js` echoes it), and every sandboxed
+frame a note, a plugin or a remote page can create is `null` too. §1 stops
+such a frame RUNNING the engine; nothing stops it READING vault files. With
+the app page on its own origin, reads are granted to that origin alone and
+`null` is refused outright — the rule iOS already has.
+
+### 2.2 The scheme
+
+- `clew-app` joins `clew-preview` in the ONE `protocol.
+  registerSchemesAsPrivileged` call (`protocol.js`; Electron allows the call
+  once, before `ready` — a second call risks the first scheme's privileges).
+  Privileges: `standard` (a tuple origin, `'self'` in the CSP, `/…`
+  resolving against the host, module scripts), `secure` (a secure context:
+  `navigator.clipboard` and the clipboard permission-policy delegation to
+  the LibreOffice and Excalidraw frames), `supportFetchAPI`, `corsEnabled`,
+  `stream`. Never `bypassCSP`; no `allowServiceWorkers`; `codeCache` left
+  off at first (turning it on later means `clearCodeCaches` beside the
+  asset stamp's `clearCache`).
+- The name and host are EXACTLY `clew-app://app` on both platforms, so the
+  origin constants are shared: `APP_ORIGIN` joins `PREVIEW_ORIGIN` in
+  `shared/` (§1's answerer, the postMessage targets, the ACAO value).
+
+### 2.3 What the handler serves
+
+- `protocol.handle('clew-app', …)` on the DEFAULT session only (the
+  `persist:clew-canvas` webview partition never gets it), registered in
+  `whenReady` beside the preview handler, before any window.
+- It serves the app's own files and nothing else: host `app`, path mapped
+  onto `dist/renderer/` with a realpath clamp (inside asar when packaged),
+  a MIME table that includes `text/javascript` for the module bundle and
+  `text/css` (and `.map` in dev; packaged builds exclude maps, so a clean
+  404), `Cache-Control: no-store` (dev hot reload and menu reload go
+  through it; the asset stamp does not follow renderer builds). Any other
+  host, any path outside `dist/renderer/`, anything that looks like a vault
+  path → 404. It never serves vault content: a root-relative URL in engine
+  HTML injected into the app DOM would otherwise land on it.
+  `canvas/node-content.js` rewrites those onto the preview origin;
+  `canvas/portal.js` does not (read from the code, not run — under
+  `file://` such a URL points nowhere either), and the build gives it the
+  node-content rewrite.
+- The app document carries its CSP as a response HEADER as well as the
+  meta tag, adding `frame-ancestors 'none'` (a meta tag cannot carry it):
+  no frame can ever host the app page.
+
+### 2.4 Loading, preload, reload
+
+- `win.loadFile(dist/renderer/index.html)` → `win.loadURL('clew-app://app/
+  index.html')`. Nothing else in the window's creation depends on the URL:
+  the preload still attaches to the main frame only, `contextIsolation`
+  stays on, `sandbox`/`webSecurity` stay at their defaults, no
+  `nodeIntegrationInSubFrames`.
+- Reloads (dev hot reload, View → Reload, a crashed renderer) re-run the
+  boot handshake, which already re-asks `VAULT_CURRENT` for the session id
+  and the caller token — the same path iOS takes when WebKit kills its
+  content process.
+- The smoke harness is unaffected (it drives the main frame by
+  `executeJavaScript` and picks preview frames by `clew-preview:`).
+
+### 2.5 The CSP
+
+Unchanged text; the page it sits on changes what `'self'` means — from any
+`file:` URL to `clew-app://app` alone, a tightening. The app page loads no
+fonts, workers or wasm (all of those live in preview documents, which carry
+no CSP), so no `font-src`, `worker-src` or `'wasm-unsafe-eval'` is needed;
+plugin app surfaces and MathJax stay in `script-src` as the preview-origin
+URLs they are. (iOS's copy adds `frame-src https: http:` because its canvas
+web nodes are iframes; desktop's are `<webview>`s, outside `frame-src`.)
+
+### 2.6 Cross-origin reads
+
+- Every `clew-preview://` response carries `Access-Control-Allow-Origin:
+  clew-app://app` — a CONSTANT, not an echo, because whether the desktop
+  handler will see an `Origin` from the new page is unknown until built (it
+  sees none from `file://`). Only the app page can hold that origin, so the
+  constant grants exactly it — measured on iOS (a throwaway build sending
+  the constant on BOTH schemes: every consumer worked, `null` reads were
+  blocked), so one code shape serves both platforms and no `Vary` is
+  needed; `clew-app`'s own responses carry the same constant. `null`
+  leaves `CORS_READERS`, and so does the need for it;
+  `tests/preview-cors.test.js` changes with it.
+- Preview documents reading preview URLs are same-origin and need no ACAO;
+  the app page's no-cors loads (`<img>`, `<iframe>`, `<script>`) never did.
+  What needs it are the app page's CORS-mode reads: the render POSTs and
+  block-document GETs (`renderPost`, `frame-layer.js`, `floating-pane.js`)
+  and the two `fetch(previewUrl)` calls (`clew-preview-view.js`,
+  `clew-canvas-view.js`) — today they succeed with no ACAO at all, most
+  likely because a `file://` page is exempt, and every one of them fails
+  QUIETLY (cards fall back, frames return null) if the header is wrong.
+- The render POSTs' Origin guard becomes an allowlist where an Origin
+  arrives: `clew-app://app`, `clew-preview://vault`, or none; `null` and
+  http(s) refused (iOS's second layer). The token (§1) stays the rule.
+
+### 2.7 Navigation and framing
+
+- Kept as they are: `will-navigate` cancels every main-frame navigation
+  (which also stops a file dropped outside the editor replacing the app);
+  `setWindowOpenHandler` sends http(s) to the browser and denies the rest;
+  webview guests stay pinned to http(s) (the comment there gains
+  `clew-app`).
+- Added: no SUBFRAME may load `clew-app://` — a `will-frame-navigate` guard
+  on the window, beside `frame-ancestors 'none'` on the document. Nothing
+  legitimate frames the app page. (iOS allows `clew-app` in subframes today
+  and nothing uses it; dropping it there is an iOS change for the owner to
+  approve.)
+
+### 2.8 postMessage: who is heard, and who is addressed
+
+Every post between the app page and its frames targeted `'*'`, and most
+receivers checked a `source` tag, not `event.origin` — the targets forced
+while the app page was `null` (it cannot be a targetOrigin), the receivers
+not. So the work splits:
+
+- **Step 0, receivers — BUILT (2026-09-29), ahead of (c)**: any frame can
+  post to `window.top` or its parent (a remote page a note embeds; on iOS a
+  canvas web card, a DIRECT child of the app page), and the app page's
+  bridges acted on whatever arrived — PDF, drawing and office writes, the
+  Excalidraw library read and replace, vault file-name resolution (the iOS
+  session's finding, by code reading). Now `shared/message-guard.js`: the
+  app page's bridges (`pdf-save.js`, `pdf-frames.js`, the office dock's
+  embed branch, the PDF page-shown wait) act only for
+  `event.origin === PREVIEW_ORIGIN` and answer `event.origin`; a document's
+  host listeners (`client.js` — which applied `render` HTML from ANY sender,
+  so a remote child could put markup in the note — `api.js`, and the viewer
+  pages' reply listeners) accept only the window they expect: the parent,
+  or the window the request went to. Not "a frame the app created": the
+  legitimate senders include nested ones (an office live embed, the
+  Excalidraw and PDF viewers inside notes post to `window.top` from two
+  frames deep), and a preview-origin document is vault content, trusted by
+  design. The listeners that already matched their sending frame (the
+  reading view, floating panes, canvas view, frame layer, office dock's own
+  frame, PDF annotations) were already right.
+- **Step 2, targets — after the move**: downward (app page → preview frame)
+  targetOrigin `PREVIEW_ORIGIN` for every post, not only replies; upward, a
+  client cannot hard-code its parent (the app page, a canvas scene's preview
+  document, or itself in the print view), so posts that carry data target
+  `location.ancestorOrigins[0] ?? location.origin` — measured on WebKit:
+  `["clew-app://app"]` for a top-level card, `["clew-preview://vault",
+  "clew-app://app"]` for a nested one, EMPTY at the top (print), where
+  `postMessage(msg, undefined)` throws and the parent is the document
+  itself; content-free signals may stay `'*'`. The app page's own listeners
+  then also require `event.origin === PREVIEW_ORIGIN` where they match a
+  frame today.
+
+### 2.9 What does not move
+
+The preview origin (`clew-preview://vault`) and everything on it; the print
+view (a preview document top-level — §1's self-post case); the office
+thumbnail window; the `<webview>` partition; the SharedArrayBuffer switch
+(process-wide, no COOP/COEP anywhere; the app page uses no SAB; real
+cross-origin isolation stays impractical while preview documents embed
+arbitrary https content).
+
+### 2.10 Storage, and anything else keyed to the old origin
+
+- **The app page stores nothing origin-keyed**: no localStorage,
+  sessionStorage, IndexedDB, Cache Storage or cookies in the renderer, and
+  none in CodeMirror or xterm; every piece of state goes over IPC
+  (settings, workspace, vault settings, bookmarks, the KV store, the
+  Excalidraw library). Clew's own plugins (charts, header, word-count) use
+  none either. So Clew itself has nothing to migrate.
+- **An app-surface plugin** runs in the app page, and a third-party one
+  MAY keep localStorage/IndexedDB under `file://`; after the move it would
+  start empty. See the open questions: a one-time copy is possible for
+  localStorage (a hidden `file://` window in the same session reads the
+  keys at first launch after the upgrade and hands them over IPC to the
+  new origin), not in general for IndexedDB.
+- **Preview frames** may find their storage re-partitioned under the new
+  top-level site (whether Chromium partitions under a custom-scheme top
+  site in Electron 43 is not known until built): the TikZ/MetaPost result
+  cache (IndexedDB) would re-typeset each figure once, Excalidraw's own UI
+  preferences would reset once. Caches, not user data; the build records
+  which it was (`figures-frame.js` already probes that cache across runs).
+- The HTTP cache needs nothing: the release that ships (c) carries a new
+  app version, which changes the asset stamp, which clears the whole cache
+  already. V8's code cache recompiles the bundle once under its new URL.
+  No permission grants are stored (Clew sets no permission handlers);
+  zoom levels are not persisted by Electron.
+
+### 2.11 The token and the bridge on top
+
+- §1 is unchanged: the app page still receives its token over IPC and is
+  still the one answerer for its frames; the render POSTs now also carry
+  `Origin: clew-app://app` wherever Chromium sends one.
+- Bridge app frames (§5 onward) are neither `clew-app://` nor served under
+  `clew-preview://vault/<sid>/…` (a frame reads the session id from its own
+  URL); they get no ACAO, no token, and no path into the app except the
+  host-issued port.
+
+### 2.12 iOS
+
+Already there. What (c) asks of iOS is what §1.7 already lists (ACAO for
+`clew-app://app` only), plus the optional subframe tightening in §2.7 and
+the shared `APP_ORIGIN` constant.
+
+### 2.13 How the build proves it, and the order
+
+0. The receiver checks (§2.8 step 0) — BUILT, ahead of everything else,
+   on both platforms.
+1. The move (one commit): the scheme, the handler, `loadURL`, the CSP
+   header with `frame-ancestors`, the constant ACAO with `null` removed,
+   the Origin allowlist, the frame guard, the portal URL fix, comments and
+   docs. Checked like §1: a baseline before, then the protocol tour, the
+   full sweep, figures, global plugin, canvas, PDF, live blocks, the
+   caller-token and block-endpoint scenarios — zero CORS or load errors,
+   every consumer unchanged — plus new assertions: the page's origin is
+   `clew-app://app`, `isSecureContext` is true and a clipboard write
+   succeeds, a render read from the app page succeeds, and the figure
+   cache's behaviour across the move is recorded.
+2. The postMessage targets (§2.8 step 2), its own commit, with every save
+   path (PDF, Excalidraw, office) and the note API exercised.
+3. The plugin-storage copy, only if the owner wants it (§3.4).
+
+The riskiest failures are the quiet ones (a wrong ACAO degrades cards and
+frames silently; a missing `secure` silently loses the clipboard), which is
+why the checks assert them directly. The move is revertible in one commit:
+Clew migrates no data of its own.
+
+## 3. Compatibility
+
+### 3.1 The rule
+
+Nothing a user relies on today may break without being flagged. The bridge
+ADDS an embed kind — an app frame, sandboxed, never under `/<sid>/`,
+reached through a port — and RECLASSIFIES nothing: no existing frame
+becomes an app frame by being detected, and none is re-sandboxed or moved
+off its origin by the bridge. What changes for existing frames comes from
+§1 (built) and §2 only.
+
+### 3.2 Every frame and embed kind today
+
+| Kind | Where it lives | Origin, sandbox | What it reaches today | Under the design |
+|---|---|---|---|---|
+| Reading view | app page iframe of the note's preview document | `clew-preview://vault`, unsandboxed | every vault file (same origin); note scripts; the note API by postMessage (per-vault `noteApi` gate) | unchanged; its parent's origin changes (still cross-origin); the app page's re-fetch of it needs the new ACAO |
+| Live block frames, link preview, preview pane | app page iframes of block documents | same | same | unchanged; POSTs carry the token (§1, built) |
+| Canvas tab | app page: note cards (preview documents), PDF (EmbedPDF page), Excalidraw page, live office, images and media, text cards and portals (fragment POSTs) | same, unsandboxed; web cards are `<webview>` in their own partition | same | unchanged |
+| Canvas embed in a note | a scene inside the preview document: text cards (fragment POSTs), nested note frames (`?cdepth`), web cards | same; web cards `sandbox="allow-scripts allow-same-origin …"`, i.e. the remote site's own origin | same; web cards reach nothing of Clew's | unchanged; cards ask for the token (§1, built) |
+| Excalidraw | `__clew_assets__/clewex/page.html`, in tabs, canvas nodes and note embeds | preview origin | its drawing, saved through the app page's bridge | unchanged; the bridge gains origin checks (§2.8) |
+| EmbedPDF | `pdf-page.html` (tabs, canvas nodes); in-document in note embeds | preview origin | its PDF, saved through `PDF_WRITE` | unchanged; same |
+| Office (ZetaOffice) | the dock's iframe in the app page; live embeds in preview documents; the thumbnail window | preview origin | its document, saved through `OFFICE_WRITE`; posts to `window.top` | unchanged; `window.top` becomes `clew-app://app`, still `'*'` until §2.8 |
+| `@reveal` vault deck | iframe to `clew-preview://vault/<sid>/…/index.html` | preview origin, unsandboxed by design | every vault file; its parent's DOM and `window.clew` | unchanged |
+| `@reveal` remote deck | iframe to an http(s) URL | the site's own | nothing of Clew's | unchanged |
+| Raw `<iframe>` in a note, vault HTML | relative `src` → `clew-preview://vault/<sid>/…` | preview origin, unsandboxed unless the author adds it | every vault file; `window.parent.clew`; the parent's DOM | unchanged |
+| Raw `<iframe>` in a note, remote | an http(s) URL | the site's own | nothing of Clew's | unchanged |
+| Raw `<iframe>` the author SANDBOXED (no `allow-same-origin`), or a sandboxed `srcdoc` | as written | `null` | assume the worst: CORS reads of vault files (fetch, module scripts, web fonts) as well as plain loads | **plain loads unchanged (`<img>`, classic `<script>`, stylesheets, navigation); CORS reads REFUSED** — the gap §2 closes |
+| `header-html` banner (Note Headers, a demo-vault plugin) | iframe behind the title | `sandbox="allow-scripts"` → `null` | as the row above | as the row above. The demo's `matrix-rain.html` uses no fetch, module scripts or fonts: unaffected. A user's banner that fetches vault data, or loads module scripts or fonts from the vault, loses them |
+| Plugin app surface | a classic script in the APP page (`__clew_plugin_app__`) | the app page's | everything the app page has | unchanged, except storage it kept under `file://` (§2.10) |
+| Plugin preview surface, vault scripts, note scripts | scripts inside preview documents | preview origin | as the reading view | unchanged; a script that posted to the render endpoints itself (none known, never documented) needs the token — it can ask as the client does |
+| `dataviewjs` | the render worker, not a frame | — | the vault model | unchanged |
+| Print view, office thumbnails | hidden windows, top-level preview documents | preview origin | as the reading view | unchanged |
+| Site export | static files | — | — | unchanged |
+
+**On iOS** (the iOS session's corrections): canvas web cards are
+`<iframe sandbox="allow-scripts allow-same-origin allow-forms"
+referrerpolicy="no-referrer">` — the remote site's own origin, a DIRECT
+child of the app page (the app document's `frame-src` allows http(s) for
+them); they reach nothing of Clew's by reads, and after step 0 nothing by
+messages either. EmbedPDF is `pdf-page.html` everywhere, note embeds and
+canvas scenes included (no in-document viewer). There is no ZetaOffice: the
+office dock and embeds are Quick Look thumbnails (`<img>`), and
+`OFFICE_WRITE` answers "not available". The print view is a hidden
+WKWebView with the preview document top-level; Quick Look renders office
+thumbnails natively. App settings live in localStorage under
+`clew-app://app` (the shim), which (c) does not touch.
+
+### 3.3 Confirmed: the token breaks nothing documented
+
+Only Clew's own UI code posts to `__clew_fragment__` / `__clew_block__`
+(canvas cards and portals, the floating panes, live block frames, canvas
+scenes); no plugin API or note API path reaches them, no demo-vault script
+or plugin does, and the manual never documented them.
+
+### 3.4 What is lost, and the ways back
+
+1. **Null-origin frames lose vault reads** (author-sandboxed iframes,
+   `header-html` banners that fetch). That loss IS the fix; without it a
+   sandboxed frame can read the vault. Ways back, per case: drop the
+   sandbox (the frame becomes a same-origin vault page with the note's own
+   trust — what `@reveal` decks and plain vault iframes already are);
+   inline the assets; or, later, a bridge app with a declared read grant.
+2. **A third-party app-surface plugin's localStorage/IndexedDB** starts
+   empty once. Ways back: the one-time localStorage copy (§2.10), or none.
+3. **A frame that is not on the preview origin, or not the window a
+   listener expects, is no longer heard** (§2.8 step 0, built): a remote or
+   sandboxed frame posting Clew's own message shapes to `window.top`, or a
+   child posting host messages to its parent. Nothing documented does this;
+   it is how an untrusted frame would act. Vault HTML on the preview origin
+   posting to `window.top` is still heard by the bridges (vault content,
+   trusted by design).
+
+For a vault HTML app that WANTS the bridge's isolation later, the way in is
+a compatibility shim inside the app frame that presents `window.clew` over
+the port, so code written against `window.parent.clew` keeps working —
+opt-in, never automatic.
+
+## 4. Vault code and trust: asked once per vault, per device
+
+Status: the owner's DECISION (2026-09-30), designed here for approval.
+Design only.
+
+### 4.1 What runs a vault's code today
+
+On both platforms, read from the code (Clew-boss and the iOS session
+confirmed it):
+
+- `.clew/scripts/*.js` are injected into EVERY preview, ungated.
+- Notes run their own code: inline `<script>`, `Script:` metadata, the
+  engine's ```` ```script ```` blocks, custom elements a note defines.
+- Vault plugins (`.clew/plugins/<id>`, which SHADOW a global plugin of the
+  same id) are enabled by the vault's own `vault-settings.json`, which
+  travels with it: engine surfaces run in the render worker (Node,
+  network), preview surfaces in previews, app surfaces in the APP PAGE with
+  IPC (on iOS, in the one frame the native bridge answers).
+- `dataviewJs` (the render worker: the vault's text, and the network) and
+  the Note API's `noteApi` gate are flags in that same file.
+- Exports run with the note's directory as their working directory, so a
+  `.jmarkdown/config.json` inside the vault can load engine extensions.
+- Previews carry no CSP, so any of it can `fetch()` vault content anywhere.
+
+So opening a vault someone sent you runs their code, before any bridge
+exists. (The shell panel is not in this list: it is the user's own shell.)
+
+### 4.2 The rule
+
+- **Per vault, per device.** On a device's first open of a vault, every
+  path in §4.1 starts OFF — restricted mode — and Clew asks once.
+- **The decision and every enablement live ON THE DEVICE** (userData
+  `vault-trust.json`; iOS: a native JSON in Application Support, reached
+  over the bridge, never localStorage), keyed by a device-side vault
+  identity (§4.3), never in the vault.
+- **The vault may only ASK.** The keys `vault-settings.json` carries today
+  (`plugins`, `noteApi`, `dataviewJs`) are read as a REQUEST list the
+  prompt shows, never as grants; changing a request never changes a grant.
+
+### 4.3 The device-side vault identity
+
+- Never chosen by the vault: an id stored inside it would let a crafted
+  vault claim another vault's trust.
+- Desktop: the root's realpath, with a fingerprint checked on open (the
+  root directory's device, inode and birth time), so a different vault
+  unpacked at a trusted vault's path asks again. A moved or renamed vault
+  asks again, once.
+- iOS: no absolute paths (the container path changes on every install,
+  measured): the container-relative path for a vault in Documents; the
+  security-scoped bookmark's provider-relative path for a vault in Files.
+- The bridge's app keys (§7) derive from this identity too, so an app's
+  origin — and its storage and grants — survive updates.
+
+### 4.4 What a restricted vault still does
+
+Everything that is Clew's own code over the vault's data works: rendering
+(the engine under Clew's generated config), maths, mermaid, TikZ, MetaPost
+and LaTeX figures, callouts, citations, cross-references; maps, PDFs (view
+and annotate), Excalidraw, office documents, canvases, embeds; ```query /
+```tasks / ```kanban, Dataview DQL and Bases (Clew's own parser, not eval),
+with editable cells and kanban drags; editing in every mode, search, the
+graph, backlinks, file operations, the shell panel; and the user's own
+global plugins where the user enabled them for this vault (§4.7).
+
+What does not run: vault scripts; a note's inline scripts, `Script:`
+files, ```` ```script ```` blocks and custom elements; vault plugins;
+```dataviewjs (refused BY NAME in place: "this vault's code is off —
+Trust…"); the Note API; app frames (a placeholder).
+
+How, in two layers:
+
+- **Nothing is served**: no vault scripts or vault preview surfaces
+  injected (`protocol.js`), no vault engine surfaces in the worker's config,
+  `CLEW_DATAVIEW_JS` off.
+- **Nothing inline runs**: a restricted vault's previews carry a CSP whose
+  `script-src` names only Clew's own script URLs (`/__clew_preview__/`,
+  `/__clew_assets__/`, enabled GLOBAL plugins under
+  `__clew_plugin_file__`) plus a hash for the template's one inline script
+  (the MathJax configuration), and no `'unsafe-inline'` — so a note's
+  `<script>` and its `onclick=` attributes do not execute. Every engine
+  feature that emits inline script is inventoried at build: the
+  vault-authored ones are exactly what restricted mode blocks; engine
+  boilerplate, if any, is allowed by hash.
+
+A TRUSTED vault's previews carry no `script-src` restriction: they behave
+as today (§4.10).
+
+### 4.5 The prompt
+
+- **When**: the first open of a vault on this device that CONTAINS
+  something that would run. A vault with no scripts, plugins, script
+  blocks or requests never asks — there is nothing to trust. The count comes
+  from the tree (`.clew/scripts`, `.clew/plugins`) and the indexer (notes
+  with scripts or ```dataviewjs, app embeds).
+- **What**: a sheet drawn by the app page (never inside a preview, where
+  vault content could imitate it): "This vault contains code: 3 scripts,
+  2 plugins (Charts, Header), 14 notes with scripts. It asks for the Note
+  API. A vault's code can read every note. Trust this vault on this Mac?
+  [Trust] [Keep restricted]", a Details disclosure naming the files, and —
+  only when the vault asks for it — "Let its scripts reach the internet"
+  (off by default, §4.9).
+- **Keep restricted**: a quiet indicator ("Restricted · Trust…") in the
+  status bar, and a placeholder wherever code would have run.
+- **iPad**: the same sheet in the VISUAL viewport (a long note or the
+  keyboard must not hide it), 44 pt targets, full screen on compact width.
+
+### 4.6 Managing and revoking
+
+- Settings → This vault → Trust: trusted on this device (a switch), and
+  the per-vault enablements — vault scripts, plugins, the Note API,
+  `dataviewJs`, network, apps and their grants — each on the device.
+- Settings → General → Trusted vaults: every vault this device trusts, to
+  revoke or forget.
+- Revoking reloads the vault in restricted mode: previews re-render, app
+  ports close.
+
+### 4.7 Global plugins
+
+The user installed them (userData): they are the user's code, not the
+vault's. Their per-vault ENABLE moves to the device and is NOT gated by
+trust — a restricted vault can use the user's own global plugins where the
+user switched them on for it; a vault's request to enable one is shown in
+the prompt and honoured only with a yes. A vault plugin of the same id
+shadows the global one only when the vault is trusted. Tier 2 (§11) keeps
+its own userData switch on top.
+
+### 4.8 Migration: the owner's existing vaults
+
+On the first launch after the change, every vault this device already
+knows (`openVaults` and `recentVaults`) is recorded as TRUSTED, and the
+enablements its `vault-settings.json` holds are copied into the device
+store — this device has already run that code, so nothing changes for the
+user: zero clicks. A one-time notice says what changed and where Trusted
+vaults live. The demo vault (Clew's own, copied from the app bundle) is
+trusted by construction. iOS does the same for the vaults in its list.
+Updates never ask again, because the identity (§4.3) survives them.
+
+### 4.9 Network: a CSP for previews
+
+- Every preview-origin HTML document Clew serves gets `connect-src 'self'
+  blob: data:` and `form-action 'none'` (plus `worker-src 'self' blob:`):
+  no `fetch`, XHR, WebSocket, EventSource or beacon to another host, and no
+  form posted off the machine.
+- Left open, because features need them: `img-src` (remote images, map
+  tiles — Leaflet loads tiles as images), `media-src`, `frame-src` (remote
+  iframes, `@reveal` decks, canvas web cards), `style-src`/`font-src` (a
+  note's own stylesheet links).
+- Clew's own preview features use no remote `fetch` (EmbedPDF, MathJax,
+  mermaid, mp-tikz, ZetaOffice and Excalidraw assets are all local) — to be
+  proved at build by running the protocol tour and the sweep under the CSP
+  with zero violations.
+- A device-side "Allow network" per vault (trusted vaults only) lifts
+  `connect-src` to any host.
+- The residual, said plainly: a trusted script can still leak data in the
+  URL of an image or a frame it loads; closing that would break remote
+  images and maps. The CSP stops the easy path (posting vault content to a
+  server), not a determined script the user chose to trust. The render
+  worker (`dataviewJs`, engine surfaces) has Node's network, which no CSP
+  reaches: trust is its only gate.
+
+### 4.10 Compatibility, once trusted
+
+A trusted vault behaves as today (§3), with one difference: its scripts
+cannot reach another host with `fetch()` until its network switch is on.
+A restricted vault shows placeholders where code would have run, and
+nothing else in §3.2 changes.
+
+## 5. The bridge: what it is for
+
+Notes can embed custom apps — a timer, a flashcard drill, a chart editor, a
+data-entry form — as HTML in an iframe, and those apps want to reach into
+Clew: read the note they sit in, keep their own state, write back, open a
+link. The bridge gives them ONE way to do that, in two tiers (the owner's
+stated preference over sanitised native embeds, HANDOVER §1):
+
+- **Tier 1, the default**: the Note API (`renderer/note-api.js`) extended
+  to embedded apps with a per-app identity and per-app grants. No Node, no
+  `.clew/`, nothing a shared vault could turn into code execution.
+- **Tier 2, for power users**: Node, reached only through a user-installed
+  plugin, desktop only, off by default.
+
+What an app frame is NOT: a note's own scripts, vault scripts
+(`.clew/scripts`), preview plugins, and plain vault HTML in an iframe all
+keep what they have today (§3) — vault content at the vault's own trust,
+same-origin with the preview. The bridge is an opt-in embed kind; nothing
+becomes an app by being detected.
+
+## 6. Threat model
+
+What is protected: the vault's contents (reads) and integrity (writes);
+the trust-bearing files that turn into code (`.clew/plugins`,
+`.clew/scripts`, `vault-settings.json`) and everything in userData (grants,
+global plugins, settings); Node, i.e. the machine; the user's attention
+(a frame drawing a fake Clew dialog); other apps' data.
+
+- **A malicious shared vault.** Someone sends a vault; opening it must
+  grant NOTHING — no Node, no write to anything trust-bearing, no grant.
+  A vault can only ASK: its app manifests request capabilities, and the
+  user grants them on this machine (grants live in userData, never in the
+  vault — §9). Today a vault's code already runs on open (§4.1): the
+  owner's decision puts all of it behind one per-device question (§4).
+- **A compromised remote frame.** An https page a note embeds, or an app
+  that loads a third-party script. It can post to any window it can reach
+  (`window.top`, its parent). It gets no bridge unless the user granted its
+  ORIGIN explicitly; everything else that listens is closed to it by §2.8
+  step 0 (built).
+- **An app seeking escalation.** A granted app asking for more: writing
+  under `.clew/` (never Tier 1 — that is Tier 2 by definition), running
+  arbitrary commands, reading beyond its grants, claiming another app's
+  identity, keeping a port after revocation, flooding the host. Answers:
+  identity is the frame's ORIGIN, issued by Clew's own scheme handler
+  (§7); every method checks the grant at call time; revocation closes the
+  port; size and rate limits (§8).
+- **A confused deputy.** The host doing, with its own authority, what an
+  app merely named: a path outside what the user meant (writes are text
+  types, inside the vault, never `.clew/`, and `notes.create` never
+  overwrites); the Note API's `command` method (runs ANY command — not in
+  Tier 1); `open` of an external target (the existing external-link rules
+  and `main/open-file.js#planOpen` refusals apply, executables refused by
+  name); a write racing the user's own editing (writes go through the
+  editor pool, §10).
+
+- **Denial of service.** An app frame can freeze or crash what it runs
+  in. On desktop, Chromium's site isolation puts a `clew-frame` origin in
+  its own renderer process, so a runaway app costs its frame. On iOS 18
+  WKWebView has NO site isolation: every app frame runs on the app page's
+  web-content process and main thread, so a tight loop freezes Clew and a
+  runaway allocation gets the content process killed (the app page
+  reloads), and no port-level kill switch can pre-empt a busy thread (the
+  iOS session's point). Mitigations, not a cure: app frames count against
+  the live-frame cap (8 on iOS), and an app frame scrolled far off screen
+  is unloaded.
+
+Out of scope, stated: code the VAULT runs at the vault's trust (note
+scripts, vault scripts, preview plugins) — it is same-origin with the
+preview by design, and the bridge does not try to contain it; and the
+machine itself (malware already running).
+
+## 7. App frames: where they live and who they are
+
+- **The embed**: `![[Apps/Timer|app]]` — a vault FOLDER holding
+  `clew-app.json` (the manifest: `id`, `name`, `version`, `entry`,
+  `capabilities`) and the app's files; `|app` is the consent keyword, as
+  `|live` is for office embeds. Obsidian shows a link. (A remote app:
+  `![[https://example.com/app|app]]`, §9.)
+- **Its own origin**: served at `clew-frame://<key>/…` — a scheme of its
+  own, registered in the same one `registerSchemesAsPrivileged` call
+  (`standard`, `secure`, `supportFetchAPI`, `corsEnabled`, `stream`), whose
+  handler serves ONLY the app's folder (realpath clamp, read-only), never
+  `/<sid>/` and never another app's files. `<key>` is derived by Clew,
+  never by the vault: a hash of the device-side vault identity (§4.3 — no
+  absolute paths on iOS, where the container moves on every install) and
+  the app folder's vault-relative path, written as a DNS label (lowercase
+  hex, at most 63 characters). Two vaults' apps never share an origin,
+  even with the same manifest id, and an app keeps its origin — its
+  storage and its grants — across updates. Being its own origin answers "how
+  does an isolated app read its own files": same-origin, like any web page
+  reads its own; what it cannot do is read the VAULT (a different origin,
+  no ACAO for it — §2.6), which it asks for through the bridge.
+- **The frame element**: created by the preview client inside the note's
+  flow, `sandbox="allow-scripts allow-same-origin allow-forms"` — safe with
+  `allow-same-origin` because the origin is NOT the parent's — which still
+  denies top navigation, popups, downloads and modal dialogs.
+- **Identity**: the app page is the host (never the preview document,
+  which is vault content and the app's parent). The app's injected bridge
+  client (`clew-bridge.js`, served by the `clew-frame` handler the way
+  `api.js` is injected into previews) posts `{hello, v: [1]}` to
+  `window.top`; the app page, seeing `event.origin` =
+  `clew-frame://<key>` — unforgeable, only Clew's handler serves it —
+  knows WHICH app; it finds WHERE by walking `event.source.parent` to the
+  view that holds it (the office dock's `#tabForEmbed` walk), which gives
+  the note path; and it answers with a fresh `MessageChannel` port,
+  transferred to `event.source` with targetOrigin `clew-frame://<key>`.
+  From then on the port IS the embed: one port per frame instance, the
+  capability checks keyed on (app, note). The preview document never sees
+  the port (a transfer targeted at the child's origin), and cannot create
+  a document on the app's origin.
+
+## 8. The protocol
+
+- Over the port, JSON-clonable messages. Request `{v: 1, id, method,
+  params}`; answer `{v: 1, id, ok: true, result}` or `{v: 1, id, ok: false,
+  error: {code, message}}`; event `{v: 1, event, payload}` (note changed,
+  theme, grant changed, find requests).
+- Versioning: `hello` offers the versions the client speaks; the host's
+  reply names the one chosen and the GRANTED capabilities, plus `tier2:
+  false|<plugin ids>` — capability detection, so an app degrades rather
+  than failing (and iOS answers `tier2: false`).
+- Error codes: `denied` (not granted, or revoked), `unknown-method`,
+  `bad-params`, `too-large`, `rate-limited`, `not-found`, `conflict` (an
+  editor conflict the user must resolve), `unavailable` (e.g. Tier 2 on
+  iOS), `internal`.
+- Limits, per port: a request of at most 1 MB serialised (a note larger
+  than the live-edit ceiling, 500 KB, is read whole but written through the
+  pool only); at most 32 requests in flight; a token bucket of 50
+  requests/s (burst 200), writes 5/s; beyond them `rate-limited`, and a port
+  that keeps flooding is closed and shown as such.
+- The client exposes `window.clew` in the app with the Note API's names
+  (`clew.notes.read(…)`), `clew.ready` (the hello), `clew.can(cap)`.
+
+## 9. Capabilities, grants, revocation
+
+**Tier 1, v1**, each a named capability over the Note API's own methods
+(one dispatcher: `handleApiRequest` gains a caller `{kind: 'app', app,
+sourcePath, grants}` beside today's `{kind: 'note', sourcePath}`, and each
+method names the capability it needs):
+
+| Capability | Methods | Notes |
+|---|---|---|
+| (always) | `context`, theme events | the note path and theme; nothing else |
+| `note.read` | `notes.read`, `properties.get` on the EMBEDDING note | |
+| `notes.read` | the same on any note or text file | |
+| `query` | `notes.list`, `search`, `index.get`, `index.backlinks` | |
+| `app.data` | `kv.*` in the app's OWN namespace (`apps/<id>/…` in `clewdata.json`) | travels with the vault, visibly |
+| `note.write` | edits to the embedding note, through the editor pool | §10 |
+| `notes.write` | the same on other notes | |
+| `notes.create` | new notes; never overwrites | |
+| `links.open` | `open` on internal targets; external ones through the existing rules | |
+| `find` | find both ways: Clew's find reaches the app's text (the app answers find requests); the app asks Clew to find in the note | |
+| `clipboard` | copy across the boundary: the host writes the app's text to the clipboard, and hands a paste to the app | |
+| `editor.insert` | insert at the note editor's cursor, through the pool | |
+
+On iOS the clipboard goes through native `UIPasteboard` over the bridge
+(WebKit ties `navigator.clipboard` writes to a user activation that the
+message hop loses), and a paste reaches an app only from a paste gesture in
+Clew's own UI — a programmatic pasteboard read raises iOS's paste alert
+every time.
+
+Never in Tier 1: `command` (arbitrary commands), any path under `.clew/`,
+settings, plugins, binary writes, the OS opener beyond the external-link
+rules, Node.
+
+- **Grant UX**: the first time an app embed appears, the app page draws —
+  over the frame, outside it, so the app cannot forge it — "Timer (from this
+  vault) asks to: read this note, keep its own data. [Allow] [Deny]"; the
+  frame gets no port until answered. A manifest asking for more later asks
+  again, for the new capabilities only. Remote apps: the same, naming the
+  origin, and never granted by default.
+- **Storage**: userData `app-grants.json`, keyed by (vault identity on this
+  machine, app folder, manifest id) → capabilities, granted when. Never in
+  the vault; a vault sent to someone arrives with no grants.
+- **Visible and revocable**: Settings → This vault → Apps lists each app,
+  its grants and its live embeds; revoking closes every port of that app at
+  once (its calls then answer `denied`). An indicator shows while an app
+  with write grants holds a live port.
+
+## 10. Writes
+
+Every write goes through the editor's save path, never around it: if the
+note is open, the edit is a transaction on its pooled EditorState (undo
+covers it, the dirty dot shows, auto-save writes it, a conflict banner
+stops it when the disk has diverged — `conflict` to the app); if it is not,
+through the same pool entry opened headless, so the same code decides. Main
+snapshots the pre-write content into `.clew/history` on every write, as it
+does for the user's own. Text types only, inside the vault, never `.clew/`.
+
+## 11. Tier 2: Node
+
+- Only through a USER-INSTALLED plugin (the global plugins dir in
+  userData — never a vault plugin) that declares a `node` surface, enabled
+  per vault — and that enabling, for Node, is recorded in userData, not in
+  `vault-settings.json`.
+- Off by default under a global switch in userData ("Allow plugins to run
+  Node for apps").
+- Out of process: the plugin's node module runs in a forked plain-node
+  child per session, as the engine does; the app reaches it through the
+  bridge (capability `node:<plugin-id>`, granted per app per vault), and
+  the host relays calls to the child — the plugin defines its own RPC; no
+  raw Node reaches a frame.
+- Approval pinned to a content hash of the plugin's files; a changed hash
+  stops it until re-approved; a visible indicator while any Node child
+  runs; a kill switch (Settings, and the indicator's menu) that stops them
+  all.
+- Desktop only: iOS answers `tier2: false`, and apps check `clew.can()`.
+
+## 12. How it relates to what exists
+
+- **The Note API**: the same dispatcher, the same method names; notes keep
+  `window.clew` in previews. Apps are a second caller kind with their own
+  grants.
+- **Vault scripts, preview plugins, note scripts**: unchanged, and NOT
+  apps — they get no port. They are vault content in the preview; a script
+  there cannot obtain an app's port (the transfer targets the app's origin).
+- **Plugins**: Tier 2 rides on the plugin trust boundary (installed
+  globally, enabled per vault) with the extra userData gate.
+- **Migration**: a vault HTML app written against `window.parent.clew`
+  moves by adding a manifest and the `|app` keyword; a shim in the bridge
+  client presents the old shape over the port, so its code keeps working
+  (§3.4). Nothing moves automatically.
+
+## 13. iOS
+
+Measured on WebKit by the iOS session (2026-09-30, a throwaway build):
+
+- **The port handshake works**: a grandchild `clew-frame://keya` frame's
+  hello reached the app page (`event.source.parent.parent === window`),
+  the host transferred a fresh MessageChannel port with targetOrigin
+  `clew-frame://keya`, messages flowed both ways; in the frame the host's
+  origin read `clew-app://app`.
+- **A third scheme with arbitrary hosts works**: each host its own tuple
+  origin and a secure context; same-origin fetch of its own files; storage
+  isolated per host; the parent's DOM out of reach. One more
+  `setURLSchemeHandler`; the navigation policy adds `clew-frame` to the
+  SUBFRAME allowlist, never the main frame.
+- **Order**: the bridge must not ship on iOS before §2.6's narrowed ACAO —
+  in the scratch build an app frame could still read vault files through
+  the `*` ACAO.
+- `window.webkit.messageHandlers.clew` exists in EVERY frame (WebKit
+  defines it); it refuses non-main frames since iOS `8ceb533`, and the
+  design never relies on its absence.
+- No Tier 2; grants and the trust store in Application Support; the grant
+  and trust prompts in the visual viewport; the DoS limit in §6.
+
+## 14. Test plan
+
+- Unit: the capability map per method; the grant store; manifest parsing;
+  the rate limiter; the protocol codec; the `clew-frame` path clamp.
+- Smoke (defensive — our own guards, no attack pages): an app fixture with
+  a manifest; no port before a grant, `denied` for an ungranted method, the
+  port after; revocation closes it; a preview document asking for a port
+  gets none; writes land through the pool (undo takes them back, history
+  keeps the old text); `.clew/` refused; the limits answer `too-large` and
+  `rate-limited`.
+
+## 15. Phases
+
+0. Built: the caller token (§1), the receiver checks (§2.8 step 0).
+1. Vault trust (§4) — independent of the bridge and worth shipping on its
+   own, since it closes an exposure that exists today; before any app
+   feature, because app grants rest on it.
+2. (c), the app page's own origin (§2), then §2.8 step 2.
+3. Tier 1, read side: the `clew-frame` scheme and handler, the bridge
+   client, the port handshake, `note.read`/`notes.read`/`query`/
+   `app.data`/`links.open`, grants (UX, storage, revocation).
+4. Tier 1, write side: `note.write`/`notes.write`/`notes.create`/
+   `editor.insert` through the pool; `find`; `clipboard`.
+5. Remote apps (explicit origin grants).
+6. Tier 2 (desktop).
+
+## 16. Docs impact
+
+The manual gains a "Trusting a vault" page (restricted mode, the prompt,
+Trusted vaults, the network switch — every user meets it on the first
+shared vault they open), an "Apps in notes" chapter (the manifest, `|app`, the
+capabilities, the grant prompt, limits, what remote apps need), the Note
+API page names the caller kinds, the plugins page the `node` surface and
+its switch, and a security page states the trust boundaries (§6) in the
+user's terms.
+
+## Open questions for the owner
+
+1. **The `header-html` banner.** It is sandboxed (`allow-scripts`), and the
+   plugin's own comment gives the intent: "it may animate, it may not read
+   anything of ours". After §2 that is exactly true. Keep it so and say so
+   in the manual (recommended: the demo banner is unaffected, and "anything
+   a browser can draw" stays true), or give banners `allow-same-origin`
+   (full vault access, the note's trust) — cost: one line in a plugin users
+   have copied, and a trust change the manual must state.
+2. **Plugin storage under `file://`.** Copy localStorage across once (cost:
+   a hidden window at the first launch after the upgrade, ~50 lines, one
+   release; IndexedDB not covered), or accept that a third-party plugin's
+   stored preferences reset once (no Clew plugin is affected).
+3. **§2.8 step 2 (the targets) as a second commit after the move**
+   (recommended), or fold it into the move. (Step 0, the receivers, is
+   built.)
+4. **iOS subframes**: drop `clew-app` from the subframe allowlist there
+   (§2.7), to match desktop.
+5. **The embed**: `![[folder|app]]` with a `clew-app.json` manifest
+   (proposed), or a fence, or `@app[…]`.
+6. **App data**: a namespace in `clewdata.json` (travels with the vault,
+   visible — proposed), or files in the app's own folder.
+7. **Remote apps in v1**, or later (proposed: phase 4).
+8. **Grant granularity**: per app per vault (the brief, proposed), or per
+   embed.
+9. **Exports of a restricted vault**: ignore the vault's own
+   `.jmarkdown/config.json` (it can load engine extensions — code), using
+   only the user's global configuration (recommended), or keep the full
+   cascade and gate only the preview.
+10. **Vaults with no code never ask** (recommended), or every first open
+    shows the trust state.
+11. **Migration**: known vaults trusted silently with a one-time notice
+    (recommended), or one confirming click per device.
