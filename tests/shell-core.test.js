@@ -24,6 +24,7 @@ import assert from 'node:assert/strict';
 import os from 'node:os';
 import {
 	PYTHON_PTY_SCRIPT, ShellSessions, userShell, resizeLine, hasPythonPty, resetPythonProbe,
+	loginShell, shellArgv0,
 } from '../src/main/shell-core.js';
 
 /** A spawn that records instead of forking. */
@@ -125,6 +126,39 @@ test('without a pty there is no sidechannel, and a resize is simply declined', (
 	assert.deepEqual(calls[0].args, ['-i']);
 	assert.deepEqual(calls[0].options.stdio, ['pipe', 'pipe', 'pipe']);
 	assert.equal(sessions.resize('w1', 100, 40), false);
+});
+
+test('a login shell only on macOS, where a Dock-launched app has the bare PATH', () => {
+	assert.equal(loginShell('darwin'), true);
+	assert.equal(loginShell('linux'), false);
+	assert.equal(loginShell('win32'), false);
+});
+
+test('a login shell is marked the way login(1) marks one: a dash before argv[0]', () => {
+	assert.equal(shellArgv0('/bin/zsh', true), '-zsh');
+	assert.equal(shellArgv0('/usr/local/bin/fish', true), '-fish');
+	assert.equal(shellArgv0('/bin/zsh', false), '/bin/zsh');
+});
+
+test('the pty helper execs the SHELL with the argv[0] it is handed', () => {
+	const { spawnFn, calls } = fakeSpawn();
+	const info = new ShellSessions().open('w1', openOptions({ spawnFn, pty: true, login: true }));
+	assert.equal(calls[0].args[2], info.shell);
+	assert.equal(calls[0].args[3], shellArgv0(info.shell, true));
+	assert.ok(calls[0].args[3].startsWith('-'));
+	// the program is the shell's path; only argv[0] carries the dash
+	assert.match(PYTHON_PTY_SCRIPT, /os\.execvp\(sh, args\)/);
+	assert.match(PYTHON_PTY_SCRIPT, /args = \[argv0, '-i'\]/);
+	const plain = fakeSpawn();
+	new ShellSessions().open('w1', openOptions({ spawnFn: plain.spawnFn, pty: true, login: false }));
+	assert.equal(plain.calls[0].args[3], plain.calls[0].args[2]);
+});
+
+test('without a pty a login shell still gets its dash, through spawn\'s argv0', () => {
+	const { spawnFn, calls } = fakeSpawn();
+	const info = new ShellSessions().open('w1', openOptions({ spawnFn, pty: false, login: true }));
+	assert.deepEqual(calls[0].args, ['-i']);
+	assert.equal(calls[0].options.argv0, shellArgv0(info.shell, true));
 });
 
 test('keystrokes go down stdin, and a session that is gone swallows them', () => {

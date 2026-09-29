@@ -80,7 +80,7 @@ note API, plugins, and every settings key.
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
   dialect scanner's constructs and grammar, live edit's model, reveal rule,
-  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer) — 838 tests. DOM/UI work is
+  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer) — 843 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
@@ -529,6 +529,10 @@ browser-window-focus).
   jmacs/Godot editor (`apps/desktop/src/shell.js`) at their request:
   the child is `python3 -c <script>`, and the script calls stdlib
   `pty.fork()`, execs `$SHELL -i` in the slave and proxies a select loop.
+  On macOS that shell is a LOGIN shell (argv[0] `-zsh`, as Terminal and
+  iTerm start theirs): an app opened from the Dock inherits launchd's bare
+  PATH, and path_helper and `brew shellenv` run only in a login shell — the
+  owner's `ls` → `gls: command not found`, 2026-09-29.
   node-pty would be a compiled module rebuilt for every Electron version
   on every platform Clew ships to; this is stdlib everywhere but Windows,
   which falls back to plain pipes (commands run, no prompt, no colour, and

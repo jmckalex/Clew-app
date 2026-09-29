@@ -26,6 +26,13 @@
 // `alive=true` — the session survives the panel closing, which is the point
 // of keeping it.
 //
+// And `login-path=true` on macOS: the shell is a LOGIN shell, so path_helper
+// (/etc/zprofile) has put /usr/local/bin on its PATH — which proves nothing
+// unless the app itself lacks it, so run this with PATH=/usr/bin:/bin:
+// /usr/sbin:/sbin, what an app opened from the Dock inherits. Before
+// 2026-09-29 the shell was `-i` only, and `false` there is the owner's `ls` →
+// `gls: command not found`.
+//
 // Run: CLEW_SMOKE=/tmp/shell.png CLEW_SMOKE_SCRIPT=smoke/shell-panel-scenario.js
 //      CLEW_SMOKE_VAULT=<any vault> CLEW_SMOKE_LOG=1 electron .
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -75,6 +82,11 @@ window.__clewSmokeInput = [
 	{ wait: 500 },
 	{ combo: { key: 'Enter' } },
 	{ wait: 3000 },
+	// The answer is computed by the shell, so the typed line never holds it.
+	{ text: 'echo clew-lp=$(printenv PATH | grep -c /usr/local/bin)' },
+	{ wait: 300 },
+	{ combo: { key: 'Enter' } },
+	{ wait: 2000 },
 	// From inside the terminal: the window dispatcher must claim it first.
 	{ combo: { key: '`', modifiers: 2 } },
 	// Slack for the reports below, which are the point of the run.
@@ -99,6 +111,8 @@ window.__clewSmokeInput = [
 		+ ' pty=' + (window.__clew.shellPty ?? 'unknown'));
 	console.log('smoke-shell: buffer-tail=' + JSON.stringify(
 		bufferText().split('\n').filter((l) => l.trim()).slice(-4).join(' | ')));
+	await until(() => /clew-lp=\d/.test(bufferText()), 10000);
+	console.log('smoke-shell: login-path=' + /clew-lp=[1-9]/.test(bufferText()));
 
 	// ---- phase 3: the chord closes it, and the shell keeps running ------
 	await until(() => !workspaceStore.shell.open);
