@@ -166,12 +166,13 @@ build succeeded and waits for the owner to add it to the Internal group.
   pages' reply listeners) hear only the window they expect. Checked by
   `bridges-scenario.js` and `office-bridges-scenario.js` (new: every
   Excalidraw and office path, nested senders included) beside the full
-  check. Found on the way, NOT fixed (each its own item): (1) opening a
-  note that embeds a drawing EMPTIES the vault's Excalidraw library — the
-  read-only embed reports its empty library through `onLibraryChange`
-  (`src/excalidraw/page.js`, not gated by `viewMode`; measured 1 item
-  before, 0 after); (2) a LIVE office embed's edits never mark its note's
-  tab dirty — `zeta-modified` arrives (from the preview origin, 10 of them
+  check. Found on the way: (1) opening a note that embeds a drawing
+  EMPTIED the vault's Excalidraw library — the read-only embed reported its
+  empty library through `onLibraryChange` — FIXED the same night (gated on
+  `viewMode`; measured 1 item before and after, where it was 1 then 0;
+  `bridges-scenario.js` asserts `library-after-embed=1`); (2) NOT yet
+  fixed, queued after the frame-bridge design: a LIVE office embed's edits
+  never mark its note's tab dirty — `zeta-modified` arrives (from the preview origin, 10 of them
   in the run) but `officeDock.isDirty(tab)` stays false, so the close guard
   would not ask; the save itself works.
 - **Wheel over the live preview pane** (fixed 2026-09-29): live-blocks'

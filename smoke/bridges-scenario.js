@@ -12,7 +12,9 @@
 // and `library-set items=1`. Run 2 (the scenario sees a stored library): the
 // tab's `library=1` — the library the first run saved came back — and the
 // drawing embedded in a note, two frames deep: `smoke-bridges-frame embed:
-// ready=true injected=1` (resolve-files from a NESTED sender). A refused
+// ready=true injected=1` (resolve-files from a NESTED sender), and
+// `library-after-embed=1` — the read-only embed left the library alone (it
+// emptied it until 2026-09-29). A refused
 // bridge shows as `ready=false` (the page waits 30 s on an unanswered ask)
 // or `injected=0`. (The embed is left out of run 1: the tab's save
 // re-renders the note embedding the drawing, which replaces that frame.)
@@ -36,3 +38,9 @@ if (second) {
 }
 await sleep(6000);
 console.log(`smoke-bridges: run=${second ? 2 : 1} stored-library=${stored?.length ?? 0}`);
+if (second) {
+	// The read-only embed must not save its empty library over the vault's.
+	await sleep(3000);
+	const after = await ipc.invoke('clew:excalidraw-lib-get').catch(() => []);
+	console.log(`smoke-bridges: library-after-embed=${after?.length ?? 0}`);
+}

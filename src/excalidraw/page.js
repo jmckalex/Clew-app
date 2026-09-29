@@ -190,7 +190,11 @@ async function boot() {
 			},
 			onChange: viewMode ? undefined : onChange,
 			viewModeEnabled: viewMode,
-			onLibraryChange: (items) => {
+			// Not in a read-only embed: it mounts with an EMPTY library (it
+			// never loads one — see above), and Excalidraw reports that as a
+			// change, which saved [] over the vault's library every time a
+			// note embedding a drawing was opened (measured 2026-09-29).
+			onLibraryChange: viewMode ? undefined : (items) => {
 				ask({ type: 'excalidraw-library-save', items }).catch(() => {});
 			},
 			// Excalidraw's imperative handle. Kept on window so the smoke
