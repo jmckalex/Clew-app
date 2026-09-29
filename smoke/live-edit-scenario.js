@@ -91,4 +91,8 @@ setTimeout(() => {
 setTimeout(() => {
 	log(`alt-click path=${pathNow()} source=${JSON.stringify(lineEl('#demo')?.textContent)}`);
 }, 3800);
-setTimeout(() => log(`followed path=${pathNow()}`), 7500);
+// Read from the ACTIVE tab: a vault's first open greets with its Welcome
+// note (the reload path included, since 2026-09-29 — and a smoke boot is
+// that path), and following a link to a note already open FOCUSES its tab
+// rather than duplicating it, so this tab keeps its own path.
+setTimeout(() => log(`followed path=${workspaceStore.activeTab()?.path}`), 7500);
