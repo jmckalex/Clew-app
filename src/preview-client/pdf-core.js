@@ -3,8 +3,11 @@
 // the standalone viewer page (pdf-page.js) that the file tab and canvas PDF
 // nodes load in an iframe.
 //
-// Both live on the clew-preview:// origin, and in both cases window.parent is
-// the app page — so one save bridge serves them both.
+// Both live on the clew-preview:// origin, and the save bridge is on the APP
+// page, which is always window.TOP: a tab's or canvas node's viewer page and a
+// note's embed are its children, a canvas SCENE's viewer (canvas-embed.js) a
+// grandchild — so saves, dirty reports and their answers go by window.top
+// (the Excalidraw page's precedent), never window.parent.
 //
 // Annotations autosave INTO the vault's PDF file, the way Clew-iOS does it:
 // there is no Save button to miss, and the file on disk (and therefore
@@ -30,7 +33,7 @@ const pendingSaves = new Map();
 window.addEventListener('message', (event) => {
 	const msg = event.data;
 	// From the window the save went to (window.parent), no other.
-	if (!msg || msg.source !== 'clew-pdf-host' || msg.type !== 'pdf-save-result' || event.source !== window.parent) return;
+	if (!msg || msg.source !== 'clew-pdf-host' || msg.type !== 'pdf-save-result' || event.source !== window.top) return;
 	const pending = pendingSaves.get(msg.id);
 	if (!pending) return;
 	pendingSaves.delete(msg.id);
@@ -48,7 +51,7 @@ function saveToVault(rel, bytes) {
 				reject(new Error('save timed out'));
 			}, 30_000),
 		});
-		window.parent.postMessage({ source: 'clew-pdf', type: 'pdf-save', id, path: rel, bytes }, '*');
+		window.top.postMessage({ source: 'clew-pdf', type: 'pdf-save', id, path: rel, bytes }, '*');
 	});
 }
 
@@ -64,11 +67,14 @@ function reportDirty() {
 	const dirty = [...liveHandles].some((h) => h.isDirty());
 	if (dirty === reportedDirty) return;
 	reportedDirty = dirty;
-	window.parent.postMessage({ source: 'clew-pdf', type: 'pdf-dirty', dirty }, '*');
+	window.top.postMessage({ source: 'clew-pdf', type: 'pdf-dirty', dirty }, '*');
 }
 window.addEventListener('message', (event) => {
 	const msg = event.data;
-	if (event.source !== window.parent || msg?.source !== 'clew-pdf-host' || msg.type !== 'pdf-flush') return;
+	// From the app page (window.top; renderer/pdf-frames.js asks nested viewers
+	// directly) or this document's host.
+	if ((event.source !== window.top && event.source !== window.parent)
+		|| msg?.source !== 'clew-pdf-host' || msg.type !== 'pdf-flush') return;
 	for (const h of liveHandles) h.flush?.();
 });
 

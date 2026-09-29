@@ -106,10 +106,13 @@ class ClewPreviewView extends ClewElement {
 		const old = this.#iframe;
 		const frame = document.createElement('iframe');
 		frame.className = 'preview-frame';
-		// No sandbox attribute: it would block Chromium's PDF viewer plugin for
-		// ![[x.pdf]] embeds. Isolation still holds — previews load from the
-		// clew-preview:// origin (the app is file://), window.open is denied
-		// globally, and main blocks all main-frame navigation after load.
+		// No sandbox attribute, and the reason is fetch (CLAUDE.md): a
+		// sandboxed frame has an opaque origin, and a preview document fetches
+		// clew-preview:// URLs constantly — canvas scenes, maps' data, plugins
+		// reading their own note. (It used to be Chromium's PDF plugin; PDFs
+		// are EmbedPDF now.) Isolation holds without it — previews load from
+		// the clew-preview:// origin, not the app's; window.open is denied
+		// globally; main blocks every main-frame navigation after load.
 		// EmbedPDF's fullscreen control calls requestFullscreen() inside this
 		// frame, which is refused unless the frame is allowed it.
 		frame.allow = 'fullscreen';

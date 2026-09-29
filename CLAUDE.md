@@ -790,9 +790,17 @@ except where the selection touches a construct. The durable design is
   gitignore exception outranking the blanket `dist/` rule.
   One implementation, `preview-client/pdf-core.js`, serves all
   three surfaces: note embeds upgrade `<embed class="pdf-embed">` in place
-  (`pdf-embed.js`), while the file tab and canvas nodes — which point an
-  iframe at a raw PDF and so have no document to upgrade — load
-  `pdf-page.html` from `__clew_assets__/clewpdf/`. Heavy wasm belongs in a
+  (`pdf-embed.js`), while the file tab, canvas nodes and a canvas SCENE's
+  PDF nodes (`canvas-embed.js`, 2026-09-30 — until then Chromium's plugin,
+  which could not annotate) — which point an iframe at a raw PDF and so have
+  no document to upgrade — load `pdf-page.html` from
+  `__clew_assets__/clewpdf/`. The save bridge is on the app page, which is
+  always `window.top`, so pdf-core posts saves and dirty reports THERE (a
+  scene's viewer is a grandchild), and `pdf-frames.js` finds a dirty viewer
+  however deep under a view (`holds`) and asks IT to flush; pdf-page answers
+  the app page as well as its parent. `plugins: true` stays for what still
+  reaches Chromium's viewer: a portal's raw-PDF miniature and a note's own
+  `<iframe src="x.pdf">`. Heavy wasm belongs in a
   clew-preview document, never the app page (a lesson Clew-iOS paid for on
   a real iPad); on desktop that falls out for free, and those documents
   carry no CSP. Feed it an ArrayBuffer via `openDocumentBuffer` — URL
