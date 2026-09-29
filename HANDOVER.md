@@ -17,9 +17,28 @@ same-second history ordering, an engaged canvas node's affordances and
 ring, floaters measuring the visual viewport, and the engine reached as
 `#jmarkdown/*` — plus the owner's own report that day: the shell panel now
 starts a LOGIN shell on macOS (a Dock-launched app has launchd's bare PATH,
-so `ls` → `gls` was not found). NOT pushed unless the log says so. **843
-tests green, `node scripts/build.js` green**; the live sweep ran hidden
-and green, cross-reference parity included. Both live-edit worktrees
+so `ls` → `gls` was not found). Pushed to `fc2c79f` (owner's decision via
+the coordinator). **843 tests green, `node scripts/build.js` green**; the
+live sweep ran hidden and green, cross-reference parity included.
+
+**0.11.1 — version committed (`5f38ce3`, NOT pushed), NOT BUILT.** The
+owner asked for the release to be rebuilt with this round; 0.11.1 rather
+than 0.11.0 so the notarized 0.11.0 files in `out/` stay put (no tag or
+published page names 0.11.0 — the newest tag is `v0.9.0`). The engine and
+EmbedPDF re-syncs changed nothing. The packaging run itself was refused by
+the assistant session's auto-mode permission check (a production deploy),
+so it is the owner's to run, sequentially, from a quiet-ish machine:
+
+    cd ~/Source/Clew/Clew-app && export MPTIKZ_SRC=/nonexistent
+    node scripts/package.js --dmg --sign --notarize --universal   # ~28 min
+    node scripts/package.js --dmg --sign --notarize               # arm64, ~20
+    node scripts/package.js --dmg --sign --notarize --x64         # ~20
+    node scripts/package.js --win && node scripts/package.js --linux
+    smoke/boot-test.sh out/mac-arm64/Clew.app/Contents/MacOS/Clew
+
+then push `5f38ce3` and this file. 0.11.1 boots INVISIBLY under the harness;
+the boot test waits for load < 6 and aborts rather than run on a busy
+machine. Both live-edit worktrees
 are REMOVED (2026-09-29; each was clean and its tip already in its repo's
 `main`). The `feat/live-edit` branches survive — here locally and on origin,
 in Clew-docs locally only — and are fully merged, so deleting them loses
@@ -93,8 +112,15 @@ build succeeded and waits for the owner to add it to the Internal group.
 
 ## 1. STILL OPEN
 
-- **The 0.11.0 boot test's live-edit half** (above) — `smoke/boot-test.sh`
-  on a quiet machine, before the release is called done.
+- **The release: 0.11.1 is to be built and boot-tested** (§0) — it
+  supersedes the 0.11.0 boot test, whose live-edit half was never run.
+- **Esc cannot leave an engaged NOTE card** — pre-existing (identical at
+  `e88aff6`), found by the docs session, owner's decision whether to fix.
+  Focus is inside the card's clew-preview iframe, and client.js forwards
+  only ⌘/⌃ chords to the host, so a bare Esc never reaches the canvas
+  (measured: engaged after two presses, no other input). The docs
+  session's first reading — "one Esc disengages AND deselects" — was its
+  scenario's later click on empty canvas, which does both.
 - **The owner's QA pass of live edit** (not automatable): typing at speed in
   a long note; ⌘Z across a conceal/reveal; ⌘F over concealed text (matches
   inside widgets do not highlight — the selection moving reveals them);
