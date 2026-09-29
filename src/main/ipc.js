@@ -256,7 +256,11 @@ export function registerIpc() {
 		const current = s.vaults.loadState('vault-settings.json') ?? {};
 		current[key] = value;
 		s.vaults.saveState('vault-settings.json', current);
-		if (key === 'jmarkdownProject' || key === 'normalSyntax' || key === 'pandocCitations') {
+		// dataviewJs reaches the worker only at spawn (CLEW_DATAVIEW_JS), so
+		// it needs the fresh standby too — without it the toggle waited for
+		// the vault's next opening.
+		if (key === 'jmarkdownProject' || key === 'normalSyntax' || key === 'pandocCitations'
+			|| key === 'dataviewJs') {
 			s.renderService.reconfigure({ [key]: value === true });
 		}
 		// Bibliography settings rewrite the engine config the same way.
