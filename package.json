@@ -9,6 +9,9 @@
   "homepage": "https://jmckalex.org",
   "desktopName": "clew.desktop",
   "main": "dist/main/main.js",
+  "imports": {
+    "#jmarkdown/*": "./vendor/jmarkdown/src/*"
+  },
   "scripts": {
     "dev": "node scripts/vendor-jmarkdown.js && node scripts/vendor-embedpdf.js && node scripts/dev.js",
     "build": "node scripts/build.js",

@@ -304,7 +304,7 @@ const MARKED = path.join(process.env.JMARKDOWN_SRC
 
 test('italics: parity with the engine\'s own tokenizer', { skip: !existsSync(MARKED) && 'the engine master (and its marked) is not on this machine' }, async () => {
 	const { Marked } = await import(pathToFileURL(MARKED).href);
-	const { italics, strong } = await import('../vendor/jmarkdown/src/syntax-modifications.js');
+	const { italics, strong } = await import('#jmarkdown/syntax-modifications.js');
 	globalThis.global ??= globalThis;
 	const marked = new Marked();
 	marked.use({ extensions: [italics, strong] });

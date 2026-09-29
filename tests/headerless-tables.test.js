@@ -167,7 +167,7 @@ const MARKED = path.join(process.env.JMARKDOWN_SRC
 /** The 1-based line ranges the engine lexes as tables. */
 async function engineTables(doc) {
 	const { Marked } = await import(pathToFileURL(MARKED).href);
-	const { markedExtendedTablesHeaderless } = await import('../vendor/jmarkdown/src/marked-extended-tables-headerless.js');
+	const { markedExtendedTablesHeaderless } = await import('#jmarkdown/marked-extended-tables-headerless.js');
 	const marked = new Marked();
 	marked.use(markedExtendedTablesHeaderless());
 	const out = [];
