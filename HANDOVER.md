@@ -124,6 +124,25 @@ build succeeded and waits for the owner to add it to the Internal group.
   (`smoke/pdf-flush-scenario.js`, `pdf-flush-close-scenario.js`). NOT
   covered: a window RELOAD (the app page itself goes), and a canvas embed's
   morph-failed reload.
+- **Protocol hardening** (owner-approved, cautious; 2026-09-29): 1/3 random
+  session ids (`b561983`) and 2/3 cross-origin reads only for
+  `clew-preview://vault` and `null` (`3575f24`, `main/preview-cors.js`) —
+  both checked against a full baseline (protocol tour, live sweep, figures,
+  global plugin, canvas, PDF, live blocks): nothing changed, no CORS error.
+  **3/3 (refuse `Origin: null` on the render POSTs) STOPPED:** a scratch
+  build logging each render POST's Origin saw NONE — no Origin header on
+  the app page's POSTs (canvas cards, 55 block frames) nor on a preview
+  document's (a canvas scene's cards). So the handler cannot tell callers
+  apart by Origin, the measure has nothing to key on, and the existing
+  "refuse an http(s) Origin" guard on those routes cannot be relied on (not
+  probed further). It also means 2/3 in practice sends no
+  Access-Control-Allow-Origin at all — and every consumer still works.
+  Telling callers apart needs a mechanism, the owner's choice: (a) a
+  per-session token the app page holds (via IPC) and the host hands to
+  preview documents, required on render POSTs; (b) the app page reaches the
+  renderer over IPC, never the protocol, and preview documents carry a
+  host-issued token; (c) the app page moves to its own custom origin (as
+  iOS's `clew-app://`). The frame-bridge design builds on whichever.
 - **Wheel over the live preview pane** (fixed 2026-09-29): live-blocks'
   `scroll-chained=false` was real, not the invisible harness (a visible run
   agreed); bisected to 818cf32 — the pane floated over the frame and ate the
