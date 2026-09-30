@@ -46,6 +46,10 @@ export const CH = {
 	PLUGINS_LIST: 'clew:plugins-list',
 	PLUGINS_REVEAL_GLOBAL: 'clew:plugins-reveal-global',
 	VAULT_SETTINGS_SET: 'clew:vault-settings-set',
+	// invoke: this device's trust in the window's vault (main/vault-trust.js):
+	// GET → { trusted, refused: [names] }; SET { trusted } → { trusted }.
+	VAULT_TRUST_GET: 'clew:vault-trust-get',
+	VAULT_TRUST_SET: 'clew:vault-trust-set',
 
 	// invoke: vault key-value store (clewdata.json — the note API's state)
 	KV_GET: 'clew:kv-get',
@@ -102,6 +106,11 @@ export const CH = {
 	// The watcher hit its descriptor budget: part of the vault is not being
 	// watched, so the explorer and previews can go stale there (vault.js).
 	EV_WATCH_CAPPED: 'clew:ev-watch-capped',
+	// The engine refused a note's code in a vault this device does not trust
+	// (render-service.js#noteRefusals): { path, names }.
+	EV_NOTE_CODE_REFUSED: 'clew:ev-note-code-refused',
+	// This window's vault was trusted or revoked: { trusted }.
+	EV_VAULT_TRUST_CHANGED: 'clew:ev-vault-trust-changed',
 	// The shell panel: one real shell per window (main/shell-core.js).
 	SHELL_OPEN: 'clew:shell-open',
 	SHELL_WRITE: 'clew:shell-write',

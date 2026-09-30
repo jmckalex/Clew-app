@@ -6,52 +6,30 @@ edit design AS BUILT is `docs/dev/live-edit.md` (§12 lists every decision in
 force and the follow-ons left out). This file is rewritten each session —
 keep it short, and prefer deleting a settled item to explaining it again.
 
-## PAUSED — 2026-09-30, owner offline (read this first)
+## 2026-09-30, afternoon — the interim trust guard landed (read this first)
 
-Stopped at a safe point at the coordinator's request. **`main` is clean at
-`88543bc`; nothing is pushed** (origin/main `005e41b`). Unpushed on main,
-oldest first: `49f2b0c` PDF-unification design, `bf5d212` PDF 1/4 (portal
-thumbnails), `2798f41` frame-bridge revision (§4 agreed by iOS), `b9f21c6`
-PDF 2/4 (a note's own PDF iframes → Clew's viewer; baseline + tour
-identical, 895/895), `88543bc` engine sync: jmarkdown `edcc28a` — the
-`Run note code` switch (+ `c0b9158`, argument-array tool calls) on the
-master's at-migration, NOT pushed there either (no upstream).
+Resumed after the owner's pause. **Nothing is pushed** (origin/main
+`005e41b`); commits stay local until the owner says. On main since the
+overnight queue: `49f2b0c` PDF-unification design, `bf5d212` PDF 1/4
+(portal thumbnails), `2798f41` frame-bridge revision, `b9f21c6` PDF 2/4 (a
+note's own PDF iframes → Clew's viewer), `88543bc` engine sync — jmarkdown
+`edcc28a`, the `Run note code` switch (+ `c0b9158`, argument-array tool
+calls; the master's at-migration, not pushed there either), then the
+interim vault-trust guard (CLAUDE.md, "The interim vault-trust guard"; it
+covers the engine's note-code paths ONLY).
 
-**Work in progress: branch `wip/interim-trust-guard` (`75f1baa`, NOT green
-— do not merge as is).** The owner-approved INTERIM guard: a vault first
-opened on this device renders with the engine's `Run note code` off; known
-vaults (openVaults + recentVaults at the first launch after the change)
-stay trusted silently; a banner — only once something was refused by name —
-offers "Trust this vault"; trust lives in userData, keyed by §4.3's
-realpath + {dev, ino, birth} fingerprint, so full §4 extends it without
-migration. It covers ONLY the engine's note-code paths — not vault scripts,
-plugins, dataviewJs, the Note API or a CSP. On the branch: the store
-(`main/vault-trust.js`, 8 tests), `main/trust.js`, paths, render-service
-(config key, default CLOSED, `setNoteCode`, the `data-jmd-refused` scan →
-`EV_NOTE_CODE_REFUSED`), channels. **To finish** (the commit message lists
-it): session.js onOpen → `setNoteCode(trust.isTrusted(root))` before
-openVault (until then EVERY vault renders restricted); main.js `migrate()`
-before the first window, trust on openDemoVault/createVaultDialog; ipc
-`VAULT_TRUST_GET/SET`; export.js runs a restricted vault's HTML/LaTeX
-export from `paths.restrictedExport` (its `.jmarkdown/config.json` holds
-only `"Run note code": false`, so the user's global config still applies —
-verify relative paths still resolve against the note); renderer banner as a
-persistent item in `.clew-notices`, Settings → This vault toggle,
-frame-layer restale on `EV_VAULT_TRUST_CHANGED`; then measure: fixture with
-every construct (first open: all refused + banner; after Trust: all run;
-known vault unchanged; render-dump demo + study as known vaults
-byte-identical), CLAUDE.md + this file, docs line + iOS notes to the
-coordinator.
-
-**Then, in order:** the export-refresh bug (every Clew write of a NEW file
-into the vault calls `refreshTree()` — writeNote when the file is new,
-saveAttachment, EXPORT_NOTE/EXPORT_SITE/CANVAS_EXPORT_PNG via a
-refresh-if-inside helper, kv-store's first clewdata.json); the watcher
-investigation (report only), the shell-panel glyph/`$` bugs, PDF phases 3–4.
-**Do not fix the engine's `func(…)` bug** (any `func(` in prose aborts a
-build): another agent has it from `~/Source/Clew/JMARKDOWN-FUNC-BUG.md`;
-re-vendor with `npm run sync-engine` when it lands. Resume only on the
-coordinator's word.
+**Next, in the coordinator's order:** the export-refresh bug (every Clew
+write of a NEW file into the vault calls `refreshTree()` — writeNote when
+the file is new, saveAttachment, EXPORT_NOTE/EXPORT_SITE/CANVAS_EXPORT_PNG
+via a refresh-if-inside helper, kv-store's first clewdata.json) and the
+watcher investigation report (below); the shell-panel glyph/`$` bugs; a
+LOCK toggle on Meta Bind / Web Awesome inputs (design note to the
+coordinator first — which widgets, where lock state lives, Obsidian's
+tolerance of an unknown argument); PDF phases 3–4. **Do not fix the
+engine's `func(…)` bug** (any `func(` in prose aborts a build): another
+agent has it (`~/Source/Clew/JMARKDOWN-FUNC-BUG.md`); when the coordinator
+says it landed, `npm run sync-engine` between items and re-run the render
+dump.
 
 Watcher findings so far (ph341: a new root-level file invisible 6+ min):
 chokidar 5 (no fsevents) re-reads a directory on any event and asks

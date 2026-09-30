@@ -80,7 +80,7 @@ note API, plugins, and every settings key.
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
   dialect scanner's constructs and grammar, live edit's model, reveal rule,
-  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX) — 888 tests. DOM/UI work is
+  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store — 903 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
@@ -853,7 +853,43 @@ except where the selection touches a construct. The durable design is
   `main/pdf-fonts.js` — 139 MB, so never shipped; `src/shared/pdf-fonts.json`
   (2.6 KB, regenerate with `scripts/gen-pdf-fonts.js`) names the files.
 - Exports (`export.js`) use the note's own directory as cwd — the user's
-  normal jmarkdown config cascade, NOT the Clew preview config.
+  normal jmarkdown config cascade, NOT the Clew preview config — except
+  for a vault this device does not trust (below), whose exports run from
+  `paths.restrictedExport` (userData), a folder whose one config key turns
+  `Run note code` off: the user's global ~/.jmarkdown still applies, a
+  vault's own `.jmarkdown/config.json` never does (it can load engine
+  extensions). The engine resolves relative paths from the note's folder,
+  not the cwd (measured: HTML and LaTeX byte-identical from either).
+- **The interim vault-trust guard** (owner's approval 2026-09-30;
+  `docs/dev/frame-bridge.md` §4 is the full design it grows into). A note
+  can make the engine run code — script blocks, `Math.…`/`calc(…)` in
+  prose, `math.…(`, `function(…)` blocks, Mathematica, the `Load …` and
+  `Extension …` header keys — so the generated config carries the engine's
+  `Run note code` switch (jmarkdown `note-code.js`), set from the DEVICE's
+  answer: `main/vault-trust.js` (electron-free, tested) keeps
+  `<userData>/vault-trust.json`, keyed by the root's realpath with a
+  {dev, ino, birth} fingerprint checked on every open (a different vault
+  unpacked at a trusted path asks again), never anything the vault carries.
+  The first launch with it records every vault in openVaults/recentVaults
+  as trusted (`trust.migrate`, before any window); the demo vault and a
+  vault created from the welcome screen are trusted by construction;
+  anything else starts restricted. `session.trusted` is decided in
+  `hooks.onOpen` BEFORE the render service writes its first config
+  (`renderService.setNoteCode`, default CLOSED). Off, the engine refuses
+  each construct by name in place (`[data-jmd-refused]`, styled in
+  preview.css); `render-service#noteRefusals` reads those names from each
+  rendered document and sends `EV_NOTE_CODE_REFUSED`, and only then does
+  `renderer/trust-banner.js` show "This vault's notes asked to run code
+  … [Trust this vault]" — a persistent item in the notices column, drawn by
+  the app page, never by a preview. `VAULT_TRUST_GET/SET` (Settings → This
+  vault has the toggle) flip it through `setNoteCode` → reconfigure;
+  frame-layer restales on `EV_VAULT_TRUST_CHANGED`. It covers the engine's
+  note-code paths ONLY — vault scripts, vault plugins, dataviewJs, the Note
+  API and a preview CSP keep their current switches until full §4, which
+  extends this store and identity rather than replacing them. Under
+  CLEW_SMOKE the store writes nothing, so a fresh CLEW_USER_DATA opens every
+  fixture restricted (a scenario that needs a KNOWN vault lists it under
+  `recentVaults` in that userData's clew-settings.json — `smoke/README.md`).
 - Per-vault render options live in `<vault>/.clew/vault-settings.json`
   (`jmarkdownProject: true` re-enables the engine's own-line `[[file.md]]`
   inclusion; `pandocCitations: true` turns on `[@key]`/`@key` — off by

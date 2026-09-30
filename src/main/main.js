@@ -20,6 +20,7 @@ import { fileURLToPath } from 'node:url';
 import { registerIpc } from './ipc.js';
 import { appMenu } from './menu.js';
 import { settings } from './settings.js';
+import { trust } from './trust.js';
 import { CH } from '../shared/channels.js';
 import { registerPreviewScheme, installPreviewProtocol } from './protocol.js';
 import { VaultSession, focusedSession, sessionForVault } from './session.js';
@@ -217,6 +218,8 @@ export async function createVaultDialog(fromSession = null) {
 	});
 	if (result.canceled || !result.filePath) return null;
 	fs.mkdirSync(result.filePath, { recursive: true });
+	// Made here, by its owner, empty: nothing in it came from anyone else.
+	trust.trust(result.filePath, 'created');
 	return openVaultAnywhere(result.filePath, { preferSession: fromSession }).vaults.info;
 }
 
@@ -230,13 +233,19 @@ export async function createVaultDialog(fromSession = null) {
  */
 export function openDemoVault(fromSession = null) {
 	let target = paths.demoVault;
+	let fresh = false;
 	if (app.isPackaged) {
 		target = path.join(app.getPath('documents'), 'Clew Demo Vault');
 		if (!fs.existsSync(target)) {
 			fs.cpSync(paths.demoVault, target, { recursive: true });
+			fresh = true;
 		}
 	}
 	if (!fs.existsSync(target)) return null;
+	// Clew's own vault (§4.8) is trusted by construction: a copy made just
+	// now from the bundle, or one this device has never decided about. A
+	// decision already recorded — a revoke — stands.
+	if (fresh || !trust.entries()[fs.realpathSync(target)]) trust.trust(target, 'demo');
 	return openVaultAnywhere(target, { preferSession: fromSession }).vaults.info;
 }
 
@@ -299,6 +308,17 @@ app.whenReady().then(async () => {
 	// renderer (close tab). See src/main/menu.js.
 	appMenu.init({ rootDir });
 	if (process.env.CLEW_DEV) watchRendererDist();
+
+	// The interim vault-trust guard (vault-trust.js): the first launch that
+	// has it records every vault this device already knew as trusted — it
+	// has run their code already — so nothing changes for their owner. Only
+	// a vault first opened AFTER this asks. Before any window: the windows
+	// being restored below are exactly those vaults.
+	trust.migrate([
+		...(settings.get('openVaults') ?? []),
+		...(settings.get('recentVaults') ?? []),
+		settings.get('lastVault'),
+	]);
 
 	// Smoke runs open EXACTLY the given vault — never the user's restored
 	// set. The rest of the isolation lives in settings.js#save: under

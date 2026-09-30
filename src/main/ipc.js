@@ -33,6 +33,7 @@ import { listSnapshots, readSnapshot } from './history.js';
 import { listPlugins } from './plugins.js';
 import { ShellSessions } from './shell-core.js';
 import { paths } from './paths.js';
+import { trust } from './trust.js';
 import { planOpen, pathFromFileUrl } from './open-file.js';
 import fs from 'node:fs';
 import nodePath from 'node:path';
@@ -255,6 +256,23 @@ export function registerIpc() {
 
 	// Vault-level settings; render-affecting keys reconfigure the engine.
 	handle(CH.VAULT_SETTINGS_GET, (s) => s.vaults.loadState('vault-settings.json') ?? {});
+	// Trust is the DEVICE's (vault-trust.js), never a vault setting: nothing
+	// the vault carries reaches it, and it is set only from this window's own
+	// chrome — the banner and Settings → This vault.
+	handle(CH.VAULT_TRUST_GET, (s) => ({
+		trusted: s.trusted === true,
+		refused: s.trusted ? [] : s.renderService.refusedNames(),
+	}));
+	handle(CH.VAULT_TRUST_SET, (s, { trusted }) => {
+		if (!s.vaults.root) return { trusted: false };
+		if (trusted === true) trust.trust(s.vaults.root);
+		else trust.revoke(s.vaults.root);
+		s.trusted = trusted === true;
+		// Rewrites the engine config and re-renders every open preview.
+		s.renderService.setNoteCode(s.trusted);
+		s.send(CH.EV_VAULT_TRUST_CHANGED, { trusted: s.trusted });
+		return { trusted: s.trusted };
+	});
 	handle(CH.VAULT_SETTINGS_SET, (s, { key, value }) => {
 		const current = s.vaults.loadState('vault-settings.json') ?? {};
 		current[key] = value;
@@ -327,7 +345,7 @@ export function registerIpc() {
 	// sessionId: the reading-view PDF prints this session's own
 	// clew-preview:// document, and the protocol resolves it by sid.
 	handle(CH.EXPORT_NOTE, (s, { path, format, outFile }) =>
-		exportNote({ win: s.win, vaults: s.vaults, sessionId: s.id, callerToken: s.callerToken, relPath: path, format, outFile }));
+		exportNote({ win: s.win, vaults: s.vaults, sessionId: s.id, callerToken: s.callerToken, relPath: path, format, outFile, trusted: s.trusted }));
 
 	// The whole vault as a static website. `outDir` (smoke tests) skips the
 	// dialog; otherwise the user picks a folder and the site lands in a

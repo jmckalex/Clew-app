@@ -34,6 +34,20 @@ if (process.env.CLEW_USER_DATA) {
 	app.setPath('userData', process.env.CLEW_USER_DATA);
 }
 
+// The same in dev and packaged: both are the DEVICE's, never a vault's.
+function trustPaths() {
+	return {
+		// Which vaults this device trusts to run their notes' code
+		// (main/vault-trust.js; docs/dev/frame-bridge.md §4.2).
+		vaultTrust: path.join(app.getPath('userData'), 'vault-trust.json'),
+		// A restricted vault's exports run from here, not from the note's
+		// folder: the engine's config cascade then sees the user's global
+		// ~/.jmarkdown and this directory's one key, never a vault's own
+		// .jmarkdown/config.json (export.js).
+		restrictedExport: path.join(app.getPath('userData'), 'restricted-export'),
+	};
+}
+
 export const paths = app.isPackaged
 	? {
 		engineWorker: path.join(process.resourcesPath, 'engine', 'jmarkdown', 'src', 'watch-worker.js'),
@@ -59,6 +73,7 @@ export const paths = app.isPackaged
 		// by a vault, which is why installing there is a one-time act while
 		// enabling stays per-vault (main/plugins.js).
 		globalPlugins: path.join(app.getPath('userData'), 'plugins'),
+		...trustPaths(),
 	}
 	: {
 		engineWorker: require.resolve('jmarkdown/src/watch-worker.js'),
@@ -90,4 +105,5 @@ export const paths = app.isPackaged
 		// Same userData location in dev, so a plugin installed while
 		// developing is the same one the packaged app finds.
 		globalPlugins: path.join(app.getPath('userData'), 'plugins'),
+		...trustPaths(),
 	};

@@ -924,3 +924,19 @@ body.clew-sidenotes-on section.footnotes, body.clew-sidenotes-on .jmd-endnotes {
 }
 .clew-sidenote p { margin: 0 0 0.4em; }
 .clew-sidenote-number { font-weight: 600; color: var(--preview-accent); }
+
+/* A note's code the engine did not run, in a vault this device has not
+   trusted (jmarkdown note-code.js; main/vault-trust.js): the marker stands
+   where the output would have been, so it reads as a placeholder rather
+   than as the note's own prose. */
+.jmd-refused {
+	color: var(--preview-muted);
+	border: 1px dashed var(--preview-border);
+	border-radius: 4px;
+	padding: 0 0.35em;
+	font-size: 0.9em;
+}
+div.jmd-refused {
+	display: table;   /* a block, shrink-wrapped to its text */
+	margin: 0.3em 0;
+}
