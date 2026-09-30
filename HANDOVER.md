@@ -9,7 +9,7 @@ keep it short, and prefer deleting a settled item to explaining it again.
 ## 2026-09-30 night — the coordinator's queue is DONE (read this first)
 
 **origin/main is `18c5e45`** (pushed by the coordinator at the owner's
-request); PDF phase 4 is on main but NOT pushed. The coordinator
+request); PDF phase 4 and everything after it is on main but NOT pushed. The coordinator
 ("Clew-boss") pushes when the owner asks. **Do not package**, and do not
 ask the owner about packaging, until the coordinator says so. The release
 is cut fresh from main once every project is done; `release/0.11.2` was
@@ -37,6 +37,11 @@ before and after unless noted):
   `smoke-pdf-leak` lines. Its first run found the `![[x.pdf]]` placeholder
   loading the PDF itself before its upgrade; in the preview it now carries
   `data-src`. iOS must take wikilinks.js and pdf-embed.js TOGETHER.
+
+- iOS sync #3's three upstream fixes: `5306e93` (fs-utils loads with no
+  `process` global), `db50f57` (web-PDF failure headlines state no size
+  limit; `insecure-url` has one) and `2588285` (kanban columns are
+  border-box: 790 px, four on an iPad portrait pane).
 
 The watcher fix (`b9e5416`) is verified in the app as well
 (`watch-two-windows-scenario.js`, `export-refresh-scenario.js` blind and
