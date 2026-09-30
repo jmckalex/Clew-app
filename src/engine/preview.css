@@ -791,6 +791,11 @@ td.clew-q-cell:hover { background: rgba(168, 130, 255, 0.08); }
 }
 .kanban-col {
 	flex: 1 0 190px;
+	/* The basis alone does not size the board in WebKit: its max-content
+	   comes from the CARDS, so a board of short cards stayed at the text
+	   column there (3 of 4 columns — measured on iPad). A min-width enters
+	   intrinsic sizing in both engines. */
+	min-width: 190px;
 	max-width: 260px;
 	background: color-mix(in srgb, var(--preview-border) 22%, transparent);
 	border: 1px solid var(--preview-border);
