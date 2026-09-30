@@ -858,8 +858,31 @@ except where the selection touches a construct. The durable design is
   `wrapPreviewDocument` and the fragment route: `#page=N` and the author's
   sizes kept, the note's folder resolving relative paths — a live-edit block
   finds it through `renderService.blockSourcePath`); a site export keeps the
-  author's iframe. `plugins: true` stays until web PDFs are served
-  (`docs/dev/pdf-unification.md` phases 3-4). A PORTAL's PDF node is a
+  author's iframe. **A WEB PDF** a note's frame names (§4 of
+  `docs/dev/pdf-unification.md`, 2026-09-30) is fetched by CLEW, not the
+  page — REGISTRATION, not a proxy: the rewrite registers the URL for the
+  render's session (`main/remote-pdfs.js`, `session.remotePdfs`) and the
+  frame becomes `pdf-page.html?…&readonly=1` on
+  `/<sid>/__clew_remote_pdf__/<sha256(url)>`, a route that serves only
+  hashes this session registered (404 otherwise; 502 JSON naming a
+  failure). The fetcher (`main/remote-fetch.js`, Node http(s) — Electron's
+  `net` shares cookies and cannot pin) resolves first and vets EVERY answer
+  (`main/remote-guard.js`: loopback, private, link-local/metadata, CGNAT,
+  multicast, reserved, documentation, and every IPv6 form carrying one),
+  PINS the connection to a vetted address, re-vets each of ≤5 redirects,
+  sends no cookies/auth/referer, and wants a 200 PDF (`%PDF-` in 1024
+  bytes, 100 MB counted while streaming, 10/20/120 s) — resolver and
+  transport injected, so tests/remote-*.test.js need no network. The copy
+  lives ON THE DEVICE (`main/remote-pdf-cache.js`, `paths.remotePdfs`,
+  sha256(url) → .pdf + .json, daily conditional revalidation, 1 GB LRU),
+  never in a vault, whose `.clew/` travels and could carry a planted one.
+  The viewer is read-only (`pdf-core` `readonly`: EmbedPDF's own
+  `disabledCategories`, no autosave) under a strip — Save a copy to the
+  vault (the cached bytes via `saveAttachment`), Open in browser, Reload —
+  and names each failure; both actions name the HASH, and main looks the
+  URL up in the sender's registrations (under CLEW_SMOKE, Open logs
+  `smoke-open-external:` instead). A site export keeps the author's iframe.
+  `plugins: true` stays until phase 4. A PORTAL's PDF node is a
   first-page picture (`main/pdf-thumbs.js`: an offscreen `pdf-page.html?
   thumb=1` renders page 1 with EmbedPDF's `renderPage`; cached at the
   mirrored `.clew/cache/pdf-thumbs/<rel>.png`, mtime-keyed, one job at a

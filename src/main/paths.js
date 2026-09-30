@@ -45,6 +45,10 @@ function trustPaths() {
 		// ~/.jmarkdown and this directory's one key, never a vault's own
 		// .jmarkdown/config.json (export.js).
 		restrictedExport: path.join(app.getPath('userData'), 'restricted-export'),
+		// Web PDFs a note's frames name, fetched by Clew and cached for the
+		// whole DEVICE (remote-pdf-cache.js) — never in a vault, whose .clew/
+		// travels and could carry a planted copy.
+		remotePdfs: path.join(app.getPath('userData'), 'remote-pdfs'),
 	};
 }
 

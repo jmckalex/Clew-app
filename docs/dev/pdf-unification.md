@@ -1,8 +1,12 @@
 # One PDF viewer — retiring Chromium's plugin
 
-Status: PROPOSED (2026-09-30), design only; the owner approves before any
-code. Worked through with the iOS session, which moved the web-PDF cache
-out of the vault (§4) and wrote the iPad's half (§8).
+Status: APPROVED (2026-09-30; all five open questions as recommended).
+Built on desktop: phase 1 portal thumbnails (§2), phase 2 a note's own
+vault-PDF frames (§3), phase 3 web PDFs (§4 — main/remote-guard.js,
+remote-fetch.js, remote-pdf-cache.js, remote-pdfs.js; the read-only viewer
+in pdf-page.js). Phase 4 (§6, `plugins: true` goes) next. Worked through
+with the iOS session, which moved the web-PDF cache out of the vault (§4)
+and wrote the iPad's half (§8).
 
 The goal: EmbedPDF is the ONLY PDF viewer, everywhere, so `plugins: true`
 (main.js) can go. The owner's position: they do not embed web PDFs

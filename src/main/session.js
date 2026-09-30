@@ -73,6 +73,9 @@ export class VaultSession {
 		/** Does this device trust the open vault's notes to run code? The
 		 *  interim guard (vault-trust.js): the engine's note-code paths only. */
 		this.trusted = false;
+		/** Web PDFs this session's renders named: sha256(url) → url
+		 *  (remote-pdfs.js). The route serves these and nothing else. */
+		this.remotePdfs = new Map();
 
 		this.vaults.hooks = {
 			onOpen: (root) => {

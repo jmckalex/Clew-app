@@ -50,6 +50,10 @@ export const CH = {
 	// GET → { trusted, refused: [names] }; SET { trusted } → { trusted }.
 	VAULT_TRUST_GET: 'clew:vault-trust-get',
 	VAULT_TRUST_SET: 'clew:vault-trust-set',
+	// invoke: a web PDF the window's renders registered (main/remote-pdfs.js),
+	// named by its hash — { key } → { path } / { url }.
+	REMOTE_PDF_SAVE_COPY: 'clew:remote-pdf-save-copy',
+	REMOTE_PDF_OPEN: 'clew:remote-pdf-open',
 
 	// invoke: vault key-value store (clewdata.json — the note API's state)
 	KV_GET: 'clew:kv-get',

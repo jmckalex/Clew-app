@@ -34,6 +34,7 @@ import { listPlugins } from './plugins.js';
 import { ShellSessions } from './shell-core.js';
 import { paths } from './paths.js';
 import { trust } from './trust.js';
+import { registeredRemoteUrl, saveRemoteCopy } from './remote-pdfs.js';
 import { planOpen, pathFromFileUrl } from './open-file.js';
 import fs from 'node:fs';
 import nodePath from 'node:path';
@@ -272,6 +273,18 @@ export function registerIpc() {
 		s.renderService.setNoteCode(s.trusted);
 		s.send(CH.EV_VAULT_TRUST_CHANGED, { trusted: s.trusted });
 		return { trusted: s.trusted };
+	});
+	// Web PDFs (remote-pdfs.js): the viewer names a HASH; the URL is looked
+	// up in this window's own registrations, never taken from the message.
+	handle(CH.REMOTE_PDF_SAVE_COPY, (s, { key }) =>
+		({ path: saveRemoteCopy(s, key, settings.get('attachmentFolder') || 'Attachments') }));
+	handle(CH.REMOTE_PDF_OPEN, (s, { key }) => {
+		const url = registeredRemoteUrl(s, key);
+		if (!url || !/^https?:\/\//i.test(url)) throw new Error('Not a web PDF open in this window');
+		// A scenario must never launch a browser: it reads this line instead.
+		if (process.env.CLEW_SMOKE) console.log(`smoke-open-external: ${url}`);
+		else shell.openExternal(url);
+		return { url };
 	});
 	handle(CH.VAULT_SETTINGS_SET, (s, { key, value }) => {
 		const current = s.vaults.loadState('vault-settings.json') ?? {};
