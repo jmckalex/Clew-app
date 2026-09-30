@@ -112,8 +112,11 @@ note API, plugins, and every settings key.
   this is the only assertion a menu change can carry), and REAL input:
   a scenario queues `window.__clewSmokeInput =
   [{click:{x,y}} | {tripleClick:{x,y}} | {move:{x,y}} | {text:'abc'} |
-  {combo:{key,modifiers}} | {wait:ms}]` (`move` is a bare pointer move —
-  hover; `modifiers` on it makes a ⌘-hover), dispatched over CDP
+  {combo:{key,modifiers}} | {wait:ms} | {frameClick:{match,selector}}]`
+  (`move` is a bare pointer move — hover; `modifiers` on it makes a
+  ⌘-hover; `frameClick` clicks the centre of an element INSIDE a preview
+  frame whose URL contains `match` — cross-origin, so the scenario cannot
+  measure it — resolved at dispatch time), dispatched over CDP
   `Input.dispatch*` — `webContents.sendInputEvent` NEVER reaches OOPIFs
   (i.e. every preview iframe), and combos need real modifier keydowns
   around the letter. Each key carries a REAL `keyCode`, because xterm —

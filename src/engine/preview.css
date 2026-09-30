@@ -647,6 +647,27 @@ wa-color-picker.clew-mb { display: inline-block; }
 wa-progress-bar.clew-mb-display { display: inline-block; width: 160px; vertical-align: middle; }
 .clew-mb-slider { display: inline-flex; align-items: center; gap: 8px; vertical-align: middle; }
 .clew-mb-slider wa-slider, .clew-mb-slider input[type='range'] { width: 160px; }
+/* `INPUT[…(locked)…]` (engine/meta-bind.js): the widget and its padlock,
+   one group. Locked is `inert` (see preview-client/meta-bind.js), drawn as
+   the dimmed look a disabled control has, with the closed padlock saying
+   why. */
+.clew-mb-lockable { display: inline-flex; align-items: center; gap: 2px; vertical-align: middle; }
+.clew-mb-lockable > .clew-mb[inert] { opacity: 0.55; }
+.clew-mb-lock {
+	display: inline-flex; align-items: center; justify-content: center;
+	min-width: 32px; min-height: 32px; padding: 0;
+	border: none; border-radius: 6px; background: none;
+	color: var(--preview-muted); cursor: pointer;
+}
+.clew-mb-lock:hover { color: var(--preview-text); background: var(--preview-code-bg); }
+.clew-mb-lock:focus-visible { outline: 2px solid var(--preview-accent); outline-offset: 1px; }
+.clew-mb-lock svg { width: 15px; height: 15px; }
+.clew-mb-lock[aria-pressed='true'] .clew-mb-lock-open,
+.clew-mb-lock[aria-pressed='false'] .clew-mb-lock-closed { display: none; }
+.clew-mb-lock[aria-pressed='false'] { color: var(--preview-accent); }
+@media (pointer: coarse) {
+	.clew-mb-lock { min-width: 44px; min-height: 44px; }
+}
 .clew-mb-value { font-size: 0.85em; color: var(--preview-muted); min-width: 2em; }
 .clew-mb-view { border-bottom: 1px dotted var(--preview-muted); }
 .clew-mb-refused { color: var(--preview-muted); font-size: 0.85em; }

@@ -143,3 +143,34 @@ test('the inline tokenizer claims the syntax; fences behave', () => {
 	assert.match(plain, /clew-mb-block/);
 	assert.match(plain, /<wa-switch/);
 });
+
+test('`locked` renders the widget inert beside a padlock that unlocks it', () => {
+	const decl = parseInputDeclaration('number(locked):rating');
+	assert.equal(decl.locked, true);
+	assert.equal(parseInputDeclaration('number(Locked, addLabels):rating').locked, true, 'any case, among other flags');
+	assert.equal(parseInputDeclaration('number:rating').locked, undefined);
+
+	const html = inputHtml('number(locked):rating');
+	assert.match(html, /^<span class="clew-mb-lockable"><wa-number-input [^>]*value="7" inert><\/wa-number-input>/);
+	assert.match(html, /<button type="button" class="clew-mb-lock" aria-pressed="true" aria-label="Unlock rating"/);
+	assert.match(html, /clew-mb-lock-closed/);
+	assert.match(html, /data-edit-field="rating"/, 'the edit contract is unchanged');
+
+	for (const declaration of ['toggle(locked)', 'slider(locked)', 'text(locked)', 'textArea(locked)', 'date(locked)',
+		'time(locked)', 'rating(locked)', 'color(locked)', 'inlineSelect(locked, option(a))']) {
+		assert.match(inputHtml(`${declaration}:rating`), /^<span class="clew-mb-lockable">[\s\S]* inert[\s\S]*class="clew-mb-lock"/, `${declaration} locks`);
+	}
+	assert.doesNotMatch(inputHtml('number:rating'), /clew-mb-lock|disabled|inert/, 'no lock unless asked');
+});
+
+test('a lock is neither drawn in a site export nor on a display', () => {
+	process.env.CLEW_SITE_EXPORT = '1';
+	try {
+		const html = inputHtml('number(locked):rating');
+		assert.doesNotMatch(html, /clew-mb-lock/);
+		assert.match(html, /disabled/, 'still disabled, as every exported widget is');
+	} finally {
+		delete process.env.CLEW_SITE_EXPORT;
+	}
+	assert.doesNotMatch(inputHtml('progressBar(locked, minValue(0), maxValue(10)):rating'), /clew-mb-lock/);
+});

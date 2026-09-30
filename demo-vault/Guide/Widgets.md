@@ -45,6 +45,21 @@ Meta Bind's `class(…)` argument is honoured too —
 a [[Theming|vault script]] can restyle or resize one widget. (Number
 pickers are already sized for a few digits, not a text field's width.)
 
+## Locked widgets
+
+A value that must not change by accident — a grade, a signed-off date —
+takes Clew's `locked` argument. The widget shows its value but ignores
+clicks and typing until you press the padlock beside it; it locks again
+as soon as the edit is committed, when you move away, and whenever the
+note re-renders. Nothing is stored: every widget marked `locked` starts
+locked.
+
+The same rating, locked: INPUT[number(locked):rating]
+
+In Obsidian, Meta Bind skips an argument it does not know, so the same
+note still works there, just without the lock. Site exports show every
+widget disabled anyway, so they draw no padlock.
+
 ## Bound to text
 
 Widgets can edit **prose**, not only metadata. Give a block a

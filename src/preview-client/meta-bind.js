@@ -37,8 +37,52 @@ function ensureWebAwesome() {
 	document.head.append(link, script);
 }
 
+// `INPUT[…(locked)…]` (engine/meta-bind.js): the widget arrives `inert`
+// beside a padlock — no click, focus or keystroke reaches it, shadow DOM
+// included. The padlock unlocks it for ONE edit; it locks again on commit
+// (the widget's `change` — for a text or number field that is leaving it,
+// as ever: Enter does not commit a Web Awesome number input), when focus
+// leaves the group, and on every re-render, since the engine emits it
+// locked and a morph syncs attributes. No state is kept anywhere, so nothing
+// can be left unlocked by accident. `inert` rather than `disabled` because
+// it leaves the component's own state alone.
+const lockGroup = (el) => el?.closest?.('.clew-mb-lockable') ?? null;
+
+function setLocked(group, locked) {
+	const widget = group.querySelector('.clew-mb');
+	const button = group.querySelector('.clew-mb-lock');
+	if (!widget || !button) return;
+	widget.inert = locked;
+	button.setAttribute('aria-pressed', String(locked));
+	const name = widget.dataset.editField ?? '';
+	button.setAttribute('aria-label', `${locked ? 'Unlock' : 'Lock'} ${name}`);
+	button.title = locked ? 'Locked — click to edit' : 'Editing — click to lock';
+}
+
+function installLocks() {
+	document.addEventListener('click', (event) => {
+		const button = event.target.closest?.('.clew-mb-lock');
+		const group = lockGroup(button);
+		if (!group) return;
+		const unlocking = button.getAttribute('aria-pressed') === 'true';
+		setLocked(group, !unlocking);
+		// Straight into the widget, so the edit is one click and a keystroke.
+		if (unlocking) requestAnimationFrame(() => group.querySelector('.clew-mb')?.focus?.());
+	});
+	// Focus leaving the group (the widget AND its padlock) locks it again.
+	document.addEventListener('focusout', (event) => {
+		const group = lockGroup(event.target);
+		if (!group || group.querySelector('.clew-mb-lock')?.getAttribute('aria-pressed') === 'true') return;
+		if (event.relatedTarget && group.contains(event.relatedTarget)) return;
+		setTimeout(() => {
+			if (!group.contains(document.activeElement)) setLocked(group, true);
+		}, 0);
+	});
+}
+
 export function initMetaBind() {
 	ensureWebAwesome();
+	installLocks();
 	document.addEventListener('clew:render', ensureWebAwesome);
 
 	document.addEventListener('change', (event) => {
@@ -53,6 +97,10 @@ export function initMetaBind() {
 			fieldSource: el.dataset.editSource,
 			value,
 		});
+		// Committed: a lockable widget locks again at once, not only when the
+		// write's re-render arrives.
+		const group = lockGroup(el);
+		if (group) setLocked(group, true);
 	});
 	// Sliders show their number live while dragging; the write waits for
 	// 'change' (release), so a drag is one edit, not forty.

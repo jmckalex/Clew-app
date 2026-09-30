@@ -507,6 +507,28 @@ if (process.env.CLEW_SMOKE) {
 							await sleep(ev.delay ?? 30);
 							continue;
 						}
+						if (ev.frameClick) {
+							// {frameClick:{match, selector}}: a click at the centre of
+							// an element INSIDE a preview frame — cross-origin, so a
+							// scenario on the app page cannot measure it — resolved
+							// at dispatch time from the frame (webFrameMain) and the
+							// iframe's own box in the app page. `match` is a substring
+							// of the frame's URL (the note), as CLEW_SMOKE_FRAME_MATCH.
+							const { match, selector } = ev.frameClick;
+							const frame = primary.webContents.mainFrame.framesInSubtree.find((f) =>
+								f.url.startsWith('clew-preview:') && f.url.includes(match) && f.parent === primary.webContents.mainFrame);
+							const inner = frame && await frame.executeJavaScript(`(() => {
+								const r = document.querySelector(${JSON.stringify(selector)})?.getBoundingClientRect();
+								return r ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null; })()`);
+							const outer = inner && await primary.webContents.executeJavaScript(`(() => {
+								const f = [...document.querySelectorAll('iframe')].find((el) => el.offsetParent && (el.src || '').includes(${JSON.stringify(match)}));
+								const r = f?.getBoundingClientRect(); return r ? { x: r.left, y: r.top } : null; })()`);
+							if (!inner || !outer) {
+								console.log(`smoke: frameClick found no ${selector} in a frame matching ${match}`);
+								continue;
+							}
+							ev.click = { x: Math.round(outer.x + inner.x), y: Math.round(outer.y + inner.y) };
+						}
 						if (ev.click || ev.tripleClick) {
 							const { x, y } = ev.click ?? ev.tripleClick;
 							// `modifiers` on a click event (same CDP bitmask) makes it
