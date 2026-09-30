@@ -376,11 +376,37 @@ app.on('window-all-closed', () => {
 //   CLEW_SMOKE_SCRIPT=/path/scenario.js run this in the first window first
 // Every window is captured: the first to CLEW_SMOKE's path, the rest with
 // -2, -3, … suffixes in creation order.
+// Boot is WAITED FOR, not timed: the first window, then its page. A fixed
+// 3 s after `ready` served an idle machine and failed on a loaded one
+// (2026-09-30, load ~15: `smoke failed: … reading 'webContents'` — there was
+// no window yet). The old 3 s stays the MINIMUM, so a scenario's timing on a
+// fast machine is what it always was; SMOKE_BOOT_LIMIT_MS bounds the wait,
+// with an error that says which step never came.
+const SMOKE_BOOT_LIMIT_MS = 120000;
+async function smokeBootedWindow(readyAt) {
+	const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+	const late = () => Date.now() - readyAt > SMOKE_BOOT_LIMIT_MS;
+	while (!windowOrder[0]) {
+		if (late()) throw new Error(`no window ${SMOKE_BOOT_LIMIT_MS / 1000} s after app ready — the app did not boot`);
+		await sleep(100);
+	}
+	const win = windowOrder[0];
+	const windowMs = Date.now() - readyAt;
+	while (win.webContents.isLoading()) {
+		if (late()) throw new Error(`the window's page was still loading ${SMOKE_BOOT_LIMIT_MS / 1000} s after app ready`);
+		await sleep(100);
+	}
+	console.log(`smoke-boot: window after ${windowMs} ms, page loaded after ${Date.now() - readyAt} ms`);
+	await sleep(Math.max(0, 3000 - (Date.now() - readyAt)));
+	return win;
+}
+
 if (process.env.CLEW_SMOKE) {
 	app.whenReady().then(() => {
-		setTimeout(async () => {
+		const readyAt = Date.now();
+		(async () => {
 			try {
-				const primary = windowOrder[0];
+				const primary = await smokeBootedWindow(readyAt);
 				// The input queue's key events never reach the native menu. CDP
 				// key events carry no characters, and Electron hands one the page
 				// leaves unhandled to the menu, where an empty key with ⌘ matches
@@ -613,6 +639,6 @@ if (process.env.CLEW_SMOKE) {
 					'window.__clew?.editorPool?.flushAll?.()');
 			} catch { /* window already gone */ }
 			app.exit(0);
-		}, 3000);
+		})();
 	});
 }

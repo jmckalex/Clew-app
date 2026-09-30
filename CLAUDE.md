@@ -85,7 +85,10 @@ note API, plugins, and every settings key.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
   [CLEW_SMOKE_VAULT=/path/vault] electron .` — SMOKE_VAULT opens exactly that vault, never touching the
-  user's restored vault set (always pass it). Boots the app, runs the
+  user's restored vault set (always pass it). Boots the app — WAITING for
+  the first window and its page (`smoke-boot: window after … ms, page
+  loaded after … ms`; at least the old 3 s, at most 120 s with an error
+  naming the step), because a fixed 3 s failed on a loaded machine — runs the
   scenario in the renderer (dev hook `window.__clew` exposes the stores,
   registry, ipc), optionally drives the preview iframe's document via
   webFrameMain (with FRAME_MATCH: EVERY clew-preview frame whose URL
