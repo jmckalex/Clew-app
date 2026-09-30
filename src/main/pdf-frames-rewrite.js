@@ -20,8 +20,11 @@
 // marks `type="application/pdf"`. A VAULT target — relative to the note,
 // vault-absolute (`/Papers/x.pdf`), or already a session path — is
 // rewritten; `#page=N` becomes the viewer's `&page=N`; width, height, style,
-// class and id are kept. A web target (http/https) is returned in `remote`
-// for §4 and left as it is here. Left alone: the engine's own `![[x.pdf]]`
+// class and id are kept. A web target (http/https) is returned in `remote`,
+// and — when the caller registers web PDFs (`registerRemote`, §4) — opens
+// in the viewer too, READ-ONLY, from the hash its registration returns; the
+// URL itself never reaches the page as something to fetch. Left alone: the
+// engine's own `![[x.pdf]]`
 // placeholder (`class="pdf-embed"`, which pdf-embed.js upgrades), a frame
 // already on the viewer page, anything else, and a relative path that would
 // climb out of the vault.
@@ -78,6 +81,12 @@ export function vaultPathOf(target, { sid, noteDir = '' }) {
 
 const isPdfTarget = (target, attrs) => /\.pdf$/i.test(splitTarget(target).path) || /^application\/pdf\b/i.test(attrs.type ?? '');
 
+/** The viewer page's URL for a registered WEB PDF (§4): read-only. */
+export function remoteViewerUrl(sid, hash, url, page = null) {
+	const src = `/${sid}/__clew_remote_pdf__/${hash}`;
+	return `${VIEWER}?src=${encodeURIComponent(src)}&readonly=1&origin=${encodeURIComponent(url)}${page ? `&page=${page}` : ''}`;
+}
+
 /** The viewer page's URL for a vault PDF. */
 export function viewerUrl(sid, rel, page = null) {
 	const src = `/${sid}/${rel.split('/').map(encodeURIComponent).join('/')}`;
@@ -88,10 +97,12 @@ export function viewerUrl(sid, rel, page = null) {
  * Rewrite a document's (or a fragment's) PDF frames.
  *
  * @param {string} html
- * @param {{ sid: string, noteDir?: string }} ctx - the session id; the note's folder, vault-relative
+ * @param {{ sid: string, noteDir?: string, registerRemote?: (url: string) => string|null }} ctx -
+ *   the session id; the note's folder, vault-relative; and, to open web PDFs
+ *   in the viewer, the registration that returns a URL's hash (null: leave it)
  * @returns {{ html: string, rewritten: number, remote: string[] }}
  */
-export function rewritePdfFrames(html, { sid, noteDir = '' }) {
+export function rewritePdfFrames(html, { sid, noteDir = '', registerRemote = null }) {
 	let rewritten = 0;
 	const remote = [];
 	const out = String(html ?? '').replace(TAG, (whole, tagName, iAttrs, _selfClose, oAttrs) => {
@@ -102,15 +113,19 @@ export function rewritePdfFrames(html, { sid, noteDir = '' }) {
 		if (/\bpdf-embed\b/.test(attrs.class ?? '')) return whole;          // ![[x.pdf]]: pdf-embed.js upgrades it
 		if (raw.includes('/__clew_assets__/clewpdf/')) return whole;         // already the viewer
 		if (!isPdfTarget(raw, attrs)) return whole;
-		if (/^https?:/i.test(raw) || raw.startsWith('//')) {
-			remote.push(raw.startsWith('//') ? `https:${raw}` : raw);
-			return whole;
-		}
-		const rel = vaultPathOf(raw, { sid, noteDir });
-		if (!rel) return whole;
 		const { page } = splitTarget(raw);
 		const kept = KEEP.filter((k) => attrs[k] !== undefined)
 			.map((k) => ` ${k}="${escapeAttr(attrs[k])}"`).join('');
+		if (/^https?:/i.test(raw) || raw.startsWith('//')) {
+			const url = (raw.startsWith('//') ? `https:${raw}` : raw).replace(/#.*$/, '');
+			remote.push(url);
+			const hash = registerRemote?.(url);
+			if (!hash) return whole;
+			rewritten += 1;
+			return `<iframe${kept} src="${escapeAttr(remoteViewerUrl(sid, hash, url, page))}" allow="fullscreen" data-clew-remote-pdf="${escapeAttr(hash)}"></iframe>`;
+		}
+		const rel = vaultPathOf(raw, { sid, noteDir });
+		if (!rel) return whole;
 		rewritten += 1;
 		return `<iframe${kept} src="${escapeAttr(viewerUrl(sid, rel, page))}" allow="fullscreen" data-clew-pdf="${escapeAttr(rel)}"></iframe>`;
 	});

@@ -80,3 +80,27 @@ test('vaultPathOf: the rules on their own', () => {
 	assert.equal(vaultPathOf('mailto:x', { sid: SID }), null);
 	assert.equal(vaultPathOf(`clew-preview://vault/${SID}/P/a.pdf`, { sid: SID }), 'P/a.pdf');
 });
+
+test('a web PDF opens READ-ONLY in the viewer from its registered hash, never its URL as a source', () => {
+	const registered = [];
+	const registerRemote = (url) => { registered.push(url); return 'h'.repeat(64); };
+	const { html, rewritten, remote } = rewritePdfFrames(
+		'<iframe src="https://papers.example/a.pdf#page=4" width="600" height="800"></iframe>'
+		+ '<object data="//cdn.example/b.pdf" type="application/pdf"></object>'
+		+ '<iframe src="https://papers.example/page.html"></iframe>',
+		{ sid: 's1', registerRemote });
+	assert.equal(rewritten, 2);
+	assert.deepEqual(registered, ['https://papers.example/a.pdf', 'https://cdn.example/b.pdf']);
+	assert.deepEqual(remote, registered);
+	assert.match(html, /<iframe width="600" height="800" src="\/__clew_assets__\/clewpdf\/pdf-page\.html\?src=%2Fs1%2F__clew_remote_pdf__%2Fh{64}&amp;readonly=1&amp;origin=https%3A%2F%2Fpapers\.example%2Fa\.pdf&amp;page=4"/);
+	assert.match(html, /data-clew-remote-pdf="h{64}"/);
+	assert.match(html, /<iframe src="https:\/\/papers\.example\/page\.html"><\/iframe>/, 'not a PDF: untouched');
+	// The source the viewer is given is the session route, never the web URL.
+	assert.doesNotMatch(html, /src=https/);
+});
+
+test('without registration, or when it declines, a web PDF frame is left as written', () => {
+	const input = '<iframe src="https://papers.example/a.pdf"></iframe>';
+	assert.equal(rewritePdfFrames(input, { sid: 's1' }).html, input);
+	assert.equal(rewritePdfFrames(input, { sid: 's1', registerRemote: () => null }).html, input);
+});
