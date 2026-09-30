@@ -19,6 +19,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { watchFilter, WATCH_BUDGET, WATCH_CEILING, scanShare, knownPaths, SCAN_KEEP } from '../src/main/fs-utils.js';
 
 const root = '/vault';
@@ -200,4 +201,15 @@ test('a scan takes all but SCAN_KEEP of what is left, never more than half past 
 	assert.equal(scanShare(1000), 500);
 	assert.equal(scanShare(0), 0);
 	assert.equal(scanShare(-5), 0);
+});
+
+test('the module loads where there is no `process` global (Clew-iOS app page)', () => {
+	// A bare `process.env` read at load threw there, and a first install
+	// booted to nothing (iOS sync #3, 2026-09-30). A child node with the
+	// global deleted stands in for that page.
+	const url = new URL('../src/main/fs-utils.js', import.meta.url).href;
+	const out = execFileSync(process.execPath, ['--input-type=module', '-e',
+		`delete globalThis.process; const m = await import(${JSON.stringify(url)}); console.log(m.WATCH_BUDGET, m.WATCH_CEILING);`,
+	], { encoding: 'utf8', env: { ...process.env, CLEW_WATCH_BUDGET: '' } });
+	assert.equal(out.trim(), '8000 9000');
 });
