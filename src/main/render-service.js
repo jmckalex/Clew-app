@@ -29,6 +29,7 @@ import { engineExtensionEntries } from './plugins.js';
 import { writeFileAtomic } from './fs-utils.js';
 import { isDependentFragment } from '../shared/fragment-deps.js';
 import { citationHeader } from './citation-header.js';
+import { refusedNames } from '../shared/refused-names.js';
 
 const WORKER_PATH = paths.engineWorker;
 
@@ -155,8 +156,7 @@ export class RenderService {
 	// something to trust.
 	#noteRefusals(key, html, path = key) {
 		if (this.#noteCode) return;
-		const names = [...new Set([...html.matchAll(/data-jmd-refused="([^"]*)"/g)]
-			.map((m) => m[1].replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')))];
+		const names = refusedNames(html);
 		if (names.length === 0) {
 			this.#refused.delete(key);
 			return;
