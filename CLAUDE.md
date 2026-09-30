@@ -580,7 +580,17 @@ browser-window-focus).
   each letter — the owner's report the day it was built. xterm's own
   stylesheet is copied out of node_modules by scripts/build.js to
   `dist/renderer/vendor/xterm.css` and `<link>`ed from index.html; CSS
-  here is never compiled.
+  here is never compiled. The family list is `lib/shell-font.js#
+  gridFontFamily`: the `shellFont` setting first (blank by default), then
+  the mono token, then Nerd/Powerline faces for prompt symbols (U+E0A0 &
+  the private-use area no system font has — per-glyph fallback, so the
+  cell is still measured from the monospace face), then `monospace`.
+- **Widths are Unicode 11** (`@xterm/addon-unicode11`, which needs
+  `allowProposedApi: true` for `term.unicode.activeVersion`): zsh counts an
+  emoji like ⌚ as two columns and xterm's default Unicode 6 tables as one,
+  so a right prompt holding one put zsh's cursor a column ahead of the
+  grid's and the typed text landed on the space after `$` — "$echo", the
+  owner's report 2026-09-30 (`smoke/shell-prompt-scenario.js`).
 - The panel's open state and height live in the WORKSPACE (per vault, in
   `.clew/workspace.json`), so a scenario over a reused fixture must set a
   known state before driving the chord — the second run otherwise opens

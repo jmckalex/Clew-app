@@ -78,6 +78,10 @@ class ClewSettingsView extends ClewElement {
 					[['auto', 'When the pane is wide enough'], ['on', 'Always'], ['off', 'Never']]),
 				this.#selectRow('PDF paper size (reading-view export)', 'printPaperSize',
 					[['a4', 'A4'], ['letter', 'US Letter'], ['legal', 'US Legal'], ['tabloid', 'Tabloid']]),
+				this.#textRow('Shell panel font', 'shellFont', 'e.g. MesloLGS NF — blank for the default'),
+				this.#hint('A monospace family for the shell panel — your terminal\'s, say. Blank uses '
+					+ 'Clew\'s monospace font; either way, prompt symbols (Powerline and Nerd Font '
+					+ 'glyphs) come from any such font you have installed.'),
 			]),
 			this.#section('Live edit', [
 				this.#selectRow('⌘E returns from reading mode to', 'defaultEditMode',
@@ -723,6 +727,14 @@ class ClewSettingsView extends ClewElement {
 
 		refresh();
 		return [this.#row('LibreOffice engine', button), hint];
+	}
+
+	/** A settings-hint paragraph under the row before it. */
+	#hint(text) {
+		const hint = document.createElement('p');
+		hint.className = 'settings-hint';
+		hint.textContent = text;
+		return hint;
 	}
 
 	#row(label, control) {
