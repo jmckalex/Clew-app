@@ -879,7 +879,9 @@ except where the selection touches a construct. The durable design is
   The viewer is read-only (`pdf-core` `readonly`: EmbedPDF's own
   `disabledCategories`, no autosave) under a strip — Save a copy to the
   vault (the cached bytes via `saveAttachment`), Open in browser, Reload —
-  and names each failure; both actions name the HASH, and main looks the
+  and names each failure (`preview-client/remote-failures.js`, iOS's
+  `insecure-url` included; a headline never states a size limit, since the
+  cap is per platform and the host's own message names it); both actions name the HASH, and main looks the
   URL up in the sender's registrations (under CLEW_SMOKE, Open logs
   `smoke-open-external:` instead). A site export keeps the author's iframe.
   **`plugins: true` is gone** (phase 4, 2026-09-30), and dropping it does
