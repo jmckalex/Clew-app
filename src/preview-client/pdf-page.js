@@ -52,6 +52,36 @@ if (!src) {
 	});
 }
 
+// Thumbnail mode (`&thumb=1`, main/pdf-thumbs.js): an offscreen window asks
+// for page 1 as a PNG, base64, its long side `maxPx`. null until the document
+// is open (main asks again); { error } when it cannot be drawn.
+window.__clewThumb = async (maxPx = 1024) => {
+	if (!params.get('thumb') || !viewer?.container) return window.__clewPdfError ? { error: window.__clewPdfError } : null;
+	try {
+		const registry = await viewer.container.registry;
+		const render = registry?.getPlugin('render')?.provides();
+		if (!render) return null;
+		const draw = async (scaleFactor) => {
+			const task = render.renderPage({ pageIndex: 0, options: { scaleFactor, dpr: 1, imageType: 'image/png' } });
+			return typeof task?.toPromise === 'function' ? task.toPromise() : task;
+		};
+		// Once at a scale of 1 (points) to learn the page's size, then at the
+		// scale that makes its long side maxPx.
+		let blob = await draw(1);
+		const probe = await createImageBitmap(blob);
+		const scale = Math.min(4, maxPx / Math.max(probe.width, probe.height));
+		probe.close?.();
+		if (Math.abs(scale - 1) > 0.01) blob = await draw(scale);
+		const bytes = new Uint8Array(await blob.arrayBuffer());
+		let binary = '';
+		for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+		return { png: btoa(binary) };
+	} catch (err) {
+		// "Document … not loaded": not yet — ask again.
+		return /not loaded/i.test(String(err?.message)) ? null : { error: String(err?.message ?? err) };
+	}
+};
+
 // The app page owns the theme; follow it so a PDF tab is not a white slab in
 // a dark window (and vice versa). Same message shape the preview client uses.
 window.addEventListener('message', (event) => {

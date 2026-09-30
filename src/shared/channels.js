@@ -83,6 +83,7 @@ export const CH = {
 	OFFICE_CONVERT_PDF: 'clew:office-convert-pdf',
 	OFFICE_OPEN_EXTERNAL: 'clew:office-open-external',
 	OFFICE_THUMBNAIL: 'clew:office-thumbnail',
+	PDF_THUMBNAIL: 'clew:pdf-thumbnail',
 	CONFIRM_DISCARD: 'clew:confirm-discard',
 	WINDOW_CLOSE_RESOLVED: 'clew:window-close-resolved',
 	EXCALIDRAW_LIB_GET: 'clew:excalidraw-lib-get',

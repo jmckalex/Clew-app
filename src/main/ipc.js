@@ -18,6 +18,7 @@ import * as officeSlot from './office-slot.js';
 import * as zetaAssets from './zeta-assets.js';
 import * as officeConvert from './office-convert.js';
 import * as officeThumbs from './office-thumbs.js';
+import * as pdfThumbs from './pdf-thumbs.js';
 import { CH } from '../shared/channels.js';
 import { settings } from './settings.js';
 import { appMenu } from './menu.js';
@@ -196,6 +197,8 @@ export function registerIpc() {
 	handle(CH.OFFICE_CONVERT_PDF, (s, { path }) => officeConvert.convertToPdf(s.vaults, path));
 	handle(CH.OFFICE_OPEN_EXTERNAL, (s, { path }) => officeConvert.openExternally(s.vaults, path));
 	handle(CH.OFFICE_THUMBNAIL, (s, { path }) => officeThumbs.thumbnail(s, path));
+	// A PDF's first page as a picture (portals; docs/dev/pdf-unification.md §2).
+	handle(CH.PDF_THUMBNAIL, (s, { path }) => pdfThumbs.thumbnail(s, path));
 	handle(CH.WINDOW_CLOSE_RESOLVED, (s, { proceed }) => s.resolveClose?.(proceed));
 	// Save / Discard / Cancel, as a native sheet. CLEW_SMOKE_CONFIRM answers
 	// it without UI so the harness can drive every branch of a close flow.

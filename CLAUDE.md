@@ -814,8 +814,13 @@ except where the selection touches a construct. The durable design is
   scene's viewer is a grandchild), and `pdf-frames.js` finds a dirty viewer
   however deep under a view (`holds`) and asks IT to flush; pdf-page answers
   the app page as well as its parent. `plugins: true` stays for what still
-  reaches Chromium's viewer: a portal's raw-PDF miniature and a note's own
-  `<iframe src="x.pdf">`. Heavy wasm belongs in a
+  reaches Chromium's viewer: a note's own `<iframe src="x.pdf">` (until
+  `docs/dev/pdf-unification.md` is built out). A PORTAL's PDF node is a
+  first-page picture (`main/pdf-thumbs.js`: an offscreen `pdf-page.html?
+  thumb=1` renders page 1 with EmbedPDF's `renderPage`; cached at the
+  mirrored `.clew/cache/pdf-thumbs/<rel>.png`, mtime-keyed, one job at a
+  time — the office-thumbs arrangement; iOS answers `PDF_THUMBNAIL`
+  natively with QuickLook at the same path). Heavy wasm belongs in a
   clew-preview document, never the app page (a lesson Clew-iOS paid for on
   a real iPad); on desktop that falls out for free, and those documents
   carry no CSP. Feed it an ArrayBuffer via `openDocumentBuffer` — URL
