@@ -1,10 +1,11 @@
 # The frame bridge — design
 
 Status (2026-09-30): §1 AGREED with the iOS session and BUILT on desktop;
-§2.8 step 0 BUILT; §2 (the app page's own origin), §3 (Compatibility), §4
-(vault trust — the owner's decision) and §5–§16 (the bridge) PROPOSED,
-worked through with the iOS session — design only until the owner approves
-it whole. §1 is a prerequisite: the
+§2.8 step 0 BUILT. §2 (the app page's own origin), §3 (Compatibility), §4
+(vault trust) and §5–§16 (the bridge) REVISED to the owner's answers to
+all eleven open questions ("Decisions", at the end), with §4 agreed by the
+iOS session after its review added the engine's own code paths (§4.1) —
+design only; building waits for the owner's go. §1 is a prerequisite: the
 bridge must stand on a protocol that can tell who is asking.
 
 ## 1. The caller token
@@ -285,9 +286,9 @@ web nodes are iframes; desktop's are `<webview>`s, outside `frame-src`.)
   `clew-app`).
 - Added: no SUBFRAME may load `clew-app://` — a `will-frame-navigate` guard
   on the window, beside `frame-ancestors 'none'` on the document. Nothing
-  legitimate frames the app page. (iOS allows `clew-app` in subframes today
-  and nothing uses it; dropping it there is an iOS change for the owner to
-  approve.)
+  legitimate frames the app page. iOS drops `clew-app` from its subframe
+  allowlist too (the owner's decision; nothing used it — done on the iOS
+  branch, `65d2708`), so neither platform lets a frame load the app page.
 
 ### 2.8 postMessage: who is heard, and who is addressed
 
@@ -345,11 +346,10 @@ arbitrary https content).
   Excalidraw library). Clew's own plugins (charts, header, word-count) use
   none either. So Clew itself has nothing to migrate.
 - **An app-surface plugin** runs in the app page, and a third-party one
-  MAY keep localStorage/IndexedDB under `file://`; after the move it would
-  start empty. See the open questions: a one-time copy is possible for
-  localStorage (a hidden `file://` window in the same session reads the
-  keys at first launch after the upgrade and hands them over IPC to the
-  new origin), not in general for IndexedDB.
+  MAY keep localStorage/IndexedDB under `file://`; after the move it
+  starts empty, ONCE — the owner's decision: nothing is copied, and the
+  release notes say so (a plugin that wants its state to survive keeps it
+  in the vault or through the plugin API).
 - **Preview frames** may find their storage re-partitioned under the new
   top-level site (whether Chromium partitions under a custom-scheme top
   site in Electron 43 is not known until built): the TikZ/MetaPost result
@@ -394,7 +394,6 @@ the shared `APP_ORIGIN` constant.
    cache's behaviour across the move is recorded.
 2. The postMessage targets (§2.8 step 2), its own commit, with every save
    path (PDF, Excalidraw, office) and the note API exercised.
-3. The plugin-storage copy, only if the owner wants it (§3.4).
 
 The riskiest failures are the quiet ones (a wrong ACAO degrades cards and
 frames silently; a missing `secure` silently loses the clipboard), which is
@@ -428,7 +427,7 @@ off its origin by the bridge. What changes for existing frames comes from
 | Raw `<iframe>` in a note, vault HTML | relative `src` → `clew-preview://vault/<sid>/…` | preview origin, unsandboxed unless the author adds it | every vault file; `window.parent.clew`; the parent's DOM | unchanged |
 | Raw `<iframe>` in a note, remote | an http(s) URL | the site's own | nothing of Clew's | unchanged |
 | Raw `<iframe>` the author SANDBOXED (no `allow-same-origin`), or a sandboxed `srcdoc` | as written | `null` | assume the worst: CORS reads of vault files (fetch, module scripts, web fonts) as well as plain loads | **plain loads unchanged (`<img>`, classic `<script>`, stylesheets, navigation); CORS reads REFUSED** — the gap §2 closes |
-| `header-html` banner (Note Headers, a demo-vault plugin) | iframe behind the title | `sandbox="allow-scripts"` → `null` | as the row above | as the row above. The demo's `matrix-rain.html` uses no fetch, module scripts or fonts: unaffected. A user's banner that fetches vault data, or loads module scripts or fonts from the vault, loses them |
+| `header-html` banner (Note Headers, a demo-vault plugin) | iframe behind the title | `sandbox="allow-scripts"` → `null` today | as the row above | **the owner's decision: full vault access.** The plugin gives the banner `allow-scripts allow-same-origin` — a same-origin vault page with the note's own reach, what `@reveal` vault decks and plain vault iframes already are. It sits inside §4: in a RESTRICTED vault every vault HTML document is served with `script-src 'none'` (§4.4), so a banner draws (HTML, CSS, CSS animation) and runs nothing; in a trusted vault it runs as the note does. The demo's `matrix-rain.html` is unaffected either way |
 | Plugin app surface | a classic script in the APP page (`__clew_plugin_app__`) | the app page's | everything the app page has | unchanged, except storage it kept under `file://` (§2.10) |
 | Plugin preview surface, vault scripts, note scripts | scripts inside preview documents | preview origin | as the reading view | unchanged; a script that posted to the render endpoints itself (none known, never documented) needs the token — it can ask as the client does |
 | `dataviewjs` | the render worker, not a frame | — | the vault model | unchanged |
@@ -457,14 +456,15 @@ or plugin does, and the manual never documented them.
 
 ### 3.4 What is lost, and the ways back
 
-1. **Null-origin frames lose vault reads** (author-sandboxed iframes,
-   `header-html` banners that fetch). That loss IS the fix; without it a
+1. **Null-origin frames lose vault reads** (author-sandboxed iframes). That
+   loss IS the fix; without it a
    sandboxed frame can read the vault. Ways back, per case: drop the
    sandbox (the frame becomes a same-origin vault page with the note's own
    trust — what `@reveal` decks and plain vault iframes already are);
    inline the assets; or, later, a bridge app with a declared read grant.
 2. **A third-party app-surface plugin's localStorage/IndexedDB** starts
-   empty once. Ways back: the one-time localStorage copy (§2.10), or none.
+   empty once (§2.10: not copied — the owner's decision; the release notes
+   say so).
 3. **A frame that is not on the preview origin, or not the window a
    listener expects, is no longer heard** (§2.8 step 0, built): a remote or
    sandboxed frame posting Clew's own message shapes to `window.top`, or a
@@ -498,6 +498,25 @@ confirmed it):
   IPC (on iOS, in the one frame the native bridge answers).
 - `dataviewJs` (the render worker: the vault's text, and the network) and
   the Note API's `noteApi` gate are flags in that same file.
+- **A note makes the ENGINE run code, at render time** — the most severe
+  path (the iOS session's finding; audited in the vendored engine,
+  2026-09-30). The render worker is a plain Node process on desktop (full
+  `fs`, `child_process`), so a note in a vault someone sends you runs
+  arbitrary code on the machine the first time it renders:
+  - metadata keys that load and run a vault file: `Load javascript:`
+    (`runInThisContext`), `Load extensions:`, `Load directives:`,
+    `Load environments:` (dynamic `import()` from the note's folder)
+    (`metadata-header.js`), and `Extension …` keys, which define
+    extensions from the header's own text;
+  - note-authored code evaluated by extensions: function and script
+    blocks (`function-extensions.js`, `script-blocks.js`), inline
+    function expressions (`inline-function-extension.js`), mathjs
+    expressions (`mathjs-extension.js`);
+  - Mathematica blocks, handed to `wolframscript` (`mathematica.js`) where
+    it is installed.
+  (The engine's config cascade at RENDER is the home directory and the
+  worker's working directory — Clew's own engine folder — so a vault's
+  `.jmarkdown/config.json` is not read there.)
 - Exports run with the note's directory as their working directory, so a
   `.jmarkdown/config.json` inside the vault can load engine extensions.
 - Previews carry no CSP, so any of it can `fetch()` vault content anywhere.
@@ -552,6 +571,18 @@ How, in two layers:
 - **Nothing is served**: no vault scripts or vault preview surfaces
   injected (`protocol.js`), no vault engine surfaces in the worker's config,
   `CLEW_DATAVIEW_JS` off.
+- **The engine runs no note code**: one config switch in the jmarkdown
+  ENGINE (the master, then re-synced — `"Run note code": false`, say),
+  which Clew's generated config sets for a restricted vault, and which
+  every path in §4.1's engine list honours — the four `Load …` keys,
+  `Extension …` keys, function/script blocks, inline functions, mathjs,
+  Mathematica — each REFUSED BY NAME in place ("this vault's code is off —
+  Trust…"), never skipped silently. Engine-side, because stripping header
+  keys in Clew is fragile (inclusions, casing, new keys). **This one is
+  urgent**: unlike the rest of §4 it closes an exposure that exists TODAY
+  (a shared vault's note runs Node code on first render), so it can ship
+  ahead of the rest of the trust work — the switch first, defaulting to
+  today's behaviour, then Clew setting it.
 - **Nothing inline runs**: a restricted vault's previews carry a CSP whose
   `script-src` names only Clew's own script URLs (`/__clew_preview__/`,
   `/__clew_assets__/`, enabled GLOBAL plugins under
@@ -562,8 +593,26 @@ How, in two layers:
   vault-authored ones are exactly what restricted mode blocks; engine
   boilerplate, if any, is allowed by hash.
 
-A TRUSTED vault's previews carry no `script-src` restriction: they behave
-as today (§4.10).
+- **Exports use the user's own configuration only**: a restricted vault's
+  HTML and LaTeX exports run the engine with a working directory OUTSIDE
+  the vault, so its config cascade sees only the user's global
+  `~/.jmarkdown` and never a vault's `.jmarkdown/config.json` (which can
+  load engine extensions — code); relative paths still resolve against
+  the note's own folder (to verify at build). Trusted, exports behave as
+  today. (iOS has no HTML/LaTeX/site export; its one export prints the
+  reading view, which inherits restricted rendering and the preview CSP.)
+- **Vault HTML runs nothing either**: every vault `.html` document Clew
+  serves in a restricted vault — a `header-html` banner, a vault iframe, a
+  `@reveal` deck from the vault, an app frame's own files — carries
+  `script-src 'none'` as a response HEADER: it draws, it does not run.
+  (Measured on iOS: WebKit honours a CSP on WKURLSchemeHandler responses
+  in both forms, header and meta, blocking inline and external scripts;
+  SchemeHandler serves raw vault HTML untouched, so the header is the
+  form. On iOS the trust store is native and SchemeHandler itself does the
+  injecting, so the gate reads the store directly.)
+
+A TRUSTED vault's previews and vault HTML carry no `script-src`
+restriction: they behave as today (§4.10).
 
 ### 4.5 The prompt
 
@@ -718,11 +767,26 @@ machine itself (malware already running).
 
 ## 7. App frames: where they live and who they are
 
-- **The embed**: `![[Apps/Timer|app]]` — a vault FOLDER holding
-  `clew-app.json` (the manifest: `id`, `name`, `version`, `entry`,
-  `capabilities`) and the app's files; `|app` is the consent keyword, as
-  `|live` is for office embeds. Obsidian shows a link. (A remote app:
-  `![[https://example.com/app|app]]`, §9.)
+- **The embed, `@app[…]`** (the owner's choice), modelled on `@reveal`
+  (`engine/reveal-embed.js`): ONE named environment in the config serves
+  all three shapes — `@app[Apps/Timer]` inline, `@app+[Apps/Timer]` block,
+  and `@begin(app)` … `@end(app)`:
+
+      @app[Apps/Timer]
+      @app+[Apps/Flashcards]{height=480px}
+      @app+[Apps/Chart]{width=80% aspect="16/9" style="margin: 1em auto"}
+
+  The target is a vault FOLDER holding `clew-app.json` (the manifest: `id`,
+  `name`, `version`, `entry`, `capabilities`) and the app's files. Options:
+  `width`, `height` (a bare number is px), `aspect`, `style`, `class`. The
+  engine's attribute grammar severs unquoted units and throws on a bare
+  slash, so the handler reuses reveal-embed's repair (units glued back;
+  anything with a slash quoted — `aspect="16/9"`, and the manual says so).
+  Refused BY NAME, in place of the frame: a path that is not a folder, a
+  folder without `clew-app.json`, a manifest that does not parse, a path
+  outside the vault, and — until phase 5 — an http(s) URL ("remote apps
+  are not supported yet"). Obsidian shows `@app[…]` as text, as it does
+  `@reveal[…]`.
 - **Its own origin**: served at `clew-frame://<key>/…` — a scheme of its
   own, registered in the same one `registerSchemesAsPrivileged` call
   (`standard`, `secure`, `supportFetchAPI`, `corsEnabled`, `stream`), whose
@@ -791,7 +855,8 @@ method names the capability it needs):
 | `note.read` | `notes.read`, `properties.get` on the EMBEDDING note | |
 | `notes.read` | the same on any note or text file | |
 | `query` | `notes.list`, `search`, `index.get`, `index.backlinks` | |
-| `app.data` | `kv.*` in the app's OWN namespace (`apps/<id>/…` in `clewdata.json`) | travels with the vault, visibly |
+| `app.kv` | `kv.*` in the app's OWN namespace (`apps/<id>/…` in `clewdata.json`) — small state | travels with the vault, visibly |
+| `app.files` | `files.list/read/write/delete/mkdir` inside the app's OWN data folder — below | binary allowed |
 | `note.write` | edits to the embedding note, through the editor pool | §10 |
 | `notes.write` | the same on other notes | |
 | `notes.create` | new notes; never overwrites | |
@@ -810,6 +875,29 @@ Never in Tier 1: `command` (arbitrary commands), any path under `.clew/`,
 settings, plugins, binary writes, the OS opener beyond the external-link
 rules, Node.
 
+- **App files** (`app.files`, the owner's "both"): an app's files live in
+  `data/` INSIDE its own folder (`Apps/Timer/data/`) — they travel with the
+  app (copying the folder copies the app and its data), and the app READS
+  them same-origin (its `clew-frame://` origin serves its folder), so only
+  writes cross the bridge. Paths are relative to `data/` and clamped to it
+  (realpath); the app's code outside `data/` is never writable by the app;
+  never `.clew/`; no note types (`.md`, `.jmd`, `.canvas`, `.base` —
+  notes are `notes.create`/`notes.write`, their own grants), so the index
+  never sees app data as notes. Binary goes over the port as an
+  `ArrayBuffer` (transferred, not copied). Limits: 25 MB a file, 250 MB an
+  app on desktop. Granted like any capability — declared in the manifest,
+  asked once per app per vault. Writes are atomic; names starting `.` are
+  refused; the quota is checked per write.
+  - **iPad** (the iOS session): WKScriptMessage bodies carry no
+    ArrayBuffer, so the shim moves binaries as base64 — a 25 MB write
+    would be a ~33 MB string, with copies, in the one web-content process
+    that holds everything. So: 10 MB per write (a larger file as chunked
+    appends of at most 4 MB, up to 25 MB), 100 MB per app; native checks
+    the quota per write, through Swift's binary write path. READS stay
+    same-origin from the `clew-frame` handler — no bridge — which
+    MATERIALIZES a file iCloud has evicted before serving it (mid-session
+    too: read as materialize-then-serve) and clamps with realpath against
+    symlinks.
 - **Grant UX**: the first time an app embed appears, the app page draws —
   over the frame, outside it, so the app cannot forge it — "Timer (from this
   vault) asks to: read this note, keep its own data. [Allow] [Deny]"; the
@@ -864,7 +952,7 @@ does for the user's own. Text types only, inside the vault, never `.clew/`.
 - **Plugins**: Tier 2 rides on the plugin trust boundary (installed
   globally, enabled per vault) with the extra userData gate.
 - **Migration**: a vault HTML app written against `window.parent.clew`
-  moves by adding a manifest and the `|app` keyword; a shim in the bridge
+  moves by adding a manifest and an `@app[…]` embed; a shim in the bridge
   client presents the old shape over the port, so its code keeps working
   (§3.4). Nothing moves automatically.
 
@@ -911,7 +999,7 @@ Measured on WebKit by the iOS session (2026-09-30, a throwaway build):
 2. (c), the app page's own origin (§2), then §2.8 step 2.
 3. Tier 1, read side: the `clew-frame` scheme and handler, the bridge
    client, the port handshake, `note.read`/`notes.read`/`query`/
-   `app.data`/`links.open`, grants (UX, storage, revocation).
+   `app.kv`/`app.files`/`links.open`, grants (UX, storage, revocation).
 4. Tier 1, write side: `note.write`/`notes.write`/`notes.create`/
    `editor.insert` through the pool; `find`; `clipboard`.
 5. Remote apps (explicit origin grants).
@@ -921,42 +1009,41 @@ Measured on WebKit by the iOS session (2026-09-30, a throwaway build):
 
 The manual gains a "Trusting a vault" page (restricted mode, the prompt,
 Trusted vaults, the network switch — every user meets it on the first
-shared vault they open), an "Apps in notes" chapter (the manifest, `|app`, the
+shared vault they open), an "Apps in notes" chapter (the manifest, `@app[…]`, the
 capabilities, the grant prompt, limits, what remote apps need), the Note
 API page names the caller kinds, the plugins page the `node` surface and
 its switch, and a security page states the trust boundaries (§6) in the
 user's terms.
 
-## Open questions for the owner
+## Decisions (the owner, 2026-09-30)
 
-1. **The `header-html` banner.** It is sandboxed (`allow-scripts`), and the
-   plugin's own comment gives the intent: "it may animate, it may not read
-   anything of ours". After §2 that is exactly true. Keep it so and say so
-   in the manual (recommended: the demo banner is unaffected, and "anything
-   a browser can draw" stays true), or give banners `allow-same-origin`
-   (full vault access, the note's trust) — cost: one line in a plugin users
-   have copied, and a trust change the manual must state.
-2. **Plugin storage under `file://`.** Copy localStorage across once (cost:
-   a hidden window at the first launch after the upgrade, ~50 lines, one
-   release; IndexedDB not covered), or accept that a third-party plugin's
-   stored preferences reset once (no Clew plugin is affected).
-3. **§2.8 step 2 (the targets) as a second commit after the move**
-   (recommended), or fold it into the move. (Step 0, the receivers, is
-   built.)
-4. **iOS subframes**: drop `clew-app` from the subframe allowlist there
-   (§2.7), to match desktop.
-5. **The embed**: `![[folder|app]]` with a `clew-app.json` manifest
-   (proposed), or a fence, or `@app[…]`.
-6. **App data**: a namespace in `clewdata.json` (travels with the vault,
-   visible — proposed), or files in the app's own folder.
-7. **Remote apps in v1**, or later (proposed: phase 4).
-8. **Grant granularity**: per app per vault (the brief, proposed), or per
-   embed.
-9. **Exports of a restricted vault**: ignore the vault's own
-   `.jmarkdown/config.json` (it can load engine extensions — code), using
-   only the user's global configuration (recommended), or keep the full
-   cascade and gate only the preview.
-10. **Vaults with no code never ask** (recommended), or every first open
-    shows the trust state.
-11. **Migration**: known vaults trusted silently with a one-time notice
-    (recommended), or one confirming click per device.
+1. **`header-html` banners get full vault access** — `allow-scripts
+   allow-same-origin`, the note's own reach — inside §4: in a restricted
+   vault vault HTML runs nothing (§4.4), so the reach applies only to
+   trusted vaults (§3.2). The manual states it.
+2. **Plugin storage resets once** with the move to `clew-app://app`;
+   nothing is copied; the release notes say so (§2.10).
+3. **§2.8 step 2 (the targets) is its own commit**, after the move.
+4. **iOS drops `clew-app` from its subframe allowlist** (§2.7).
+5. **The embed is `@app[…]`**, a named environment like `@reveal` —
+   `@app[…]`, `@app+[…]`, `@begin(app)` (§7).
+6. **App data is both**: a `clewdata.json` namespace (`app.kv`) and files
+   in the app's own `data/` folder (`app.files`) (§9).
+7. **Remote apps come later** (phase 5 of §15).
+8. **Grants are per app, per vault.**
+9. **A restricted vault's exports use only the user's global config**
+   (§4.4).
+10. **A vault with no code never asks** (§4.5).
+11. **Known vaults are trusted silently**, with a one-time notice (§4.8).
+
+Details this revision adds, for the owner to change if wanted: the app's
+data folder is `<app>/data/`; its limits are 25 MB a file and 250 MB an app
+on desktop, 10 MB a write (25 MB a file by chunked appends) and 100 MB an
+app on iPad.
+
+**Found in review, and more urgent than the rest (§4.1, §4.4):** a note's
+metadata header and several engine extensions make the render worker run
+note-supplied code — Node code on desktop — on first render, today. The
+fix is one switch in the jmarkdown ENGINE (a master change), honoured by
+every such path, which Clew sets for restricted vaults; it can ship ahead
+of the rest of §4.
