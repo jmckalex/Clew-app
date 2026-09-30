@@ -40,6 +40,9 @@ Obsidian's plugin will show its unknown-type error for those two. A
 binding can also reach *another* note's property:
 `INPUT[toggle:[[Some Note]]#done]`.
 
+A text or number field saves when you press Enter or move away from it; a
+`textArea` keeps Enter for its new lines and saves when you move away.
+
 Meta Bind's `class(…)` argument is honoured too —
 `INPUT[number(class(narrow)):pages]` puts your class on the control, so
 a [[Theming|vault script]] can restyle or resize one widget. (Number

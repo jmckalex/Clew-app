@@ -95,3 +95,21 @@ test('propertyType inference', () => {
 	assert.equal(propertyType('x'), 'text');
 	assert.equal(propertyType(null), 'text');
 });
+
+test('a value with a newline is written quoted and escaped, and reads back whole', () => {
+	// A Meta Bind textArea's value (2026-09-30): written bare, the second line
+	// broke the block, and every later edit of the note was refused.
+	const entries = [{ key: 'body', value: 'one\ntwo\tthree' }, { key: 'grade', value: 7 }];
+	const text = serializeProperties(entries);
+	assert.equal(text, '---\nbody: "one\\ntwo\\tthree"\ngrade: 7\n---\n');
+	const back = parseProperties(text);
+	assert.equal(back.clean, true);
+	assert.deepEqual(back.entries, entries);
+});
+
+test('double-quoted escapes decode in one pass; a literal backslash survives', () => {
+	const back = parseProperties('---\na: "C:\\\\new\\\\table"\nb: "say \\"hi\\""\nc: "x\\ny"\n---\n');
+	assert.deepEqual(back.entries.map((e) => e.value), ['C:\\new\\table', 'say "hi"', 'x\ny']);
+	const again = parseProperties(serializeProperties(back.entries));
+	assert.deepEqual(again.entries.map((e) => e.value), ['C:\\new\\table', 'say "hi"', 'x\ny']);
+});

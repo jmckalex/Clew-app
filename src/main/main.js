@@ -568,6 +568,12 @@ if (process.env.CLEW_SMOKE) {
 								pressed.push([bit, mod]);
 							}
 							const params = keyParams(ev.combo.key, held);
+							// `text` makes the key TYPE as a real one does: a real
+							// Enter's keyDown carries "\r", which is what puts a
+							// newline in a textarea; without it (the default, which
+							// every older scenario was written against) CDP's key
+							// inserts nothing.
+							if (ev.combo.text) Object.assign(params, { text: ev.combo.text, unmodifiedText: ev.combo.text });
 							await dbg.sendCommand('Input.dispatchKeyEvent', { type: 'keyDown', ...params });
 							await dbg.sendCommand('Input.dispatchKeyEvent', { type: 'keyUp', ...params });
 							for (const [bit, mod] of pressed.reverse()) {

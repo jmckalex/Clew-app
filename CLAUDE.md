@@ -112,9 +112,11 @@ note API, plugins, and every settings key.
   this is the only assertion a menu change can carry), and REAL input:
   a scenario queues `window.__clewSmokeInput =
   [{click:{x,y}} | {tripleClick:{x,y}} | {move:{x,y}} | {text:'abc'} |
-  {combo:{key,modifiers}} | {wait:ms} | {frameClick:{match,selector}}]`
+  {combo:{key,modifiers,text?}} | {wait:ms} | {frameClick:{match,selector}}]`
   (`move` is a bare pointer move — hover; `modifiers` on it makes a
-  ⌘-hover; `frameClick` clicks the centre of an element INSIDE a preview
+  ⌘-hover; a combo's `text` makes the key TYPE, as a real one does — a real
+  Enter carries `"\r"`, which is what puts a newline in a textarea, and the
+  default, text-less key inserts nothing; `frameClick` clicks the centre of an element INSIDE a preview
   frame whose URL contains `match` — cross-origin, so the scenario cannot
   measure it — resolved at dispatch time), dispatched over CDP
   `Input.dispatch*` — `webContents.sendInputEvent` NEVER reaches OOPIFs
@@ -215,7 +217,11 @@ browser-window-focus).
   NEVER the engine), `bib.js` (BibTeX fields for citation completion),
   `frontmatter.js` (properties parse/serialize — a deliberate YAML subset;
   blocks it can't fully parse are flagged `clean: false` and MUST be
-  treated read-only).
+  treated read-only; a value holding a newline or tab is written
+  double-quoted with `\n`/`\t` escapes, decoded on read — here and in the
+  engine's `query-fences.js#clean` — because written bare its second line
+  made the block unclean and every later edit of the note was refused, which
+  is what a Meta Bind textArea did until 2026-09-30).
 - `src/engine/` — assets the render worker loads: `wikilinks.js` (Obsidian
   links/embeds incl. media + image sizes; SITE_EXPORT branch emits real
   hrefs; the `|external` alias emits `data-open-external` — the OS default

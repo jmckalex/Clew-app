@@ -40,8 +40,8 @@ function ensureWebAwesome() {
 // `INPUT[…(locked)…]` (engine/meta-bind.js): the widget arrives `inert`
 // beside a padlock — no click, focus or keystroke reaches it, shadow DOM
 // included. The padlock unlocks it for ONE edit; it locks again on commit
-// (the widget's `change` — for a text or number field that is leaving it,
-// as ever: Enter does not commit a Web Awesome number input), when focus
+// (Enter in a text or number field, leaving it, or the widget's own
+// `change`), when focus
 // leaves the group, and on every re-render, since the engine emits it
 // locked and a morph syncs attributes. No state is kept anywhere, so nothing
 // can be left unlocked by accident. `inert` rather than `disabled` because
@@ -80,6 +80,24 @@ function installLocks() {
 	});
 }
 
+const widgetValue = (el) => ((el.tagName === 'WA-SWITCH' || el.type === 'checkbox')
+	? String(el.checked) : String(el.value ?? ''));
+
+/** A widget's value, written: the field-edit every commit path posts. */
+function commit(el) {
+	post({
+		type: 'field-edit',
+		path: el.dataset.editPath,
+		field: el.dataset.editField,
+		fieldSource: el.dataset.editSource,
+		value: widgetValue(el),
+	});
+	// Committed: a lockable widget locks again at once, not only when the
+	// write's re-render arrives.
+	const group = lockGroup(el);
+	if (group) setLocked(group, true);
+}
+
 export function initMetaBind() {
 	ensureWebAwesome();
 	installLocks();
@@ -88,25 +106,35 @@ export function initMetaBind() {
 	document.addEventListener('change', (event) => {
 		const el = event.target;
 		if (!el.classList?.contains('clew-mb')) return;
-		const value = (el.tagName === 'WA-SWITCH' || el.type === 'checkbox')
-			? String(el.checked) : String(el.value ?? '');
-		post({
-			type: 'field-edit',
-			path: el.dataset.editPath,
-			field: el.dataset.editField,
-			fieldSource: el.dataset.editSource,
-			value,
-		});
-		// Committed: a lockable widget locks again at once, not only when the
-		// write's re-render arrives.
-		const group = lockGroup(el);
-		if (group) setLocked(group, true);
+		// Enter already committed exactly this; leaving the field afterwards
+		// (or the relock that follows) must not write it a second time.
+		if (el.__clewEnterCommitted !== undefined && el.__clewEnterCommitted === widgetValue(el)) {
+			delete el.__clewEnterCommitted;
+			return;
+		}
+		commit(el);
+	});
+	// ENTER commits a text or number field, as leaving it does (the owner's
+	// decision, 2026-09-30 — Web Awesome's inputs commit on leaving alone).
+	// A textArea keeps Enter for its new lines; the other widgets commit on
+	// their own gesture. Nothing reaches the host: a bare Enter is not among
+	// the keys this document forwards (client.js), so an engaged canvas card
+	// or live edit around it never sees one.
+	document.addEventListener('keydown', (event) => {
+		if (event.key !== 'Enter' || event.isComposing || event.shiftKey || event.altKey || event.metaKey || event.ctrlKey) return;
+		const el = event.target;
+		if (!el.classList?.contains('clew-mb')) return;
+		if (el.tagName !== 'WA-INPUT' && el.tagName !== 'WA-NUMBER-INPUT') return;
+		event.preventDefault();
+		el.__clewEnterCommitted = widgetValue(el);
+		commit(el);
 	});
 	// Sliders show their number live while dragging; the write waits for
 	// 'change' (release), so a drag is one edit, not forty.
 	document.addEventListener('input', (event) => {
 		const el = event.target;
 		if (!el.classList?.contains('clew-mb')) return;
+		delete el.__clewEnterCommitted;   // typed again since Enter: a new value
 		if (el.tagName !== 'WA-SLIDER' && el.type !== 'range') return;
 		const bubble = el.parentElement?.querySelector('.clew-mb-value');
 		if (bubble) bubble.textContent = el.value;
