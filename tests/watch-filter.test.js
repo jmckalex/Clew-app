@@ -19,7 +19,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
-import { watchFilter, WATCH_BUDGET, WATCH_CEILING } from '../src/main/fs-utils.js';
+import { watchFilter, WATCH_BUDGET, WATCH_CEILING, scanShare, knownPaths, SCAN_KEEP } from '../src/main/fs-utils.js';
 
 const root = '/vault';
 const abs = (rel) => path.join(root, rel);
@@ -163,4 +163,41 @@ test('the shipped budget leaves room under the fork ceiling', () => {
 	// (measured); the app itself needs a few hundred, and every window has
 	// its own watcher drawing on this one budget.
 	assert.ok(WATCH_BUDGET > 0 && WATCH_BUDGET <= 9000, `budget ${WATCH_BUDGET}`);
+});
+
+test('after the scan, a path the scan knew is refused FREE — only new paths spend headroom', () => {
+	// chokidar re-reads a folder on every event and asks about every entry.
+	// Buying the ones the scan left out, then, emitted an `add` for each old
+	// file and spent the ceiling's headroom on them: with two windows open,
+	// neither saw a new file afterwards (smoke/watch-repro.mjs, 2026-09-30).
+	let settled = false;
+	let charged = 0;
+	const admit = new Set(['Note.md']);
+	const known = knownPaths(['Note.md', 'libs/icons/a.svg', 'libs/icons/b.svg']);
+	const { ignored, state } = watchFilter({
+		root, admit, known, settled: () => settled, take: () => { charged++; return true; },
+	});
+	settled = true;
+	assert.equal(ignored(abs('libs/icons/a.svg')), true, 'known, not bought: stays unwatched');
+	assert.equal(ignored(abs('libs/icons')), true, 'its folder too');
+	assert.equal(charged, 0, 'and neither was charged');
+	assert.equal(state.skipped, 0, 'nor counted as refused for budget');
+	assert.equal(ignored(abs('Exported.pdf')), false, 'a NEW file is still watched');
+	assert.equal(charged, 1);
+	assert.equal(ignored(abs('Note.md')), false, 'what the plan bought is still ours');
+});
+
+test('knownPaths holds every file and every folder above it', () => {
+	assert.deepEqual([...knownPaths(['a/b/c.md', 'a/b/d.md', 'x.md'])].sort(), ['a', 'a/b', 'a/b/c.md', 'a/b/d.md', 'x.md']);
+	assert.deepEqual([...knownPaths([])], []);
+});
+
+test('a scan takes all but SCAN_KEEP of what is left, never more than half past that', () => {
+	assert.equal(scanShare(WATCH_BUDGET), WATCH_BUDGET - SCAN_KEEP, 'the first window of a process');
+	assert.ok(scanShare(WATCH_BUDGET) >= 5000, 'room for a 5,000-note vault');
+	const second = WATCH_BUDGET - scanShare(WATCH_BUDGET);
+	assert.ok(scanShare(second) > 0, 'a later window is never starved');
+	assert.equal(scanShare(1000), 500);
+	assert.equal(scanShare(0), 0);
+	assert.equal(scanShare(-5), 0);
 });

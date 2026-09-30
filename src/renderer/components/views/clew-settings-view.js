@@ -80,8 +80,9 @@ class ClewSettingsView extends ClewElement {
 					[['a4', 'A4'], ['letter', 'US Letter'], ['legal', 'US Legal'], ['tabloid', 'Tabloid']]),
 				this.#textRow('Shell panel font', 'shellFont', 'e.g. MesloLGS NF — blank for the default'),
 				this.#hint('A monospace family for the shell panel — your terminal\'s, say. Blank uses '
-					+ 'Clew\'s monospace font; either way, prompt symbols (Powerline and Nerd Font '
-					+ 'glyphs) come from any such font you have installed.'),
+					+ 'Clew\'s monospace font. Prompt symbols (Powerline and Nerd Font glyphs) come from '
+					+ 'the common Nerd Font and Powerline families, tried after the monospace face when '
+					+ 'installed; name any other such font here.'),
 			]),
 			this.#section('Live edit', [
 				this.#selectRow('⌘E returns from reading mode to', 'defaultEditMode',

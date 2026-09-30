@@ -19,7 +19,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { settings } from './settings.js';
-import { direntKind, shouldRecurse, walkGuard, writeFileAtomic, WATCH_BUDGET, WATCH_CEILING, watchFilter, watchPlan } from './fs-utils.js';
+import { direntKind, shouldRecurse, walkGuard, writeFileAtomic, WATCH_BUDGET, WATCH_CEILING, watchFilter, watchPlan, scanShare, knownPaths } from './fs-utils.js';
 import { compileExcludes } from './vault-excludes.js';
 import { snapshotBeforeWrite, renameHistory } from './history.js';
 
@@ -393,9 +393,16 @@ export class VaultManager {
 		// So after 'ready' the gate opens again, up to a ceiling that still
 		// keeps the process clear of the ~10,240 where fork() dies.
 		let settled = false;
+		// This window's SHARE of the scan budget (fs-utils.js#scanShare): what
+		// is left, less what later windows' scans are owed — first-come used
+		// to take everything, and a second window's vault went unwatched.
+		const share = scanShare(WATCH_BUDGET - watchedTotal);
+		let scanned = 0;
 		const take = () => {
+			if (!settled && scanned >= share) return false;
 			if (watchedTotal >= (settled ? WATCH_CEILING : WATCH_BUDGET)) return false;
 			watchedTotal += 1;
+			if (!settled) scanned += 1;
 			return true;
 		};
 		// WHAT the budget buys, decided before chokidar walks: notes first,
@@ -417,6 +424,9 @@ export class VaultManager {
 			take,
 			admit: plan?.admit ?? null,
 			settled: () => settled,
+			// What the scan saw: after it, only NEW paths spend the headroom
+			// (chokidar re-asks about every entry of a folder on each event).
+			known: files ? knownPaths(files) : null,
 		});
 		if (plan) {
 			state.skipped = plan.skipped;

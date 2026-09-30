@@ -177,7 +177,17 @@ browser-window-focus).
   minutes): `writeNote` when the file is new, `saveAttachment`, the
   kv-store's first clewdata.json, and `vaults.refreshIfInside(abs)` after a
   note export, a site export or a canvas PNG lands wherever the user chose.
-  A new writer of vault files does the same. `CLEW_WATCH_BUDGET=<n>`
+  A new writer of vault files does the same. **Across windows**
+  (2026-09-30, measured by `smoke/watch-repro.mjs`): a window's SCAN takes
+  only its share of what is left (`fs-utils.js#scanShare`: all but 2,000,
+  never more than half past that — 6,000 for the first window of a process,
+  then 1,000, 500, …), because first-come took everything and a second
+  window's vault went unwatched; and after `ready` a path the scan KNEW
+  (`knownPaths`: its files and their folders) is refused free, because
+  chokidar re-asks about every entry of a folder on each event — buying the
+  old ones emitted ~1,000 spurious `add`s and spent the ceiling's headroom,
+  after which no window saw a new file. Only genuinely new paths spend it.
+  `CLEW_WATCH_BUDGET=<n>`
   (scenarios only) forces both numbers low, i.e. a blind watcher
   (`smoke/export-refresh-scenario.js`). The rules are applied to the
   vault-RELATIVE path: testing the absolute one ignored every file in a

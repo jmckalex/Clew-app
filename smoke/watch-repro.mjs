@@ -4,15 +4,17 @@
 // after chokidar's `ready`.
 //   node smoke/watch-repro.mjs <vault> [<vault2> …]
 // One "window" per vault, sharing the process-wide count, opened in order,
-// over smoke/make-watch-vault.mjs fixtures. Measured 2026-09-30: one window
-// sees both new root files; with TWO, the second window's scan gets nothing
-// (the budget is process-wide), its first root event admits its whole tree
-// (~1000 spurious `add`s) and hits WATCH_CEILING, and after that NEITHER
-// window sees a new file — `next new root file — add NO`.
+// over smoke/make-watch-vault.mjs fixtures. Measured 2026-09-30, before the
+// fix: one window saw both new root files; with TWO, the second window's
+// scan got nothing (the budget is process-wide), its first root event
+// admitted its whole tree (~1000 spurious `add`s) and hit WATCH_CEILING, and
+// after that NEITHER window saw a new file. After (scanShare + knownPaths):
+// each window's scan gets a share, events carry only the new file, and every
+// window sees every new file.
 import fs from 'node:fs';
 import path from 'node:path';
 const APP = new URL('..', import.meta.url).pathname.replace(/\/$/, '');
-const { direntKind, shouldRecurse, walkGuard, watchFilter, watchPlan, WATCH_BUDGET, WATCH_CEILING } = await import(`${APP}/src/main/fs-utils.js`);
+const { direntKind, shouldRecurse, walkGuard, watchFilter, watchPlan, WATCH_BUDGET, WATCH_CEILING, scanShare, knownPaths } = await import(`${APP}/src/main/fs-utils.js`);
 const { compileExcludes } = await import(`${APP}/src/main/vault-excludes.js`);
 const chokidar = (await import(`${APP}/node_modules/chokidar/index.js`));
 let watchedTotal = 0;
@@ -41,13 +43,18 @@ async function open(root) {
 	const files = [];
 	walk(root, excludes, duplicates, files);
 	let settled = false;
+	// As vault.js#startWatcher: this window's share of the scan budget.
+	const share = scanShare(WATCH_BUDGET - watchedTotal);
+	let scanned = 0;
 	const take = () => {
+		if (!settled && scanned >= share) return false;
 		if (watchedTotal >= (settled ? WATCH_CEILING : WATCH_BUDGET)) return false;
 		watchedTotal += 1;
+		if (!settled) scanned += 1;
 		return true;
 	};
 	const plan = watchPlan(files.filter((rel) => !excludes.isUnindexed(rel)), take);
-	const { ignored, state } = watchFilter({ root, isExcluded: (rel) => excludes.isUnindexed(rel), duplicates, take, admit: plan.admit, settled: () => settled });
+	const { ignored, state } = watchFilter({ root, isExcluded: (rel) => excludes.isUnindexed(rel), duplicates, take, admit: plan.admit, settled: () => settled, known: knownPaths(files) });
 	state.skipped = plan.skipped;
 	const events = [];
 	const watcher = chokidar.watch('.', { cwd: root, ignored, ignoreInitial: true });
