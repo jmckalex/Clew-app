@@ -10,7 +10,7 @@
 // board's, how many columns are FULLY visible without scrolling, whether it
 // scrolls, whether the scrollbar takes room (a classic, always-visible bar),
 // and whether the last column comes fully into view when scrolled to the end.
-// Expect — single: `Board4 … board=868 cols=4 visible=4 scrolls=false`
+// Expect — single: `Board4 … board=862 cols=4 visible=4 scrolls=false`
 // (before: board=704 visible=3 — the manual's 3 of 4); split (636 px panes):
 // both `scrolls=true scrollbar=true last-reachable=true`; always
 // `hit-test=true`.

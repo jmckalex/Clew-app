@@ -763,7 +763,10 @@ td.clew-q-cell:hover { background: rgba(168, 130, 255, 0.08); }
 /* ---- ```kanban ------------------------------------------------------------ */
 .clew-kanban {
 	display: flex;
-	gap: 12px;
+	/* 10, not 12: four 190 px columns then fit an 826 px iPad portrait pane
+	   (4 × 190 + 3 × 10 = 790 of 794 — iOS's columns are border-box); on
+	   desktop the difference does not show. */
+	gap: 10px;
 	align-items: flex-start;
 	overflow-x: auto;
 	margin: 0.8em 0;
