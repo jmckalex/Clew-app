@@ -10,9 +10,10 @@
 // board's, how many columns are FULLY visible without scrolling, whether it
 // scrolls, whether the scrollbar takes room (a classic, always-visible bar),
 // and whether the last column comes fully into view when scrolled to the end.
-// Expect — single: `Board4 … board=862 cols=4 visible=4 scrolls=false`
-// (before: board=704 visible=3 — the manual's 3 of 4); split (636 px panes):
-// both `scrolls=true scrollbar=true last-reachable=true`; always
+// Expect — single: `Board4 … board=790 cols=4 visible=4 scrolls=false`
+// (862 while the columns were content-box; before that board=704 visible=3 —
+// the manual's 3 of 4); split (636 px panes): both `visible=3 scrolls=true
+// scrollbar=true last-reachable=true` (visible=2 while content-box); always
 // `hit-test=true`.
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const { workspaceStore, vaultStore, actions } = window.__clew;
