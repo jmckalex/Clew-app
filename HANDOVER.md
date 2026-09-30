@@ -18,11 +18,13 @@ calls; the master's at-migration, not pushed there either), then the
 interim vault-trust guard (CLAUDE.md, "The interim vault-trust guard"; it
 covers the engine's note-code paths ONLY).
 
-**Next, in the coordinator's order:** the export-refresh bug (every Clew
-write of a NEW file into the vault calls `refreshTree()` — writeNote when
-the file is new, saveAttachment, EXPORT_NOTE/EXPORT_SITE/CANVAS_EXPORT_PNG
-via a refresh-if-inside helper, kv-store's first clewdata.json) and the
-watcher investigation report (below); the shell-panel glyph/`$` bugs; a
+Then `5077207`: every Clew write of a NEW file into the vault refreshes
+the explorer itself (writeNote when new, saveAttachment, refreshIfInside
+after note/site/canvas-PNG exports, the first clewdata.json) — proved with
+a blind watcher (`CLEW_WATCH_BUDGET`, export-refresh-scenario.js); and
+`8d5f36b`, `shared/refused-names.js` for the iOS port.
+
+**Next, in the coordinator's order:** the shell-panel glyph/`$` bugs; a
 LOCK toggle on Meta Bind / Web Awesome inputs (design note to the
 coordinator first — which widgets, where lock state lives, Obsidian's
 tolerance of an unknown argument); PDF phases 3–4. **Do not fix the
@@ -31,19 +33,20 @@ agent has it (`~/Source/Clew/JMARKDOWN-FUNC-BUG.md`); when the coordinator
 says it landed, `npm run sync-engine` between items and re-run the render
 dump.
 
-Watcher findings so far (ph341: a new root-level file invisible 6+ min):
-chokidar 5 (no fsevents) re-reads a directory on any event and asks
-`ignored()` about EVERY entry; after `ready`, a path not already accepted
-calls `take()` against the process-wide `WATCH_CEILING` (9000). Refused → no
-`add`, and the explorer refreshes only on some OTHER structure event or a
-Clew op. Paths the PLAN refused during the scan are unknown to chokidar, so
-the first post-`ready` re-read of their parent admits them one by one (and
-emits `add` for each, reading an admitted directory recursively) — which can
-spend the 1000 headroom on old files. A second window opened after a capped
-one gets nothing during its own scan. watchPlan/close() accounting balances
-(no leak). Still to do: measure on a synthetic copy (~80 notes + a 20k-file
-tree outside the vault + five symlinks to it; one window and two; a root
-file created from outside after `ready`), never on the owner's vault.
+Watcher investigation (ph341: a new root-level file invisible 6+ min) —
+MEASURED 2026-09-30 with `smoke/watch-repro.mjs` over
+`make-watch-vault.mjs` (ph341's shape, never the owner's vault). chokidar 5
+(no fsevents) re-reads a directory on any event and asks `ignored()` about
+EVERY entry; after `ready` a path not already accepted calls `take()`
+against the process-wide `WATCH_CEILING` (9000). One window: fine. TWO
+windows: the second window's scan gets nothing (the first spent the
+budget), its first root event admits its whole tree — ~1000 spurious
+`add`s — and reaches 9000, and from then on NEITHER window sees any new
+file. Reported with a proposed fix (not built): after `ready`, answer
+`ignored()` WITHOUT charging for any path the scan already knew (only
+genuinely new paths take budget — no spurious adds, no headroom burnt on old
+files), and reserve per-window headroom so a later window's scan is not
+starved. Clew's own writes no longer depend on it (`5077207`).
 
 ## 0. Where things stand
 
