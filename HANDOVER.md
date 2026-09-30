@@ -6,32 +6,75 @@ edit design AS BUILT is `docs/dev/live-edit.md` (§12 lists every decision in
 force and the follow-ons left out). This file is rewritten each session —
 keep it short, and prefer deleting a settled item to explaining it again.
 
-## 2026-09-30, afternoon — the interim trust guard landed (read this first)
+## PAUSED 2026-09-30 evening — the owner is rebooting a slow machine (read this first)
 
-Resumed after the owner's pause. **Nothing is pushed** (origin/main
-`005e41b`); commits stay local until the owner says. On main since the
-overnight queue: `49f2b0c` PDF-unification design, `bf5d212` PDF 1/4
-(portal thumbnails), `2798f41` frame-bridge revision, `b9f21c6` PDF 2/4 (a
-note's own PDF iframes → Clew's viewer), `88543bc` engine sync — jmarkdown
-`edcc28a`, the `Run note code` switch (+ `c0b9158`, argument-array tool
-calls; the master's at-migration, not pushed there either), then the
-interim vault-trust guard (CLAUDE.md, "The interim vault-trust guard"; it
-covers the engine's note-code paths ONLY).
+A FRESH session can resume from here. **Nothing is pushed** (origin/main
+`005e41b`); the coordinator ("Clew-boss") pushes when the owner asks.
+**Do not package** and do not ask the owner about packaging until the
+coordinator says: the owner decided the release is cut fresh from main
+once ALL the projects below are done (version decided then).
+`release/0.11.2` was DELETED on purpose.
 
-Then `5077207`: every Clew write of a NEW file into the vault refreshes
-the explorer itself (writeNote when new, saveAttachment, refreshIfInside
-after note/site/canvas-PNG exports, the first clewdata.json) — proved with
-a blind watcher (`CLEW_WATCH_BUDGET`, export-refresh-scenario.js); and
-`8d5f36b`, `shared/refused-names.js` for the iOS port.
+**main = `b9e5416`** (clean): the overnight queue, the PDF design +
+phases 1–2 (`bf5d212`, `b9f21c6`), the engine's `Run note code` switch
+(`88543bc`, jmarkdown `edcc28a`), the interim vault-trust guard
+(`e8d32e6`), export-refresh (`5077207`), `shared/refused-names.js`
+(`8d5f36b`), the watcher tools (`24707ec`), the shell panel fixes
+(`06f5e70`), the version bump to 0.11.2 (`08299a0`), and — fast-forwarded
+just before the pause — the WATCHER FIX (`b9e5416`: scanShare +
+knownPaths; npm test 911/911 on main).
 
-**Next, in the coordinator's order:** the shell-panel glyph/`$` bugs; a
-LOCK toggle on Meta Bind / Web Awesome inputs (design note to the
-coordinator first — which widgets, where lock state lives, Obsidian's
-tolerance of an unknown argument); PDF phases 3–4. **Do not fix the
-engine's `func(…)` bug** (any `func(` in prose aborts a build): another
-agent has it (`~/Source/Clew/JMARKDOWN-FUNC-BUG.md`); when the coordinator
-says it landed, `npm run sync-engine` between items and re-run the render
-dump.
+**Next, in the coordinator's order:**
+
+1. **Finish verifying the watcher merge on main**: `smoke/watch-repro.mjs`
+   passed on main (two windows both see new files); the IN-APP runs
+   (`watch-two-windows-scenario.js`, `export-refresh-scenario.js` blind and
+   normal) were interrupted: every Electron run on the slow machine failed
+   with `smoke failed: … reading 'webContents'` — the harness's fixed 3 s
+   timer (main.js, `}, 3000);`) fired before the window existed, startup
+   being slower than that. Not a code fault (the same code passed on the
+   branch an hour earlier); rerun after the reboot. If it persists, make
+   the harness WAIT for `windowOrder[0]` instead of a fixed 3 s.
+2. **Merge `meta-bind-lock` (`754baf6`)**: rebase onto main (expect small
+   conflicts in CLAUDE.md and smoke/README.md), then npm test,
+   `meta-bind-lock-scenario.js` (recipe in its header), the render dump
+   (demo/study, known vaults — smoke/README.md) and the PDF-surface
+   baseline + protocol tour. Report main's hash to the coordinator.
+3. **Enter commits Meta Bind number and text fields** (owner's decision):
+   Enter posts the field-edit (the blur path) and relocks a
+   locked-then-unlocked widget; textArea keeps Enter for new lines; make
+   sure Enter does not bubble into an engaged canvas card or live edit.
+   Measure: a number and a text field each commit on Enter (frontmatter
+   written), textArea still inserts a newline, the lock scenario still
+   passes. Commit on main, docs line to the coordinator.
+4. **PDF phases 3–4** (docs/dev/pdf-unification.md §4, §6; all five
+   open questions approved as recommended). WIP on branch `pdf-web`
+   (`1492efd`): `src/main/remote-guard.js` (address classification —
+   unit tests still to write). Plan: `remote-fetch.js` (injected resolver
+   + transport, pinned lookup, GET, no cookies/auth/referer, timeouts
+   10/20/120 s, 200 + content type + `%PDF-` in 1024 bytes, 100 MB counted
+   while streaming, ≤5 redirects each re-vetted, named errors);
+   `remote-pdfs.js` (device cache `<userData>/remote-pdfs/<sha256(url)>.pdf
+   + .json`, 1 GB LRU, daily conditional revalidation, per-session
+   registration); the rewrite pass registers remote frames →
+   `pdf-page.html?src=/<sid>/__clew_remote_pdf__/<hash>&readonly=1&origin=`;
+   the protocol route serves registered hashes only; the viewer read-only
+   (EmbedPDF `disabledCategories`/permissions, no autosave) with Save a copy
+   (attachment folder, never overwriting, refreshTree) and Open in browser
+   (URL looked up by hash in main, never from the message; under CLEW_SMOKE
+   log instead of opening); named failures. Guard tests: every refused
+   range, IPv6, mapped forms, mixed DNS, redirect into a refused range,
+   pinning — fake resolver/transport, no network. Smoke from a PRE-SEEDED
+   cache entry. Phase 4: drop `plugins: true`, catch `will-download`
+   (`smoke-pdf-leak:` in dev/smoke), sweep asserts zero leaks.
+5. **Re-vendor** with `npm run sync-engine` when the coordinator says the
+   jmarkdown `func(…)` fix landed (another agent), then re-run the render
+   dump. Don't fix it here.
+
+Branches: `watcher-budget` (merged, can be deleted), `meta-bind-lock`
+(`754baf6`, to merge), `pdf-web` (`1492efd`, WIP). Scratch tools used for
+verification live in the session scratchpad and may be gone; the durable
+ones are in smoke/ (README rows for every scenario named above).
 
 Watcher investigation (ph341: a new root-level file invisible 6+ min) —
 MEASURED 2026-09-30 with `smoke/watch-repro.mjs` over
