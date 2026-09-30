@@ -882,7 +882,21 @@ except where the selection touches a construct. The durable design is
   and names each failure; both actions name the HASH, and main looks the
   URL up in the sender's registrations (under CLEW_SMOKE, Open logs
   `smoke-open-external:` instead). A site export keeps the author's iframe.
-  `plugins: true` stays until phase 4. A PORTAL's PDF node is a
+  **`plugins: true` is gone** (phase 4, 2026-09-30), and dropping it does
+  NOT retire Chromium's viewer in Electron 43 (measured). So a vault PDF
+  that is asked for as a DOCUMENT — a frame, `<embed>` or `<object>` a
+  script adds after render — is 302'd by protocol.js to `pdf-page.html`,
+  keeping its `#page=N`. A navigation is told from EmbedPDF's own fetch by
+  `Accept` (`text/html,…` vs `*/*`; this scheme sends no Sec-Fetch-Dest).
+  Dev and smoke log `smoke-pdf-leak:` for each catch, and no scenario but
+  `smoke/pdf-leak-scenario.js` may produce one (`smoke/pdf-sweep.sh`). A
+  web PDF §4 cannot recognise (no `.pdf`, no type) still gets Chromium's
+  viewer. Never guard `will-download` for PDFs: EmbedPDF's own Download is
+  a blob `<a download>`, and a guard cancelled it (measured). The engine's
+  `![[x.pdf]]` placeholder carries `data-src`, never `src`, in the preview
+  (wikilinks.js; a site export keeps `src`). A real `src` started its own
+  load before pdf-embed.js replaced it, on first render and on every morph.
+  A PORTAL's PDF node is a
   first-page picture (`main/pdf-thumbs.js`: an offscreen `pdf-page.html?
   thumb=1` renders page 1 with EmbedPDF's `renderPage`; cached at the
   mirrored `.clew/cache/pdf-thumbs/<rel>.png`, mtime-keyed, one job at a

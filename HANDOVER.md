@@ -1,4 +1,4 @@
-# Handover — 2026-09-30 (the overnight queue landed, UNPUSHED: bridge receivers, library fix, frame-bridge + auto-update designs, stuck-preview watchdog, Pencil, scene PDFs, kanban, map measuring, tabbing)
+# Handover — 2026-09-30 night (the coordinator's queue done, pushed to 18c5e45 but for phase 4: harness wait, Meta Bind lock and Enter, PDF phases 3–4, the engine's func fix)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it; it gained a "Live edit" subsection); the live
@@ -6,90 +6,43 @@ edit design AS BUILT is `docs/dev/live-edit.md` (§12 lists every decision in
 force and the follow-ons left out). This file is rewritten each session —
 keep it short, and prefer deleting a settled item to explaining it again.
 
-## PAUSED 2026-09-30 evening — the owner is rebooting a slow machine (read this first)
+## 2026-09-30 night — the coordinator's queue is DONE (read this first)
 
-A FRESH session can resume from here. **Nothing is pushed** (origin/main
-`005e41b`); the coordinator ("Clew-boss") pushes when the owner asks.
-**Do not package** and do not ask the owner about packaging until the
-coordinator says: the owner decided the release is cut fresh from main
-once ALL the projects below are done (version decided then).
-`release/0.11.2` was DELETED on purpose.
+**origin/main is `18c5e45`** (pushed by the coordinator at the owner's
+request); PDF phase 4 is on main but NOT pushed. The coordinator
+("Clew-boss") pushes when the owner asks. **Do not package**, and do not
+ask the owner about packaging, until the coordinator says so. The release
+is cut fresh from main once every project is done; `release/0.11.2` was
+deleted on purpose.
 
-**main = `b9e5416`** (clean): the overnight queue, the PDF design +
-phases 1–2 (`bf5d212`, `b9f21c6`), the engine's `Run note code` switch
-(`88543bc`, jmarkdown `edcc28a`), the interim vault-trust guard
-(`e8d32e6`), export-refresh (`5077207`), `shared/refused-names.js`
-(`8d5f36b`), the watcher tools (`24707ec`), the shell panel fixes
-(`06f5e70`), the version bump to 0.11.2 (`08299a0`), and — fast-forwarded
-just before the pause — the WATCHER FIX (`b9e5416`: scanShare +
-knownPaths; npm test 911/911 on main).
+On `main` since the reboot, each measured (npm test, render dump of the
+demo and study vaults, the PDF baseline and the protocol tour identical
+before and after unless noted):
 
-**Next, in the coordinator's order:**
+- `e388df1`: the smoke harness waits for the window and its page, not a
+  fixed 3 s (`smoke-boot:` line; bounded at 120 s).
+- `ac6e9cc`: Meta Bind's `locked` argument. `e80e583`: Enter commits text
+  and number fields; a textArea's newline is escaped in the frontmatter
+  (Widgets.md's dump differs only by the new prose).
+- `5fa98b8`: `smoke/render-dump.sh` and `smoke/pdf-baseline.sh`, the
+  before/after runners.
+- `ffb7290` `8bab972` `03c06f3`: PDF phase 3, web PDFs read-only through
+  the device cache.
+- `18c5e45`: re-vendored the engine's `func(…)` fix (jmarkdown `82b21fd`).
+- **PDF phase 4** (merged from the `pdf-phase4` worktree). `plugins: true`
+  is gone, and protocol.js redirects a vault PDF asked for as a DOCUMENT to
+  EmbedPDF. §6's premise was false: Chromium's viewer survives the flag, and
+  a `will-download` guard broke EmbedPDF's own Download. See "As built" in
+  `docs/dev/pdf-unification.md`. `smoke/pdf-sweep.sh` asserts zero stray
+  `smoke-pdf-leak` lines. Its first run found the `![[x.pdf]]` placeholder
+  loading the PDF itself before its upgrade; in the preview it now carries
+  `data-src`. iOS must take wikilinks.js and pdf-embed.js TOGETHER.
 
-1. **Finish verifying the watcher merge on main**: `smoke/watch-repro.mjs`
-   passed on main (two windows both see new files); the IN-APP runs
-   (`watch-two-windows-scenario.js`, `export-refresh-scenario.js` blind and
-   normal) were interrupted: every Electron run on the slow machine failed
-   with `smoke failed: … reading 'webContents'` — the harness's fixed 3 s
-   timer (main.js, `}, 3000);`) fired before the window existed, startup
-   being slower than that. Not a code fault (the same code passed on the
-   branch an hour earlier); rerun after the reboot. If it persists, make
-   the harness WAIT for `windowOrder[0]` instead of a fixed 3 s.
-2. **Merge `meta-bind-lock` (`754baf6`)**: rebase onto main (expect small
-   conflicts in CLAUDE.md and smoke/README.md), then npm test,
-   `meta-bind-lock-scenario.js` (recipe in its header), the render dump
-   (demo/study, known vaults — smoke/README.md) and the PDF-surface
-   baseline + protocol tour. Report main's hash to the coordinator.
-3. **Enter commits Meta Bind number and text fields** (owner's decision):
-   Enter posts the field-edit (the blur path) and relocks a
-   locked-then-unlocked widget; textArea keeps Enter for new lines; make
-   sure Enter does not bubble into an engaged canvas card or live edit.
-   Measure: a number and a text field each commit on Enter (frontmatter
-   written), textArea still inserts a newline, the lock scenario still
-   passes. Commit on main, docs line to the coordinator.
-4. **PDF phases 3–4** (docs/dev/pdf-unification.md §4, §6; all five
-   open questions approved as recommended). WIP on branch `pdf-web`
-   (`1492efd`): `src/main/remote-guard.js` (address classification —
-   unit tests still to write). Plan: `remote-fetch.js` (injected resolver
-   + transport, pinned lookup, GET, no cookies/auth/referer, timeouts
-   10/20/120 s, 200 + content type + `%PDF-` in 1024 bytes, 100 MB counted
-   while streaming, ≤5 redirects each re-vetted, named errors);
-   `remote-pdfs.js` (device cache `<userData>/remote-pdfs/<sha256(url)>.pdf
-   + .json`, 1 GB LRU, daily conditional revalidation, per-session
-   registration); the rewrite pass registers remote frames →
-   `pdf-page.html?src=/<sid>/__clew_remote_pdf__/<hash>&readonly=1&origin=`;
-   the protocol route serves registered hashes only; the viewer read-only
-   (EmbedPDF `disabledCategories`/permissions, no autosave) with Save a copy
-   (attachment folder, never overwriting, refreshTree) and Open in browser
-   (URL looked up by hash in main, never from the message; under CLEW_SMOKE
-   log instead of opening); named failures. Guard tests: every refused
-   range, IPv6, mapped forms, mixed DNS, redirect into a refused range,
-   pinning — fake resolver/transport, no network. Smoke from a PRE-SEEDED
-   cache entry. Phase 4: drop `plugins: true`, catch `will-download`
-   (`smoke-pdf-leak:` in dev/smoke), sweep asserts zero leaks.
-5. **Re-vendor** with `npm run sync-engine` when the coordinator says the
-   jmarkdown `func(…)` fix landed (another agent), then re-run the render
-   dump. Don't fix it here.
-
-Branches: `watcher-budget` (merged, can be deleted), `meta-bind-lock`
-(`754baf6`, to merge), `pdf-web` (`1492efd`, WIP). Scratch tools used for
-verification live in the session scratchpad and may be gone; the durable
-ones are in smoke/ (README rows for every scenario named above).
-
-Watcher investigation (ph341: a new root-level file invisible 6+ min) —
-MEASURED 2026-09-30 with `smoke/watch-repro.mjs` over
-`make-watch-vault.mjs` (ph341's shape, never the owner's vault). chokidar 5
-(no fsevents) re-reads a directory on any event and asks `ignored()` about
-EVERY entry; after `ready` a path not already accepted calls `take()`
-against the process-wide `WATCH_CEILING` (9000). One window: fine. TWO
-windows: the second window's scan gets nothing (the first spent the
-budget), its first root event admits its whole tree — ~1000 spurious
-`add`s — and reaches 9000, and from then on NEITHER window sees any new
-file. Reported with a proposed fix (not built): after `ready`, answer
-`ignored()` WITHOUT charging for any path the scan already knew (only
-genuinely new paths take budget — no spurious adds, no headroom burnt on old
-files), and reserve per-window headroom so a later window's scan is not
-starved. Clew's own writes no longer depend on it (`5077207`).
+The watcher fix (`b9e5416`) is verified in the app as well
+(`watch-two-windows-scenario.js`, `export-refresh-scenario.js` blind and
+normal). Branches `watcher-budget`, `meta-bind-lock` and `pdf-web` are
+superseded: their work landed rebased, so `git branch -d` refuses them and
+`-D` is safe. The owner decides.
 
 ## 0. Where things stand
 

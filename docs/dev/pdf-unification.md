@@ -4,7 +4,9 @@ Status: APPROVED (2026-09-30; all five open questions as recommended).
 Built on desktop: phase 1 portal thumbnails (§2), phase 2 a note's own
 vault-PDF frames (§3), phase 3 web PDFs (§4 — main/remote-guard.js,
 remote-fetch.js, remote-pdf-cache.js, remote-pdfs.js; the read-only viewer
-in pdf-page.js). Phase 4 (§6, `plugins: true` goes) next. Worked through
+in pdf-page.js) and phase 4 (§6: `plugins: true` gone, and a frame that
+navigates to a vault PDF redirected to EmbedPDF — see "As built", which
+corrects §6's premise). Worked through
 with the iOS session, which moved the web-PDF cache out of the vault (§4)
 and wrote the iPad's half (§8).
 
@@ -178,6 +180,54 @@ autosaving into the vault's own PDFs, the flush machinery, and site export
   the redirect limit, timeouts, Content-Type, the `%PDF-` check, the size
   cap counted while streaming; the cache's eviction.
 
+### As built (2026-09-30)
+
+§6's premise was wrong, and measuring it changed the mechanism:
+
+- **Dropping `plugins: true` does NOT retire Chromium's viewer** (Electron
+  43.4.1). A note script that pointed an `<iframe>` at a vault PDF after
+  render still got Chromium's viewer; nothing downloaded and
+  `will-download` never fired. The flag is gone anyway (no measured effect,
+  and less surface).
+- **No `will-download` guard.** Besides catching nothing, it broke Download:
+  EmbedPDF's own Download (the ⋯ menu, in every PDF view) saves through a
+  blob `<a download="x.pdf">`, which IS a will-download, and the guard
+  cancelled it (measured). Chromium's viewer's Download button would have
+  gone the same way.
+- **The mechanism is a redirect in protocol.js.** A vault `.pdf` that exists,
+  requested as a DOCUMENT, gets a 302 to `pdf-page.html?src=…`. That covers
+  a frame navigating to it, an `<embed>`, an `<object>`, whatever put it
+  there. A navigation is told from the viewer's own fetch by its `Accept`:
+  `text/html,…` for the navigation, `*/*` for EmbedPDF's fetch.
+  `Sec-Fetch-Dest` is not sent on the custom scheme (measured). The redirect
+  keeps a `#page=N` fragment, which pdf-page.js reads as well as `?page=`.
+  Dev and smoke log each catch as `smoke-pdf-leak: <url>`. Every Clew
+  surface reaches the viewer before this, so the sweep asserts none outside
+  `smoke/pdf-leak-scenario.js`, which expects exactly three (iframe at
+  `#page=3`, embed, object), each ending in a loaded EmbedPDF.
+- **The sweep's first run found one real leak, in Clew itself.** The
+  engine's `![[x.pdf]]` placeholder, `<embed class="pdf-embed" src=…>`,
+  sometimes started its own load before pdf-embed.js replaced it. That
+  happened on first render and on every morph that re-inserted it beside
+  the kept viewer: pdf-flush, pdf-pen and pdf-rewrite each logged one. The
+  same race had always booted Chromium's viewer for nothing. In the preview
+  the placeholder now carries `data-src` and no `src` or `type`
+  (wikilinks.js), so it loads nothing; pdf-embed.js reads `data-src`, then
+  `src`. A site export keeps the real `<embed src>`, because a static page
+  has no pdf-embed.js.
+- **What is legitimately a document request for a vault PDF: nothing** —
+  checked. The PDF tab, canvas nodes, scene nodes, office-conversion output
+  and thumbnails all load `pdf-page.html` and fetch `*/*`. print-pdf loads
+  the note's `.html`. Exports and site export never touch the protocol.
+  "Open in default app" is `shell.openPath`. A link in a note never
+  navigates, because client.js takes every `<a>` click.
+- **So:** EmbedPDF is the one viewer for every vault PDF and every web PDF
+  §4 recognises (`.pdf`, or `type="application/pdf"`). A web PDF it cannot
+  recognise, such as arXiv's `/pdf/…`, still opens in Chromium's viewer.
+  That is better than §6 expected: it was going to be cancelled with a
+  notice. The iPad has no Chromium viewer, so §8's `decidePolicyFor
+  navigationResponse` twin stands there as written.
+
 ## 7. EmbedPDF
 
 No fork change is needed: read-only is configuration (`disabledCategories`,
@@ -235,7 +285,8 @@ STATIC PAGE — so everything here is a gain there.
   unregistered hash → 404).
 - **The leak detector's twin**: `decidePolicyFor navigationResponse`
   cancels an `application/pdf` response in a subframe and logs it — the
-  iPad's equivalent of desktop's `will-download` for the sweep.
+  iPad's equivalent of desktop's `smoke-pdf-leak` for the sweep (desktop
+  catches it in protocol.js, not in `will-download` — "As built", §6).
 
 ## Open questions for the owner
 

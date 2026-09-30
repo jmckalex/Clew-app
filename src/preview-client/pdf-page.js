@@ -24,6 +24,10 @@ const onStatus = (text) => {
 
 let viewer = null;
 
+/** The page to open at: `?page=N`, or a `#page=N` a redirect carried over
+ *  (a frame navigating straight to a vault PDF — protocol.js sends it here). */
+const startPage = () => Number(params.get('page')) || Number(/(?:^#|&)page=(\d+)/.exec(location.hash)?.[1]) || 0;
+
 /** Scroll to `page` once the viewer has laid its pages out: a scroll asked
  *  for too early lands nowhere (measured — it worked only when something
  *  slowed the page down), so try until the current page says so. */
@@ -148,7 +152,7 @@ async function openRemote({ reload = false } = {}) {
 	root.replaceChildren();
 	viewer = await createViewer({ target: root, src, onStatus, readonly: true, buffer, name: fileNameOf(origin) });
 	window.__clewPdfHandle = viewer;
-	const page = Number(params.get('page'));
+	const page = startPage();
 	if (page > 1) showPage(page);
 }
 
@@ -177,7 +181,7 @@ if (!src) {
 		viewer = handle;
 		window.__clewPdfHandle = handle;   // scenarios
 		// `[[paper.pdf#page=12]]` (§5.15): open there.
-		const page = Number(params.get('page'));
+		const page = startPage();
 		if (page > 1) showPage(page);
 	}).catch((err) => {
 		console.warn('[clew pdf] page viewer failed:', err);

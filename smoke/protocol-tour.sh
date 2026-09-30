@@ -22,7 +22,7 @@ for target in "Welcome.md" "Guide/Canvas.md" "Guide/Drawings.md" "Guide/Attachme
 	env CLEW_SMOKE_LOG=1 CLEW_USER_DATA="$S/ud" CLEW_SMOKE="$S/shot.png" CLEW_SMOKE_SCRIPT="$PWD/smoke/protocol-tour-scenario.js" \
 		CLEW_SMOKE_VAULT="$S/v" CLEW_SMOKE_FRAME_SCRIPT="$PWD/smoke/protocol-tour-frame.js" CLEW_SMOKE_FRAME_MATCH="$match" \
 		perl -e 'alarm shift; exec @ARGV' 120 "$E" . > "$S/run.log" 2>&1
-	grep -E "smoke-tour(-frame)?[ :]" "$S/run.log" | sed -E 's/^\[smoke:[a-z]+\] //'
+	grep -E "smoke-tour(-frame)?[ :]|smoke-pdf-leak:" "$S/run.log" | sed -E 's/^\[smoke:[a-z]+\] //'
 	grep -iE "CORS|blocked by|Failed to load|net::ERR|Access-Control" "$S/run.log" | grep -v smoke-asset | sed -E 's/^/  ! /' | cut -c1-220 | sort -u | head -5
 done
 git -C "$(dirname "$0")/.." status --short demo-vault | head -3
