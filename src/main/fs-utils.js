@@ -42,11 +42,16 @@ export const IGNORED_DIRS = new Set(['.obsidian', '.clew', '.git', 'node_modules
 //
 // So: a budget, shared by every window because the descriptors are, and
 // well under the ceiling — the rest of the app needs descriptors too.
-export const WATCH_BUDGET = 8000;
+//
+// CLEW_WATCH_BUDGET=<n> is for scenarios only: a vault whose budget is SPENT
+// — the watcher blind to anything new — without generating 10,000 files. It
+// sets both numbers, so nothing is watched past the scan either.
+const FORCED_BUDGET = Number(process.env.CLEW_WATCH_BUDGET) || 0;
+export const WATCH_BUDGET = FORCED_BUDGET || 8000;
 // What the watcher may grow to AFTER the initial scan, for the files a
 // session actually creates. The budget bounds the walk; this bounds the
 // drift, and both stay clear of the ~10,240 descriptors where fork() dies.
-export const WATCH_CEILING = 9000;
+export const WATCH_CEILING = FORCED_BUDGET || 9000;
 
 /**
  * WHAT to spend the budget on, in what order — the owner's policy,

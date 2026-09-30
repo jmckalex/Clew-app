@@ -68,6 +68,7 @@ export class VaultSession {
 		// only the index knows which notes those are.
 		this.renderService.embeddersOf = (relPath) => this.indexer.embeddersOf(relPath);
 		this.kvStore.send = this.send;
+		this.kvStore.onCreated = () => this.vaults.refreshTree();
 
 		/** Does this device trust the open vault's notes to run code? The
 		 *  interim guard (vault-trust.js): the engine's note-code paths only. */

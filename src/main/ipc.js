@@ -344,8 +344,13 @@ export function registerIpc() {
 	// `outFile` (smoke tests) skips the save dialog, like EXPORT_SITE's outDir.
 	// sessionId: the reading-view PDF prints this session's own
 	// clew-preview:// document, and the protocol resolves it by sid.
-	handle(CH.EXPORT_NOTE, (s, { path, format, outFile }) =>
-		exportNote({ win: s.win, vaults: s.vaults, sessionId: s.id, callerToken: s.callerToken, relPath: path, format, outFile, trusted: s.trusted }));
+	// An export into the vault shows in the explorer at once (refreshIfInside:
+	// the watcher may never report it — a vault whose budget is spent).
+	handle(CH.EXPORT_NOTE, async (s, { path, format, outFile }) => {
+		const result = await exportNote({ win: s.win, vaults: s.vaults, sessionId: s.id, callerToken: s.callerToken, relPath: path, format, outFile, trusted: s.trusted });
+		if (result?.output) s.vaults.refreshIfInside(result.output);
+		return result;
+	});
 
 	// The whole vault as a static website. `outDir` (smoke tests) skips the
 	// dialog; otherwise the user picks a folder and the site lands in a
@@ -370,6 +375,7 @@ export function registerIpc() {
 			outDir: target,
 			vaultOptions,
 		});
+		s.vaults.refreshIfInside(target);
 		return { outDir: target, ...result };
 	});
 
@@ -387,6 +393,7 @@ export function registerIpc() {
 			target = chosen;
 		}
 		writeFileAtomic(target, Buffer.from(data, 'base64'));
+		s.vaults.refreshIfInside(target);
 		return target;
 	});
 

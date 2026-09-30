@@ -172,7 +172,14 @@ browser-window-focus).
   showing notes the user had just created (2026-09-25). And Clew's own file
   operations never wait for the watcher at all: createNote/createFolder/
   rename/trash call `vaults.refreshTree()`, which is both immediate and
-  immune to a spent budget. The rules are applied to the
+  immune to a spent budget — and so does EVERY Clew write of a new file
+  (2026-09-30, the owner's PDF exported into ph341 and invisible for 6+
+  minutes): `writeNote` when the file is new, `saveAttachment`, the
+  kv-store's first clewdata.json, and `vaults.refreshIfInside(abs)` after a
+  note export, a site export or a canvas PNG lands wherever the user chose.
+  A new writer of vault files does the same. `CLEW_WATCH_BUDGET=<n>`
+  (scenarios only) forces both numbers low, i.e. a blind watcher
+  (`smoke/export-refresh-scenario.js`). The rules are applied to the
   vault-RELATIVE path: testing the absolute one ignored every file in a
   vault that merely lived under a dot-directory, `indexer.js` (the metadata cache: extractor over every
   note, link resolution, incremental patches, `embeddersOf()` — who
