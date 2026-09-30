@@ -813,9 +813,14 @@ except where the selection touches a construct. The durable design is
   always `window.top`, so pdf-core posts saves and dirty reports THERE (a
   scene's viewer is a grandchild), and `pdf-frames.js` finds a dirty viewer
   however deep under a view (`holds`) and asks IT to flush; pdf-page answers
-  the app page as well as its parent. `plugins: true` stays for what still
-  reaches Chromium's viewer: a note's own `<iframe src="x.pdf">` (until
-  `docs/dev/pdf-unification.md` is built out). A PORTAL's PDF node is a
+  the app page as well as its parent. A note's OWN `<iframe|embed|object>`
+  pointing at a vault PDF is rewritten to that viewer as the document is
+  served (`main/pdf-frames-rewrite.js`, called from protocol.js's
+  `wrapPreviewDocument` and the fragment route: `#page=N` and the author's
+  sizes kept, the note's folder resolving relative paths — a live-edit block
+  finds it through `renderService.blockSourcePath`); a site export keeps the
+  author's iframe. `plugins: true` stays until web PDFs are served
+  (`docs/dev/pdf-unification.md` phases 3-4). A PORTAL's PDF node is a
   first-page picture (`main/pdf-thumbs.js`: an offscreen `pdf-page.html?
   thumb=1` renders page 1 with EmbedPDF's `renderPage`; cached at the
   mirrored `.clew/cache/pdf-thumbs/<rel>.png`, mtime-keyed, one job at a

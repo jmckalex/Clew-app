@@ -35,6 +35,7 @@ import { settings } from './settings.js';
 import { fontsDir, fallbackConfig } from './pdf-fonts.js';
 import { narrowCors } from './preview-cors.js';
 import { readRenderBody } from './caller-token.js';
+import { rewritePdfFrames } from './pdf-frames-rewrite.js';
 
 const MIME = {
 	'.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript',
@@ -180,7 +181,11 @@ export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDi
 	 * for notes and live edit's block documents, so the two cannot drift;
 	 * a block is marked `data-clew-block` on its <html>.
 	 */
-	function wrapPreviewDocument(html, { session, sid, block = false }) {
+	function wrapPreviewDocument(html, { session, sid, block = false, noteDir = '' }) {
+		// A note's own PDF frames go to Clew's viewer (pdf-frames-rewrite.js,
+		// docs/dev/pdf-unification.md §3) — as the document is SERVED, so a
+		// site export (which never comes through here) keeps the author's.
+		html = rewritePdfFrames(html, { sid, noteDir }).html;
 		const vaultSettings = session.vaults.loadState('vault-settings.json') ?? {};
 		// Vault plugins load as ordinary vault files; global ones from
 		// the __clew_plugin_file__ namespace (they are outside every
@@ -345,7 +350,7 @@ export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDi
 			if (rel === '__clew_fragment__' && request.method === 'POST') {
 				const body = await readRender();
 				if (body.status) return refuse(body);
-				const html = await renderService.renderFragment(body.text);
+				const html = rewritePdfFrames(await renderService.renderFragment(body.text), { sid: pathname.slice(0, slash) }).html;
 				return new Response(html, { headers: headers('text/html') });
 			}
 
@@ -374,7 +379,12 @@ export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDi
 				if (html === undefined) {
 					return new Response('Not found', { status: 404, headers: headers('text/plain') });
 				}
-				const injected = wrapPreviewDocument(html, { session, sid: pathname.slice(0, slash), block: true });
+				const blockKey = rel.slice('__clew_block__/'.length);
+				const blockNote = renderService.blockSourcePath(blockKey);
+				const injected = wrapPreviewDocument(html, {
+					session, sid: pathname.slice(0, slash), block: true,
+					noteDir: blockNote ? path.posix.dirname(blockNote).replace(/^\.$/, '') : '',
+				});
 				return new Response(injected, { headers: headers('text/html') });
 			}
 
@@ -394,7 +404,10 @@ export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDi
 						+ `<body><div id="__clew_err">${String(err.message ?? err)
 							.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</div></body></html>`;
 				}
-				const injected = wrapPreviewDocument(html, { session, sid: pathname.slice(0, slash) });
+				const injected = wrapPreviewDocument(html, {
+					session, sid: pathname.slice(0, slash),
+					noteDir: path.posix.dirname(relPath).replace(/^\.$/, ''),
+				});
 				return new Response(injected, { headers: headers('text/html') });
 			}
 

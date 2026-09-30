@@ -92,6 +92,7 @@ export class RenderService {
 	#rebuildTimers = new Map();
 	/** fragment cache: key → html string (canvas cards, live-edit blocks; bounded) */
 	#fragments = new Map();
+	#blockSources = new Map();   // block key → the note it was rendered for
 	#fragmentInflight = new Map();
 	/** Bumped on every file change: a DEPENDENT fragment's key carries it, so
 	 *  a cached render of `![[Note]]` is never served after Note changed. */
@@ -461,7 +462,17 @@ export class RenderService {
 		const opts = { ...options, ...(header ? { dependent: true } : {}), document: true };
 		const key = this.#fragmentKey(full, opts);
 		await this.#cachedBuild(full, opts);
+		// Its note, for what the document itself cannot say: a block is served
+		// from __clew_block__/, not the note's folder, so a relative path in it
+		// (a note's own <iframe src="paper.pdf">) resolves against the note.
+		if (options.sourcePath) this.#blockSources.set(key, options.sourcePath);
+		if (this.#blockSources.size > 1000) this.#blockSources.delete(this.#blockSources.keys().next().value);
 		return key;
+	}
+
+	/** The note a block document was rendered for, or null. */
+	blockSourcePath(key) {
+		return this.#blockSources.get(key) ?? null;
 	}
 
 	/** The source note's citation header, or '' (no note, no header, unreadable). */
