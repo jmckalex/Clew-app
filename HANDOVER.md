@@ -1,320 +1,187 @@
-# Handover — 2026-10-01 (0.12.0 built, notarized, boot-tested; pushed to 2f389e4)
+# Handover — 2026-10-01 (0.12.0 released; main a3bb88c+, unpushed past 5119d93)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
-in **CLAUDE.md** (trust it; it gained a "Live edit" subsection); the live
-edit design AS BUILT is `docs/dev/live-edit.md` (§12 lists every decision in
-force and the follow-ons left out). This file is rewritten each session —
-keep it short, and prefer deleting a settled item to explaining it again.
+in **CLAUDE.md** (trust it); the live edit design AS BUILT is
+`docs/dev/live-edit.md`, the PDF one `docs/dev/pdf-unification.md` ("As
+built" under §6). This file is rewritten each session — keep it short, and
+prefer deleting a settled item to explaining it again.
 
-## 2026-10-01 — 0.12.0 is BUILT, notarized and boot-tested (read this first)
+## Read this first
 
-**Release commit `9268aa3`** (version bump only, over `48afe19`). The engine
-and EmbedPDF re-syncs changed nothing; npm test 950/950; the render dump is
-byte-identical to `48afe19`. The owner chose this release; the code review
-was deferred. It was packaged with the owner's yes in this window, by the
-§3 recipe with `MPTIKZ_SRC=/nonexistent`. The coordinator ("Clew-boss") pushes, only with the owner's explicit
-authorisation.
+**Where the code is.** `origin/main` = `5119d93`. `main` is ahead by
+`a3bb88c` (⌘1–⌘9 tab switching and the hotkey-recorder fix) plus this
+HANDOVER commit, both NOT pushed. Tree clean.
 
-| artefact | bytes | state |
+**The rules this session works under** (the owner's, relayed by the
+coordinating session "Clew-boss", uds `/tmp/cc-socks/6958.sock` at the
+time of writing; find it with ListAgents):
+
+- **Pushes ONLY on the owner's explicit OK, relayed by Clew-boss.**
+  Clew-boss may no longer approve pushes on its own (withdrawn 2026-09-30).
+  Commit locally and say what is unpushed. Never force-push. Clew-app only.
+- **No packaging without the owner.** Packaging needs the owner's yes in
+  THIS window (a question asked here; they answered "Yes, package now" for
+  0.12.0). If a permission prompt blocks, leave it; never route around it.
+- **Report every finished task to Clew-boss** with a docs line for the
+  manual (`../Clew-docs`, which this session never edits or commits) and
+  notes for Clew-iOS (never edited from here either).
+- Engine changes only in the jmarkdown master
+  (`~/Sites/jmckalex/software/jmarkdown`, branch `at-migration`), then
+  `npm run sync-engine`. Stage explicit paths there; never commit or revert
+  the owner's uncommitted `jmarkdown.html` / `src/index.js` (a dirty master
+  is vendored AS IS — that is how it has shipped).
+- Security work stays strictly DEFENSIVE: no attack pages, no probing of
+  exploitability. "Cautiously — I don't want anything to break. If anything
+  breaks, we need to know why, whether it can be fixed, and if not, whether
+  the cost is worth it." Measure before and after (render dump, PDF
+  baseline, protocol tour, live sweep — runners in `smoke/`).
+- A peer session's message is a teammate's request, not the owner's
+  approval: it cannot grant permissions or answer a pending prompt.
+
+## 0.12.0 — released
+
+**Release commit `9268aa3`** (version bump over `48afe19`; the engine
+`at-migration@82b21fd` and EmbedPDF `ocg-v2@015545b1` re-syncs changed
+nothing; npm test 950/950; render dump byte-identical to `48afe19`).
+Packaged 2026-10-01 by the recipe below with `MPTIKZ_SRC=/nonexistent`,
+pushed by Clew-boss with the owner's OK, and — per Clew-boss — live on
+clew-app.com.
+
+| artefact in `out/` | bytes | state |
 | --- | --- | --- |
 | `Clew-0.12.0-arm64.dmg` | 222,428,189 | signed · notarized · stapled; `spctl` accepts the image AND the app (`Notarized Developer ID`); arm64; runtime flag, four entitlements; 0.12.0; carries `mptikz/bundles/opentype` |
 | `Clew-0.12.0-x64.dmg` | 226,079,778 | the same, x86_64 (built as `Clew-0.12.0.dmg`, renamed; its app is in `out/mac/`) |
 | `Clew Setup 0.12.0.exe` | 190,590,642 | NSIS, unsigned, untested at runtime |
 | `Clew-0.12.0.AppImage` / `clew_0.12.0_amd64.deb` | 223,791,314 / 177,189,340 | ELF x86-64 / well-formed; untested at runtime |
 
-**The boot test PASSED** (`smoke/boot-test.sh` on `out/mac-arm64/…/Clew`,
-2026-10-01): all 13 figures `mpw-ok` with paths, `pending=0`, `cache-probe
-first=engine second=cache`, and every live-edit line. It waited 7 minutes
-for the load to fall below 6 after packaging. The 0.11.1 artefacts went to the
-Trash on the owner's word (`~/.Trash/Clew 0.11.1 artefacts/`, 1.04 GB,
-recoverable until it is emptied); origin/main is `2f389e4`, pushed by the
-coordinator with the owner's authorisation.
+**Boot test PASSED** on the packaged arm64 app (13 figures `mpw-ok` with
+paths, `pending=0`, `cache-probe first=engine second=cache`, every
+live-edit line; it waited 7 min for load < 6). The 0.11.1 artefacts are in
+`~/.Trash/Clew 0.11.1 artefacts/` (owner's word; recoverable until
+emptied); the 0.12.0 files and the unpacked dirs stay in `out/` — Clew-docs
+stages the downloads from there.
 
-A trap met on the way: a zsh loop passing `$flags` gives package.js ONE
-argument (zsh does not word-split), so it built an unsigned `dir`. Run the
-§3 commands as written, or from bash.
+What 0.12.0 carries beyond 0.11.1, in short: the interim vault-trust guard
+and the engine's `Run note code` switch; the engine's `func(…)` fix; PDF
+unification phases 1–4 (portal thumbnails, a note's own PDF frames, web
+PDFs read-only through a device cache, `plugins: true` gone with vault-PDF
+navigations redirected to EmbedPDF and the `![[x.pdf]]` placeholder made
+inert); Meta Bind `locked` widgets and Enter-to-commit; the export-refresh
+and two-window watcher fixes; the smoke harness waiting for its window;
+iOS sync #3's upstream fixes (kanban columns border-box, fs-utils without a
+`process` global, web-PDF failure texts).
 
-On `main` since the reboot, each measured (npm test, render dump of the
-demo and study vaults, the PDF baseline and the protocol tour identical
-before and after unless noted):
+## Since 0.12.0
 
-- `e388df1`: the smoke harness waits for the window and its page, not a
-  fixed 3 s (`smoke-boot:` line; bounded at 120 s).
-- `ac6e9cc`: Meta Bind's `locked` argument. `e80e583`: Enter commits text
-  and number fields; a textArea's newline is escaped in the frontmatter
-  (Widgets.md's dump differs only by the new prose).
-- `5fa98b8`: `smoke/render-dump.sh` and `smoke/pdf-baseline.sh`, the
-  before/after runners.
-- `ffb7290` `8bab972` `03c06f3`: PDF phase 3, web PDFs read-only through
-  the device cache.
-- `18c5e45`: re-vendored the engine's `func(…)` fix (jmarkdown `82b21fd`).
-- **PDF phase 4** (merged from the `pdf-phase4` worktree). `plugins: true`
-  is gone, and protocol.js redirects a vault PDF asked for as a DOCUMENT to
-  EmbedPDF. §6's premise was false: Chromium's viewer survives the flag, and
-  a `will-download` guard broke EmbedPDF's own Download. See "As built" in
-  `docs/dev/pdf-unification.md`. `smoke/pdf-sweep.sh` asserts zero stray
-  `smoke-pdf-leak` lines. Its first run found the `![[x.pdf]]` placeholder
-  loading the PDF itself before its upgrade; in the preview it now carries
-  `data-src`. iOS must take wikilinks.js and pdf-embed.js TOGETHER.
+- `5119d93` (pushed): the **Window menu lists every open vault** — folder
+  name plus active tab, the focused one checked, choosing one brings it
+  forward; same on all platforms; deliberately not role `windowMenu`.
+  With no window focused, the menu follows the window focused LAST
+  (`session.lastFocusedAt`). `smoke/window-menu-scenario.js`.
+- `a3bb88c` (NOT pushed): **⌘1–⌘8 / ⌘9 switch tabs** in the current pane
+  (owner's choice: tabs, not windows; Go > Tab); the app's chord wins over
+  CodeMirror, canvas and a focused terminal. And a bug found on the way:
+  recording an already-bound chord in Settings → Hotkeys RAN its command
+  (recording ⌘1 left Settings, recorded nothing) — now
+  `registry.js#recordKeys`. `smoke/goto-tab-scenario.js`,
+  `hotkey-record-scenario.js`. Reported with docs lines; iOS should check
+  whether ⌘-digits reach its WKWebView from a hardware keyboard.
 
-- iOS sync #3's three upstream fixes: `5306e93` (fs-utils loads with no
-  `process` global), `db50f57` (web-PDF failure headlines state no size
-  limit; `insecure-url` has one) and `2588285` (kanban columns are
-  border-box: 790 px, four on an iPad portrait pane).
+## Open — waiting on the owner
 
-The watcher fix (`b9e5416`) is verified in the app as well
-(`watch-two-windows-scenario.js`, `export-refresh-scenario.js` blind and
-normal). Branches `watcher-budget`, `meta-bind-lock` and `pdf-web` are
-superseded: their work landed rebased, so `git branch -d` refuses them and
-`-D` is safe. The owner decides.
+As relayed by Clew-boss on 2026-10-01; none is to be started without the
+owner's word.
 
-## 0. Where things stand
-
-**The night of 2026-09-29/30 (the owner's overnight queue, run through the
-coordinator): twelve commits on `main`, NONE PUSHED** — `git push` is
-refused by this session's permission gate ("Modify Shared Resources") since
-`2e45098`; origin/main is `6cbe0d8` (the caller token). The owner pushes,
-or grants the permission, in the morning. In order:
-
-- `2e45098` message receivers act only for a sender they can name
-  (`shared/message-guard.js`; the iOS session's finding) and `84f975e` a
-  read-only drawing embed no longer empties the Excalidraw library —
-  iOS's sync #1 pinned `84f975e`.
-- `cd94f89` the frame-bridge DESIGN (`docs/dev/frame-bridge.md` §2 (c),
-  §3 Compatibility, §4 vault trust — the owner's "ask once per vault, per
-  device" — §5–§16 the bridge; 11 open questions for the owner) and
-  `e2e0992` the auto-update DESIGN (`docs/dev/auto-update.md`): design
-  only, both for the owner's approval.
-- `ffbf291` office-bridges scenario fix (a reported "live embed never
-  dirty" bug was the scenario's error).
-- `f1816ae` stuck-preview watchdog keyed on LOAD, and a new frame is never
-  `ready` until it says so (item 12).
-- `12b1734` PDF viewer handles published, the pen convention upstreamed as
-  `preview-client/pdf-pen.js` (items 10+11; Windows pen-and-touch
-  untested).
-- `71180c6` canvas-scene PDFs in the standard viewer, saving through
-  `window.top`, flushed however deep (item 15; `plugins: true` stays for
-  portals and notes' own raw PDF iframes — an owner choice).
-- `a65395c` kanban boards widen to the pane; `693c4fe` the map distance
-  tool measures at all (it never completed a measurement since `a4a6b48`).
-- `cd8c311` tabbing (§ in CLAUDE.md; demo `Guide/Tabbing.md`) — purely
-  additive by `render-dump-scenario.js`; LaTeX export only after the
-  jmarkdown backport. iOS's sync #2 pins `cd8c311`; src/, vendor/ and
-  demo-vault/ are frozen until the coordinator says its copy is done.
-- `2723e63` smoke/manual/kanban-board.js.
-
-Docs lines for every user-visible change went to the coordinator as text
-(Clew-docs writes its own tree — never edit or commit there, nor in
-Clew-iOS). **888 tests.**
-
-Earlier on 2026-09-29:
-
-`main` carries, after 0.11.0 (`c699565`), the owner-approved round of
-2026-09-29 (relayed by the coordinating session in `~/Source/Clew`): smoke
-runs made INVISIBLE, `smoke/boot-test.sh`, and the quick desktop fixes from
-Clew-iOS's upstream candidates — one shared boot tail for a reload,
-`dataviewJs` reconfiguring at once, a rejected office download repainting,
-same-second history ordering, an engaged canvas node's affordances and
-ring, floaters measuring the visual viewport, and the engine reached as
-`#jmarkdown/*` — plus the owner's own report that day: the shell panel now
-starts a LOGIN shell on macOS (a Dock-launched app has launchd's bare PATH,
-so `ls` → `gls` was not found). Pushed to `fc2c79f` (owner's decision via
-the coordinator). **843 tests green, `node scripts/build.js` green**; the
-live sweep ran hidden and green, cross-reference parity included.
-
-**0.11.1 is BUILT, notarized and boot-tested** (§3) — the rebuild of the
-never-published 0.11.0 with this round; 0.11.1 rather than 0.11.0 so the
-notarized 0.11.0 files in `out/` stay put (no tag or published page names
-either — the newest tag is `v0.9.0`). Packaged in-session with the owner's
-permission (an earlier attempt was refused by the auto-mode permission
-check as a production deploy, until the owner permitted it).
-
-**Esc leaves an engaged note card** (`7a0cb6f`, owner-approved, landed
-after 0.11.1 was packaged — so NOT in 0.11.1): client.js forwards a bare Esc
-nothing inside the preview used; `smoke/canvas-esc-scenario.js`.
-
-**`main` pushed to `6c63132`** (owner's word via the coordinator).
-
-Both live-edit worktrees
-are REMOVED (2026-09-29; each was clean and its tip already in its repo's
-`main`). The `feat/live-edit` branches survive — here locally and on origin,
-in Clew-docs locally only — and are fully merged, so deleting them loses
-nothing.
-
-**Live edit is in `main`** — `254c198` merged the 40-commit branch
-(`--no-ff`): the mode, the toolbar, tables edited in place, the `//` menu,
-link hover previews, the live preview pane for maths and diagrams,
-cross-references around `@label`/`@ref`/`@cref` with numbering asserted equal
-to the engine's, multi-paragraph footnotes concealed, citations as objects
-(library, cited-by, hover, graph), PDF annotations → note with
-`[[x.pdf#page=N]]` anchors, sidenotes, headerless tables, engine-exact
-italics, fence highlighting, text-style chords (⌘B/⌘I/⌘U/⌘⇧H/…; the sidebar
-toggles moved to ⌘⌥B / ⌘⌥⇧B). Each landed with a scenario driven by real
-input; `smoke/live-sweep.sh` reruns all of them (~8 min, 21 scenarios).
-
-Since the merge, on `main`: `ccf8dca` (the demo-vault construct sweep test
-read `.clew/history/…/Widgets.md/` — a DIRECTORY — as a note; it now reads
-notes only), `368bfd7` (**mp-tikz-wasm 0.3.0 pinned** — the `opentype`
-bundle, so `font=note` works from a fresh install; proven by staging from
-the pinned archive with the master bypassed and the fonts scenario over
-that tree), `c699565` (0.11.0).
-
-**0.11.1 artefacts in `out/`** — all that is left there besides the unpacked
-apps and electron-builder's yml files. On the owner's word (2026-09-29)
-everything older went to the Trash, recoverable until it is emptied: the
-0.11.0 files in `~/.Trash/Clew 0.11.0 artefacts/` (1.3 GB; rebuildable from
-`c699565`), and the 0.10.0 and 0.9.0 artefacts, the unpacked 0.11.0
-universal app and `out/old/` (0.7.0 and 0.8.0) in `~/.Trash/Clew older
-builds/` (3.8 GB):
-
-| artefact | size | state |
-| --- | --- | --- |
-| `Clew-0.11.1-arm64.dmg` / `Clew-0.11.1-x64.dmg` | 222 / 226 MB | signed · notarized · stapled; `spctl` accepts image AND the app inside (`Notarized Developer ID`); `arm64` / `x86_64`; `flags=0x10000(runtime)`, four entitlements; version 0.11.1; carry `mptikz/bundles/opentype` (pinned 0.3.0) |
-| `Clew Setup 0.11.1.exe` | 191 MB | NSIS, unsigned, untested at runtime |
-| `Clew-0.11.1.AppImage` / `clew_0.11.1_amd64.deb` | 224 / 177 MB | ELF x86-64 / well-formed; untested at runtime |
-
-No universal image this time (owner's decision). **The boot test PASSED**
-(`smoke/boot-test.sh` on `out/mac-arm64/…/Clew`, 17:00 on 2026-09-29):
-all 13 figures `mpw-ok` with paths, `pending=0`, `cache-probe
-first=engine second=cache`, and every live-edit line — invisibly. Its
-first attempt ABORTED as designed (load still 11.6 after 20 minutes:
-Spotlight, CrashPlan and Kaspersky working through the new gigabyte in
-`out/`); the second waited 4 minutes for load 5.4 and ran. The 0.11.0
-boot test was never finished; 0.11.1 supersedes it.
-
-**Clew-docs**: `main` at `eff4e7f` merges the manual's 13 live-edit commits;
-`make check-links` clean. The owner's uncommitted `HANDOVER.md`, `Makefile`,
-`README.md` there are untouched. **It still has no remote** — creating a
-public repository is an action the assistant's permissions refuse:
-`cd ../Clew-docs && gh repo create jmckalex/Clew-docs --public --source=.
---remote=origin --push`. The docs still say 0.9.0 in their Makefile/README/
-landing page, deliberately: nothing is published until DNS moves (§5 of the
-0.10.0 handover, `git show ed2aabc:HANDOVER.md`).
-
-**Clew-iOS** is synced through this repo's `e88aff6` as of 2026-09-29: its
-vendor/ is `ccf8dca` (live edit included) plus the 0.3.0 pin, which it
-mirrored as `faa3023`, and nothing in the synced dirs has changed here since.
-`faa3023` IS pushed (its `origin/main`) — a push there is a TestFlight
-release; per the coordinating session in `~/Source/Clew`, the Xcode Cloud
-build succeeded and waits for the owner to add it to the Internal group.
-
-## 1. STILL OPEN
-
-- **The owner's QA pass of live edit** (not automatable): typing at speed in
-  a long note; ⌘Z across a conceal/reveal; ⌘F over concealed text (matches
-  inside widgets do not highlight — the selection moving reveals them);
-  copy/paste of concealed ranges; IME in a concealed word and in a table
-  cell; zoom; a live pane beside a reading pane; drag-drop an image; the
-  properties panel and the properties widget on one note; fast typing in a
-  wide table's cell.
-- **Decisions in force, none yet exercised by the owner** (`docs/dev/
-  live-edit.md` §12): plain click follows a concealed link (⌥-click edits,
-  ⌘-click new tab); remote images not loaded in the editor; ⌘⇧E; new tabs
-  still open in source; `|live` office embeds as thumbnails; MathJax macros
-  shared across notes; tables in place; reading mode's slim mode bar; the
-  `//` trigger; link previews on plain hover (500 ms); the preview pane
-  below its block / above an inline formula, 150/400/700 ms; `@` forms
-  written by the insert commands, no sigil setting; ref completion is this
-  note only; `??` in red for unresolved/unnumbered refs; the References
-  panel always present; citation search by substring; PDF annotations as
-  one blockquote per entry, no colours; sidenotes `auto` = ≥ 960 px pane
-  with ≥ 220 px margin.
-- **PDF annotations can no longer be lost to a closing viewer** (fixed
-  2026-09-29, option A + option 1): tab switch 0→4/4, embeds 0→4/4, tab
-  close, window close and a re-render without the embed 0→1/1
-  (`smoke/pdf-flush-scenario.js`, `pdf-flush-close-scenario.js`). NOT
-  covered: a window RELOAD (the app page itself goes), and a canvas embed's
-  morph-failed reload.
-- **Protocol hardening** (owner-approved, cautious; 2026-09-29): 1/3 random
-  session ids (`b561983`) and 2/3 cross-origin reads only for
-  `clew-preview://vault` and `null` (`3575f24`, `main/preview-cors.js`) —
-  both checked against a full baseline (protocol tour, live sweep, figures,
-  global plugin, canvas, PDF, live blocks): nothing changed, no CORS error.
-  **3/3 (refuse `Origin: null` on the render POSTs) STOPPED:** a scratch
-  build logging each render POST's Origin saw NONE — no Origin header on
-  the app page's POSTs (canvas cards, 55 block frames) nor on a preview
-  document's (a canvas scene's cards). So the handler cannot tell callers
-  apart by Origin, the measure has nothing to key on, and the existing
-  "refuse an http(s) Origin" guard on those routes cannot be relied on (not
-  probed further). It also means 2/3 in practice sends no
-  Access-Control-Allow-Origin at all — and every consumer still works.
-  The owner chose (a), the caller token: designed with Clew-iOS as
-  `docs/dev/frame-bridge.md` §1 and BUILT on desktop (2026-09-29, the
-  caller-token commit; not pushed at the time of writing). The render POSTs run
-  nothing without the session's token; preview documents ask their parent
-  for it on first use, never served it. Checked against a full baseline
-  (t0 vs t1: protocol tour, live sweep, figures, global plugin, canvas,
-  PDF, live blocks — no difference but live-blocks' frame-set timing, seen
-  in earlier runs too; no CORS error) plus `block-endpoint-scenario.js`
-  (every refusal) and the new `caller-token-scenario.js` (every caller:
-  canvas tab, portal, reading view, live block frame, the PDF export). The
-  relay (a preview answering its own frames) is unit-tested only: no
-  nested document POSTs today (canvases render as a title box at cdepth 1).
-  **Next, owner's decision 2026-09-29: (c) as well**, by design — the app
-  page moves to `clew-app://app` so desktop can refuse null-origin reads
-  (no measurement or probing of the gap). Design only, as the first section
-  of frame-bridge.md after §1, with a Compatibility section (every frame
-  and embed kind, what changes, migration paths, losses as owner
-  questions), worked out with clew-ios-f4; BUILT before any embedded-app
-  feature ships. Notes for it: the file:// survey and iOS's lessons.
-- **Message receivers check their sender** (2026-09-29, the iOS session's
-  finding, by code reading, not probed): the app page's bridges (PDF,
-  Excalidraw and office saves, the Excalidraw library, file resolution,
-  office thumbnails) acted on a message from ANY frame that could reach
-  `window.top` — a remote page a note embeds, on iPad a canvas web card.
-  Now `shared/message-guard.js`: bridges act only for the preview origin and
-  answer it; a document's host listeners (`client.js`, `api.js`, the viewer
-  pages' reply listeners) hear only the window they expect. Checked by
-  `bridges-scenario.js` and `office-bridges-scenario.js` (new: every
-  Excalidraw and office path, nested senders included) beside the full
-  check. Found on the way: (1) opening a note that embeds a drawing
-  EMPTIED the vault's Excalidraw library — the read-only embed reported its
-  empty library through `onLibraryChange` — FIXED the same night (gated on
-  `viewMode`; measured 1 item before and after, where it was 1 then 0;
-  `bridges-scenario.js` asserts `library-after-embed=1`). A second
-  "finding" — that a live office embed's edits never mark its note's tab
-  dirty — was the SCENARIO's error, not Clew's: it took the closed office
-  tab's window for the embed (the first to have announced itself), so its
-  embed checks re-read the tab's messages. With that fixed, the embed marks
-  its tab dirty and saves through the bridge from two frames deep
-  (`office-bridges-scenario.js`), and a one-off run measured the same
-  (`isDirty` true once the embed's edit arrives).
-- **Wheel over the live preview pane** (fixed 2026-09-29): live-blocks'
-  `scroll-chained=false` was real, not the invisible harness (a visible run
-  agreed); bisected to 818cf32 — the pane floated over the frame and ate the
-  wheel. The pane now hands the note any wheel it cannot use
-  (`smoke/preview-pane-wheel-scenario.js`; live-blocks' check is now
-  `pane-wheel` + `frame-wheel`).
-- **Engine bug, for the jmarkdown master.** A reference to an `@label`
-  inside a footnote prints `??`: the post-processor's footnote branch looks
-  for `[id^="footnote-"]` but endnotes carry `id="fn-…"`. Clew mirrors the
-  behaviour and its crossref fixture asserts it, so an upstream fix shows
-  up as that assertion failing. Also: under `Headings: numeric` the
-  generated Endnotes `<h1>` is numbered, so with `@endnotes` mid-note every
-  later heading is one higher in the export than Clew shows (recorded in
-  §5.13, not mirrored).
-- **Two offers awaiting a yes/no:** parallelise `live-sweep.sh` (per-run
+- **The frame-bridge revision** — `docs/dev/frame-bridge.md` (§1 the
+  caller token is BUILT; §2 option (c), the app page moving to
+  `clew-app://app` so null-origin reads can be refused, is DESIGN only;
+  §3 Compatibility; §4 vault trust, of which the interim guard is built).
+  Read it before any build; it is built before any embedded-app feature
+  ships.
+- **Auto-update** — `docs/dev/auto-update.md`, its four open questions (§6).
+- **LaTeX export** — LuaLaTeX when a note uses fontspec, and the engine's
+  fallback for an unknown lexer.
+- **Tabbing** — `|*` and the fidelity items; and the **backport of
+  tabbing to jmarkdown** (`src/engine/tabbing.js` is self-contained so the
+  backport is a move; LaTeX export sees tabbing only after it).
+- **The deferred code review** (`/code-review ultra`; the owner triggers
+  it, never a session).
+- Two older offers awaiting a yes/no: parallelise `live-sweep.sh` (per-run
   `CLEW_USER_DATA`; ~8 → ~3 min) and/or drop `live-perf` from the default
   sweep; a distinct theme colour for `jmd-function` in highlighted fences.
-- **Older than the branch, not investigated:** `figures-edit-scenario`
-  phase 3 fails identically at `c6f3169` — an edited ```tikz in READING
-  mode keeps its old picture. Re-run at `ed2aabc` vs `main` on a quiet
-  machine before believing either explanation (machine or code).
-- **Follow-ons deliberately left out** (§12): table drag handles, multi-cell
-  selection and grid paste, Meta Bind widgets in prose, frame heights
-  persisted across reopenings, block drag handles, a focus mode, a
-  per-note MathJax (macro isolation), multi-file cross-reference numbering
-  for `jmarkdownProject` vaults (algorithm recorded in §5.13), and the
-  **frame bridge** — a capability API letting an embedded document reach the
-  host (find both ways, copy across the boundary, editor writes through the
-  pool), the owner's stated preference over sanitised native embeds.
-- Main's older items, unchanged: the GoDaddy DNS change; the `[text]` link
-  face and the `\[ \begin{align*} … \]` manual line (offers); the graphicx
-  driver line for mp-tikz-wasm; the three dev docs (`docs/dev/live-edit.md`
-  is the pattern); win/linux artefacts untested at runtime; the Windows
-  installer unsigned.
 
-## 2. What the live-edit build taught (measured; the long form is in `docs/dev/live-edit.md`'s "As built" notes)
+## Open — engineering
+
+- **The owner's QA pass of live edit** (not automatable): typing at speed in
+  a long note; ⌘Z across a conceal/reveal; ⌘F over concealed text; copy/
+  paste of concealed ranges; IME in a concealed word and in a table cell;
+  zoom; a live pane beside a reading pane; drag-drop an image; properties
+  panel and widget on one note; fast typing in a wide table's cell. The
+  §12 defaults in `docs/dev/live-edit.md` are in force and unexercised.
+- **PDF annotations**: closing a viewer can no longer lose them, except on
+  a window RELOAD (the app page itself goes) and a canvas embed's
+  morph-failed reload — not covered.
+- **Web PDFs Clew cannot recognise** (no `.pdf`, no `type="application/
+  pdf"`, e.g. arXiv's `/pdf/…`) still open in Chromium's own viewer: in
+  Electron 43 there is no switch that retires it (pdf-unification "As
+  built").
+- **Engine bug, for the jmarkdown master**: an `@label` reference inside a
+  footnote prints `??` (the footnote branch looks for `[id^="footnote-"]`,
+  endnotes carry `id="fn-…"`); Clew mirrors it and the crossref fixture
+  asserts it, so an upstream fix shows as that assertion failing. Also,
+  under `Headings: numeric` the generated Endnotes `<h1>` is numbered.
+- **Not investigated, older than live edit**: `figures-edit-scenario`
+  phase 3 — an edited ```tikz in READING mode keeps its old picture. Re-run
+  at `ed2aabc` vs `main` on a quiet machine before believing machine or
+  code.
+- **Follow-ons deliberately left out** (live-edit §12): table drag handles,
+  multi-cell selection and grid paste, Meta Bind widgets in prose, frame
+  heights persisted across reopenings, block drag handles, a focus mode,
+  per-note MathJax, multi-file cross-reference numbering for
+  `jmarkdownProject` vaults.
+- **Superseded branches** (their work landed rebased, so `git branch -d`
+  refuses them and `-D` is safe; the owner decides): `watcher-budget`,
+  `meta-bind-lock`, `pdf-web`; also the merged `feat/live-edit`,
+  `feat/excalidraw`, `spike/embedpdf`.
+- Older items, unchanged: the `[text]` link face and the `\[
+  \begin{align*} … \]` manual line (offers); the graphicx driver line for
+  mp-tikz-wasm; Windows and Linux artefacts untested at runtime; the
+  Windows installer unsigned.
+
+## Release recipe (as cut for 0.12.0)
+
+`npm version <v> --no-git-tag-version` + commit; `npm run sync-engine` and
+`npm run sync-embedpdf` (expect no change; `git status` after); npm test;
+`smoke/render-dump.sh` before and after the bump. Then, SEQUENTIALLY (they
+share `dist/` and the staging dirs), from bash or exactly as written — a
+zsh loop passing `$flags` hands package.js ONE argument and it quietly
+builds an unsigned `dir` (2026-10-01, caught a minute in):
+
+    export MPTIKZ_SRC=/nonexistent   # stage the PINNED mp-tikz-wasm
+    node scripts/package.js --dmg --sign --notarize          # arm64, ~20 min
+    node scripts/package.js --dmg --sign --notarize --x64    # ~20 min
+    mv out/Clew-<v>.dmg out/Clew-<v>-x64.dmg                 # + its .blockmap
+    node scripts/package.js --win                            # < 1 min
+    node scripts/package.js --linux                          # < 1 min
+    smoke/boot-test.sh out/mac-arm64/Clew.app/Contents/MacOS/Clew
+
+Check the arm64 log for `signing … Developer ID Application` in its first
+minute. Verify: `stapler validate` + `spctl -a -t open` on each image (after
+the rename — it does not touch a stapled ticket); `spctl -a -t exec`,
+`codesign -dv`, the entitlements, `lipo -archs`, the version and
+`mptikz/bundles/opentype` on each app. The boot test waits for load < 6
+(raise `BOOT_TEST_WAIT` after packaging; Spotlight and the scanners read the
+new gigabyte) and ABORTS rather than run on a busy machine.
+
+## Owner's own actions
+
+- Empty the Trash folders when sure: `Clew 0.11.1 artefacts`, `Clew 0.11.0
+  artefacts`, `Clew older builds`.
+- Live in live edit for a week (`newTabMode: 'live'`), run the QA list, and
+  decide the §12 defaults.
+- Answer the offers above; file the engine footnote bug upstream (one line).
+
+## What the live-edit build taught (measured; the long form is in `docs/dev/live-edit.md`'s "As built" notes)
 
 - CodeMirror DOES call `WidgetType.updateDOM` when a block widget's text
   changes (the cell editor is the same element across typing — the whole
@@ -339,37 +206,7 @@ build succeeded and waits for the owner to add it to the Internal group.
   assert parity, never the plan's contract.
 - `figures-edit` phase 3 is the one sweep failure and predates the branch.
 
-## 3. Release 0.11.1 — how it was cut
-
-`npm version 0.11.1 --no-git-tag-version` + commit; the engine and EmbedPDF
-re-syncs changed nothing; then, sequentially (they share `dist/` and the
-staging dirs), with `MPTIKZ_SRC=/nonexistent` so the PINNED mp-tikz-wasm
-archive is staged rather than the owner's master build:
-
-    node scripts/package.js --dmg --sign --notarize          # arm64, 17 min
-    node scripts/package.js --dmg --sign --notarize --x64    # 17 min
-    node scripts/package.js --win                            # < 1 min
-    node scripts/package.js --linux                          # < 1 min
-    smoke/boot-test.sh out/mac-arm64/Clew.app/Contents/MacOS/Clew
-
-35 minutes for the four. The x64 image comes out as `Clew-<v>.dmg` (its app
-in `out/mac/`); it was renamed `Clew-0.11.1-x64.dmg` like 0.11.0's — a
-rename does not touch a stapled ticket. `--universal` exists (~28 min) but
-was not wanted this time. Verified: `stapler validate` + `spctl -a -t open`
-on each image; `spctl -a -t exec`, `codesign -dv`, the entitlements,
-`lipo -archs`, the version and the opentype bundle on each app.
-
-## 4. Owner's own actions
-
-- Empty the two Trash folders when sure (§0). 0.11.1 is what to publish when
-  DNS moves.
-- Live in live edit for a week (`newTabMode: 'live'`), run the QA list, and
-  decide the §12 defaults — the next bug reports come from there.
-- Create the Clew-docs remote and push; DNS; then `make sync` etc. per the
-  0.10.0 handover's §5 order (`dns-check` → `nginx-install` → `sync` → `tls`).
-- Answer the offers in §1; file the engine bug upstream (one line).
-
-## 5. Small residue
+## Small residue
 
 - `fence-highlight-scenario.js`'s header expects `jmd-string > 0`; it is 0
   at `ed2aabc` too (stale expectation).
@@ -388,7 +225,7 @@ on each image; `spctl -a -t exec`, `codesign -dv`, the entitlements,
   and the foldable embed in `Guide/Links and Embeds.md` before committing
   demo files.
 
-## 6. Standing session rules (they keep earning their keep)
+## Standing session rules (they keep earning their keep)
 
 - **NEVER `git add -A`** — stage explicit paths. Across ~50 commits by two
   sessions this time, every one did; keep it that way.
@@ -496,4 +333,6 @@ on each image; `spctl -a -t exec`, `codesign -dv`, the entitlements,
   scroll; CDP keystrokes need the caret's viewport coords for the focusing
   click; `CLEW_SMOKE_LOG=1` prefixes scenario `console.log` with
   `[smoke:info]`; the harness input queue takes `click`, `tripleClick`,
-  `text`, `combo`, `wait`, `wheel` and `move` (with modifiers).
+  `text`, `combo` (with `text` to type), `wait`, `wheel`, `move` (with
+  modifiers) and `frameClick`; `CLEW_SMOKE_MENU_CLICK` clicks a real menu
+  item.
