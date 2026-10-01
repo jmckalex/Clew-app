@@ -69,6 +69,8 @@ A \cite{smith2001} here.
 B \citep{lewis1969} here.
 
 C \cite{Akerlof/Kranton:2000, smith2001} here.
+
+D \cite{nosuchkey} here.
 MD
 cat > "$D/.clew/vault-settings.json" <<'JSON'
 { "bibliography": "refs.bib", "bibliographyStyle": "vancouver" }

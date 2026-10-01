@@ -159,7 +159,11 @@ async function renderCites(notePath, sources) {
 		const mark = MARK_RE.exec(p.textContent ?? '');
 		if (!mark) continue;
 		const cite = p.querySelector('[data-bibtex]');
-		if (cite) out[Number(mark[1])] = cite.textContent.replace(/\s+/g, ' ').trim() || null;
+		// An unknown key: chicago leaves the command as written (no element),
+		// vancouver prints "[undefined]" (an engine quirk) — neither is text
+		// to show; the pill's local label marks the key missing instead.
+		const text = cite?.textContent.replace(/\s+/g, ' ').trim();
+		if (text && !/\bundefined\b/.test(text)) out[Number(mark[1])] = text;
 	}
 	return out;
 }

@@ -9,9 +9,10 @@
 // labels (cite-label.js) first, then the engine's texts — and, once they
 // settle, one `pill i … reading … equal=` line against reading mode's own
 // document (fetched like the reading view's frame). Expect equal=true for
-// every citation that resolves (Plain.md's `[1]`, `[2]`, `[1,3]` too);
-// Cites.md's last key is unknown, so its pill reads `nosuchkey` with
-// `missing=true` while reading mode shows the command as written. Then
+// every citation that resolves (Plain.md's `[1]`, `[2]`, `[1,3]` too).
+// Each note's last key is unknown, so its pill reads `nosuchkey` with
+// `missing=true` while reading mode shows the command as written (chicago)
+// or `[undefined]` (vancouver, an engine quirk). Then
 // refs.bib is edited (lewis1969 → 1970) with Cites.md open: its four
 // Lewis pills follow (`followed=true`), the local labels standing in between
 // rather than bare keys.
