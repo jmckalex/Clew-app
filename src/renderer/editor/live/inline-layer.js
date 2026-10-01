@@ -290,12 +290,20 @@ function build(view) {
 					lineClass(c.from, `le-align-${c.align}`);
 					if (hidden) c.hidden.forEach(hide);
 					break;
-				case 'quote':
-					lineClass(c.from, `le-quote le-quote-${Math.min(c.depth, 4)}${c.callout ? ` le-callout le-callout-${c.callout}` : ''}`);
+				case 'quote': {
+					// A callout's lines draw one box, as reading view's .callout:
+					// its first and last carry the padding and the corners; a bare
+					// `>` between paragraphs is a paragraph GAP, not a line.
+					const box = c.callout
+						? ` le-callout le-callout-${c.callout}${c.calloutFirst ? ' le-callout-first' : ''}${c.calloutLast ? ' le-callout-last' : ''}`
+						: '';
+					const blank = /^(?:[ \t]*>)+[ \t]*$/.test(doc.lineAt(c.from).text) ? ' le-quote-blank' : '';
+					lineClass(c.from, `le-quote le-quote-${Math.min(c.depth, 4)}${box}${blank}`);
 					if (hidden) c.hidden.forEach(hide);
 					break;
+				}
 				case 'callout':
-					lineClass(c.from, 'le-callout-head');
+					lineClass(c.from, `le-callout-head${calloutFolded(state, c) ? ' le-callout-folded' : ''}`);
 					if (hidden) {
 						const h = c.hidden[0];
 						widget(h.from, h.to, new CalloutHeadWidget(c.type, c.fold, calloutFolded(state, c), Boolean(c.title), c.id));
@@ -305,7 +313,11 @@ function build(view) {
 				case 'bullet':
 				case 'numbered':
 				case 'task': {
-					const indent = c.listMark.from - doc.lineAt(c.listMark.from).from;
+					// Counted from the end of a quote's `>`s: a list in a callout
+					// indents from the callout's text, not from the margin.
+					const listLine = doc.lineAt(c.listMark.from);
+					const quoted = /^(?:[ \t]*>)+[ \t]?/.exec(listLine.text)?.[0].length ?? 0;
+					const indent = c.listMark.from - listLine.from - quoted;
 					lineClass(c.from, `le-li le-li-${Math.min(c.depth, 4)}${c.kind === 'task' && c.checked ? ' le-done' : ''}`,
 						{ style: `--le-indent: ${indent}` });
 					if (!hidden) break;

@@ -343,6 +343,10 @@ function build(doc, tree, config) {
 				for (let n = first.number; n <= last.number; n += 1) {
 					const entry = quoteLine(doc.line(n).from);
 					entry.callout = type;
+					// Its box's top and bottom (padding, corners), on each line's
+					// own record — a line in view knows without its head in view.
+					entry.calloutFirst = n === first.number;
+					entry.calloutLast = n === last.number;
 				}
 			}
 		}
@@ -430,6 +434,7 @@ function build(doc, tree, config) {
 		const last = entry.marks[entry.marks.length - 1];
 		add('quote', 'A', 'line', from, line.to, {
 			depth: entry.marks.length, callout: entry.callout,
+			...(entry.callout ? { calloutFirst: entry.calloutFirst, calloutLast: entry.calloutLast } : {}),
 			hidden: [{ from: entry.marks[0].from, to: skipSpace(doc, last.to, line.to, 1) }],
 		});
 	}

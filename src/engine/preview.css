@@ -931,6 +931,12 @@ details.callout[open] > summary::after { transform: rotate(45deg); }
 /* The engine's own alert styling assumes a light page and would otherwise
    fight the tint above; ours is the one that applies. */
 .callout.markdown-alert { border-top: 0; border-right: 0; border-bottom: 0; }
+/* …the TITLE included: a callout also carries `markdown-alert-<type>`, and the
+   GitHub-alert title colours above (note, tip, warning) outranked
+   `.callout-title`, so those titles and icons took GitHub's colour while the
+   border took ours — tip a green title on a teal box. One accent per type,
+   as this section says (2026-10-01). A plain GitHub alert keeps its own. */
+.callout.markdown-alert .callout-title { color: var(--callout); }
 
 /* Live edit's block documents (protocol.js `__clew_block__`): one rendered
    block in a frame inside the editor, sized by its content (client.js

@@ -132,11 +132,55 @@
 	color: var(--clew-text-normal);
 }
 .le-callout-head { font-weight: 600; }
-.le-callout-marker { color: var(--callout); display: inline-flex; align-items: center; gap: 0.35em; margin-right: 0.35em; vertical-align: -0.1em; }
+.le-callout-marker { color: var(--callout); display: inline-flex; align-items: center; gap: 8px; margin-right: 8px; vertical-align: -0.1em; }
 .le-callout-marker .callout-icon { width: 1em; height: 1em; }
 .le-callout-label, .le-callout-title { color: var(--callout); }
-.le-callout-fold { cursor: pointer; display: inline-block; transform: rotate(90deg); transition: transform 0.12s; padding: 0 0.3em; }
-.le-callout-fold.is-folded { transform: rotate(0deg); }
+/* The box itself follows preview.css's `.callout` (reading view) — padding
+   12px 16px inside a 4px left border, radius 5px — drawn across the lines it
+   spans: the first line takes the top, the last the bottom (a folded callout's
+   head is both). Line classes, so revealing the source never moves a line. */
+.le-quote.le-callout { padding-left: 16px !important; padding-right: 16px; }
+.le-callout-first { padding-top: 12px !important; border-top-left-radius: 5px; border-top-right-radius: 5px; position: relative; }
+.le-callout-last, .le-callout-head.le-callout-folded {
+	padding-bottom: 12px !important;
+	border-bottom-left-radius: 5px;
+	border-bottom-right-radius: 5px;
+}
+/* Reading view's 6px gap between the title row and the content. */
+.le-callout-head:not(.le-callout-last):not(.le-callout-folded) { padding-bottom: 6px !important; }
+/* The fold chevron: reading view's own (preview.css `summary::after`) — two
+   2px borders on a 6px box, turned — at the far right of the title row, its
+   centre 20px in from the box's edge and on the title's middle (12px of
+   padding, then half the 1.6em line). A wider invisible hit area. */
+.le-callout-fold {
+	position: absolute;
+	right: 12px;
+	top: calc(12px + 0.8em - 8px);
+	width: 16px;
+	height: 16px;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+.le-callout-fold::after {
+	content: '';
+	width: 6px;
+	height: 6px;
+	border-right: 2px solid currentColor;
+	border-bottom: 2px solid currentColor;
+	opacity: 0.7;
+	transform: rotate(45deg);
+	transition: transform 0.15s ease;
+}
+.le-callout-fold.is-folded::after { transform: rotate(-45deg); }
+/* A list inside a quote keeps its hang (the quote's own padding used to win,
+   and the numbers hung over the border); inside a callout it indents as
+   reading view's list does, 2.5em from the callout's text. */
+.le-quote.le-li { padding-left: calc(20px + var(--le-hang)) !important; }
+.le-quote.le-callout.le-li { padding-left: calc(16px + 2.5em + var(--le-indent, 0) * 0.3em) !important; }
+/* A bare `>` between a callout's paragraphs is reading view's paragraph gap. */
+.le-quote.le-callout.le-quote-blank { line-height: 1em; }
 .le-callout-note          { --callout: #5b8def; }
 .le-callout-abstract      { --callout: #00b8a3; }
 .le-callout-info          { --callout: #3b9dd8; }

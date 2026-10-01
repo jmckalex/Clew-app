@@ -700,6 +700,16 @@ except where the selection touches a construct. The durable design is
   height — and a row change moves the editor's scroll by the same delta
   (`toolbar-resize`), so text never jumps; heights are `--toolbar-row`
   (a port sets that, never a fixed height).
+- **Callouts are one box drawn across lines** (2026-10-01, the owner's
+  report): each line of a callout is a `.cm-line` with `le-callout`; the
+  live model marks every quote line `calloutFirst`/`calloutLast` (on the
+  line's own record, so a line in view knows without its head in view), and
+  live-edit.css gives the first the top padding and corners, the last the
+  bottom, a bare `>` the paragraph gap, a list its 2.5em indent from the
+  callout's text — all after preview.css's `.callout` (12px 16px, radius 5,
+  the chevron at the right), measured equal by `callout-geometry-scenario.js`.
+  Line classes, so revealing the source never moves a line. A list inside
+  any quote counts its indent from the end of the `>`s.
 - **Tables are edited in place** (live edit §5.5a): the active cell is note
   state (`live/active-cell.js`, pinned concealed by the reveal rule), and a
   nested cell editor (`live/table-cell-editor.js`) mounted in its `<td>`

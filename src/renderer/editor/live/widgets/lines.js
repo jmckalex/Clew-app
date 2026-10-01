@@ -87,7 +87,6 @@ export class CalloutHeadWidget extends KeyedWidget {
 			chevron.className = `le-callout-fold${this.folded ? ' is-folded' : ''}`;
 			chevron.dataset.leFold = this.id;
 			chevron.title = this.folded ? 'Expand' : 'Collapse';
-			chevron.textContent = '›';
 			el.append(chevron);
 		}
 		return el;
