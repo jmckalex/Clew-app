@@ -60,6 +60,12 @@ const DEFAULTS = {
 	// GLOBAL ones; a vault's own live in its vault-settings.json and
 	// shadow these where the names meet.
 	texFragments: [],
+	// Custom callout types ([{ name, title?, icon?, color?, aliases? }] —
+	// shared/custom-callouts.js validates them, main/callout-types.js
+	// resolves them). These are the GLOBAL ones, this Mac's alone; a vault's
+	// own live in its vault-settings.json, travel with it, and win where
+	// the names meet.
+	callouts: [],
 	// The shell panel's font (a family, or a CSS list), placed BEFORE Clew's
 	// monospace face and the Nerd/Powerline faces it falls back to for
 	// prompt symbols (clew-shell-panel.js#gridFontFamily). Empty: those alone.

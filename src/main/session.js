@@ -24,6 +24,8 @@ import { KvStore, KV_FILE } from './kv-store.js';
 import { SearchService } from './search.js';
 import { shells } from './ipc.js';
 import { trust } from './trust.js';
+import { CH } from '../shared/channels.js';
+import { watchVaultCallouts } from './callout-types.js';
 
 const byWebContents = new Map(); // webContents.id -> session
 const byId = new Map(); // session id -> session
@@ -88,8 +90,19 @@ export class VaultSession {
 				this.renderService.openVault(root);
 				this.indexer.openVault(root, this.vaults.excludes);
 				this.kvStore.open(root);
+				// A hand edit of this vault's callout types applies at once,
+				// as an edit in Settings does (ipc.js VAULT_SETTINGS_SET).
+				this.stopCalloutWatch?.();
+				this.stopCalloutWatch = watchVaultCallouts(root,
+					() => this.renderService.vaultOption('callouts'),
+					(list) => {
+						this.renderService.reconfigure({ callouts: list });
+						this.send(CH.EV_CALLOUTS_CHANGED);
+					});
 			},
 			onClose: () => {
+				this.stopCalloutWatch?.();
+				this.stopCalloutWatch = null;
 				this.renderService.closeVault();
 				this.indexer.closeVault();
 				this.kvStore.close();

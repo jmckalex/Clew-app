@@ -45,7 +45,7 @@ import { syntaxTree, ensureSyntaxTree } from '@codemirror/language';
 import { scanFor } from '../jmd/scan-cache.js';
 import { LITERAL_DIRECTIVES } from '../jmd/jmarkdown-scan.js';
 import { MATH_ENVIRONMENT_NAMES } from '../jmd/math-segments.js';
-import { resolveType } from '../../../engine/callouts.js';
+import { resolveType, calloutGeneration } from '../../../engine/callouts.js';
 import { IMAGE_EXT } from '../../../shared/file-types.js';
 import { headerlessTables } from '../tables.js';
 import {
@@ -77,7 +77,9 @@ const cache = new WeakMap();
  */
 export function liveModel(state, config = {}) {
 	const tree = ensureSyntaxTree(state, state.doc.length, 50) ?? syntaxTree(state);
-	const key = `${config.normalSyntax === true}|${(config.richFences ?? []).join(',')}`;
+	// The callout table is part of the key: a type defined in Settings
+	// (engine/callouts.js#applyCustomCallouts) changes what `[!x]` is.
+	const key = `${config.normalSyntax === true}|${(config.richFences ?? []).join(',')}|${calloutGeneration()}`;
 	const hit = cache.get(state.doc);
 	if (hit && hit.tree === tree && hit.key === key) return hit.list;
 	const list = build(state.doc, tree, config);

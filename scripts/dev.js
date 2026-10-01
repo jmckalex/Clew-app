@@ -18,7 +18,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import { bundles, copyStatic } from './build.js';
+import { bundles, copyStatic, writeIconTable } from './build.js';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const electronBin = createRequire(import.meta.url)('electron');
@@ -67,6 +67,7 @@ function watchPlugin(name, onRebuild) {
 }
 
 copyStatic();
+writeIconTable();
 
 const contexts = await Promise.all(
 	bundles.map((opts) => {

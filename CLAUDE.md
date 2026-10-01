@@ -378,6 +378,27 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   px: 'px'}`, `aspect=16/9` THROWS and the engine then loses every attribute
   (measured) — so `attrsOf` glues orphaned units back and a bare number means
   px; anything with a slash must be quoted, which the manual says.
+- **Custom callout types** (owner's ask 2026-10-01; Settings → Callouts):
+  `callouts` lists in `clew-settings.json` (global, this Mac) and
+  `vault-settings.json` (travels with the vault), `{ name, title?, icon?,
+  color?, aliases? }`, merged built-in < global < vault FIELD BY FIELD.
+  `shared/custom-callouts.js` owns the rules (name grammar, colours by
+  grammar only — hex, rgb(), hsl(), CSS names — icons by name, a bad entry
+  SKIPPED with its reason, never half-applied); `main/callout-types.js`
+  resolves with the Font Awesome table (`dist/main/fa-icons.json`, written
+  by scripts/build.js, 1.85 MB, read only once a definition exists — never
+  on a render path) and hands the worker `CLEW_CALLOUTS` (finished entries:
+  label, colour, icon PATH) and the renderer `CALLOUTS_RESOLVED`; both feed
+  `engine/callouts.js#applyCustomCallouts`, whose `CALLOUT_TYPES` is a LIVE
+  binding (read it when used). The colour rides on the element as
+  `--clew-callout-color` (never Obsidian's `--callout-color`, an `r, g, b`
+  triple in vault snippets), and preview.css / live-edit.css clamp its OKLCH
+  lightness per theme — keep those two rules identical. A hand edit of the
+  vault file applies live (`watchVaultCallouts`, a watch on `.clew/`).
+  Editing either list reconfigures and sends `EV_CALLOUTS_CHANGED`; live
+  edit rebuilds its model (`liveRebuild`, the model's cache key carries
+  `calloutGeneration()`). HTML/LaTeX note exports run the user's own config
+  and never see Clew's callouts, built-in or custom.
 - **Obsidian's own query formats** — for opening other people's vaults,
   alongside (not replacing) Clew's `query`/`tasks`/`kanban` fences:
   `vault-model.js` (the vault as pages: `file.*`, the link graph,

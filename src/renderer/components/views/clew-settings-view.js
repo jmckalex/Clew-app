@@ -21,6 +21,7 @@ import { ipc, CH } from '../../ipc.js';
 import { createCodeEditor } from '../../editor/mini-editor.js';
 import { fragmentKey } from '../../../engine/tex-fragments.js';
 import { TOOLBAR_GROUPS } from '../../editor/toolbar/toolbar-spec.js';
+import { calloutsSection } from './settings-callouts.js';
 
 const isMac = navigator.platform.startsWith('Mac');
 
@@ -44,6 +45,8 @@ class ClewSettingsView extends ClewElement {
 	#fragmentEditors = [];
 	/** scope → { entries, refresh }, so each group can see the other's names. */
 	#fragmentScopes = new Map();
+	/** Settings → Callouts (settings-callouts.js), disposed with the DOM. */
+	#callouts = null;
 
 	subscribe() {
 		this.listen(settingsStore, 'settings-changed', () => {
@@ -116,6 +119,7 @@ class ClewSettingsView extends ClewElement {
 				this.#textRow('Templates folder', 'templatesFolder', 'Templates'),
 			]),
 			this.#texFragmentsSection(),
+			(this.#callouts = calloutsSection((title, rows) => this.#section(title, rows))).element,
 			this.#vaultSection(),
 			this.#hotkeysSection(),
 		);
@@ -970,6 +974,8 @@ class ClewSettingsView extends ClewElement {
 		// A fragment edited in the last 900ms has a save pending; the tab
 		// closing (or the vault changing) must not be what loses it.
 		for (const group of this.#fragmentScopes.values()) group.persist.flush();
+		this.#callouts?.dispose();
+		this.#callouts = null;
 		for (const editor of this.#fragmentEditors) editor.destroy();
 		this.#fragmentEditors = [];
 		this.#fragmentScopes.clear();

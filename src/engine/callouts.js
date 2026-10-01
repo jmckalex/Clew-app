@@ -69,7 +69,7 @@ const VIEWBOX = {
  * canonical name becomes the CSS hook; aliases fold onto it, so `[!tldr]` and
  * `[!abstract]` are the same callout and a stylesheet needs one rule.
  */
-const TYPES = {
+const BUILTIN = {
 	note: { icon: 'pencil', label: 'Note' },
 	abstract: { icon: 'clipboard', label: 'Abstract', aliases: ['summary', 'tldr'] },
 	info: { icon: 'info', label: 'Info' },
@@ -88,27 +88,118 @@ const TYPES = {
 	compatibility: { icon: 'listCheck', label: 'Compatibility' },
 };
 
-/** alias → canonical name, built once. */
-const ALIASES = (() => {
-	const map = new Map();
-	for (const [name, spec] of Object.entries(TYPES)) {
-		map.set(name, name);
-		for (const alias of spec.aliases ?? []) map.set(alias, name);
-	}
-	return map;
-})();
+// CUSTOM TYPES (Settings → Callouts; shared/custom-callouts.js validates and
+// merges them in main, which has the Font Awesome table): main hands this
+// module only RESOLVED entries — name → { label, color, icon: [w, h, d] |
+// null, aliases } — through CLEW_CALLOUTS in the render worker and
+// applyCustomCallouts() in the renderer. Nothing defined, nothing changes:
+// TYPES is BUILTIN and no attribute is added.
+let TYPES = BUILTIN;
+let ALIASES = aliasMap(TYPES);
+let generation = 0;
 
 /**
  * The canonical types, for the editor side (live edit's callout heads, the
- * toolbar's callout popover): name → { label, aliases }. One table, so the
- * editor cannot offer or draw a type the engine would not render.
+ * toolbar's callout popover): name → { label, aliases, color }. One table, so
+ * the editor cannot offer or draw a type the engine would not render. A LIVE
+ * binding: applyCustomCallouts replaces it, so read it when it is used.
  */
-export const CALLOUT_TYPES = Object.freeze(Object.fromEntries(
-	Object.entries(TYPES).map(([name, spec]) => [name, { label: spec.label, aliases: spec.aliases ?? [] }])));
+export let CALLOUT_TYPES = publicTable(TYPES);
+
+/** The built-ins alone, whatever is installed — what a definition overrides. */
+export const BUILTIN_CALLOUT_TYPES = publicTable(BUILTIN);
+
+/** alias → canonical name. A type's own name always wins over an alias. */
+function aliasMap(types) {
+	const map = new Map();
+	for (const [name, spec] of Object.entries(types)) {
+		for (const alias of spec.aliases ?? []) map.set(alias, name);
+	}
+	for (const name of Object.keys(types)) map.set(name, name);
+	return map;
+}
+
+function publicTable(types) {
+	return Object.freeze(Object.fromEntries(Object.entries(types).map(([name, spec]) =>
+		[name, Object.freeze({ label: spec.label, aliases: spec.aliases ?? [], color: spec.color ?? null, custom: spec.custom === true })])));
+}
+
+// Checked again here although main validated them: what reaches markup is
+// a colour from this grammar and path data from these characters, whatever
+// the caller passed.
+const NAME_OK = /^[a-z][\w-]*$/;
+const COLOR_OK = /^(?:#[0-9a-fA-F]{3,8}|(?:rgba?|hsla?)\([\d\s.,%/deg]+\)|[a-zA-Z]+)$/;
+const PATH_OK = /^[MmLlHhVvCcSsQqTtAaZz0-9.,\s+-]+$/;
+
+/**
+ * Install the custom types (replacing any installed before); `{}` or null
+ * goes back to the built-ins. Each entry is resolved already: a built-in's
+ * name overrides it, and a null icon or colour keeps the built-in's.
+ *
+ * @param {Record<string, {label?: string, color?: string|null,
+ *   icon?: [number, number, string]|null, aliases?: string[]}>|null} custom
+ */
+export function applyCustomCallouts(custom) {
+	const entries = Object.entries(custom ?? {}).filter(([name]) => NAME_OK.test(name));
+	generation++;
+	if (entries.length === 0) {
+		TYPES = BUILTIN;
+	} else {
+		TYPES = { ...BUILTIN };
+		for (const [name, spec] of entries) {
+			const base = BUILTIN[name];
+			const svg = Array.isArray(spec.icon) && spec.icon.length === 3 && PATH_OK.test(String(spec.icon[2]))
+				&& Number(spec.icon[0]) > 0 && Number(spec.icon[1]) > 0
+				? [Number(spec.icon[0]), Number(spec.icon[1]), String(spec.icon[2])] : null;
+			const color = typeof spec.color === 'string' && COLOR_OK.test(spec.color.trim()) ? spec.color.trim() : null;
+			const label = typeof spec.label === 'string' && spec.label.trim()
+				? spec.label.trim() : base?.label ?? name.charAt(0).toUpperCase() + name.slice(1);
+			const aliases = (Array.isArray(spec.aliases) ? spec.aliases : [])
+				.map((a) => String(a).toLowerCase()).filter((a) => NAME_OK.test(a));
+			TYPES[name] = {
+				icon: svg ? null : base?.icon ?? 'pencil',
+				svg,
+				label,
+				aliases: [...new Set([...(base?.aliases ?? []), ...aliases])],
+				color,
+				custom: true,
+			};
+		}
+	}
+	ALIASES = aliasMap(TYPES);
+	CALLOUT_TYPES = publicTable(TYPES);
+}
+
+/** Bumped by every applyCustomCallouts — a widget keyed on a type redraws. */
+export function calloutGeneration() {
+	return generation;
+}
+
+// The render worker is handed the resolved table at spawn (render-
+// service.js); `process` is a guard, not an assumption — the renderer and
+// Clew-iOS load this module where there is none.
+try {
+	const fromEnv = globalThis.process?.env?.CLEW_CALLOUTS;
+	if (fromEnv) applyCustomCallouts(JSON.parse(fromEnv));
+} catch {
+	// A table that does not parse is no table: the built-ins stand.
+}
 
 /** A type's icon as inline SVG markup (the same one reading mode draws). */
 export function calloutIcon(type) {
-	return iconSvg(TYPES[type]?.icon);
+	const spec = TYPES[type];
+	return spec?.svg ? customSvg(spec.svg) : iconSvg(spec?.icon);
+}
+
+/** A BUILT-IN type's own icon, whatever a definition put over it (Settings
+ *  previews a row with no icon of its own). */
+export function builtinCalloutIcon(type) {
+	return iconSvg(BUILTIN[type]?.icon ?? 'pencil');
+}
+
+/** A custom colour for a type, or null (the stylesheet's palette applies). */
+export function calloutColor(type) {
+	return TYPES[type]?.color ?? null;
 }
 
 /** The canonical type for whatever the author wrote, or null. Case-insensitive. */
@@ -125,6 +216,11 @@ function iconSvg(name) {
 	if (!path) return '';
 	return `<svg class="callout-icon" viewBox="${VIEWBOX[name]}" aria-hidden="true" focusable="false">`
 		+ `<path fill="currentColor" d="${path}"/></svg>`;
+}
+
+function customSvg([width, height, d]) {
+	return `<svg class="callout-icon" viewBox="0 0 ${width} ${height}" aria-hidden="true" focusable="false">`
+		+ `<path fill="currentColor" d="${escapeHtml(d)}"/></svg>`;
 }
 
 /**
@@ -188,19 +284,23 @@ export const calloutBlock = {
 			return `\\begin{tcolorbox}[title=${title}]\n${body}\n\\end{tcolorbox}\n`;
 		}
 
+		// A custom colour rides on the element as --clew-callout-color (preview.css
+		// turns it into the accent, made legible in either theme), so a site
+		// export or a printed page keeps it with no stylesheet of its own.
+		const custom = spec.color ? ` style="--clew-callout-color: ${escapeHtml(spec.color)}"` : '';
 		// `markdown-alert` classes as well as Obsidian's, so the styling the
 		// engine already ships keeps applying and a vault's own CSS snippets
 		// (which target Obsidian's names) keep working.
-		const classes = `callout markdown-alert markdown-alert-${token.calloutType}`;
-		const head = `${iconSvg(spec.icon)}<span class="callout-title-inner">${title}</span>`;
+		const classes = `callout markdown-alert markdown-alert-${token.calloutType}${spec.color ? ' callout-custom' : ''}`;
+		const head = `${calloutIcon(token.calloutType)}<span class="callout-title-inner">${title}</span>`;
 
 		if (token.fold) {
 			const open = token.fold === '+' ? ' open' : '';
-			return `<details class="${classes} is-collapsible" data-callout="${token.calloutType}"${open}>`
+			return `<details class="${classes} is-collapsible" data-callout="${token.calloutType}"${custom}${open}>`
 				+ `<summary class="callout-title markdown-alert-title">${head}</summary>`
 				+ `<div class="callout-content">\n${body}</div></details>\n`;
 		}
-		return `<div class="${classes}" data-callout="${token.calloutType}">`
+		return `<div class="${classes}" data-callout="${token.calloutType}"${custom}>`
 			+ `<p class="callout-title markdown-alert-title">${head}</p>`
 			+ `<div class="callout-content">\n${body}</div></div>\n`;
 	},

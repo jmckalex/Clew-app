@@ -19,7 +19,7 @@
 // toggles a checkbox, `data-le-fold` folds a callout, `data-le-copy` copies
 // a fence body.
 import { WidgetType } from '@codemirror/view';
-import { calloutIcon, CALLOUT_TYPES } from '../../../../engine/callouts.js';
+import { calloutIcon, calloutGeneration, CALLOUT_TYPES } from '../../../../engine/callouts.js';
 
 const BULLETS = ['•', '◦', '▪'];
 
@@ -68,7 +68,9 @@ export class CalloutHeadWidget extends KeyedWidget {
 	 * @param {string} id - the callout construct's id (for folding)
 	 */
 	constructor(type, fold, folded, titled, id) {
-		super(`${type}|${fold}|${folded}|${titled}|${id}`);
+		// The table's generation too: a type's icon or title edited in
+		// Settings must redraw a head whose source did not change.
+		super(`${type}|${fold}|${folded}|${titled}|${id}|${calloutGeneration()}`);
 		Object.assign(this, { type, fold, folded, titled, id });
 	}
 

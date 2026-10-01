@@ -195,6 +195,13 @@
 .le-callout-example       { --callout: #a371f7; }
 .le-callout-quote         { --callout: #8b949e; }
 .le-callout-compatibility { --callout: #00b8a3; }
+/* A custom colour (Settings → Callouts): preview.css's rule, word for word
+   but for the theme selector — kept legible in each theme. */
+.le-callout-custom { --callout: var(--clew-callout-color); }
+@supports (color: oklch(from red l c h)) {
+	body[data-theme='dark'] .le-callout-custom { --callout: oklch(from var(--clew-callout-color) max(l, 0.62) c h); }
+	body[data-theme='light'] .le-callout-custom { --callout: oklch(from var(--clew-callout-color) min(l, 0.68) c h); }
+}
 
 /* ---- code fences: source stays, the fence lines become chrome ---- */
 .le-fence {

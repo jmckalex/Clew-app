@@ -23,6 +23,7 @@ import { noteMarkdown } from './jmd/markdown-config.js';
 import { vaultSettingsStore } from '../state/vault-settings-store.js';
 import { settingsStore } from '../state/settings-store.js';
 import { liveCompartment, liveEdit } from './live/index.js';
+import { liveRebuild } from './live/reveal-field.js';
 import { destroyCellEditor } from './live/table-cell-editor.js';
 import { minimalChange } from './minimal-change.js';
 import { readLiveConfig } from './live/config.js';
@@ -104,6 +105,14 @@ class EditorPool extends Emitter {
 			if (entry.mode === 'live' && entry.view) {
 				entry.view.dispatch({ effects: liveCompartment.reconfigure(liveEdit({ ...config, notePath: entry.path, tabId })) });
 			}
+		}
+	}
+
+	/** What a construct means changed outside the editor (custom callout
+	 *  types, renderer/callouts.js): rebuild every live editor's model. */
+	rebuildLive() {
+		for (const entry of this.#entries.values()) {
+			if (entry.mode === 'live' && entry.view) entry.view.dispatch({ effects: liveRebuild.of(null) });
 		}
 	}
 

@@ -928,6 +928,21 @@ details.callout[open] > summary::after { transform: rotate(45deg); }
 .callout[data-callout='quote']         { --callout: #8b949e; }
 .callout[data-callout='compatibility'] { --callout: #00b8a3; }
 
+/* A CUSTOM colour (Settings → Callouts; engine/callouts.js puts it on the
+   element as --clew-callout-color — not Obsidian's --callout-color, which a
+   vault's CSS snippet sets as an `r, g, b` triple) drives the same four
+   things, with its lightness kept where text reads in each theme: no lighter
+   than L 0.68 on the light page, no darker than L 0.62 on the dark one
+   (OKLCH). Most colours pass through untouched — the palette above sits at
+   0.62–0.76 — while pale yellow on white or navy on charcoal are moved until
+   they read. live-edit.css has the same rule for live edit, so the two cannot
+   differ. */
+.callout.callout-custom { --callout: var(--clew-callout-color); }
+@supports (color: oklch(from red l c h)) {
+	.callout.callout-custom { --callout: oklch(from var(--clew-callout-color) max(l, 0.62) c h); }
+	html[data-theme='light'] .callout.callout-custom { --callout: oklch(from var(--clew-callout-color) min(l, 0.68) c h); }
+}
+
 /* The engine's own alert styling assumes a light page and would otherwise
    fight the tint above; ours is the one that applies. */
 .callout.markdown-alert { border-top: 0; border-right: 0; border-bottom: 0; }

@@ -153,8 +153,34 @@ export function copyStatic() {
 	}
 }
 
+// Font Awesome Free's icons as one table — `family:name` → [width, height,
+// path] — for custom callout types (src/shared/custom-callouts.js): main
+// resolves the names a definition uses from it and hands the worker only
+// those paths, and Settings' icon picker loads it on demand. Never on a
+// render path. Built from the package's own svgs/ (CC BY 4.0, see
+// THIRD-PARTY-NOTICES.md), which do not ship in the app.
+export function writeIconTable() {
+	const base = path.join(root, 'node_modules/@fortawesome/fontawesome-free');
+	const icons = {};
+	for (const family of ['solid', 'regular', 'brands']) {
+		const dir = path.join(base, 'svgs', family);
+		if (!fs.existsSync(dir)) continue;
+		for (const file of fs.readdirSync(dir).filter((f) => f.endsWith('.svg')).sort()) {
+			const svg = fs.readFileSync(path.join(dir, file), 'utf8');
+			const box = /viewBox="0 0 (\d+(?:\.\d+)?) (\d+(?:\.\d+)?)"/.exec(svg);
+			const paths = [...svg.matchAll(/<path[^>]*\sd="([^"]+)"/g)].map((m) => m[1]);
+			if (!box || !paths.length) continue;
+			icons[`${family}:${file.slice(0, -4)}`] = [Number(box[1]), Number(box[2]), paths.join(' ')];
+		}
+	}
+	const { version } = JSON.parse(fs.readFileSync(path.join(base, 'package.json'), 'utf8'));
+	fs.mkdirSync(path.join(root, 'dist/main'), { recursive: true });
+	fs.writeFileSync(path.join(root, 'dist/main/fa-icons.json'), JSON.stringify({ version, icons }));
+}
+
 export async function buildAll() {
 	copyStatic();
+	writeIconTable();
 	await Promise.all(bundles.map((opts) => esbuild.build(opts)));
 }
 

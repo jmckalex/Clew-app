@@ -30,6 +30,7 @@ import { writeFileAtomic } from './fs-utils.js';
 import { isDependentFragment } from '../shared/fragment-deps.js';
 import { citationHeader, noteBibFiles } from './citation-header.js';
 import { refusedNames } from '../shared/refused-names.js';
+import { calloutsEnv } from './callout-types.js';
 
 const WORKER_PATH = paths.engineWorker;
 
@@ -143,6 +144,11 @@ export class RenderService {
 		this.#noteCode = allowed;
 		this.#refused.clear();
 		if (this.vaultRoot) this.reconfigure({});
+	}
+
+	/** One of the vault's render options as this service holds it. */
+	vaultOption(key) {
+		return this.#vaultOptions[key];
 	}
 
 	/** Every construct refused so far, by name — for a window that reloads. */
@@ -360,6 +366,10 @@ export class RenderService {
 					global: settings.get('texFragments') ?? [],
 					vault: this.#vaultOptions.texFragments ?? [],
 				}),
+				// Custom callout types, both scopes RESOLVED (callout-types.js):
+				// names, titles, colours and only the icon paths they use. Empty
+				// when none are defined — and then the icon table is never read.
+				CLEW_CALLOUTS: calloutsEnv(settings.get('callouts'), this.#vaultOptions.callouts, paths.faIcons),
 				// Engine console chatter goes to the pipes; keep them from filling.
 			},
 		});

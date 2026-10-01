@@ -39,6 +39,7 @@ import { citationLabel, citationsReady, citationsLoaded } from '../complete/cita
 import { engineCiteText, engineCiteHtml, wantCiteTexts, onCiteTexts, citeSignature } from './cite-text.js';
 import { FullciteWidget } from './widgets/fullcite.js';
 import { localCiteText } from './cite-label.js';
+import { calloutColor } from '../../../engine/callouts.js';
 
 const HIDE = Decoration.replace({});
 const markCache = new Map();
@@ -298,11 +299,15 @@ function build(view) {
 					// A callout's lines draw one box, as reading view's .callout:
 					// its first and last carry the padding and the corners; a bare
 					// `>` between paragraphs is a paragraph GAP, not a line.
+					// A custom type's colour (Settings → Callouts) rides on the
+					// line as --clew-callout-color, as reading view's element carries it.
+					const color = c.callout ? calloutColor(c.callout) : null;
 					const box = c.callout
-						? ` le-callout le-callout-${c.callout}${c.calloutFirst ? ' le-callout-first' : ''}${c.calloutLast ? ' le-callout-last' : ''}`
+						? ` le-callout le-callout-${c.callout}${color ? ' le-callout-custom' : ''}${c.calloutFirst ? ' le-callout-first' : ''}${c.calloutLast ? ' le-callout-last' : ''}`
 						: '';
 					const blank = /^(?:[ \t]*>)+[ \t]*$/.test(doc.lineAt(c.from).text) ? ' le-quote-blank' : '';
-					lineClass(c.from, `le-quote le-quote-${Math.min(c.depth, 4)}${box}${blank}`);
+					lineClass(c.from, `le-quote le-quote-${Math.min(c.depth, 4)}${box}${blank}`,
+						color ? { style: `--clew-callout-color: ${color}` } : undefined);
 					if (hidden) c.hidden.forEach(hide);
 					break;
 				}
