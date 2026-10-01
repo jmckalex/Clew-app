@@ -1,4 +1,4 @@
-# Handover — 2026-10-01 (0.12.0 released; main a3bb88c+, unpushed past 5119d93)
+# Handover — 2026-10-02 (0.12.0 released; main 80b8b44+, unpushed past 9409987)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it); the live edit design AS BUILT is
@@ -8,8 +8,15 @@ prefer deleting a settled item to explaining it again.
 
 ## Read this first
 
-**Where the code is.** `origin/main` = `5119d93`. `main` is ahead by the
-commits listed under "Since 0.12.0" as NOT pushed. Tree clean.
+**Where the code is.** `origin/main` = `9409987` (`git fetch` before
+counting). `main` is ahead by the commits listed under "Since 0.12.0" as
+NOT pushed — 15 of them, plus this HANDOVER commit. Tree clean.
+
+**On hold until the owner says go:** a Mac arm64 DEV build — version
+`0.12.1-dev.1`, `CLEW_PACKAGE_OUT=out-dev`, `JMARKDOWN_SRC=/nonexistent
+EMBEDPDF_SRC=/nonexistent MPTIKZ_SRC=/nonexistent`, from a bash script
+(the recipe's zsh trap), then the boot test; report DMG path, size,
+stapler/spctl, version and commit. Ask the owner in this window first.
 
 **The rules this session works under** (the owner's, relayed by the
 coordinating session "Clew-boss", uds `/tmp/cc-socks/6958.sock` at the
@@ -72,34 +79,38 @@ iOS sync #3's upstream fixes (kanban columns border-box, fs-utils without a
 
 ## Since 0.12.0
 
-- `5119d93` (pushed): the **Window menu lists every open vault** — folder
-  name plus active tab, the focused one checked, choosing one brings it
-  forward; same on all platforms; deliberately not role `windowMenu`.
-  With no window focused, the menu follows the window focused LAST
-  (`session.lastFocusedAt`). `smoke/window-menu-scenario.js`.
-- `a3bb88c` (NOT pushed): **⌘1–⌘8 / ⌘9 switch tabs** in the current pane
-  (owner's choice: tabs, not windows; Go > Tab); the app's chord wins over
-  CodeMirror, canvas and a focused terminal. And a bug found on the way:
-  recording an already-bound chord in Settings → Hotkeys RAN its command
-  (recording ⌘1 left Settings, recorded nothing) — now
-  `registry.js#recordKeys`. `smoke/goto-tab-scenario.js`,
-  `hotkey-record-scenario.js`. Reported with docs lines; iOS should check
-  whether ⌘-digits reach its WKWebView from a hardware keyboard.
-- `f17c531` (NOT pushed): **citation pills read what reading mode shows**
-  (`live/cite-text.js`: one block render per note, cached, re-asked only
-  when the list of citations changes; `live/cite-label.js` the local
-  fallback), and the hover's button on a citation is **Show in Library**
-  (⌘: the entry's PDF). `3ef9c4f`: an engine "[undefined]" (vancouver, an
-  unknown key) is no text. `a1d8de0`: **reading mode follows a .bib edit**
-  (`citation-header.js#noteBibFiles`). Upstream finding for the jmarkdown
-  master: an unknown key under vancouver renders "[undefined]".
-- `1b98e07` (NOT pushed): the file explorer's **Open in Default App**
-  (`actions.openFileExternally`, the `|external` guard; `SHELL_OPEN_PATH`
-  now returns the OS's "no app" as a notice and logs `smoke-open-path:`
-  under CLEW_SMOKE instead of launching).
-- `a0bcd2b` (NOT pushed): dark-theme body text `#dadada` → `#e8e8e8` (both
-  tokens). `-webkit-font-smoothing: auto` was screenshotted for the owner
-  (session scratchpad `bright/compare.png`), NOT shipped — the owner decides.
+`5119d93` and `a3bb88c`/`9409987` are pushed (Window menu lists vaults; ⌘1–⌘9
+switch tabs). NOT pushed, oldest first — each reported to Clew-boss with
+docs lines and iOS notes:
+
+- `f17c531` **citation pills read what reading mode shows**
+  (`live/cite-text.js`, one block render per note) and the hover's **Show in
+  Library**; `3ef9c4f` an engine "[undefined]" is no text; `a1d8de0`
+  **reading mode follows a .bib edit**; `1b98e07` explorer **Open in Default
+  App**; `a0bcd2b` dark text `#e8e8e8`; `63c5ade` font smoothing `auto` (the
+  owner's pick); `2a853da` `CLEW_PACKAGE_VERSION` / `CLEW_PACKAGE_OUT`.
+- `f504e57` `\fullcite` draws the entry inline; `95750a5` live edit's
+  callouts match reading view's box; `914c3f8` a directive the engine takes
+  literally (`@reveal[http://…]`) keeps its source raw.
+- `b0fe140` mode buttons in every view — SUPERSEDED by `80b8b44` below.
+- `0f797eb` **engine `at-migration@3134543`**: /italic/ has flanking rules
+  (slashes in words, paths, URLs stay literal) and bare http(s)/ftp/www/
+  email URLs are links; `jmarkdown-scan.js` mirrors the rule (parity test),
+  live edit draws bare URLs as links (`jmd/ftp-autolink.js` for ftp).
+  Six demo-vault guide notes render differently — every diff is the fix.
+- `096f129` **custom callout types** (Settings → Callouts; CLAUDE.md has the
+  design). Also fixed there: a live-edit block frame that reloads after an
+  engine reconfigure showed "Not found" (re-pointed on load).
+- `80b8b44` **the view-mode switch is in each pane's tab strip** (left of
+  "+", hidden in place for tabs with no modes; no slim bar; the toolbar's
+  one-row threshold 1080 → 984 px). Also fixed there: the formatting
+  toolbar vanished from every split pane but the newest.
+
+Owner decisions Clew-boss is carrying (2026-10-02): HTML/LaTeX note exports
+render NO Obsidian callouts (built-in or custom; only uppercase GFM alerts
+become boxes) because they run the user's own config; Obsidian draws an
+unknown `[!type]` as a default callout and reads callout CSS snippets —
+Clew does neither. Report only; nothing built.
 
 ## Open — waiting on the owner
 
@@ -126,6 +137,16 @@ owner's word.
 
 ## Open — engineering
 
+- **A split layout reconnects every pane on every layout change** (found
+  2026-10-01; Clew-boss: later, not now). Any mode switch, tab activation
+  or open in one pane disconnects and reconnects every other pane's view
+  (`clew-element.js`'s note on reconciliation): the editor view re-runs
+  `connectedCallback` (`replaceChildren`, view-state restore, banners), and
+  every iframe in another pane reloads — reading views, live-edit block
+  frames, PDFs. Symptoms already patched at their ends (the toolbar kept,
+  a reloaded block frame re-pointed); the cause is the split reconciler
+  re-appending unchanged groups. Measure with `smoke/mode-split-scenario.js`
+  and `/tmp`-style counters on `connectedCallback`.
 - **The owner's QA pass of live edit** (not automatable): typing at speed in
   a long note; ⌘Z across a conceal/reveal; ⌘F over concealed text; copy/
   paste of concealed ranges; IME in a concealed word and in a table cell;
