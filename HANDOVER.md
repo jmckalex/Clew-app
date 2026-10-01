@@ -10,7 +10,7 @@ prefer deleting a settled item to explaining it again.
 
 **Where the code is.** `origin/main` = `9409987` (`git fetch` before
 counting). `main` is ahead by the commits listed under "Since 0.12.0" as
-NOT pushed — 15 of them, plus this HANDOVER commit. Tree clean.
+NOT pushed — 17 of them. Tree clean.
 
 **On hold until the owner says go:** a Mac arm64 DEV build — version
 `0.12.1-dev.1`, `CLEW_PACKAGE_OUT=out-dev`, `JMARKDOWN_SRC=/nonexistent
@@ -105,6 +105,11 @@ docs lines and iOS notes:
   "+", hidden in place for tabs with no modes; no slim bar; the toolbar's
   one-row threshold 1080 → 984 px). Also fixed there: the formatting
   toolbar vanished from every split pane but the newest.
+- The commit after `5ae29b4`: **the split reconciler moves only what moved**
+  (`clew-workspace.js#place`, `moveBefore`, `connectedMoveCallback`; CLAUDE.md
+  "Panes are moved, never re-appended"). Every layout change used to
+  re-append every pane: other panes' frames reloaded on a mode switch, and a
+  pane's own mode switch jumped its scroll. `smoke/split-stability-scenario.js`.
 
 Owner decisions Clew-boss is carrying (2026-10-02): HTML/LaTeX note exports
 render NO Obsidian callouts (built-in or custom; only uppercase GFM alerts
@@ -137,16 +142,6 @@ owner's word.
 
 ## Open — engineering
 
-- **A split layout reconnects every pane on every layout change** (found
-  2026-10-01; Clew-boss: later, not now). Any mode switch, tab activation
-  or open in one pane disconnects and reconnects every other pane's view
-  (`clew-element.js`'s note on reconciliation): the editor view re-runs
-  `connectedCallback` (`replaceChildren`, view-state restore, banners), and
-  every iframe in another pane reloads — reading views, live-edit block
-  frames, PDFs. Symptoms already patched at their ends (the toolbar kept,
-  a reloaded block frame re-pointed); the cause is the split reconciler
-  re-appending unchanged groups. Measure with `smoke/mode-split-scenario.js`
-  and `/tmp`-style counters on `connectedCallback`.
 - **The owner's QA pass of live edit** (not automatable): typing at speed in
   a long note; ⌘Z across a conceal/reveal; ⌘F over concealed text; copy/
   paste of concealed ranges; IME in a concealed word and in a table cell;

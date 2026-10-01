@@ -97,6 +97,9 @@ export class ClewEditorToolbar extends HTMLElement {
 		window.visualViewport?.addEventListener('resize', this.#onViewport);
 	}
 
+	/** Moved with its pane (moveBefore): it never left the document. */
+	connectedMoveCallback() {}
+
 	disconnectedCallback() {
 		toolbars.delete(this);
 		this.offSettings?.();

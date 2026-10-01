@@ -1079,10 +1079,14 @@ except where the selection touches a construct. The durable design is
   the raw text. Those names are `jmarkdown-scan.js#LITERAL_DIRECTIVES`, where
   the scanner claims the bracket (no /italic/, nothing concealed — the
   owner's `@reveal[http://…/]` read `http:/localhost:8888prez…` in italics);
-  a test holds the verbatim half to the vendored engine. A bare URL or
-  path in PROSE (`see http://a/b/c/`) IS italicised — by the engine too
-  (`http:/<em>a</em>b<em>c</em>`), so the editor matches it; that one is an
-  engine finding.
+  a test holds the verbatim half to the vendored engine. In PROSE, since
+  jmarkdown 3134543, /italic/ has flanking rules — no letter, digit, `:`
+  `/` `.` `~` before the opening slash, no letter, digit or `/` after the
+  closing one — so `and/or`, `1/2/3`, paths and URLs stay literal, and a
+  bare http(s)/ftp/www/email URL is a link; the scanner mirrors the rule
+  (a parity test runs it against the engine's tokenizer) and live edit
+  draws bare URLs as links (`jmd/ftp-autolink.js` adds the scheme lezer
+  lacks). One limit, in both: `see /tmp/ here` still italicises.
 - **jmarkdown dialect facts:** sub/superscripts are TeX-style (`H_2O`,
   `x^2`, `x^{10}`) — `~x~` is strikethrough, `^x^` is not a thing. `*x*` is
   strong, `**x**` intense, `/x/` italic. Mermaid's native forms are
@@ -1115,6 +1119,19 @@ except where the selection touches a construct. The durable design is
   chord was bound to. ⌘1–⌘8 go to that tab of the current pane, ⌘9 to its
   last (owner's choice 2026-10-01; Go > Tab).
 - **Cmd+W is the renderer's** (close tab): no `role: 'close'` in the menu.
+- **Panes are moved, never re-appended** (`clew-workspace.js#place`,
+  2026-10-02): a layout change touches only the panes whose place changed,
+  and those go by `moveBefore` (Chromium's state-preserving move: frames do
+  not reload, focus and scroll stay; components get
+  `connectedMoveCallback`, defined on ClewElement and the editor toolbar, in
+  place of a disconnect). Placement is top-down and leftovers are removed
+  only after the pass, so a pane going into a new split is never detached
+  on the way. Until then clew-split rebuilt its resizers on every sync, so
+  EVERY layout change re-appended EVERY pane: a mode switch in one pane
+  reloaded the others' frames, dropped toolbars and jumped a pane's scroll
+  (`smoke/split-stability-scenario.js` has the numbers). A custom element
+  that can live in a pane and has connect/disconnect work defines
+  `connectedMoveCallback`.
 - Editor↔preview scroll sync runs over `preview/scroll-sync.js` (bus +
   per-side suppressors). Emit only on user scroll; `suppress()` before any
   programmatic scroll.
