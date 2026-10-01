@@ -14,7 +14,7 @@ import { ClewElement } from '../base/clew-element.js';
 import { settingsStore } from '../../state/settings-store.js';
 import { vaultStore } from '../../state/vault-store.js';
 import { vaultSettingsStore } from '../../state/vault-settings-store.js';
-import { allCommands, chordOf } from '../../commands/registry.js';
+import { allCommands, chordOf, recordKeys } from '../../commands/registry.js';
 import { debounce } from '../../lib/debounce.js';
 import { invalidateNoteApiGate } from '../../note-api.js';
 import { ipc, CH } from '../../ipc.js';
@@ -947,8 +947,10 @@ class ClewSettingsView extends ClewElement {
 			});
 			this.#stopRecording(list);
 		};
-		window.addEventListener('keydown', onKey, { capture: true });
-		this.#recorderCleanup = () => window.removeEventListener('keydown', onKey, { capture: true });
+		// Through the dispatcher, which hands it every key while recording —
+		// a listener of our own would come second, after the command a bound
+		// chord runs (registry.js#recordKeys).
+		this.#recorderCleanup = recordKeys(onKey);
 		this.#renderHotkeyList(list);
 	}
 

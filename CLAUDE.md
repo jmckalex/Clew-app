@@ -1024,6 +1024,13 @@ except where the selection touches a construct. The durable design is
   `EV_MENU_COMMAND`; `commands/menu-bridge.js` pushes context + the
   effective keymap back over `MENU_STATE` (accelerators are display-only —
   `registerAccelerator: false` — the renderer dispatcher owns every chord).
+  The dispatcher listens in the capture phase on window, so an app chord
+  beats CodeMirror, canvas and a focused terminal alike; anything that
+  RECORDS keys (the Settings hotkey editor) goes through
+  `registry.js#recordKeys`, which hands it every key while the dispatcher
+  stands aside — a listener of its own came second, after the command the
+  chord was bound to. ⌘1–⌘8 go to that tab of the current pane, ⌘9 to its
+  last (owner's choice 2026-10-01; Go > Tab).
 - **Cmd+W is the renderer's** (close tab): no `role: 'close'` in the menu.
 - Editor↔preview scroll sync runs over `preview/scroll-sync.js` (bus +
   per-side suppressors). Emit only on user scroll; `suppress()` before any

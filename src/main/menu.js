@@ -372,6 +372,14 @@ class AppMenu {
 				{ type: 'separator' },
 				c('workspace:next-tab', 'Next Tab', { chord: 'Ctrl-Tab' }),
 				c('workspace:prev-tab', 'Previous Tab', { chord: 'Ctrl-Shift-Tab' }),
+				{
+					label: 'Tab',
+					submenu: [
+						...[1, 2, 3, 4, 5, 6, 7, 8].map((n) =>
+							c(`workspace:goto-tab-${n}`, `Tab ${n}`, { chord: `Mod-${n}`, needs: 'tab' })),
+						c('workspace:goto-last-tab', 'Last Tab', { chord: 'Mod-9', needs: 'tab' }),
+					],
+				},
 			],
 		};
 
