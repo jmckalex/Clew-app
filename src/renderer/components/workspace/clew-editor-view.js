@@ -73,6 +73,12 @@ class ClewEditorView extends ClewElement {
 		this.listen(editorPool, 'conflict-changed', ({ tabId: changed }) => {
 			if (changed === this.tabId) this.#syncConflictBanner();
 		});
+		// The pool put a new state in this view (the tab re-pointed while it
+		// showed): that state carries no mode of its own, so the tab's comes
+		// back — live edit is never left undrawn behind a live button.
+		this.listen(editorPool, 'state-replaced', ({ tabId: changed }) => {
+			if (changed === this.tabId && this.contains(editorPool.get(this.tabId)?.view?.dom ?? null)) this.#applyMode();
+		});
 		// Source ↔ live is a flip of THIS view (the tab group keeps it
 		// mounted for both), so the mode is followed here.
 		this.listen(workspaceStore, 'layout-changed', () => {

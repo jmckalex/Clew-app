@@ -414,7 +414,7 @@ export const inlineLayer = ViewPlugin.fromClass(class {
 			vaultStore.on('index-changed', refresh),
 			// The engine's citation texts arrived, or were dropped (cite-text.js).
 			onCiteTexts((path) => {
-				if (path === null || path === view.state.field(liveStateField).config.notePath) refresh();
+				if (path === null || path === view.state.field(liveStateField, false)?.config.notePath) refresh();
 			}),
 		];
 		// The .bib entries load on the first citationLabel() ask; redraw

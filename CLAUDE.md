@@ -1072,7 +1072,19 @@ except where the selection touches a construct. The durable design is
   auto-save (1s debounce), a per-path EditorState cache (undo survives
   navigation; discarded when disk content diverges), and conflict state
   (external change + unsaved edits → banner, auto-save paused; the pool
-  ignores echoes of its own saves via `lastWrittenText`).
+  ignores echoes of its own saves via `lastWrittenText`). **Opening is
+  serialised** (2026-10-02, Clew-docs' repro): `open()` of a note already
+  being opened WAITS for that open (`entry.opening`) — handing the entry
+  back early left a host with no view (an empty pane) or with the old view
+  and mode about to be replaced (live edit undrawn under a pressed live
+  button); `setMode` compares against the state's OWN compartment
+  (`liveStateField` present or not), not only `entry.mode`; and the pool
+  emits `state-replaced` whenever it puts a new state in a view, on which
+  the host showing it re-applies the tab's mode. Anything DEFERRED that
+  reads a live-only field — a `requestMeasure` read/write, a listener, a DOM
+  handler — reads it with `state.field(f, false)` and does nothing without
+  it: CodeMirror runs a plugin's pending measures after the plugin's
+  compartment has gone (`Sidenotes.read`'s "Field is not present").
 - **A directive's bracket is prose unless the engine says otherwise**:
   the engine lexes `@name[…]` as inline markdown except where the
   environment's mode is `verbatim`, or `custom` with a handler that takes

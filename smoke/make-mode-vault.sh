@@ -2,10 +2,13 @@
 # smoke/make-mode-vault.sh <dir>: the fixture for the tab-strip mode switch
 # (mode-buttons-, mode-split- and toolbar-panes-scenario.js): Long.md (120
 # paragraphs, to scroll), Other.md, Frames.md (a mermaid block: a live-edit
-# block frame), N01–N24.md (a crowded strip), a canvas
+# block frame), Live.md (a heading, a quote, a footnote) and Paper.pdf (for
+# open-race-scenario.js), N01–N24.md (a crowded strip), a canvas
 # and a .bib (tabs with no modes); and a second vault at <dir>-2 whose
 # Welcome.md opens by itself in its own window.
-D=$1; rm -rf "$D" "$D-2"; mkdir -p "$D/.clew" "$D-2/.clew"
+D=$1; R=$(cd "$(dirname "$0")/.." && pwd); rm -rf "$D" "$D-2"; mkdir -p "$D/.clew" "$D-2/.clew"
+cp "$R/demo-vault/Attachments/sample.pdf" "$D/Paper.pdf"
+printf '# Live heading\n\n> A quote line.\n\n- a list item\n\nText with *strong* and /italic/.[^n: a note in the margin.]\n' > "$D/Live.md"
 node -e "require('fs').writeFileSync(process.argv[1] + '/Long.md', '# Long\n\n' + Array.from({length: 120}, (_, i) => 'Line ' + i + ' of the note, long enough to read.').join('\n\n') + '\n')" "$D"
 printf '# Other\n\nThe other note, with *strong* text.\n' > "$D/Other.md"
 printf '# Frames\n\nA diagram live edit draws in a block frame:\n\n```mermaid\ngraph LR\n  A --> B\n```\n\nAfter it.\n' > "$D/Frames.md"

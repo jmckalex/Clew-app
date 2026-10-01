@@ -10,7 +10,7 @@ prefer deleting a settled item to explaining it again.
 
 **Where the code is.** `origin/main` = `9409987` (`git fetch` before
 counting). `main` is ahead by the commits listed under "Since 0.12.0" as
-NOT pushed — 17 of them. Tree clean.
+NOT pushed — 18 of them. Tree clean.
 
 **On hold until the owner says go:** a Mac arm64 DEV build — version
 `0.12.1-dev.1`, `CLEW_PACKAGE_OUT=out-dev`, `JMARKDOWN_SRC=/nonexistent
@@ -110,6 +110,11 @@ docs lines and iOS notes:
   "Panes are moved, never re-appended"). Every layout change used to
   re-append every pane: other panes' frames reloaded on a mode switch, and a
   pane's own mode switch jumped its scroll. `smoke/split-stability-scenario.js`.
+- Then: **opening is serialised** (`editor/pool.js#open` waits for an open
+  under way; `setMode` checks the state's own compartment; `state-replaced`
+  re-applies a host's mode; deferred live-field reads tolerate absence).
+  Clew-docs' repro — note + PDF opened and split in one tick left an EMPTY
+  pane or live edit undrawn. `smoke/open-race-scenario.js`.
 
 Owner decisions Clew-boss is carrying (2026-10-02): HTML/LaTeX note exports
 render NO Obsidian callouts (built-in or custom; only uppercase GFM alerts
