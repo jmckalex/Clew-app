@@ -1105,6 +1105,25 @@ it, open its PDF. Designed by the planning session; built overnight.
 - **Live edit**: the cite chip (`reveal: false`, `data-le-cite`) opens the
   right sidebar on Refs → Library at the entry, highlighted
   (`events.js#showCitation`); ⌥-click edits.
+- **As built, 2026-10-01 — the chip's TEXT is the engine's.** The plan's
+  `Author Year` label (row above, §4) was a local guess, and a wrong one:
+  `\cite{Akerlof/Kranton:2000}` read "Kranton 2000" (bib.js's authors are
+  already short, "Akerlof & Kranton", and were re-parsed as one name), where
+  reading mode says "Akerlof and Kranton (2000)" — the owner's report. Now
+  `live/cite-text.js` renders every citation of the note, in order, in ONE
+  block render (each a paragraph behind a plain-word marker; read back from
+  the element carrying `data-bibtex`), caches it per note (citation header
+  + an epoch bumped by a .bib edit or an engine-reconfiguring setting) and
+  re-asks only when the note's list of citations changes. Pills equal
+  reading mode for every form measured — chicago author-year with pre/post
+  notes, `\citeauthor`, `\citeyear`, several keys, and vancouver's `[1,3]`
+  (smoke/cite-pill-scenario.js); typing beside 300 citations costs nothing
+  measurable and asks for no render (cite-perf-scenario.js). Until the text
+  is in, or without a bibliography, `live/cite-label.js` shapes the local
+  label by command ("(Akerlof and Kranton 2000)" for `\citep`); an unknown
+  key is the key in the danger colour. The hover's button on a citation is
+  "Show in Library" (the spec carries `cite: [keys]`), ⌘ opening the entry's
+  PDF; it read "Open" and reopened the note already open.
 - **Hover**: `linkAt` recognises the `\cite` family (`kind: 'cite'`);
   `previewSpec` renders `\fullcite{key}` per key through the block endpoint
   when the vault names a `bibliography` (Biblify resolves only then —

@@ -117,7 +117,11 @@ note API, plugins, and every settings key.
   close as `smoke-menu-closed:`), and REAL input:
   a scenario queues `window.__clewSmokeInput =
   [{click:{x,y}} | {tripleClick:{x,y}} | {move:{x,y}} | {text:'abc'} |
-  {combo:{key,modifiers,text?}} | {wait:ms} | {frameClick:{match,selector}}]`
+  {combo:{key,modifiers,text?}} | {wait:ms} | {frameClick:{match,selector}}
+  | {click:{selector}} | {move:{selector}}]` (the last two resolve an
+  app-page element when their turn comes — a popover's button, a pill after
+  a re-layout; resolved points are never written back into the queued
+  event, which a scenario may queue more than once)
   (`move` is a bare pointer move — hover; `modifiers` on it makes a
   ⌘-hover; a combo's `text` makes the key TYPE, as a real one does — a real
   Enter carries `"\r"`, which is what puts a newline in a textarea, and the
@@ -744,6 +748,24 @@ except where the selection touches a construct. The durable design is
   a cite chip opens it; hovering previews `\fullcite` (engine-formatted when
   the vault names a bibliography). BIB_ENTRIES entries carry `bib` (their
   .bib) and `pdf` (the resolved `file` field) — `file` is BibTeX's own.
+  **A pill reads the ENGINE's text for the citation as written**
+  (`live/cite-text.js`, the owner's report 2026-10-01: `\cite{Akerlof/
+  Kranton:2000}` read "Kranton 2000"): ONE block render per note of every
+  citation in order (a numeric style numbers by first citation), each a
+  paragraph behind a plain-word marker — `⟦n⟧` is Mathematica to the
+  dialect, refused or, trusted, RUN — read back from the element carrying
+  `data-bibtex` (its class is the style's). Cached per note under its
+  citation header plus an epoch a .bib edit or an engine-reconfiguring vault
+  setting bumps; re-asked only when the list of citations changes, so typing
+  asks for nothing. Until then, or where the engine has none (no
+  bibliography, an unknown key), `live/cite-label.js` (pure) shapes the local
+  label by command; an unknown key is the key in the danger colour.
+  `shared/fragment-deps.js` counts a citation dependent (it reads the .bib),
+  so a .bib edit retires the server's cached block. The hover's button on a
+  citation is "Show in Library" (the spec carries `cite: [keys]`; the first
+  key, as a pill's click; ⌘ opens the entry's PDF through `bib-pdf.js`, the
+  Library's own opener). Reading mode does NOT re-render a note when its .bib
+  changes — older, separate, recorded in HANDOVER.
 - **PDF annotations → note** (§5.15): the viewer (pdf-core.js) lists its
   annotations with the text under them (engine glyph geometry +
   getTextSlices) when pdf-page.js is asked by its PARENT;

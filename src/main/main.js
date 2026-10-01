@@ -470,7 +470,9 @@ if (process.env.CLEW_SMOKE) {
 				// cross-origin iframe (an OOPIF), and sendInputEvent never
 				// routes there (measured 2026-09-01) while the debugger's
 				// Input domain hit-tests properly. A scenario queues
-				// window.__clewSmokeInput = [{click:{x,y}} | {move:{x,y}} | {text:'abc'} |
+				// window.__clewSmokeInput = [{click:{x,y}} | {click:{selector}} (the
+				// centre of an app-page element, found when its turn comes) |
+				// {move:{x,y}} | {move:{selector}} | {text:'abc'} |
 				// {combo:{key:'s',modifiers:2}} | {wait:ms}] — a click may carry
 				// `modifiers` too, e.g. {click:{x,y},modifiers:4}; and
 				// {wheel:{x,y,deltaY}} scrolls (modifiers CDP
@@ -530,11 +532,25 @@ if (process.env.CLEW_SMOKE) {
 							// {move:{x,y}, modifiers?}: the pointer to a point, nothing
 							// pressed — hover (link previews). `modifiers` (the CDP
 							// bitmask) makes it a ⌘-hover: e.metaKey in the page.
-							const { x, y } = ev.move;
+							// {move:{selector}}: the middle of that app-page element's
+							// FIRST line box (a wrapped inline's bounding box can be
+							// empty in its middle), found when its turn comes.
+							let point = ev.move;
+							if (ev.move.selector) {
+								point = await primary.webContents.executeJavaScript(`(() => {
+									const r = document.querySelector(${JSON.stringify(ev.move.selector)})?.getClientRects()[0];
+									return r ? { x: Math.round(r.left + Math.min(r.width / 2, 40)), y: Math.round(r.top + r.height / 2) } : null; })()`);
+								if (!point) {
+									console.log(`smoke: move found no ${ev.move.selector}`);
+									continue;
+								}
+							}
+							const { x, y } = point;
 							await dbg.sendCommand('Input.dispatchMouseEvent', { type: 'mouseMoved', button: 'none', x, y, modifiers: ev.modifiers ?? 0 });
 							await sleep(ev.delay ?? 30);
 							continue;
 						}
+						let at = null;
 						if (ev.frameClick) {
 							// {frameClick:{match, selector}}: a click at the centre of
 							// an element INSIDE a preview frame — cross-origin, so a
@@ -555,10 +571,26 @@ if (process.env.CLEW_SMOKE) {
 								console.log(`smoke: frameClick found no ${selector} in a frame matching ${match}`);
 								continue;
 							}
-							ev.click = { x: Math.round(outer.x + inner.x), y: Math.round(outer.y + inner.y) };
+							at = { x: Math.round(outer.x + inner.x), y: Math.round(outer.y + inner.y) };
 						}
-						if (ev.click || ev.tripleClick) {
-							const { x, y } = ev.click ?? ev.tripleClick;
+						if (ev.click?.selector) {
+							// {click:{selector}}: the centre of an element on the APP
+							// page, resolved at dispatch time — for what appears only
+							// after earlier input (a hover popover's button).
+							const found = await primary.webContents.executeJavaScript(`(() => {
+								const r = document.querySelector(${JSON.stringify(ev.click.selector)})?.getBoundingClientRect();
+								return r && r.width ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null; })()`);
+							if (!found) {
+								console.log(`smoke: click found no ${ev.click.selector}`);
+								continue;
+							}
+							at = { x: Math.round(found.x), y: Math.round(found.y) };
+						}
+						// Resolved positions go in `at`, never back into the event:
+						// a scenario may queue ONE object several times.
+						at ??= ev.click ?? ev.tripleClick;
+						if (at) {
+							const { x, y } = at;
 							// `modifiers` on a click event (same CDP bitmask) makes it
 							// a ⌘-click etc. — e.metaKey in the page (inverse search).
 							const base = { x, y, pointerType: 'mouse', modifiers: ev.modifiers ?? 0 };

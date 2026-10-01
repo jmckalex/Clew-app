@@ -35,7 +35,9 @@ import { imageSpec } from './images.js';
 import { ChipWidget } from './widgets/chip.js';
 import { numberDocument, refDisplay, headText, typedRefText } from './numbering.js';
 import { vaultStore } from '../../state/vault-store.js';
-import { citationLabel, citationsReady } from '../complete/citations.js';
+import { citationLabel, citationsReady, citationsLoaded } from '../complete/citations.js';
+import { engineCiteText, wantCiteTexts, onCiteTexts, citeSignature } from './cite-text.js';
+import { localCiteText } from './cite-label.js';
 
 const HIDE = Decoration.replace({});
 const markCache = new Map();
@@ -69,6 +71,15 @@ function build(view) {
 
 	// What the engine will number, and what each label resolves to (§5.13).
 	const numbering = numberDocument(doc, config.numbered?.size ? { numbered: config.numbered } : undefined);
+
+	// Every citation in the note, in order, for the engine's texts: asked for
+	// once per change of the list, whatever is in view (cite-text.js).
+	const notePath = config.notePath;
+	const cites = model.filter((c) => c.kind === 'cite');
+	const citeSig = cites.length ? citeSignature(doc) : '';
+	if (cites.length) {
+		wantCiteTexts(notePath, citeSig, [...new Set(cites.slice().sort((a, b) => a.from - b.from).map(text))]);
+	}
 
 	// A CONCEALED multi-line footnote is replaced whole by the block field's
 	// badge: nothing inside it is decorated here (§5.2, the containment rule).
@@ -156,10 +167,15 @@ function build(view) {
 				}));
 				break;
 			case 'cite': {
+				// The engine's text for the citation as written (cite-text.js),
+				// else the local one (cite-label.js); an unknown key in the
+				// danger colour, as a missing reference is.
 				const labels = c.keys.map((k) => citationLabel(k));
+				const engine = engineCiteText(notePath, citeSig, state.doc.sliceString(c.from, c.to));
+				const missing = !engine && citationsLoaded() && labels.some((l) => !l);
 				widget(c.from, c.to, new ChipWidget({
-					cls: 'le-cite',
-					text: (c.command === 'cite' ? '' : `${c.command} `) + (labels.map((l, i) => l?.label ?? c.keys[i]).join('; ') || '?'),
+					cls: missing ? 'le-cite le-cite-missing' : 'le-cite',
+					text: engine || localCiteText(c.command, c.keys, labels),
 					title: labels.map((l, i) => (l ? `${l.label}: ${l.title}` : c.keys[i])).join('\n'),
 					// A click opens the References panel's Library at the
 					// entry (events.js); ⌥-click edits (§5.14).
@@ -359,9 +375,14 @@ export const inlineLayer = ViewPlugin.fromClass(class {
 		const refresh = () => requestAnimationFrame(() => {
 			if (view.dom.isConnected) view.dispatch({ effects: liveRefresh.of(null) });
 		});
+		this.refresh = refresh;
 		this.unsubscribe = [
 			vaultStore.on('tree-changed', refresh),
 			vaultStore.on('index-changed', refresh),
+			// The engine's citation texts arrived, or were dropped (cite-text.js).
+			onCiteTexts((path) => {
+				if (path === null || path === view.state.field(liveStateField).config.notePath) refresh();
+			}),
 		];
 		// The .bib entries load on the first citationLabel() ask; redraw
 		// when they are in (a fixed delay lost the race on a cold start).
@@ -374,6 +395,12 @@ export const inlineLayer = ViewPlugin.fromClass(class {
 		if (update.docChanged || update.viewportChanged || live !== this.live || refreshed) {
 			this.live = live;
 			this.decorations = build(update.view);
+			// The .bib entries were dropped (a .bib edited): redraw once they
+			// are back, or the pills read bare keys until the engine's texts.
+			if (!citationsLoaded() && !this.awaitingBib && live.model.some((c) => c.kind === 'cite')) {
+				this.awaitingBib = true;
+				citationsReady().then(() => { this.awaitingBib = false; this.refresh(); });
+			}
 		}
 	}
 

@@ -54,6 +54,8 @@
 	line-height: 0;
 }
 .le-cite { color: var(--clew-link); }
+/* A key no .bib defines: the key itself, as a missing reference reads. */
+.le-cite-missing.le-chip { color: var(--clew-danger); text-decoration: underline dotted; }
 .le-var { font-family: var(--clew-mono-font); }
 .le-label, .le-today, .le-directive-chip, .le-embed-chip { color: var(--clew-text-muted); background: var(--clew-bg-tertiary); }
 .le-block-id { background: none; color: var(--clew-text-faint); margin-left: 0.3em; }
