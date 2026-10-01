@@ -56,6 +56,10 @@
 .le-cite { color: var(--clew-link); }
 /* A key no .bib defines: the key itself, as a missing reference reads. */
 .le-cite-missing.le-chip { color: var(--clew-danger); text-decoration: underline dotted; }
+/* \fullcite's entry, inline as prose: only a faint dotted underline says it
+   is a citation (text-decoration — no box, so the line keeps its height). */
+.le-fullcite { text-decoration: underline dotted var(--clew-text-faint); text-underline-offset: 3px; }
+.le-fullcite.le-cite-missing { color: var(--clew-danger); text-decoration-color: var(--clew-danger); }
 .le-var { font-family: var(--clew-mono-font); }
 .le-label, .le-today, .le-directive-chip, .le-embed-chip { color: var(--clew-text-muted); background: var(--clew-bg-tertiary); }
 .le-block-id { background: none; color: var(--clew-text-faint); margin-left: 0.3em; }

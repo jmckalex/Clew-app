@@ -49,7 +49,7 @@ const MARK = (i) => `clewcite${i}`;
 const MARK_RE = /\bclewcite(\d+)\b/;
 
 let epoch = 0;
-/** notePath → { sig, texts: Map<source, string|null>, asked, wanted, timer, busy, again } */
+/** notePath → { sig, texts: Map<source, {text, html}|null>, asked, wanted, timer, busy, again } */
 const notes = new Map();
 const listeners = new Set();
 
@@ -91,7 +91,22 @@ export function onCiteTexts(listener) {
 export function engineCiteText(notePath, sig, source) {
 	const slot = notes.get(notePath);
 	if (!slot || slot.sig !== sig) return undefined;
-	return slot.texts.get(source);
+	const entry = slot.texts.get(source);
+	return entry === undefined ? undefined : entry?.text ?? null;
+}
+
+/**
+ * A `\fullcite`'s rendered entry as INLINE HTML — the engine's, italics and
+ * all, rebuilt from allowlisted tags with no attributes (inlineHtml below) —
+ * or null/undefined as engineCiteText. Only a \fullcite has one: the engine
+ * draws it as `span.fullcite` (jmarkdown e823e76); other commands, and a
+ * \fullcite a numeric style renders as its number, are text.
+ */
+export function engineCiteHtml(notePath, sig, source) {
+	const slot = notes.get(notePath);
+	if (!slot || slot.sig !== sig) return undefined;
+	const entry = slot.texts.get(source);
+	return entry === undefined ? undefined : entry?.html ?? null;
 }
 
 /**
@@ -146,7 +161,32 @@ async function run(notePath, slot) {
 	}
 }
 
-/** One block render of the note's citations; each one's text, or null. */
+// What a \fullcite's entry may keep: inline FORMATTING. Rebuilt, not
+// filtered — each kept element is a fresh one with no attributes, so no
+// link, style, class or handler from the render reaches the editor's DOM; an
+// <a> keeps its text as a span (nothing in the editor should navigate).
+const INLINE = new Map([['EM', 'em'], ['I', 'i'], ['STRONG', 'strong'], ['B', 'b'], ['SPAN', 'span'], ['A', 'span'], ['SUB', 'sub'], ['SUP', 'sup']]);
+
+/** An element's content as attribute-free inline HTML. */
+function inlineHtml(element) {
+	const out = document.createElement('span');
+	const copy = (from, to) => {
+		for (const node of from.childNodes) {
+			if (node.nodeType === Node.TEXT_NODE) {
+				to.append(node.data);
+			} else if (node.nodeType === Node.ELEMENT_NODE) {
+				const tag = INLINE.get(node.tagName);
+				const into = tag ? document.createElement(tag) : to;
+				copy(node, into);
+				if (into !== to) to.append(into);
+			}
+		}
+	};
+	copy(element, out);
+	return out.innerHTML.replace(/\s+/g, ' ').trim();
+}
+
+/** One block render of the note's citations; each one's {text, html}, or null. */
 async function renderCites(notePath, sources) {
 	const text = sources.map((source, i) => `${MARK(i)} ${source}`).join('\n\n');
 	const response = await renderPost(blockUrl(), { text, sourcePath: notePath });
@@ -163,7 +203,9 @@ async function renderCites(notePath, sources) {
 		// vancouver prints "[undefined]" (an engine quirk) — neither is text
 		// to show; the pill's local label marks the key missing instead.
 		const text = cite?.textContent.replace(/\s+/g, ' ').trim();
-		if (text && !/\bundefined\b/.test(text)) out[Number(mark[1])] = text;
+		if (text && !/\bundefined\b/.test(text)) {
+			out[Number(mark[1])] = { text, html: cite.classList.contains('fullcite') ? inlineHtml(cite) : null };
+		}
 	}
 	return out;
 }

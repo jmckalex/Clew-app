@@ -36,7 +36,8 @@ import { ChipWidget } from './widgets/chip.js';
 import { numberDocument, refDisplay, headText, typedRefText } from './numbering.js';
 import { vaultStore } from '../../state/vault-store.js';
 import { citationLabel, citationsReady, citationsLoaded } from '../complete/citations.js';
-import { engineCiteText, wantCiteTexts, onCiteTexts, citeSignature } from './cite-text.js';
+import { engineCiteText, engineCiteHtml, wantCiteTexts, onCiteTexts, citeSignature } from './cite-text.js';
+import { FullciteWidget } from './widgets/fullcite.js';
 import { localCiteText } from './cite-label.js';
 
 const HIDE = Decoration.replace({});
@@ -173,6 +174,17 @@ function build(view) {
 				const labels = c.keys.map((k) => citationLabel(k));
 				const engine = engineCiteText(notePath, citeSig, state.doc.sliceString(c.from, c.to));
 				const missing = !engine && citationsLoaded() && labels.some((l) => !l);
+				// \fullcite: the whole entry, inline, as reading mode draws it —
+				// or, until it is in (or with no bibliography), the .bib's own
+				// author, year and title; an unknown key as itself, in red.
+				if (c.command === 'fullcite') {
+					widget(c.from, c.to, new FullciteWidget({
+						html: engineCiteHtml(notePath, citeSig, state.doc.sliceString(c.from, c.to)) ?? null,
+						text: engine || labels.map((l, i) => (l ? `${l.label}. ${l.title}`.replace(/\.\s*$/, '') + '.' : c.keys[i])).join(' '),
+						missing,
+					}));
+					break;
+				}
 				widget(c.from, c.to, new ChipWidget({
 					cls: missing ? 'le-cite le-cite-missing' : 'le-cite',
 					text: engine || localCiteText(c.command, c.keys, labels),

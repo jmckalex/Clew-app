@@ -764,6 +764,13 @@ except where the selection touches a construct. The durable design is
   asks for nothing. Until then, or where the engine has none (no
   bibliography, an unknown key), `live/cite-label.js` (pure) shapes the local
   label by command; an unknown key is the key in the danger colour.
+  **`\fullcite` is not a pill**: `widgets/fullcite.js` draws the engine's
+  whole entry INLINE (`span.fullcite`, jmarkdown e823e76), italics kept —
+  the HTML rebuilt by `cite-text.js#inlineHtml` from allowlisted inline tags
+  with NO attributes before it enters the editor's DOM; a faint dotted
+  underline marks it, it wraps like prose (its line a whole number of prose
+  lines), a click reveals its source, no hover. Fallback: the .bib's author,
+  year and title, plain.
   `shared/fragment-deps.js` counts a citation dependent (it reads the .bib),
   so a .bib edit retires the server's cached block. The hover's button on a
   citation is "Show in Library" (the spec carries `cite: [keys]`; the first

@@ -1123,7 +1123,11 @@ it, open its PDF. Designed by the planning session; built overnight.
   label by command ("(Akerlof and Kranton 2000)" for `\citep`); an unknown
   key is the key in the danger colour. The hover's button on a citation is
   "Show in Library" (the spec carries `cite: [keys]`), ⌘ opening the entry's
-  PDF; it read "Open" and reopened the note already open.
+  PDF; it read "Open" and reopened the note already open. `\fullcite` is
+  no pill: the engine's whole entry drawn inline (widgets/fullcite.js),
+  italic titles kept through an attribute-free rebuild of its HTML,
+  text-equal to reading mode in chicago (one key, two) and vancouver (`[2]`
+  — a numeric style renders it as its number); smoke/fullcite-scenario.js.
 - **Hover**: `linkAt` recognises the `\cite` family (`kind: 'cite'`);
   `previewSpec` renders `\fullcite{key}` per key through the block endpoint
   when the vault names a `bibliography` (Biblify resolves only then —

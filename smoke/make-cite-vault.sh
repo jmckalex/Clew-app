@@ -1,7 +1,8 @@
 #!/bin/bash
 # smoke/make-cite-vault.sh <dir>: a vault for cite-pill-scenario.js — refs.bib
 # (two authors under a key with / and :, three authors, one); Cites.md, a
-# chicago header and one paragraph per citation form, the last an unknown key;
+# chicago header and one paragraph per citation form, then an unknown key, then
+# \fullcite (one key, two, an unknown one);
 # Plain.md, no header, under the VAULT's bibliography in a numeric style
 # (vancouver numbers by first citation — the order a batch must keep);
 # Many.md, 300 citations under Cites.md's header (cite-perf-scenario.js);
@@ -59,6 +60,12 @@ G \citep[see][p. 7]{Akerlof/Kranton:2000} here.
 H \citep{lewis1969, smith2001} here.
 
 I \cite{nosuchkey} here.
+
+J \fullcite{Akerlof/Kranton:2000} here.
+
+K \fullcite{lewis1969, smith2001} here.
+
+L \fullcite{nosuchkey} here.
 MD
 cp "$(dirname "$0")/../demo-vault/Attachments/sample.pdf" "$D/lewis.pdf"
 cat > "$D/Plain.md" <<'MD'
@@ -71,6 +78,8 @@ B \citep{lewis1969} here.
 C \cite{Akerlof/Kranton:2000, smith2001} here.
 
 D \cite{nosuchkey} here.
+
+E \fullcite{lewis1969} here.
 MD
 cat > "$D/.clew/vault-settings.json" <<'JSON'
 { "bibliography": "refs.bib", "bibliographyStyle": "vancouver" }
