@@ -1,4 +1,4 @@
-# Handover — 2026-09-30 night (the coordinator's queue done, pushed to 18c5e45 but for phase 4: harness wait, Meta Bind lock and Enter, PDF phases 3–4, the engine's func fix)
+# Handover — 2026-10-01 (0.12.0 built, notarized, boot-tested; unpushed past 18c5e45)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it; it gained a "Live edit" subsection); the live
@@ -6,14 +6,32 @@ edit design AS BUILT is `docs/dev/live-edit.md` (§12 lists every decision in
 force and the follow-ons left out). This file is rewritten each session —
 keep it short, and prefer deleting a settled item to explaining it again.
 
-## 2026-09-30 night — the coordinator's queue is DONE (read this first)
+## 2026-10-01 — 0.12.0 is BUILT, notarized and boot-tested (read this first)
 
-**origin/main is `18c5e45`** (pushed by the coordinator at the owner's
-request); PDF phase 4 and everything after it is on main but NOT pushed. The coordinator
-("Clew-boss") pushes when the owner asks. **Do not package**, and do not
-ask the owner about packaging, until the coordinator says so. The release
-is cut fresh from main once every project is done; `release/0.11.2` was
-deleted on purpose.
+**Release commit `9268aa3`** (version bump only, over `48afe19`). The engine
+and EmbedPDF re-syncs changed nothing; npm test 950/950; the render dump is
+byte-identical to `48afe19`. The owner chose this release; the code review
+was deferred. It was packaged with the owner's yes in this window, by the
+§3 recipe with `MPTIKZ_SRC=/nonexistent`. **Nothing is pushed** past
+`18c5e45`; the coordinator ("Clew-boss") pushes only with the owner's
+explicit authorisation.
+
+| artefact | bytes | state |
+| --- | --- | --- |
+| `Clew-0.12.0-arm64.dmg` | 222,428,189 | signed · notarized · stapled; `spctl` accepts the image AND the app (`Notarized Developer ID`); arm64; runtime flag, four entitlements; 0.12.0; carries `mptikz/bundles/opentype` |
+| `Clew-0.12.0-x64.dmg` | 226,079,778 | the same, x86_64 (built as `Clew-0.12.0.dmg`, renamed; its app is in `out/mac/`) |
+| `Clew Setup 0.12.0.exe` | 190,590,642 | NSIS, unsigned, untested at runtime |
+| `Clew-0.12.0.AppImage` / `clew_0.12.0_amd64.deb` | 223,791,314 / 177,189,340 | ELF x86-64 / well-formed; untested at runtime |
+
+**The boot test PASSED** (`smoke/boot-test.sh` on `out/mac-arm64/…/Clew`,
+2026-10-01): all 13 figures `mpw-ok` with paths, `pending=0`, `cache-probe
+first=engine second=cache`, and every live-edit line. It waited 7 minutes
+for the load to fall below 6 after packaging. The 0.11.1 artefacts are still
+in `out/` beside them; trashing them is the owner's call.
+
+A trap met on the way: a zsh loop passing `$flags` gives package.js ONE
+argument (zsh does not word-split), so it built an unsigned `dir`. Run the
+§3 commands as written, or from bash.
 
 On `main` since the reboot, each measured (npm test, render dump of the
 demo and study vaults, the PDF baseline and the protocol tour identical
