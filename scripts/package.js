@@ -21,6 +21,13 @@
 //   npm run package:win      → out/Clew Setup <version>.exe (NSIS, x64)
 //   npm run package:linux    → out/Clew-<version>.AppImage + .deb (x64)
 //
+// A build that is NOT a release (a dev build for the owner's own machine)
+// must not land on a release's files: CLEW_PACKAGE_VERSION=<semver> stamps
+// the app and its artefacts with that version (electron-builder's
+// extraMetadata — package.json is not touched), and CLEW_PACKAGE_OUT=<dir>
+// sends everything there instead of out/ (whose latest-*.yml and unpacked
+// apps belong to the release). Mac only.
+//
 // macOS signing (--sign) uses the "Developer ID Application" identity in the
 // login keychain; without the flag CSC_IDENTITY_AUTO_DISCOVERY is forced off
 // so ordinary test builds never touch the certificate.
@@ -177,9 +184,14 @@ if (process.argv.includes('--win')) {
 	if (!sign) builderEnv.CSC_IDENTITY_AUTO_DISCOVERY = 'false';
 	Object.assign(builderEnv, creds?.builderEnv ?? {});
 
-	run(`npx electron-builder --mac ${dmg ? 'dmg' : 'dir'} ${arch}`, root, builderEnv);
+	const versionOverride = process.env.CLEW_PACKAGE_VERSION ?? '';
+	const outDir = path.resolve(root, process.env.CLEW_PACKAGE_OUT || 'out');
+	const overrides = [
+		...(versionOverride ? [`--config.extraMetadata.version=${versionOverride}`] : []),
+		...(process.env.CLEW_PACKAGE_OUT ? [`--config.directories.output=${outDir}`] : []),
+	].map((a) => JSON.stringify(a)).join(' ');
+	run(`npx electron-builder --mac ${dmg ? 'dmg' : 'dir'} ${arch} ${overrides}`.trim(), root, builderEnv);
 
-	const outDir = path.join(root, 'out');
 	const appDir = arch === '--universal' ? 'mac-universal' : arch === '--x64' ? 'mac' : 'mac-arm64';
 	const appPath = path.join(outDir, appDir, 'Clew.app');
 
@@ -193,7 +205,7 @@ if (process.argv.includes('--win')) {
 		// build's image by version and recency rather than assuming it is the
 		// only .dmg present — notarizing last week's build would be worse than
 		// failing outright.
-		const { version } = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+		const version = versionOverride || JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).version;
 		const dmgs = fs.readdirSync(outDir)
 			.filter((f) => f.endsWith('.dmg') && f.includes(version))
 			.map((f) => ({ f, mtime: fs.statSync(path.join(outDir, f)).mtimeMs }))
