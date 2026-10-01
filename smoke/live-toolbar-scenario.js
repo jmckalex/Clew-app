@@ -16,8 +16,9 @@
 //   `table rows=3 cols=2` from the table popover's 3 × 2 cell;
 //   `bubble=visible` after a real triple-click, `bubble-after-escape=hidden`;
 //   `focus-in-toolbar=true` after ⌥⇧T and `focused-after-arrows=<label>`;
-//   `after-toggle mode=source toolbar=false` (⌘⇧E; shown in live only by
-//     default), `after-toggle mode=live toolbar=true`;
+//   `after-toggle mode=source toolbar=false` (⌘⇧E; the FORMATTING toolbar is
+//     shown in live only by default — source has the slim mode bar since
+//     2026-10-01), `after-toggle mode=live toolbar=true`;
 //   `narrow overflow="…" mode-visible=true` in a pane split three ways — at
 //     318 px the bar is on TWO rows and only what two rows cannot hold is in
 //     `…` (`history inline insert`; Lists wraps to row 2).
@@ -37,7 +38,7 @@ workspaceStore.setTabMode(tab.id, 'live');
 await until(() => document.querySelector('clew-editor-view clew-editor-toolbar'));
 await sleep(600);
 const view = editorPool.get(tab.id).view;
-const bar = () => document.querySelector('clew-editor-view clew-editor-toolbar');
+const bar = () => [...document.querySelectorAll('clew-editor-view clew-editor-toolbar')].find((b) => !b.slim) ?? null; // the FORMATTING toolbar (a slim bar is the mode switch alone)
 const doc = () => view.state.doc.toString();
 const lineWith = (s) => doc().split('\n').find((l) => l.includes(s));
 const groupsShown = () => [...bar().querySelectorAll(':scope > .toolbar-group')].filter((g) => !g.hidden).length;

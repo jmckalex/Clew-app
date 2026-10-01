@@ -149,13 +149,12 @@ class ClewPreviewView extends ClewElement {
 
 	/**
 	 * Reading mode's slim bar: only the mode switch, so the three modes are
-	 * one click apart from every state (docs/dev/live-edit.md §6.5) — unless the
-	 * toolbar is turned off altogether.
+	 * one click apart from every state (docs/dev/live-edit.md §6.5) — always:
+	 * `editorToolbar` governs the formatting toolbar, never the mode switch
+	 * (2026-10-01; 'never' used to take this bar away too).
 	 */
 	#syncModeBar() {
-		const want = (settingsStore.get('editorToolbar') ?? 'live') !== 'never';
 		const bar = this.querySelector(':scope > clew-editor-toolbar');
-		if (!want) { bar?.remove(); return; }
 		if (bar) return;
 		const slim = document.createElement('clew-editor-toolbar');
 		slim.slim = true;

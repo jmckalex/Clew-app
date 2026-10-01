@@ -144,32 +144,48 @@ class ClewEditorView extends ClewElement {
 	#toolbar = null;
 	#toolbarRaf = 0;
 
-	/** Mount or drop the formatting bar (setting × mode), then fill it. */
+	/**
+	 * The bar above the editor: the formatting toolbar where the setting
+	 * shows it in this mode, else reading mode's SLIM bar — the mode switch
+	 * alone — so the three modes are one click apart in every view, whatever
+	 * `editorToolbar` says (the owner, 2026-10-01: source view had no bar,
+	 * and no way out but the keyboard). The setting governs only the
+	 * formatting. Swapping one bar for the other keeps the text still.
+	 */
 	#syncToolbar() {
 		const tab = workspaceStore.findTab(this.tabId)?.tab;
 		const entry = editorPool.get(this.tabId);
-		const want = Boolean(tab && entry?.view && toolbarShown(tab.view.mode));
-		if (!want) {
+		if (!tab || !entry?.view) {
 			this.#toolbar?.remove();
 			this.#toolbar = null;
 			return;
 		}
-		if (!this.#toolbar) {
+		const slim = !toolbarShown(tab.view.mode);
+		if (!this.#toolbar || this.#toolbar.slim !== slim) {
+			const before = this.#toolbar?.getBoundingClientRect().height ?? 0;
+			this.#toolbar?.remove();
 			this.#toolbar = document.createElement('clew-editor-toolbar');
+			this.#toolbar.slim = slim;
 			this.#toolbar.tabId = this.tabId;
 			this.insertBefore(this.#toolbar, entry.view.dom);
+			const delta = this.#toolbar.getBoundingClientRect().height - before;
+			if (before && delta) {
+				this.#suppressor.suppress();
+				entry.view.scrollDOM.scrollTop += delta;
+			}
 		}
-		this.#scheduleToolbarState();
+		if (slim) this.#toolbar.setState({ mode: tab.view.mode, inline: new Set(), blockType: 'paragraph' });
+		else this.#scheduleToolbarState();
 	}
 
 	/** The toolbar reflects the cursor — once per frame at most. */
 	#scheduleToolbarState() {
-		if (!this.#toolbar || this.#toolbarRaf) return;
+		if (!this.#toolbar || this.#toolbar.slim || this.#toolbarRaf) return;
 		this.#toolbarRaf = requestAnimationFrame(() => {
 			this.#toolbarRaf = 0;
 			const entry = editorPool.get(this.tabId);
 			const tab = workspaceStore.findTab(this.tabId)?.tab;
-			if (!this.#toolbar || !entry?.view || !tab) return;
+			if (!this.#toolbar || this.#toolbar.slim || !entry?.view || !tab) return;
 			const normalSyntax = vaultSettingsStore.get('normalSyntax') === true;
 			const model = liveModel(entry.view.state, { normalSyntax });
 			this.#toolbar.setState(deriveState(entry.view.state, model, {
