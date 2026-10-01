@@ -223,7 +223,7 @@ export function registerIpc() {
 	// Hand a file to the OS default app: `[[paper.pdf|external]]` sends a
 	// vault-relative path, a file:// link an absolute one. The guards
 	// (vault clamp, executable refusal) live in open-file.js.
-	handle(CH.SHELL_OPEN_PATH, (s, { path: rel, url }) => {
+	handle(CH.SHELL_OPEN_PATH, async (s, { path: rel, url }) => {
 		let plan;
 		if (url) {
 			const abs = pathFromFileUrl(url);
@@ -233,11 +233,17 @@ export function registerIpc() {
 			plan = planOpen(s.vaults, { rel: String(rel ?? '') });
 		}
 		if (!plan.ok) return plan;
-		// openPath resolves to '' on success, or a message on failure.
-		shell.openPath(plan.target).then((message) => {
-			if (message) console.warn(`[clew] openPath failed (${plan.target}): ${message}`);
-		});
-		return { ok: true };
+		// A scenario must never launch an app: it reads this line instead.
+		if (process.env.CLEW_SMOKE) {
+			console.log(`smoke-open-path: ${plan.target}`);
+			return { ok: true };
+		}
+		// openPath resolves to '' on success, or the OS's own message (no app
+		// for the type, …) — returned, so the caller shows it as a notice
+		// rather than the open failing in silence.
+		const message = await shell.openPath(plan.target);
+		if (message) console.warn(`[clew] openPath failed (${plan.target}): ${message}`);
+		return message ? { ok: false, reason: message } : { ok: true };
 	});
 
 	handle(CH.WORKSPACE_LOAD, (s) => s.vaults.loadState('workspace.json'));

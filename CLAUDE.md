@@ -241,7 +241,11 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   links/embeds incl. media + image sizes; SITE_EXPORT branch emits real
   hrefs; the `|external` alias emits `data-open-external` — the OS default
   app instead of a Clew tab, guarded in `main/open-file.js#planOpen`,
-  which is electron-free so its refusals are unit-tested; `file://` links
+  which is electron-free so its refusals are unit-tested (the file
+  explorer's "Open in Default App" takes the same route,
+  `actions.openFileExternally`; `SHELL_OPEN_PATH` awaits `shell.openPath`
+  and returns the OS's own failure — "no app for the type" — as a notice,
+  and under CLEW_SMOKE logs `smoke-open-path: <abs>` instead of launching); `file://` links
   route to the same guard, executables refused BY NAME; note embeds carry
   two independent mode keywords on the alias tail — `|collapsed`/`|open`
   for the fold, `|quiet`/`|bare` for how much frame is drawn — parsed and
