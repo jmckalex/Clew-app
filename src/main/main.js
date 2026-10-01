@@ -23,7 +23,7 @@ import { settings } from './settings.js';
 import { trust } from './trust.js';
 import { CH } from '../shared/channels.js';
 import { registerPreviewScheme, installPreviewProtocol } from './protocol.js';
-import { VaultSession, focusedSession, sessionForVault } from './session.js';
+import { VaultSession, focusedSession, sessionForVault, sessionForWindow } from './session.js';
 import { paths } from './paths.js';
 import { prepareNoteFonts } from './note-fonts.js';
 import { assetStamp, stampChanged } from './asset-stamp.js';
@@ -175,6 +175,26 @@ export function createWindow(vaultPath = null) {
 		});
 	}
 	return session;
+}
+
+/**
+ * Bring a window forward — the Window menu's list of open vaults. Under a
+ * hidden smoke run nothing is shown or focused (a hidden window cannot take
+ * focus, and showing one breaks the run's invisibility), so the switch is
+ * recorded as the focus event would record it and logged instead.
+ */
+export function focusWindow(session) {
+	const win = session?.win;
+	if (!win || win.isDestroyed()) return;
+	if (smokeHidden) {
+		session.lastFocusedAt = Date.now();
+		console.log(`smoke-window-focus: ${session.vaults.root ? path.basename(session.vaults.root) : '(no vault)'}`);
+		appMenu.rebuild();
+		return;
+	}
+	if (win.isMinimized()) win.restore();
+	win.show();
+	win.focus();
 }
 
 /**
@@ -347,7 +367,11 @@ app.whenReady().then(async () => {
 	app.on('activate', () => {
 		if (BrowserWindow.getAllWindows().length === 0) createWindow(null);
 	});
-	app.on('browser-window-focus', () => appMenu.rebuild());
+	app.on('browser-window-focus', (_event, win) => {
+		const session = sessionForWindow(win);
+		if (session) session.lastFocusedAt = Date.now();
+		appMenu.rebuild();
+	});
 });
 
 app.on('before-quit', () => {
@@ -599,18 +623,34 @@ if (process.env.CLEW_SMOKE) {
 				// see, so this is the only assertion a menu change can carry.
 				// It reads the REAL menu, so it also proves the template built:
 				// a malformed accelerator throws inside buildFromTemplate.
+				// A checked checkbox or radio ends in ` ✓`.
+				// CLEW_SMOKE_MENU_CLICK='Window > Alpha' then clicks that REAL item
+				// (its own click handler, as a mouse would run it) and dumps the
+				// item's top-level menu again as `smoke-menu-after:` lines.
+				const walk = (items, trail, tag = 'smoke-menu', visit = null) => {
+					for (const item of items) {
+						if (item.type === 'separator') continue;
+						const where = [...trail, item.label];
+						visit?.(item, where.join(' > '));
+						console.log(`${tag}: ` + where.join(' > ')
+							+ (item.accelerator ? ` [${item.accelerator}]` : '')
+							+ (item.enabled === false ? ' (disabled)' : '')
+							+ (item.checked ? ' ✓' : ''));
+						if (item.submenu) walk(item.submenu.items, where, tag, visit);
+					}
+				};
 				if (process.env.CLEW_SMOKE_MENU) {
-					const walk = (items, trail) => {
-						for (const item of items) {
-							if (item.type === 'separator') continue;
-							const where = [...trail, item.label];
-							console.log('smoke-menu: ' + where.join(' > ')
-								+ (item.accelerator ? ` [${item.accelerator}]` : '')
-								+ (item.enabled === false ? ' (disabled)' : ''));
-							if (item.submenu) walk(item.submenu.items, where);
-						}
-					};
-					walk(Menu.getApplicationMenu()?.items ?? [], []);
+					const wanted = process.env.CLEW_SMOKE_MENU_CLICK;
+					let target = null;
+					walk(Menu.getApplicationMenu()?.items ?? [], [], 'smoke-menu',
+						(item, where) => { if (wanted && where.startsWith(wanted)) target ??= item; });
+					if (wanted) {
+						console.log(`smoke-menu-click: ${wanted} → ${target ? target.label : 'NOT FOUND'}`);
+						target?.click();
+						await sleep(500);
+						const top = (Menu.getApplicationMenu()?.items ?? []).find((m) => m.label === wanted.split(' > ')[0]);
+						if (top) walk([top], [], 'smoke-menu-after');
+					}
 				}
 				// CLEW_SMOKE_CLOSE_WINDOW=1: drive a REAL window close after the
 				// scenario, so close-guard flows (dirty office tab + the
@@ -620,6 +660,9 @@ if (process.env.CLEW_SMOKE) {
 					primary.close();
 					await new Promise((r) => setTimeout(r, 2500));
 					console.log('smoke-windows: ' + BrowserWindow.getAllWindows().length);
+					// With CLEW_SMOKE_MENU: the Window menu once the window is gone.
+					const windowMenu = (Menu.getApplicationMenu()?.items ?? []).find((m) => m.label === 'Window');
+					if (process.env.CLEW_SMOKE_MENU && windowMenu) walk([windowMenu], [], 'smoke-menu-closed');
 				}
 				// Optionally drive the preview iframe's document (cross-origin from
 				// the app, but reachable from main via webFrameMain).

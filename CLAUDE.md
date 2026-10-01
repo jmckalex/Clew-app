@@ -107,9 +107,14 @@ note API, plugins, and every settings key.
   `CLEW_SMOKE_CLOSE_WINDOW=1` (drives a real window close; logs
   `smoke-windows: N`), `CLEW_SMOKE_CLIPBOARD=1` (+`__clewSmokeClipboard`
   preload), `CLEW_SMOKE_MENU=1` (the application menu as the OS holds it,
-  one `smoke-menu:` line per item with its accelerator and enablement —
+  one `smoke-menu:` line per item with its accelerator and enablement,
+  a checked item ending ` ✓` —
   a native menu is an OS-level window that capturePage cannot see, so
-  this is the only assertion a menu change can carry), and REAL input:
+  this is the only assertion a menu change can carry;
+  `CLEW_SMOKE_MENU_CLICK='Window > Alpha'` then clicks that real item and
+  dumps its menu again as `smoke-menu-after:`, and with
+  `CLEW_SMOKE_CLOSE_WINDOW` the Window menu is dumped once more after the
+  close as `smoke-menu-closed:`), and REAL input:
   a scenario queues `window.__clewSmokeInput =
   [{click:{x,y}} | {tripleClick:{x,y}} | {move:{x,y}} | {text:'abc'} |
   {combo:{key,modifiers,text?}} | {wait:ms} | {frameClick:{match,selector}}]`
@@ -143,7 +148,13 @@ focuses the window that already has it, fills a vaultless window, else
 creates a new one — the same vault is never open twice. `settings.
 openVaults` restores every window at launch. The one macOS menu tracks the
 FOCUSED window (per-session state in menu.js; rebuilt on
-browser-window-focus).
+browser-window-focus) — or, with none focused, the one focused LAST
+(`session.lastFocusedAt`), not the newest. The **Window menu lists every
+open window** by vault name plus its active tab (`menu.js#windowItems`; the
+owner's ask 2026-10-01), the focused one checked, choosing one bringing it
+forward (`main.js#focusWindow`). It is the same list on every platform and
+deliberately NOT role `windowMenu`: every native window title is "Clew" (the
+title bar is drawn by the page), so macOS's automatic list said nothing.
 
 - `src/main/` — `main.js` (windows + vault orchestration, guards, smoke
   hook — captures every window), `session.js` (per-window services),

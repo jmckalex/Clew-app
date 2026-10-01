@@ -42,6 +42,9 @@ export class VaultSession {
 		// Captured now: webContents is unreachable once the window is destroyed,
 		// and dispose() runs from the 'closed' event.
 		this.wcId = win.webContents.id;
+		// When this window last had focus (main.js's browser-window-focus), so
+		// that with none focused the menu still means the one used last.
+		this.lastFocusedAt = 0;
 		// The caller token (main/caller-token.js): what the render endpoints
 		// ask for. Per session — a window receives a vault only while it has
 		// none, and nothing closes one short of closing the window, so this is
@@ -128,10 +131,21 @@ export function allSessions() {
 	return [...byId.values()];
 }
 
-/** The session whose window has focus (or the most recent live one). */
+/** The session whose window has focus, else the one focused last, else the
+ *  newest live one. With the app in the background no window is focused, and
+ *  the menu (its check mark in the Window list, where its commands go) should
+ *  still mean the window the user was in, not the one opened last. */
 export function focusedSession() {
 	const live = [...byId.values()].filter((s) => s.win && !s.win.isDestroyed());
-	return live.find((s) => s.win.isFocused()) ?? live.at(-1) ?? null;
+	const focused = live.find((s) => s.win.isFocused());
+	if (focused) return focused;
+	const recent = live.reduce((best, s) => (s.lastFocusedAt > (best?.lastFocusedAt ?? 0) ? s : best), null);
+	return recent ?? live.at(-1) ?? null;
+}
+
+/** The session a BrowserWindow belongs to. */
+export function sessionForWindow(win) {
+	return [...byId.values()].find((s) => s.win === win) ?? null;
 }
 
 /** The session that already has this vault open, if any. */
