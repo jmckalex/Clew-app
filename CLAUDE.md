@@ -1045,6 +1045,16 @@ except where the selection touches a construct. The durable design is
   navigation; discarded when disk content diverges), and conflict state
   (external change + unsaved edits → banner, auto-save paused; the pool
   ignores echoes of its own saves via `lastWrittenText`).
+- **A directive's bracket is prose unless the engine says otherwise**:
+  the engine lexes `@name[…]` as inline markdown except where the
+  environment's mode is `verbatim`, or `custom` with a handler that takes
+  the raw text. Those names are `jmarkdown-scan.js#LITERAL_DIRECTIVES`, where
+  the scanner claims the bracket (no /italic/, nothing concealed — the
+  owner's `@reveal[http://…/]` read `http:/localhost:8888prez…` in italics);
+  a test holds the verbatim half to the vendored engine. A bare URL or
+  path in PROSE (`see http://a/b/c/`) IS italicised — by the engine too
+  (`http:/<em>a</em>b<em>c</em>`), so the editor matches it; that one is an
+  engine finding.
 - **jmarkdown dialect facts:** sub/superscripts are TeX-style (`H_2O`,
   `x^2`, `x^{10}`) — `~x~` is strikethrough, `^x^` is not a thing. `*x*` is
   strong, `**x**` intense, `/x/` italic. Mermaid's native forms are

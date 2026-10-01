@@ -1056,6 +1056,11 @@ function atDirectives(ctx, S) {
 			content: null, attrs: null, block: Boolean(m[5]),
 		};
 
+		// A directive the ENGINE takes literally (LITERAL_DIRECTIVES): its
+		// bracket is a path, a URL, a key or code, never prose — so nothing
+		// inside it is formatted or concealed here either.
+		const literal = LITERAL_DIRECTIVES.has(m[3]);
+
 		// Optional [jmarkdown text] group: paint/own the brackets, then
 		// inject the bracket-free interior into the inline grammar. Injecting
 		// the bare slice (rather than leaving the whole `[…]` to the ambient
@@ -1073,7 +1078,13 @@ function atDirectives(ctx, S) {
 				region(ctx, rb, rb + 1);
 				claim(ctx, p, p + 1);
 				claim(ctx, rb, rb + 1);
-				if (rb > p + 1) {
+				if (literal) {
+					// Claimed, and no inline grammar: `@reveal[http://a/b/c/]`
+					// read as /italic/ pairs, slashes concealed, while the cursor
+					// was on it — exactly where the author edits (the owner's
+					// report, 2026-10-01).
+					if (rb > p + 1) claim(ctx, p + 1, rb);
+				} else if (rb > p + 1) {
 					ctx.out.injections.push({
 						start: p + 1,
 						end: rb,
@@ -1119,6 +1130,24 @@ function atDirectives(ctx, S) {
 		re.lastIndex = p;
 	}
 }
+
+/**
+ * The `@name[…]` directives whose bracket the ENGINE does not read as inline
+ * markdown — the editor must not either (no /italic/, no concealing). The
+ * engine lexes a directive's bracket unless its environment's mode is
+ * `verbatim`; a `custom` handler may ignore the lexed tokens and take the
+ * raw text, and these do (their argument is a path, a URL, a key or code).
+ * tests/jmarkdown-scan.test.js holds the verbatim half to the vendored
+ * engine's registrations, so a new one cannot be missed.
+ */
+export const LITERAL_DIRECTIVES = new Set([
+	// mode 'verbatim' (vendor/jmarkdown/src: begin-end, media, sources-and-
+	// targets, equations, metapost)
+	'label', 'ref', 'cref', 'Cref', 'TeX', 'image', 'video', 'target', 'equation', 'metapost',
+	// mode 'custom', raw text: the engine's tikz, mermaid, Mathematica and
+	// strategic-form games; Clew's reveal, tabbing (and its TiKZ/metapost).
+	'TiKZ', 'mermaid', 'Mathematica', 'game', 'reveal', 'tabbing',
+]);
 
 /**
  * From an opener at `from` (where `S[from] === open`), return the offset

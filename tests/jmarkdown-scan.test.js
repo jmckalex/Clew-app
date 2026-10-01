@@ -26,7 +26,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import assert from 'node:assert/strict';
 
-import { scanJmarkdown } from '../src/renderer/editor/jmd/jmarkdown-scan.js';
+import { scanJmarkdown, LITERAL_DIRECTIVES } from '../src/renderer/editor/jmd/jmarkdown-scan.js';
 
 /** The innermost face painted at `pos`, or null. */
 function faceAt(captures, pos) {
@@ -787,4 +787,31 @@ test('math segments are faced jmd-math, delimiters included', () => {
 		.filter((c) => c.face === 'jmd-math')
 		.map((c) => text.slice(c.start, c.end));
 	assert.deepEqual(spans, ['$a+b$', '$$\nx^2\n$$']);
+});
+
+// ---- literal directive arguments (2026-10-01, the owner's @reveal report) ----
+
+test('a literal directive\'s bracket is raw: no /italic/ inside @reveal[…]', () => {
+	const kinds = (text) => scanJmarkdown(text).constructs.map((c) => c.kind);
+	assert.deepEqual(kinds("@reveal[http://localhost:8888/prez/teaching/ph341/econ-and-id/]{height='450px'}"), ['directiveAt']);
+	assert.deepEqual(kinds('@reveal+[http://a/b/c/]'), ['directiveAt']);
+	assert.deepEqual(kinds('@label[sec/intro/two]'), ['directiveAt'], 'a verbatim key');
+	// …while prose, and a directive whose bracket the engine formats, keep it.
+	assert.deepEqual(kinds('plain /italic/ word'), ['italic']);
+	assert.deepEqual(kinds('@note[some /italic/ text]'), ['directiveAt', 'italic']);
+});
+
+test('LITERAL_DIRECTIVES holds every directive the vendored engine registers verbatim', async () => {
+	const fs = await import('node:fs');
+	const path = await import('node:path');
+	const dir = new URL('../vendor/jmarkdown/src/', import.meta.url);
+	const verbatim = [];
+	for (const file of fs.readdirSync(dir).filter((f) => f.endsWith('.js'))) {
+		const src = fs.readFileSync(new URL(file, dir), 'utf8');
+		for (const m of src.matchAll(/registerBlockEnvironment\(\s*['"]([\w-]+)['"]\s*,\s*\{([\s\S]{0,400}?)\}\s*\)/g)) {
+			if (/mode:\s*'verbatim'/.test(m[2])) verbatim.push(`${path.basename(file)}:${m[1]}`);
+		}
+	}
+	assert.ok(verbatim.length >= 8, `found ${verbatim.length} — has the registration syntax changed?`);
+	for (const entry of verbatim) assert.ok(LITERAL_DIRECTIVES.has(entry.split(':')[1]), `${entry} is verbatim in the engine`);
 });
