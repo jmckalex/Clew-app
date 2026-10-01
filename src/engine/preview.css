@@ -19,7 +19,7 @@
 	   ButtonText near-black even on our dark background. */
 	color-scheme: dark;
 	--preview-bg: #1e1e1e;
-	--preview-text: #dadada;
+	--preview-text: #e8e8e8;
 	--preview-muted: #9a9a9a;
 	--preview-accent: #8b7ec8;
 	--preview-border: #3f3f3f;
