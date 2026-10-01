@@ -269,27 +269,44 @@ test('/italic/ spans: two on a line', () => {
 	assert.equal(faceOf(scan, text, 'more'), 'jmd-italic');
 });
 
-// Italics follow the ENGINE (owner's rule, 2026-09-27): its tokenizer is a
-// bare regex tried at every slash the lexer reaches, so a slash inside a word
-// italicises too, and `\/` is the author's way out. These expectations are
-// the engine's own output (syntax-modifications.js, via marked); the parity
-// test below re-derives them where the engine master is installed.
+// Italics follow the ENGINE (owner's rule, 2026-09-27): since jmarkdown
+// 3134543 its tokenizer has flanking rules — no letter, digit, `:` `/` `.`
+// `~` before the opening slash, no letter, digit or `/` after the closing
+// one — so slashes in words, paths and URLs stay literal, and the engine
+// autolinks a bare URL whole. `\/` is still the author's way out. These
+// expectations are the engine's own output (syntax-modifications.js, via
+// marked); the parity test below re-derives them where the engine master is
+// installed.
 const ENGINE_ITALICS = [
-	['Look in /usr/bin and /etc/hosts for it.', ['usr', 'etc']],
-	['Either and/or/not will do.', ['or']],
-	['Buy 1/2 or 3/4 of it.', ['2 or 3']],
+	['Look in /usr/bin and /etc/hosts for it.', []],
+	['Either and/or/not will do.', []],
+	['Buy 1/2 or 3/4 of it.', []],
 	['Escaped \\/usr\\/bin is a path.', []],
-	// The body stops at the next slash, escaped or not.
-	['An /italic with \\/escaped\\/ slashes/ here.', ['italic with \\']],
+	// The body stops at the next slash, escaped or not — and here that slash
+	// is followed by a letter, so nothing opens.
+	['An /italic with \\/escaped\\/ slashes/ here.', []],
 	['In strong */both/* and (/aside/) and "/quoted/" and _/under/_.', ['both', 'aside', 'quoted', 'under']],
 	['A link [text](http://a.com/b/c) and /this/.', ['this']],
-	['A URL https://a.com/b/c here and /that/.', ['b', 'that']],
+	['A URL https://a.com/b/c here and /that/.', ['that']],
 	['Tag <b>x</b> and <http://a/b/c> ok.', []],
-	['/Hello, world./ and /e.g. this/ and /why?/ yes.', ['Hello, world.', ' and ']],
+	['/Hello, world./ and /e.g. this/ and /why?/ yes.', ['Hello, world.', 'why?']],
 	['Across\nlines /a\nb/ ok.', ['a\nb']],
 	['Para /a\n\nb/ no.', []],
 	['Double // slash.', []],
-	['Text [a/b/c](dest) here.', ['b']],
+	['Text [a/b/c](dest) here.', []],
+	// The bare-URL and path cases of 2026-10-01 (the engine italicised them all).
+	['see http://a/b/c/ for this', []],
+	['see https://a.com/b/c?q=1&r=2#frag for this', []],
+	['at the end https://a.com/x/y.', []],
+	['www.example.com/a/b/ and ftp://f.example.org/pub/x/ here', []],
+	['x https://example.com/foo-/bar/ y', []],
+	['(/usr/local/bin/) and/or 1/2/3', []],
+	['~/notes/ ./src/ ../lib/ C:/Users/x/', []],
+	['/italic phrase/ (/word/) /word/. "/quoted/" /a *b* c/', ['italic phrase', 'word', 'word', 'quoted', 'a *b* c']],
+	['café/x/ and 𝑥/y/ z', []],
+	['/a//b/', []],
+	// The engine's known limit: one segment with a trailing slash.
+	['see /tmp/ here', ['tmp']],
 ];
 const italicBodies = (text) => scanJmarkdown(text).constructs
 	.filter((c) => c.kind === 'italic').map((c) => text.slice(c.body.start, c.body.end));

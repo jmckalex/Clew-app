@@ -137,6 +137,10 @@ function build(view) {
 				c.hidden.forEach(hide);
 				mark(c.from + 1, c.to - 1, 'le-link', { 'data-le-href': c.url, title: c.url });
 				break;
+			case 'url':
+				// A bare URL: nothing to conceal, a link as reading view draws it.
+				mark(c.from, c.to, 'le-link', { 'data-le-href': c.url, title: c.url });
+				break;
 			case 'wikilink': {
 				c.hidden.forEach(hide);
 				const shownFrom = c.hidden[0].to;

@@ -43,6 +43,7 @@
 // Pure: no DOM, no view. Memoised per document version.
 import { syntaxTree, ensureSyntaxTree } from '@codemirror/language';
 import { scanFor } from '../jmd/scan-cache.js';
+import { LITERAL_DIRECTIVES } from '../jmd/jmarkdown-scan.js';
 import { MATH_ENVIRONMENT_NAMES } from '../jmd/math-segments.js';
 import { resolveType } from '../../../engine/callouts.js';
 import { IMAGE_EXT } from '../../../shared/file-types.js';
@@ -179,6 +180,7 @@ function build(doc, tree, config) {
 
 	// ---- the tree ----------------------------------------------------------
 	const quoteLines = new Map(); // line.from → {marks: Range[], depth, callout}
+	const bareUrls = [];
 	tree.iterate({
 		enter(ref) {
 			const { name, from, to } = ref;
@@ -246,6 +248,17 @@ function build(doc, tree, config) {
 					add('autolink', 'A', 'inline', from, to, {
 						url: url ? text(url.from, url.to) : '', hidden: marks.map(rangeOf),
 					});
+					return false;
+				}
+				case 'URL': {
+					// A BARE URL or address (GFM's autolink extension, and
+					// jmd/ftp-autolink.js for ftp://). The engine links them
+					// too since jmarkdown 3134543. A URL inside a link, image
+					// or <autolink> is theirs.
+					const parent = node.parent?.name;
+					if (parent !== 'Link' && parent !== 'Image' && parent !== 'Autolink' && parent !== 'LinkReference') {
+						bareUrls.push({ from, to });
+					}
 					return false;
 				}
 				case 'Link':
@@ -536,6 +549,23 @@ function build(doc, tree, config) {
 			}
 			default:
 		}
+	}
+
+	// Bare URLs, where the engine sees prose: not inside a construct the
+	// scanner owns (a wikilink, maths, a citation, a {{var}}) nor in a
+	// directive's bracket the engine takes literally (`@reveal[https://…]`).
+	const owned = scan.constructs.flatMap((s) => {
+		if (s.kind === 'directiveInline' || s.kind === 'directiveAt') {
+			const name = s.name ? text(s.name.start, s.name.end) : '';
+			return LITERAL_DIRECTIVES.has(name) ? [{ from: s.start, to: s.end }] : [];
+		}
+		return ['wikilink', 'embed', 'math', 'cite', 'mustache'].includes(s.kind) ? [{ from: s.start, to: s.end }] : [];
+	});
+	for (const { from, to } of bareUrls) {
+		if (owned.some((r) => from >= r.from && to <= r.to)) continue;
+		const url = text(from, to);
+		const href = /^[a-z][a-z0-9+.-]*:/i.test(url) ? url : /^www\./i.test(url) ? `http://${url}` : `mailto:${url}`;
+		add('url', 'A', 'inline', from, to, { url: href, hidden: [] });
 	}
 
 	out.sort((a, b) => a.from - b.from || b.to - a.to);

@@ -225,3 +225,27 @@ test('nested emphasis: italic around strong, and strong around italic', () => {
 	assert.deepEqual(model('a */italics/* b\n').map((c) => [c.kind, c.text]),
 		[['strong', '*/italics/*'], ['italic', '/italics/']]);
 });
+
+// Bare URLs are links in reading view since jmarkdown 3134543 (GFM's url
+// tokenizer, reachable once the `:` directive stopped cutting at `http:`),
+// so live edit draws them as links too — and no slash in one is italic.
+test('bare URLs: links, with the href reading view gives them', () => {
+	const urls = (doc) => model(doc).filter((c) => c.kind === 'url').map((c) => [c.text, c.url]);
+	assert.deepEqual(urls('see https://a.com/b/c?q=1&r=2#frag for this\n'),
+		[['https://a.com/b/c?q=1&r=2#frag', 'https://a.com/b/c?q=1&r=2#frag']]);
+	assert.deepEqual(urls('at the end https://a.com/x/y.\n'), [['https://a.com/x/y', 'https://a.com/x/y']]);
+	assert.deepEqual(urls('www.example.com/a/b/ here\n'), [['www.example.com/a/b/', 'http://www.example.com/a/b/']]);
+	assert.deepEqual(urls('mail me@example.com ok\n'), [['me@example.com', 'mailto:me@example.com']]);
+	assert.deepEqual(urls('ftp://files.example.org/pub/x/ ok, and ftp://f.org/a.\n'),
+		[['ftp://files.example.org/pub/x/', 'ftp://files.example.org/pub/x/'], ['ftp://f.org/a', 'ftp://f.org/a']]);
+	assert.deepEqual(urls('xftp://no.org and `ftp://code.org`\n'), []);
+	assert.deepEqual(kinds('see http://a/b/c/ for this\n').filter((k) => k === 'italic'), []);
+});
+
+test('bare URLs: not inside a link, an autolink, code, or a literal directive', () => {
+	const urls = (doc) => model(doc).filter((c) => c.kind === 'url').map((c) => c.text);
+	assert.deepEqual(urls('[https://a.com/x](https://a.com/x) and <https://b.com>\n'), []);
+	assert.deepEqual(urls('`https://a.com/x` code\n'), []);
+	assert.deepEqual(urls('@reveal[https://a.com/deck/]\n'), []);
+	assert.deepEqual(urls('@image[https://a.com/p.png]{width=50%} and https://c.com\n'), ['https://c.com']);
+});
