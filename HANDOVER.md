@@ -1,4 +1,4 @@
-# Handover — 2026-10-01 (0.12.0 built, notarized, boot-tested; unpushed past 18c5e45)
+# Handover — 2026-10-01 (0.12.0 built, notarized, boot-tested; pushed to 2f389e4)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it; it gained a "Live edit" subsection); the live
@@ -12,9 +12,8 @@ keep it short, and prefer deleting a settled item to explaining it again.
 and EmbedPDF re-syncs changed nothing; npm test 950/950; the render dump is
 byte-identical to `48afe19`. The owner chose this release; the code review
 was deferred. It was packaged with the owner's yes in this window, by the
-§3 recipe with `MPTIKZ_SRC=/nonexistent`. **Nothing is pushed** past
-`18c5e45`; the coordinator ("Clew-boss") pushes only with the owner's
-explicit authorisation.
+§3 recipe with `MPTIKZ_SRC=/nonexistent`. The coordinator ("Clew-boss") pushes, only with the owner's explicit
+authorisation.
 
 | artefact | bytes | state |
 | --- | --- | --- |
@@ -26,8 +25,10 @@ explicit authorisation.
 **The boot test PASSED** (`smoke/boot-test.sh` on `out/mac-arm64/…/Clew`,
 2026-10-01): all 13 figures `mpw-ok` with paths, `pending=0`, `cache-probe
 first=engine second=cache`, and every live-edit line. It waited 7 minutes
-for the load to fall below 6 after packaging. The 0.11.1 artefacts are still
-in `out/` beside them; trashing them is the owner's call.
+for the load to fall below 6 after packaging. The 0.11.1 artefacts went to the
+Trash on the owner's word (`~/.Trash/Clew 0.11.1 artefacts/`, 1.04 GB,
+recoverable until it is emptied); origin/main is `2f389e4`, pushed by the
+coordinator with the owner's authorisation.
 
 A trap met on the way: a zsh loop passing `$flags` gives package.js ONE
 argument (zsh does not word-split), so it built an unsigned `dir`. Run the
