@@ -8,9 +8,8 @@ prefer deleting a settled item to explaining it again.
 
 ## Read this first
 
-**Where the code is.** `origin/main` = `5119d93`. `main` is ahead by
-`a3bb88c` (⌘1–⌘9 tab switching and the hotkey-recorder fix) plus this
-HANDOVER commit, both NOT pushed. Tree clean.
+**Where the code is.** `origin/main` = `5119d93`. `main` is ahead by the
+commits listed under "Since 0.12.0" as NOT pushed. Tree clean.
 
 **The rules this session works under** (the owner's, relayed by the
 coordinating session "Clew-boss", uds `/tmp/cc-socks/6958.sock` at the
@@ -86,6 +85,21 @@ iOS sync #3's upstream fixes (kanban columns border-box, fs-utils without a
   `registry.js#recordKeys`. `smoke/goto-tab-scenario.js`,
   `hotkey-record-scenario.js`. Reported with docs lines; iOS should check
   whether ⌘-digits reach its WKWebView from a hardware keyboard.
+- `f17c531` (NOT pushed): **citation pills read what reading mode shows**
+  (`live/cite-text.js`: one block render per note, cached, re-asked only
+  when the list of citations changes; `live/cite-label.js` the local
+  fallback), and the hover's button on a citation is **Show in Library**
+  (⌘: the entry's PDF). `3ef9c4f`: an engine "[undefined]" (vancouver, an
+  unknown key) is no text. `a1d8de0`: **reading mode follows a .bib edit**
+  (`citation-header.js#noteBibFiles`). Upstream finding for the jmarkdown
+  master: an unknown key under vancouver renders "[undefined]".
+- `1b98e07` (NOT pushed): the file explorer's **Open in Default App**
+  (`actions.openFileExternally`, the `|external` guard; `SHELL_OPEN_PATH`
+  now returns the OS's "no app" as a notice and logs `smoke-open-path:`
+  under CLEW_SMOKE instead of launching).
+- `a0bcd2b` (NOT pushed): dark-theme body text `#dadada` → `#e8e8e8` (both
+  tokens). `-webkit-font-smoothing: auto` was screenshotted for the owner
+  (session scratchpad `bright/compare.png`), NOT shipped — the owner decides.
 
 ## Open — waiting on the owner
 
