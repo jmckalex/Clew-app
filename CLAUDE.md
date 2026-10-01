@@ -768,8 +768,10 @@ except where the selection touches a construct. The durable design is
   so a .bib edit retires the server's cached block. The hover's button on a
   citation is "Show in Library" (the spec carries `cite: [keys]`; the first
   key, as a pill's click; ⌘ opens the entry's PDF through `bib-pdf.js`, the
-  Library's own opener). Reading mode does NOT re-render a note when its .bib
-  changes — older, separate, recorded in HANDOVER.
+  Library's own opener). Reading mode re-renders a note when the .bib its
+  citations come from changes (`citation-header.js#noteBibFiles`: the
+  header's `Bibliography`, else the vault's when the note cites; open
+  previews rebuilt, others marked stale).
 - **PDF annotations → note** (§5.15): the viewer (pdf-core.js) lists its
   annotations with the text under them (engine glyph geometry +
   getTextSlices) when pdf-page.js is asked by its PARENT;

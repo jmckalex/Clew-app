@@ -11,7 +11,7 @@
 // A note's citation keys, for the blocks rendered on its behalf (src/main/citation-header.js).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { citationHeader } from '../src/main/citation-header.js';
+import { citationHeader, noteBibFiles } from '../src/main/citation-header.js';
 
 const note = (header, body = '# Note\n\n![[Child]]\n') => `---\n${header}\n---\n${body}`;
 
@@ -43,3 +43,25 @@ test('quotes, lists, absolute paths and URLs', () => {
 	assert.equal(citationHeader(note('Bibliography style: styles/apa.csl'), '/v'), '---\nBibliography style: /v/styles/apa.csl\n---\n');
 	assert.equal(citationHeader(note('Bibliography style: "chicago"'), '/v'), '---\nBibliography style: chicago\n---\n');
 });
+
+test('noteBibFiles: the header\'s bibliography, against the note\'s folder', () => {
+	const note = '---\nBibliography: refs.bib, ../shared/more.bib\nResolve citations: true\n---\n# N\n\nNo cites at all.';
+	assert.deepEqual(noteBibFiles(note, '/v/Notes', '/v/vault.bib'), ['/v/Notes/refs.bib', '/v/shared/more.bib'],
+		'a header that names one wins, cites or not — and the vault\'s is not added');
+	assert.deepEqual(noteBibFiles('---\nBibliography: https://example.org/x.bib\n---\n', '/v', ''), [], 'a URL is no file to watch');
+});
+
+test('noteBibFiles: the vault\'s bibliography only for a note that cites', () => {
+	assert.deepEqual(noteBibFiles('See \\cite{a} and \\citep[p. 2]{b}.', '/v', '/v/refs.bib'), ['/v/refs.bib']);
+	assert.deepEqual(noteBibFiles('\\fullcite{a}', '/v', '/v/refs.bib'), ['/v/refs.bib']);
+	assert.deepEqual(noteBibFiles('# Refs\n\n@bibliography\n', '/v', '/v/refs.bib'), ['/v/refs.bib']);
+	assert.deepEqual(noteBibFiles('Plain prose that excites nobody.', '/v', '/v/refs.bib'), []);
+	assert.deepEqual(noteBibFiles('\\cite{a}', '/v', ''), [], 'no bibliography anywhere: nothing to depend on');
+});
+
+test('noteBibFiles: pandoc forms count only where the vault turns them on', () => {
+	assert.deepEqual(noteBibFiles('As [@lewis1969] says.', '/v', '/v/refs.bib'), []);
+	assert.deepEqual(noteBibFiles('As [@lewis1969] says.', '/v', '/v/refs.bib', { pandoc: true }), ['/v/refs.bib']);
+	assert.deepEqual(noteBibFiles('@lewis1969 argues so.', '/v', '/v/refs.bib', { pandoc: true }), ['/v/refs.bib']);
+});
+

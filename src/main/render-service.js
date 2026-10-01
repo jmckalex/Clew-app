@@ -28,7 +28,7 @@ import { settings } from './settings.js';
 import { engineExtensionEntries } from './plugins.js';
 import { writeFileAtomic } from './fs-utils.js';
 import { isDependentFragment } from '../shared/fragment-deps.js';
-import { citationHeader } from './citation-header.js';
+import { citationHeader, noteBibFiles } from './citation-header.js';
 import { refusedNames } from '../shared/refused-names.js';
 
 const WORKER_PATH = paths.engineWorker;
@@ -458,10 +458,14 @@ export class RenderService {
 
 		if (result.type === 'done') {
 			entry.mtimeMs = mtimeMs;
-			// Notes holding query fences re-render on ANY vault change.
+			// Notes holding query fences re-render on ANY vault change; notes
+			// citing a .bib re-render when THAT .bib changes (onFileChanged).
 			try {
-				entry.hasQueries = /^```(query|tasks|kanban)/m.test(fs.readFileSync(abs, 'utf8'));
-			} catch { entry.hasQueries = false; }
+				const text = fs.readFileSync(abs, 'utf8');
+				entry.hasQueries = /^```(query|tasks|kanban)/m.test(text);
+				entry.bibs = new Set(noteBibFiles(text, path.dirname(abs), this.#vaultBibliography(),
+					{ pandoc: this.#vaultOptions.pandocCitations === true }).map((p) => path.resolve(p)));
+			} catch { entry.hasQueries = false; entry.bibs = null; }
 			if (!this.#noteCode) {
 				try { this.#noteRefusals(relPath, fs.readFileSync(entry.htmlFile, 'utf8')); } catch { /* unreadable: nothing to say */ }
 			}
@@ -655,6 +659,23 @@ export class RenderService {
 				this.#restale(queryPath);
 			}
 		}
+		// A bibliography: the notes whose citations come from it (their
+		// header's `Bibliography`, else the vault's) — rebuilt where a preview
+		// is open, marked stale elsewhere. Reading mode kept the old entry
+		// until the note itself changed (2026-10-01).
+		if (/\.bib$/i.test(relPath) && this.vaultRoot) {
+			const bib = path.resolve(this.vaultRoot, relPath);
+			for (const [notePath, entry] of this.#notes) {
+				if (entry.bibs?.has(bib)) this.#restale(notePath);
+			}
+		}
+	}
+
+	/** The vault-wide bibliography (vault-settings `bibliography`), absolute, or ''. */
+	#vaultBibliography() {
+		const bib = String(this.#vaultOptions.bibliography ?? '').trim();
+		if (!bib || !this.vaultRoot) return '';
+		return path.isAbsolute(bib) ? bib : path.join(this.vaultRoot, bib);
 	}
 
 	/**
