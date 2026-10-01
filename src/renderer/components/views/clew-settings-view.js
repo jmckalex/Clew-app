@@ -763,12 +763,12 @@ class ClewSettingsView extends ClewElement {
 		return this.#row(label, input);
 	}
 
-	/** The toolbar's groups: shown or not, and their order (▲▼). The mode
-	 *  switch is not listed — it cannot be hidden. */
+	/** The toolbar's groups: shown or not, and their order (▲▼). (The mode
+	 *  switch is in the tab strip, not the toolbar.) */
 	#toolbarGroupsRow() {
 		const wrap = document.createElement('div');
 		wrap.className = 'settings-row settings-row-stacked toolbar-groups-setting';
-		const all = TOOLBAR_GROUPS.filter((g) => g.id !== 'mode');
+		const all = TOOLBAR_GROUPS;
 		const draw = () => {
 			const saved = settingsStore.get('editorToolbarGroups');
 			const order = Array.isArray(saved) ? saved.filter((id) => all.some((g) => g.id === id)) : all.map((g) => g.id);

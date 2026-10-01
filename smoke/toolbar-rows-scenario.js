@@ -1,6 +1,7 @@
 // The editor toolbar on two rows (owner's ask 2026-09-29): too narrow for one
-// row it WRAPS, at group boundaries and in natural order, the mode switch
-// ending row 1; only past two rows do groups go into `…`. The width is set by
+// row it WRAPS, at group boundaries and in natural order; only past two rows
+// do groups go into `…`. (The mode switch ended row 1 until it moved to the
+// tab strip, 2026-10-01; `mode-in-toolbar=false` says it is gone.) The width is set by
 // pinning the editor view (the bar is its full width). Fixture — a long note:
 //
 //   mkdir -p <dir> && node -e "require('fs').writeFileSync('<dir>/Long.md',
@@ -12,7 +13,7 @@
 //   `wide rows=1 overflow=` then `threshold one-row>=N` (the narrowest
 //   one-row width, found by stepping down 2 px at a time);
 //   `just-under rows=2 overflow= hidden=0` — two rows before anything hides;
-//   `very-narrow rows=2 overflow="…" mode-row=1 more=true`;
+//   `very-narrow rows=2 overflow="…" mode-in-toolbar=false more=true`;
 //   `jitter flips=0` — ±3 px around the threshold once on two rows stays on
 //   two (8 px hysteresis); `back-to-one rows=1` at threshold + 10;
 //   `text-shift=0` — a row appearing moves the scroll by its height, so the
@@ -63,9 +64,8 @@ log(`just-under rows=${rows()} overflow=${overflow()} hidden=${hiddenGroups}`);
 
 // ---- very narrow: two rows, then … --------------------------------------------------
 await setWidth(330);
-const modeEl = bar().querySelector('[data-group="mode"]');
 const rowOf = (el) => (el.getBoundingClientRect().top - bar().getBoundingClientRect().top < bar().getBoundingClientRect().height / 2 ? 1 : 2);
-log(`very-narrow rows=${rows()} overflow="${overflow()}" mode-row=${rowOf(modeEl)} more=${!bar().querySelector('.toolbar-more').hidden}`);
+log(`very-narrow rows=${rows()} overflow="${overflow()}" mode-in-toolbar=${Boolean(bar().querySelector('[data-group="mode"]'))} more=${!bar().querySelector('.toolbar-more').hidden}`);
 
 // ---- jitter at the threshold ------------------------------------------------------------
 await setWidth(threshold - 3);

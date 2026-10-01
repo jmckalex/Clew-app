@@ -715,17 +715,18 @@ except where the selection touches a construct. The durable design is
   Block reuse `shared/format-spec.js`), and `<clew-selection-bubble>`.
   `editor/toggle-wrap.js` unwraps from a bare cursor inside a construct.
   Plugin API 2: `clew.toolbar.addButton`. Too narrow for one row, the bar
-  WRAPS onto two (`layoutRows`, natural order, the mode switch ending row
-  1); `…` only past two rows. The row count comes from the always-there
+  WRAPS onto two (`layoutRows`, natural order); `…` only past two rows. The row count comes from the always-there
   groups — a context group (the table tools) never changes the bar's
   height — and a row change moves the editor's scroll by the same delta
   (`toolbar-resize`), so text never jumps; heights are `--toolbar-row`
-  (a port sets that, never a fixed height). **The mode switch is in every
-  view of a note** (2026-10-01): where `editorToolbar` hides the formatting
-  toolbar, source and live show reading mode's SLIM bar (the switch alone),
-  and reading always does; swapping full ↔ slim moves the scroll by the
-  height difference. `.editor-host .cm-editor` needs `min-height: 0` — without
-  it the editor stayed the host's height under the bar and a scroll into view
+  (a port sets that, never a fixed height). **The mode switch is in each
+  pane's TAB STRIP** (`clew-tab-bar.js`, owner's choice 2026-10-01 — a row
+  for three buttons was not worth it): pinned left of "+", acting on that
+  pane's active tab, hidden in place for a tab with no modes; there is no
+  bar above a note but the formatting toolbar where `editorToolbar` shows
+  it, and its coming or going moves the scroll by its height (except at the
+  very top). `.editor-host .cm-editor` needs `min-height: 0` — without it
+  the editor stayed the host's height under the bar and a scroll into view
   scrolled the host, bar and all.
 - **Callouts are one box drawn across lines** (2026-10-01, the owner's
   report): each line of a callout is a `.cm-line` with `le-callout`; the

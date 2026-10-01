@@ -1261,7 +1261,8 @@ session; built overnight, after the multi-paragraph footnote correction
    return it to the editor on close.
 4. **Width-aware**: too narrow for one row, the bar wraps onto a second
    (2026-09-29); only past two rows do groups drop into an overflow menu by
-   priority; the mode switch never drops.
+   priority; the mode switch never drops. (As built 2026-10-01: the mode
+   switch is not in the toolbar at all — it is in each pane's tab strip.)
 5. **Declarative**: `toolbar-spec.js` is the single description; the
    element renders it; settings reorder/hide groups.
 6. **Dialect-aware**: labels and icons say what the dialect produces
@@ -1272,6 +1273,9 @@ session; built overnight, after the multi-paragraph footnote correction
    the vault setting).
 
 ### 6.2 Spec shape (`toolbar-spec.js`)
+
+(As built 2026-10-01: the `mode` group below left the toolbar for the tab
+strip — `VIEW_MODES` in toolbar-spec.js, drawn by `clew-tab-bar.js`.)
 
 ```js
 export const TOOLBAR_GROUPS = [
@@ -1424,7 +1428,8 @@ last); Up/Down go to the nearest control on the other row.
   `--clew-bg-secondary`, bottom border `--clew-border`.
 - Buttons: 28×28, icon 16px, `title` = label + ` (${chord})`; `aria-pressed`
   for toggles; `disabled` from `enabled(s)` or the registry's `isEnabled`.
-- Segmented mode switch at the trailing end, always visible.
+- Segmented mode switch at the trailing end, always visible. (As built
+  2026-10-01: in the tab strip instead, left of "+".)
 - Keyboard (roving tabindex): the bar is reachable by `Alt-Shift-t`
   (`view:focus-toolbar` command) — arrows move, Home/End jump, Enter/Space
   activate, Escape returns focus to the editor. Popover items: arrows,
@@ -1434,10 +1439,10 @@ last); Up/Down go to the nearest control on the other row.
   the rest of the app).
 - Theme: everything via `--clew-*`; hover `--clew-hover`, active
   `--clew-active-item`, pressed toggles `--clew-accent` text.
-- The mode switch is also shown in **reading mode** (a slim bar holding
-  only the mode group), so the three modes are one click apart in every
-  state — mounted by `clew-preview-view` when the toolbar setting is not
-  `'never'`.
+- The mode switch is NOT in the toolbar (as built, 2026-10-01): it sits
+  in each pane's tab strip (`clew-tab-bar.js`), pinned left of "+", so the
+  three modes are one click apart in every state and no view spends a row
+  on them. ⌥⇧T focuses the switch where no formatting toolbar shows.
 
 ### 6.6 Popovers (`popover.js` + `popovers/*`)
 
@@ -1913,7 +1918,7 @@ still prefer, and changing one is a small, local edit.
 | `\|live` office embeds | a thumbnail in live edit | a pinned LibreOffice frame |
 | MathJax macros | one page-wide MathJax: macros leak across notes (documented) | a per-note InputJax |
 | Tables | edited in place on a click; Esc, ⌥-click or "Edit as source" for the source; reflow once on leaving | reveal source on click; never reflow automatically |
-| Reading mode's bar | a slim bar with the mode switch | none |
+| Reading mode's bar | none — the mode switch is in the tab strip | none |
 | Annotation entries | one blockquote per annotation (text, comment, page link, block id) | the comment as a paragraph after the quote |
 | Annotation colours | plain blockquotes | callouts by colour |
 | The Refs panel | always present; Library always, "This note" behind bibliographyPanel | gated as before |

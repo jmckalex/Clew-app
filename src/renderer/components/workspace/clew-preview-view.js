@@ -23,7 +23,6 @@ import { previewMode, vaultResolvers } from '../../editor/link-hover.js';
 import { parseTarget, previewSpec } from '../../editor/link-at.js';
 import { scrollSyncBus, makeSuppressor } from '../../preview/scroll-sync.js';
 import { previewUrl } from '../../lib/preview-url.js';
-import '../../editor/toolbar/clew-editor-toolbar.js';
 
 const HOST_SOURCE = 'clew-preview-host';
 /** After the frame's `load`, a client that has not said 'ready' within this
@@ -67,7 +66,6 @@ class ClewPreviewView extends ClewElement {
 		});
 		this.listen(settingsStore, 'settings-changed', (key) => {
 			this.#post({ type: 'theme', theme: document.body.dataset.theme ?? 'dark' });
-			if (key === 'editorToolbar') this.#syncModeBar();
 			if (key === 'sidenotes') this.#post({ type: 'sidenotes', mode: settingsStore.get('sidenotes') ?? 'auto' });
 		});
 		// Back/Forward over anchor jumps restore a same-path entry, which the
@@ -93,7 +91,6 @@ class ClewPreviewView extends ClewElement {
 		ipc.invoke(CH.RENDER_SUBSCRIBE, { path: this.path }).catch(() => {});
 		this.replaceChildren();
 		this.#buildFrame();
-		this.#syncModeBar();
 	}
 
 	/** The preview iframe — built by render(), and rebuilt by the watchdog. */
@@ -145,22 +142,6 @@ class ClewPreviewView extends ClewElement {
 			this.#watchdogSpentOn = this.path;
 			this.#buildFrame();
 		}, READY_AFTER_LOAD_MS);
-	}
-
-	/**
-	 * Reading mode's slim bar: only the mode switch, so the three modes are
-	 * one click apart from every state (docs/dev/live-edit.md §6.5) — always:
-	 * `editorToolbar` governs the formatting toolbar, never the mode switch
-	 * (2026-10-01; 'never' used to take this bar away too).
-	 */
-	#syncModeBar() {
-		const bar = this.querySelector(':scope > clew-editor-toolbar');
-		if (bar) return;
-		const slim = document.createElement('clew-editor-toolbar');
-		slim.slim = true;
-		slim.tabId = this.tabId;
-		this.prepend(slim);
-		slim.setState({ mode: 'reading', inline: new Set(), blockType: 'paragraph' });
 	}
 
 	#post(msg) {

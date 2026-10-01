@@ -254,11 +254,16 @@ export function registerBuiltinCommands() {
 					settingsStore.set('editorToolbar', 'never');
 				}
 			} },
+		// Where the note shows no formatting toolbar (reading view, or the
+		// setting hides it), the way in is the pane's mode switch in its
+		// tab strip instead.
 		{ id: 'view:focus-toolbar', name: 'Focus editor toolbar', hotkeys: ['Alt-Shift-t'], when: needsNote,
 			run: () => {
 				const tab = workspaceStore.activeTab();
 				const host = [...document.querySelectorAll('clew-editor-view:not([data-clew-retiring]), clew-preview-view:not([data-clew-retiring])')].find((v) => v.tabId === tab?.id);
-				host?.querySelector('clew-editor-toolbar')?.focusFirst();
+				const toolbar = host?.querySelector('clew-editor-toolbar');
+				if (toolbar) toolbar.focusFirst();
+				else host?.closest('clew-tab-group')?.querySelector(':scope > clew-tab-bar')?.focusModes();
 			} },
 		// The shell panel. Ctrl-` is every editor's terminal chord, and it is
 		// free here — Clew's own chords are all Mod-based.

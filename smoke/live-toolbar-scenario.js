@@ -7,7 +7,8 @@
 //     'delta epsilon zeta' '' 'Last line.' > /tmp/tb-vault/Toolbar.md
 //
 // Expect: `smoke-menu: View > Live Edit [CmdOrCtrl+Shift+E]`, the `View >
-// Mode` radios and `View > Editor Toolbar`; `toolbar=true groups=6 overflow=`
+// Mode` radios and `View > Editor Toolbar`; `toolbar=true groups=5 overflow=`
+// (the mode switch is in the tab strip since 2026-10-01; it was the sixth)
 // (nothing overflows with the sidebars closed); then —
 //   `strong-click line="*alpha* beta gamma"` (a real click on the button,
 //     the selection kept: the bar never steals focus);
@@ -15,13 +16,17 @@
 //     `unwrapped line="alpha beta gamma"` (the toolbar's unwrap-from-inside);
 //   `table rows=3 cols=2` from the table popover's 3 × 2 cell;
 //   `bubble=visible` after a real triple-click, `bubble-after-escape=hidden`;
-//   `focus-in-toolbar=true` after ⌥⇧T and `focused-after-arrows=<label>`;
+//   `focus-in-toolbar=true` after ⌥⇧T and `focused-after-arrows=<label>` —
+//     `Italic — /text/` since 2026-10-01: the caret is in the table the run
+//     inserted, and with the mode switch's width freed the Table tools
+//     (priority 60) fit the row and Undo/Redo (10) go to `…`, so the first
+//     control is Block style (it was Undo, three arrows reaching Intense);
 //   `after-toggle mode=source toolbar=false` (⌘⇧E; the FORMATTING toolbar is
-//     shown in live only by default — source has the slim mode bar since
-//     2026-10-01), `after-toggle mode=live toolbar=true`;
-//   `narrow overflow="…" mode-visible=true` in a pane split three ways — at
+//     shown in live only by default), `after-toggle mode=live toolbar=true`;
+//   `narrow overflow="…" mode-in-strip=true` in a pane split three ways — at
 //     318 px the bar is on TWO rows and only what two rows cannot hold is in
-//     `…` (`history inline insert`; Lists wraps to row 2).
+//     `…` (`history block insert`; Lists wraps to row 2), the mode switch
+//     in that pane's own tab strip.
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const { workspaceStore, editorPool, actions } = window.__clew;
 const log = (s) => console.log('smoke-tb: ' + s);
@@ -38,7 +43,7 @@ workspaceStore.setTabMode(tab.id, 'live');
 await until(() => document.querySelector('clew-editor-view clew-editor-toolbar'));
 await sleep(600);
 const view = editorPool.get(tab.id).view;
-const bar = () => [...document.querySelectorAll('clew-editor-view clew-editor-toolbar')].find((b) => !b.slim) ?? null; // the FORMATTING toolbar (a slim bar is the mode switch alone)
+const bar = () => document.querySelector('clew-editor-view clew-editor-toolbar'); // the formatting toolbar
 const doc = () => view.state.doc.toString();
 const lineWith = (s) => doc().split('\n').find((l) => l.includes(s));
 const groupsShown = () => [...bar().querySelectorAll(':scope > .toolbar-group')].filter((g) => !g.hidden).length;
@@ -110,7 +115,7 @@ setTimeout(() => {
 	setTimeout(() => {
 		const bars = [...document.querySelectorAll('clew-editor-view clew-editor-toolbar')];
 		const narrow = bars.sort((a, b) => a.getBoundingClientRect().width - b.getBoundingClientRect().width)[0];
-		const mode = narrow?.querySelector('[data-group="mode"]');
-		log(`narrow width=${Math.round(narrow?.getBoundingClientRect().width)} overflow="${narrow?.dataset.overflow}" mode-visible=${Boolean(mode && !mode.hidden)} more=${!narrow?.querySelector('.toolbar-more').hidden}`);
+		const strip = narrow?.closest('clew-tab-group')?.querySelector('clew-tab-bar .tab-modes');
+		log(`narrow width=${Math.round(narrow?.getBoundingClientRect().width)} overflow="${narrow?.dataset.overflow}" mode-in-strip=${Boolean(strip && !strip.classList.contains('is-unavailable'))} more=${!narrow?.querySelector('.toolbar-more').hidden}`);
 	}, 1500);
 }, 8000);

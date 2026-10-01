@@ -55,7 +55,12 @@ class ClewEditorView extends ClewElement {
 		// The tab may have switched/closed while the note loaded.
 		if (!this.isConnected || this.tabId !== tabId || !entry.view) return;
 
-		this.replaceChildren(entry.view.dom);
+		// A split layout RECONNECTS every pane's view on each layout change
+		// (clew-element.js); dropping the toolbar here while #toolbar still
+		// named it left live edit in a split pane with no toolbar at all
+		// (measured 2026-10-01). It goes back with the editor; #applyMode
+		// then keeps or removes it for the mode.
+		this.replaceChildren(...(this.#toolbar ? [this.#toolbar] : []), entry.view.dom);
 		this.#applyMode();
 		this.#restoreViewState(entry.view);
 		this.#syncConflictBanner();
@@ -145,47 +150,48 @@ class ClewEditorView extends ClewElement {
 	#toolbarRaf = 0;
 
 	/**
-	 * The bar above the editor: the formatting toolbar where the setting
-	 * shows it in this mode, else reading mode's SLIM bar — the mode switch
-	 * alone — so the three modes are one click apart in every view, whatever
-	 * `editorToolbar` says (the owner, 2026-10-01: source view had no bar,
-	 * and no way out but the keyboard). The setting governs only the
-	 * formatting. Swapping one bar for the other keeps the text still.
+	 * The formatting toolbar, where `editorToolbar` shows it in this mode,
+	 * and nothing otherwise: the mode switch is in the pane's tab strip
+	 * (clew-tab-bar.js), so the note starts right under the strip. The bar
+	 * coming or going moves the editor's top edge; the scroll moves with it,
+	 * so a line mid-note holds still — except at the very top, where the
+	 * text simply moves down under a new bar rather than its first lines
+	 * being hidden.
 	 */
 	#syncToolbar() {
 		const tab = workspaceStore.findTab(this.tabId)?.tab;
 		const entry = editorPool.get(this.tabId);
-		if (!tab || !entry?.view) {
-			this.#toolbar?.remove();
-			this.#toolbar = null;
+		const want = Boolean(tab && entry?.view && toolbarShown(tab.view.mode));
+		if (want === Boolean(this.#toolbar)) {
+			if (want) this.#scheduleToolbarState();
 			return;
 		}
-		const slim = !toolbarShown(tab.view.mode);
-		if (!this.#toolbar || this.#toolbar.slim !== slim) {
-			const before = this.#toolbar?.getBoundingClientRect().height ?? 0;
-			this.#toolbar?.remove();
+		const before = this.#toolbar?.getBoundingClientRect().height ?? 0;
+		const scrolled = entry?.view ? entry.view.scrollDOM.scrollTop : 0;
+		if (want) {
 			this.#toolbar = document.createElement('clew-editor-toolbar');
-			this.#toolbar.slim = slim;
 			this.#toolbar.tabId = this.tabId;
 			this.insertBefore(this.#toolbar, entry.view.dom);
-			const delta = this.#toolbar.getBoundingClientRect().height - before;
-			if (before && delta) {
-				this.#suppressor.suppress();
-				entry.view.scrollDOM.scrollTop += delta;
-			}
+		} else {
+			this.#toolbar?.remove();
+			this.#toolbar = null;
 		}
-		if (slim) this.#toolbar.setState({ mode: tab.view.mode, inline: new Set(), blockType: 'paragraph' });
-		else this.#scheduleToolbarState();
+		const delta = (this.#toolbar?.getBoundingClientRect().height ?? 0) - before;
+		if (entry?.view && delta && (delta < 0 || scrolled > 0)) {
+			this.#suppressor.suppress();
+			entry.view.scrollDOM.scrollTop = scrolled + delta;
+		}
+		if (want) this.#scheduleToolbarState();
 	}
 
 	/** The toolbar reflects the cursor — once per frame at most. */
 	#scheduleToolbarState() {
-		if (!this.#toolbar || this.#toolbar.slim || this.#toolbarRaf) return;
+		if (!this.#toolbar || this.#toolbarRaf) return;
 		this.#toolbarRaf = requestAnimationFrame(() => {
 			this.#toolbarRaf = 0;
 			const entry = editorPool.get(this.tabId);
 			const tab = workspaceStore.findTab(this.tabId)?.tab;
-			if (!this.#toolbar || this.#toolbar.slim || !entry?.view || !tab) return;
+			if (!this.#toolbar || !entry?.view || !tab) return;
 			const normalSyntax = vaultSettingsStore.get('normalSyntax') === true;
 			const model = liveModel(entry.view.state, { normalSyntax });
 			this.#toolbar.setState(deriveState(entry.view.state, model, {
