@@ -3,7 +3,8 @@
 // — or forced by Settings → LaTeX engine. Vault: a copy of demo-vault holding
 // a callout note (Callouts.md, from make-custom-callout-vault.sh) and the
 // citation note Features/Citations.md (natbib + BibTeX). The settings to try
-// come from the vault's `latex-engines.txt` (default: all four). Each export
+// come from the vault's `latex-engines.txt` (default: all four), and more
+// notes from its `latex-notes.txt`. Each export
 // logs `smoke-lx: <setting> <note> engine=<…> reason=<…>` or `FAILED <message>`;
 // PDFs land in `<vault>-pdf/`.
 //
@@ -17,10 +18,14 @@ for (let i = 0; i < 150 && !vaultStore.vault?.sessionId; i++) await sleep(100);
 const out = `${vaultStore.vault.path}-pdf`;
 const listed = await ipc.invoke('clew:note-read', { path: 'latex-engines.txt' }).then((r) => String(r?.content ?? r ?? '')).catch(() => '');
 const engines = listed.split(/\s+/).filter(Boolean);
+// `latex-notes.txt` adds notes to export (a page-broken callout, a markdown
+// image of an SVG with no .pdf/.png beside it), one per line.
+const extra = await ipc.invoke('clew:note-read', { path: 'latex-notes.txt' }).then((r) => String(r?.content ?? r ?? '')).catch(() => '');
+const notes = ['Callouts.md', 'Features/Citations.md', ...extra.split('\n').map((l) => l.trim()).filter(Boolean)];
 for (const setting of engines.length ? engines : ['auto', 'pdflatex', 'lualatex', 'xelatex']) {
 	settingsStore.set('latexEngine', setting);
 	await sleep(300);
-	for (const note of ['Callouts.md', 'Features/Citations.md']) {
+	for (const note of notes) {
 		const base = `${setting}-${note.replace(/\.md$/, '').replace(/\//g, '-')}`;
 		try {
 			const r = await ipc.invoke('clew:export-note', { path: note, format: 'pdf', outFile: `${out}/${base}.pdf` });

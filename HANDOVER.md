@@ -30,13 +30,17 @@ engine's callouts** (CLAUDE.md "Callouts are the ENGINE's"): Clew's own
 callout extension and `shared/custom-callouts.js` retired, the table from
 `#jmarkdown/callout-table.js`, unknown `[!type]` drawn as a note, untitled
 callouts headed as written, `suggestion`, single-note HTML/LaTeX exports
-render callouts (custom types via CLEW_CALLOUTS). Engine findings reported
-upstream: a callout broken across pages loses its strip and tint in LaTeX;
-a markdown `![](x.svg)` still emits `\includegraphics{x.svg}`.
+render callouts (custom types via CLEW_CALLOUTS).
 
 **Then:** pushed `0423008..67311b6` on the owner's word (2026-10-02);
-`2f0ad5c` admonitions' fallback import for iOS; the next commit makes PDF
-via LaTeX pick its engine (`main/latex-engine.js`, setting `latexEngine`).
+`2f0ad5c` admonitions' fallback import for iOS; `0b4b7a4` PDF via LaTeX
+picks its engine (`main/latex-engine.js`, setting `latexEngine`); then the
+engine re-vendored at `at-migration@aa4ce1e`, fixing both findings reported
+upstream (a callout broken across pages keeps its strip and tint; every
+LaTeX image route goes through the new `latex-graphics.js`, so an SVG with
+no sibling, or a URL, becomes a link). LaTeX-only: render dump identical.
+**That commit is the pin for iOS sync #4** — Clew-boss asked for no commits
+after it until the iOS copy is done.
 
 **The rules this session works under** (the owner's, relayed by the
 coordinating session "Clew-boss", uds `/tmp/cc-socks/6958.sock` at the
