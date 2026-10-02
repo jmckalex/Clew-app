@@ -562,6 +562,17 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   `node_modules`, `.trash`, dotfiles) live here too, where they used to be
   copied into three files that could drift. Changing either list reloads
   the vault in place (`vaults.reloadExcludes()` + a fresh index).
+- **The update check** (`docs/dev/auto-update.md` v1, 2026-10-03): notify
+  only. `main/updater.js` fetches `https://clew-app.com/downloads/
+  latest.json` 30 s after launch and daily (packaged builds only, setting
+  `updateCheck`), `main/update-check.js` decides (pure: semver, the feed's
+  URLs kept to its own origin, this machine's file), `renderer/
+  update-notice.js` says so; Help → Check for Updates…; `skippedUpdate`.
+  NEVER from a dev build or under CLEW_SMOKE except against a LOOPBACK
+  `CLEW_UPDATE_FEED` (`smoke/update-check-scenario.js`). The feed is written
+  at release by `scripts/write-latest-json.mjs`; its schema is §3. Under
+  CLEW_SMOKE, `SHELL_OPEN_EXTERNAL` logs `smoke-open-external:` instead of
+  opening a browser.
 - **Plugins** (`src/main/plugins.js`, `src/renderer/plugins.js`):
   engine/preview/app surfaces, discovered in TWO roots — the vault's
   `.clew/plugins/<id>/` and the GLOBAL `<userData>/plugins/<id>/`

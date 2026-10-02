@@ -73,6 +73,10 @@ export const CH = {
 	APP_CALL: 'clew:app-call',
 	APPS_LIST: 'clew:apps-list',
 	APP_REVOKE: 'clew:app-revoke',
+	// The update check (docs/dev/auto-update.md): Help → Check for Updates…,
+	// and Skip this version.
+	UPDATE_CHECK: 'clew:update-check',
+	UPDATE_SKIP: 'clew:update-skip',
 	// invoke: a web PDF the window's renders registered (main/remote-pdfs.js),
 	// named by its hash — { key } → { path } / { url }.
 	REMOTE_PDF_SAVE_COPY: 'clew:remote-pdf-save-copy',
@@ -141,6 +145,7 @@ export const CH = {
 	EV_VAULT_ACCESS_CHANGED: 'clew:ev-vault-access-changed',
 	EV_TRUST_NOTICE: 'clew:ev-trust-notice',
 	EV_APP_GRANTS_CHANGED: 'clew:ev-app-grants-changed',
+	EV_UPDATE_AVAILABLE: 'clew:ev-update-available',
 	// Custom callout types changed — in Settings, or a hand edit of the
 	// vault's vault-settings.json: re-ask CALLOUTS_RESOLVED. No payload.
 	EV_CALLOUTS_CHANGED: 'clew:ev-callouts-changed',

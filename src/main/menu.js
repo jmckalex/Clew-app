@@ -410,6 +410,8 @@ class AppMenu {
 					label: 'Clew Documentation (Demo Vault)',
 					click: () => openDemoVault(focusedSession()),
 				},
+				// Asks the feed now and always answers (main/updater.js).
+				c('app:check-updates', 'Check for Updates…'),
 				{
 					// Licences have to REACH the reader to mean anything. The
 					// file ships in Resources/ (extraResources) and sits at the

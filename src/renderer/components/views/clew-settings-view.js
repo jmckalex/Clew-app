@@ -126,6 +126,12 @@ class ClewSettingsView extends ClewElement {
 			]),
 			this.#texFragmentsSection(),
 			(this.#callouts = calloutsSection((title, rows) => this.#section(title, rows))).element,
+			this.#section('Updates', [
+				this.#selectRow('Check for updates once a day', 'updateCheck', [['on', 'On'], ['off', 'Off']]),
+				this.#hint('Clew asks clew-app.com whether a newer version exists and, if so, says so, '
+					+ 'with a link to download it. Nothing is sent but the request itself, and nothing '
+					+ 'is installed for you. Help → Check for Updates… asks at any time.'),
+			]),
 			this.#vaultSection(),
 			this.#trustedVaultsSection(),
 			this.#hotkeysSection(),

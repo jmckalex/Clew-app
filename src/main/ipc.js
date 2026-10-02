@@ -41,6 +41,7 @@ import { insideByRealpath } from '../engine/vault-bounds.js';
 import { appByKey, stateOf, grants } from './app-registry.js';
 import { appKey, appsById, describeCapabilities } from './app-frames.js';
 import { callApp } from './app-calls.js';
+import { checkForUpdate } from './updater.js';
 import { registeredRemoteUrl, saveRemoteCopy } from './remote-pdfs.js';
 import { planOpen, pathFromFileUrl } from './open-file.js';
 import { iconTable, resolvedCallouts } from './callout-types.js';
@@ -246,7 +247,10 @@ export function registerIpc() {
 		return ['save', 'discard', 'cancel'][response];
 	});
 	handleGlobal(CH.SHELL_OPEN_EXTERNAL, ({ url }) => {
-		if (/^https?:|^mailto:/i.test(url)) shell.openExternal(url);
+		if (!/^https?:|^mailto:/i.test(url)) return;
+		// A scenario must never launch a browser: it reads this line instead.
+		if (process.env.CLEW_SMOKE) console.log(`smoke-open-external: ${url}`);
+		else shell.openExternal(url);
 	});
 
 	// Hand a file to the OS default app: `[[paper.pdf|external]]` sends a
@@ -429,6 +433,13 @@ export function registerIpc() {
 		}
 		return { list: trustedVaultsList() };
 	});
+	// ---- the update check (docs/dev/auto-update.md) -------------------------
+	handleGlobal(CH.UPDATE_CHECK, () => checkForUpdate({ manual: true }));
+	handleGlobal(CH.UPDATE_SKIP, ({ version }) => {
+		if (typeof version === 'string' && /^\d+\.\d+\.\d+/.test(version)) settings.set('skippedUpdate', version);
+		return true;
+	});
+
 	// ---- apps in notes (frame-bridge.md §7–§9) ---------------------------
 	// An app's clipboard (the `clipboard` capability) is the system's — but
 	// never under the smoke harness, which must leave the user's clipboard

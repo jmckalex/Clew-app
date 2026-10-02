@@ -22,6 +22,7 @@ import { appMenu } from './menu.js';
 import { settings } from './settings.js';
 import { trust, setTrustNotice } from './trust.js';
 import { readVaultRequests } from './vault-requests.js';
+import { startUpdateChecks } from './updater.js';
 import { CH } from '../shared/channels.js';
 import { registerPreviewScheme, installPreviewProtocol, installAppProtocol, installFrameProtocol } from './protocol.js';
 import { VaultSession, focusedSession, sessionForVault, sessionForWindow } from './session.js';
@@ -423,6 +424,8 @@ app.whenReady().then(async () => {
 	// flips inside a scenario cannot leak into the user's real settings.
 	if (process.env.CLEW_SMOKE && process.env.CLEW_SMOKE_VAULT) {
 		createWindow(process.env.CLEW_SMOKE_VAULT);
+		// Only ever against a LOOPBACK feed here (updater.js#checkAllowed).
+		startUpdateChecks();
 		return;
 	}
 
@@ -436,6 +439,8 @@ app.whenReady().then(async () => {
 	settings.set('openVaults', toOpen);
 	if (toOpen.length === 0) createWindow(null);
 	else for (const vaultPath of toOpen) createWindow(vaultPath);
+	// The daily update check: packaged builds only (updater.js).
+	startUpdateChecks();
 
 	app.on('activate', () => {
 		if (BrowserWindow.getAllWindows().length === 0) createWindow(null);

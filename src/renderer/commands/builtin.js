@@ -295,6 +295,8 @@ export function registerBuiltinCommands() {
 			run: () => workspaceStore.setSidebar('right', { open: true, activeTool: 'props' }) },
 		{ id: 'app:settings', name: 'Open settings', hotkeys: ['Mod-,'],
 			run: () => actions.openSettings() },
+		{ id: 'app:check-updates', name: 'Check for updates…',
+			run: () => import('../update-notice.js').then((m) => m.checkForUpdatesNow()) },
 		{ id: 'view:toggle-theme', name: 'Toggle light/dark theme',
 			run: () => settingsStore.set('theme', settingsStore.get('theme') === 'dark' ? 'light' : 'dark') },
 		{ id: 'view:theme-dark', name: 'Use dark theme',

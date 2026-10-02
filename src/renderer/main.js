@@ -28,6 +28,7 @@ import { installPdfSaveBridge, installOfficeSaveBridge, installOfficeThumbBridge
 import { officeDock } from './office-dock.js';
 import { installTrustBanner, trustBannerVaultShown } from './trust-banner.js';
 import { installAppHost } from './app-host.js';
+import { installUpdateNotice } from './update-notice.js';
 import { installCalloutSync } from './callouts.js';
 import './components/chrome/clew-app.js';
 import './editor/toolbar/clew-selection-bubble.js';
@@ -133,6 +134,7 @@ installExcalidrawResolveBridge();
 installMenuBridge();
 installTrustBanner();
 installAppHost();
+installUpdateNotice();
 installCalloutSync();
 officeDock.init();
 

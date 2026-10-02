@@ -1,8 +1,8 @@
 # In-app update check — design
 
-Status: PROPOSED (2026-09-30), design only; the owner approves before any
-code. Clew-docs owns the site and its deploys, so §3 says what the site must
-SERVE, not how to deploy it.
+Status: v1 BUILT (2026-10-03) to the owner's answers (§6). Clew-docs owns
+the site and its deploys, so §3 says what the site must SERVE, not how to
+deploy it — and is now the EXACT schema the app reads.
 
 ## 1. Recommendation
 
@@ -49,7 +49,8 @@ Why not `electron-updater` everywhere now (all read from `out/` and
 ## 3. The feed — what the site must serve
 
 `https://clew-app.com/downloads/latest.json`, written by the release step
-beside the binaries:
+beside the binaries (`node scripts/write-latest-json.mjs [outDir]`, which
+reads the built artifacts and writes their SERVED names, sha512 and sizes):
 
 ```json
 {
@@ -57,15 +58,26 @@ beside the binaries:
   "released": "2026-10-05",
   "notes": "https://clew-app.com/manual/whats-new.html#v0-12-0",
   "files": {
-    "mac-arm64": { "url": "downloads/Clew-0.12.0-arm64.dmg", "sha512": "…", "size": 226014341 },
-    "mac-x64": { "url": "downloads/Clew-0.12.0-x64.dmg", "sha512": "…", "size": 0 },
-    "win-x64": { "url": "downloads/Clew-Setup-0.12.0.exe", "sha512": "…", "size": 0 },
-    "linux-appimage": { "url": "downloads/Clew-0.12.0.AppImage", "sha512": "…", "size": 0 },
-    "linux-deb": { "url": "downloads/clew_0.12.0_amd64.deb", "sha512": "…", "size": 0 }
+    "mac-arm64": { "url": "Clew-0.12.0-arm64.dmg", "sha512": "<base64>", "size": 222428189 },
+    "mac-x64": { "url": "Clew-0.12.0-x64.dmg", "sha512": "<base64>", "size": 226079778 },
+    "win-x64": { "url": "Clew-Setup-0.12.0.exe", "sha512": "<base64>", "size": 190590642 },
+    "linux-appimage": { "url": "Clew-0.12.0.AppImage", "sha512": "<base64>", "size": 223791314 },
+    "linux-deb": { "url": "clew_0.12.0_amd64.deb", "sha512": "<base64>", "size": 177189340 }
   }
 }
 ```
 
+- **The exact rules the app applies** (`main/update-check.js#readFeed`):
+  `version` is semver (a prerelease such as `0.12.1-dev.1` ranks below its
+  release); every URL — `notes` and each file's `url` — is resolved against
+  the FEED's own URL and kept only if it stays on the feed's origin over
+  https, so `"Clew-0.12.0-arm64.dmg"` means `/downloads/Clew-0.12.0-arm64.dmg`
+  and `"../manual/whats-new.html#v0-12-0"` the manual (an absolute
+  `https://clew-app.com/…` works too; anything elsewhere is dropped);
+  `sha512` is base64, as electron-builder writes its own; a platform key the
+  feed lacks just means that machine is offered the notes without a
+  download. Keys: `mac-arm64`, `mac-x64`, `win-x64`, `linux-appimage`,
+  `linux-deb`. Anything else in the file is ignored.
 - Served with `Cache-Control: no-cache` (nginx), so a release is seen at
   once; uploaded LAST, after the binaries, so it never names a file that is
   not there yet.
@@ -97,12 +109,27 @@ restarts, nothing installs.
 | Linux AppImage | unsigned | nothing more | a writable AppImage (electron-updater replaces it in place); optionally a detached signature |
 | Linux deb | unsigned | nothing more | not planned: a package manager's job (an apt repository on the droplet, if ever) |
 
-## 6. Open questions for the owner
+## 6. The owner's answers (2026-10-03)
 
-1. **v1 notify-only** (recommended), or `electron-updater` on macOS now.
-2. **On by default** (recommended, with the setting and a manual line), or
-   off until turned on.
-3. **A Windows code-signing certificate** (a yearly cost) — the prerequisite
-   for Windows auto-install, and it also ends the SmartScreen warning.
-4. **Where release notes live** — a "What's new" page in the manual is
-   proposed.
+1. **v1 notify-only** — no electron-updater yet.
+2. **On by default**, with the setting (Settings → Updates) and a manual
+   line.
+3. **No Windows code-signing certificate** for now.
+4. **Release notes** live on a "What's new" page in the manual, linkable per
+   version (`#v0-12-1`); Clew-docs drafts 0.12.1's.
+
+## 7. As built (v1, 2026-10-03)
+
+- `main/update-check.js` (pure: semver, `readFeed`, `platformKey`,
+  `decide`) and `main/updater.js` (`net.fetch`, 30 s after launch and every
+  24 h, once per version per run, told to the focused window).
+  `renderer/update-notice.js` draws the notice; Help → Check for Updates…
+  (`app:check-updates`) always answers; Settings → Updates (`updateCheck`);
+  Skip writes `skippedUpdate`.
+- **Never from a dev build or a smoke run against the real feed.** The one
+  way to exercise it there is a LOOPBACK `CLEW_UPDATE_FEED`
+  (`smoke/update-check-scenario.js` + `smoke/update-feed.mjs`); measured:
+  the only request leaving is to the loopback feed; the notice offers What's
+  new, Download (this machine's file) and Skip; Skip removes it and a manual
+  check still answers; a feed that is down is silent on schedule and named
+  on a manual check; a plain smoke run makes no request at all.
