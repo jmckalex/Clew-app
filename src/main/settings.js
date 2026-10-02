@@ -55,6 +55,10 @@ const DEFAULTS = {
 	// Paper for "Export as PDF (reading view)" — the LaTeX PDF takes its
 	// page size from the document's own class, and is not affected.
 	printPaperSize: 'a4',
+	// The engine for "Export as PDF (via LaTeX)": 'auto' reads it off the
+	// generated document (main/latex-engine.js — fontspec and friends take
+	// LuaLaTeX), or 'pdflatex' | 'lualatex' | 'xelatex' for what it cannot see.
+	latexEngine: 'auto',
 	// Named TeX fragments a figure can ask for with `clew-fragments=`
 	// ([{ name, text }] — src/engine/tex-fragments.js). These are the
 	// GLOBAL ones; a vault's own live in its vault-settings.json and

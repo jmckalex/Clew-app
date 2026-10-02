@@ -81,6 +81,11 @@ class ClewSettingsView extends ClewElement {
 					[['auto', 'When the pane is wide enough'], ['on', 'Always'], ['off', 'Never']]),
 				this.#selectRow('PDF paper size (reading-view export)', 'printPaperSize',
 					[['a4', 'A4'], ['letter', 'US Letter'], ['legal', 'US Legal'], ['tabloid', 'Tabloid']]),
+				this.#selectRow('LaTeX engine (PDF via LaTeX export)', 'latexEngine',
+					[['auto', 'Automatic'], ['pdflatex', 'pdfLaTeX'], ['lualatex', 'LuaLaTeX'], ['xelatex', 'XeLaTeX']]),
+				this.#hint('Automatic reads the exported document: one that loads fontspec, unicode-math, '
+					+ 'polyglossia or Lua code (a \\setmainfont in your jmarkdown config, say) is compiled with '
+					+ 'LuaLaTeX, anything else with pdfLaTeX. Choose an engine here for what that cannot see.'),
 				this.#textRow('Shell panel font', 'shellFont', 'e.g. MesloLGS NF — blank for the default'),
 				this.#hint('A monospace family for the shell panel — your terminal\'s, say. Blank uses '
 					+ 'Clew\'s monospace font. Prompt symbols (Powerline and Nerd Font glyphs) come from '

@@ -1044,7 +1044,19 @@ except where the selection touches a construct. The durable design is
   `Run note code` off: the user's global ~/.jmarkdown still applies, a
   vault's own `.jmarkdown/config.json` never does (it can load engine
   extensions). The engine resolves relative paths from the note's folder,
-  not the cwd (measured: HTML and LaTeX byte-identical from either).
+  not the cwd (measured: HTML and LaTeX byte-identical from either). **PDF
+  via LaTeX picks its engine** (`main/latex-engine.js`, 2026-10-02): read
+  off the GENERATED .tex — which holds every preamble that went in, the
+  global and vault configs, the note's header, the engine's own packages —
+  fontspec, unicode-math, polyglossia, Lua code or `\setmainfont` take
+  LuaLaTeX (xeCJK and the XeTeX-only ones XeLaTeX), anything else pdfLaTeX
+  as before; the `latexEngine` setting forces one. The owner's global config
+  loads fontspec, so every such export used to fail under `latexmk -pdf`.
+  Compiled with the NOTE's folder on BIBINPUTS/TEXINPUTS (the .tex is
+  written beside the chosen output — the vault root by default — and
+  `\bibliography{refs}` is the note's: every citation came out undefined),
+  and a PDF is accepted only if THIS run wrote it; a failure names the
+  engine, why it was chosen and the log's first error.
 - **The interim vault-trust guard** (owner's approval 2026-09-30;
   `docs/dev/frame-bridge.md` §4 is the full design it grows into). A note
   can make the engine run code — script blocks, `Math.…`/`calc(…)` in
