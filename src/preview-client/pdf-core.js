@@ -139,6 +139,12 @@ export async function createViewer({ target, src, onStatus = () => {}, readonly 
 		wasmUrl: new URL(`${EMBEDPDF_ASSETS}/pdfium.wasm`, location.href).href,
 		fontFallback,                          // local files only, never a CDN
 		fonts: { ui: null, signature: null },  // airgapped: no Google Fonts
+		// The stamp tool's default library (@embedpdf/default-stamps, MIT,
+		// served from __clew_assets__/stamps) — EmbedPDF fetches it from
+		// cdn.jsdelivr.net otherwise, on every open: an outbound request the
+		// preview CSP now blocks in a note (frame-bridge.md §4.9a). Built from
+		// location.origin, not URL(): `{locale}` must reach EmbedPDF unescaped.
+		stamp: { manifests: [{ url: `${location.origin}/__clew_assets__/stamps/{locale}/manifest.json`, fallbackLocale: 'en' }] },
 		theme: { preference: document.documentElement.dataset.theme === 'light' ? 'light' : 'dark' },
 		tabBar: 'never',
 		...(readonly ? { disabledCategories: ['annotation', 'redaction'] } : {}),

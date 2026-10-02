@@ -131,6 +131,16 @@
         "to": "preview-assets/embedpdf"
       },
       {
+        "from": "vendor/default-stamps",
+        "to": "preview-assets/default-stamps",
+        "filter": [
+          "**/manifest.json",
+          "**/stamps.pdf",
+          "LICENSE",
+          "package.json"
+        ]
+      },
+      {
         "from": "mptikz-assets",
         "to": "mptikz",
         "filter": [

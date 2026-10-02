@@ -156,7 +156,7 @@ export function installFrameProtocol({ bridgeFile }) {
 }
 
 /** After app.whenReady(). */
-export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDir, embedpdfDir, mptikzDir, zetaDir, noteFontsDir = null, globalPluginsDir = null }) {
+export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDir, embedpdfDir, stampsDir = null, mptikzDir, zetaDir, noteFontsDir = null, globalPluginsDir = null }) {
 	const assetRoots = {
 		mathjax: path.join(nodeModulesDir, 'mathjax', 'es5'),
 		mermaid: path.join(nodeModulesDir, 'mermaid', 'dist'),
@@ -167,6 +167,10 @@ export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDi
 		// The EmbedPDF bundle + pdfium.wasm (the PDF viewer) — the vendored
 		// OCG/layers build (vendor/embedpdf), not the npm package.
 		embedpdf: embedpdfDir,
+		// The stamp tool's default library (pdf-core.js points EmbedPDF here
+		// rather than at its CDN): {locale}/manifest.json + stamps.pdf, a
+		// committed copy (vendor/default-stamps, MIT).
+		...(stampsDir ? { stamps: stampsDir } : {}),
 		// mp-tikz-wasm: the MetaPost/TikZ engines and their TeX bundles
 		// (paths.js#mptikzAssets). A first figure reads ~90 of these files
 		// through kpathsea, so the whole tree is servable rather than a

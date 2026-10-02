@@ -53,6 +53,12 @@ const spdx = (pkg) => {
 	return null;
 };
 
+/** vendor/ folders that ship as they are (no npm install). The stamp
+ *  tool's default library (pdf-core.js) declares no licence field in its
+ *  package.json; its LICENSE file is MIT. */
+const VENDORED = ['default-stamps'];
+const VENDORED_LICENCE = { 'default-stamps': 'MIT' };
+
 /** Every runtime package reachable from `dependencies`, plus Electron. */
 function collect() {
 	const manifest = readPkg(root);
@@ -74,6 +80,19 @@ function collect() {
 	// Electron is a devDependency because it is not imported — but its binary
 	// IS the shipped runtime, so it belongs here more than most of the list.
 	visit('electron');
+	// Components vendored as committed copies rather than npm dependencies
+	// (vendor/<dir>, each with its own package.json and licence file).
+	for (const dir of VENDORED) {
+		const abs = path.join(root, 'vendor', dir);
+		const pkg = readPkg(abs);
+		if (!pkg || found.has(pkg.name)) continue;
+		found.set(pkg.name, {
+			name: pkg.name, version: pkg.version ?? '?',
+			licence: spdx(pkg) ?? VENDORED_LICENCE[dir] ?? '(not stated)',
+			homepage: pkg.homepage ?? pkg.repository?.url ?? null,
+			text: licenceText(abs),
+		});
+	}
 	return [...found.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 

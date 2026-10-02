@@ -385,6 +385,7 @@ app.whenReady().then(async () => {
 		nodeModulesDir: paths.previewAssets,
 		engineAssetsDir: paths.engineAssets,
 		embedpdfDir: paths.embedpdfAssets,
+		stampsDir: paths.stampsAssets,
 		mptikzDir: paths.mptikzAssets,
 		zetaDir: paths.zetaAssets,
 		noteFontsDir: paths.noteFonts,

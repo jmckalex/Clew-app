@@ -736,9 +736,16 @@ Updates never ask again, because the identity (§4.3) survives them.
   …/manifest.json` whenever a viewer opens. In a note (restricted, or
   trusted without the network) the CSP now blocks it and the in-note viewer
   has no default stamps; viewers in tabs (`pdf-page.html`, no CSP) and the
-  migrated vaults still fetch it. The owner's choice: vendor the stamps
-  under `__clew_assets__` and point `manifests` at them (no network, stamps
-  everywhere — recommended), set `manifests: []` (none anywhere), or leave it.
+  migrated vaults still fetch it. The owner chose to vendor them (2026-10-02):
+  `vendor/default-stamps` (MIT, a committed copy — not an npm install, which
+  would have reconciled an out-of-step lockfile), served at
+  `__clew_assets__/stamps`, `pdf-core.js` points `stamp.manifests` there:
+  every viewer has its 17 default stamps and makes no outbound request
+  (`smoke/pdf-stamps-scenario.js` with `CLEW_SMOKE_NET_LOG=1`). The rest of
+  the bundle's remote URLs were checked: Google Fonts (UI and signature
+  faces) and the jsdelivr pdfium.wasm and font packages are all already
+  overridden by pdf-core.js (`fonts: null`, a local `wasmUrl`, a local
+  `fontFallback`) — the stamps manifest was the one left.
 - Scenarios whose fixture relied on a note's own script running (canvas-esc's
   Esc owner, the deliberate PDF leak) now open their fixture as a KNOWN vault.
 
