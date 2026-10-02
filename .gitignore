@@ -18,3 +18,4 @@ zeta-assets/
 # The wasm TikZ/MetaPost engines: 74 MB staged by scripts/stage-mptikz.js,
 # from the master's build or the pinned release. Never committed.
 mptikz-assets/
+out-dev/

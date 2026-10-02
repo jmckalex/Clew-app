@@ -1,4 +1,4 @@
-# Handover — 2026-10-02 (0.12.0 released; main 80b8b44+, unpushed past 9409987)
+# Handover — 2026-10-02 (0.12.0 released; origin/main 0423008; dev build 0.12.1-dev.1)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it); the live edit design AS BUILT is
@@ -8,15 +8,21 @@ prefer deleting a settled item to explaining it again.
 
 ## Read this first
 
-**Where the code is.** `origin/main` = `9409987` (`git fetch` before
-counting). `main` is ahead by the commits listed under "Since 0.12.0" as
-NOT pushed — 19 of them. Tree clean.
+**Where the code is.** `origin/main` = `0423008` — pushed 2026-10-02 on
+the owner's word ("push all", confirmed in this window), 19 commits
+9409987..0423008. Anything after it is local; `git fetch` before counting.
 
-**On hold until the owner says go:** a Mac arm64 DEV build — version
-`0.12.1-dev.1`, `CLEW_PACKAGE_OUT=out-dev`, `JMARKDOWN_SRC=/nonexistent
-EMBEDPDF_SRC=/nonexistent MPTIKZ_SRC=/nonexistent`, from a bash script
-(the recipe's zsh trap), then the boot test; report DMG path, size,
-stapler/spctl, version and commit. Ask the owner in this window first.
+**Mac Silicon dev build 0.12.1-dev.1** (the owner's go, 2026-10-02), from
+`0423008` with the committed engine and EmbedPDF mirrors and the pinned
+mp-tikz-wasm 0.3.0, by the recipe below plus `CLEW_PACKAGE_VERSION=
+0.12.1-dev.1 CLEW_PACKAGE_OUT=out-dev`: `out-dev/Clew-0.12.1-dev.1-arm64.dmg`
+(222,967,484 bytes). notarytool Accepted; stapler valid on the DMG and the
+app; `spctl` accepts both (Notarized Developer ID); hardened runtime, four
+entitlements, arm64; CFBundleShortVersionString/CFBundleVersion 0.12.1-dev.1;
+`mptikz/bundles/opentype` present; the asar carries `dist/build-stamp.json`
+matching 0423008. **boot-test PASSED** without ALLOW_STALE (13 figures
+mpw-ok, cache-probe engine→cache, every live-edit line). Not published
+anywhere. `out-dev/` is gitignored.
 
 **The rules this session works under** (the owner's, relayed by the
 coordinating session "Clew-boss", uds `/tmp/cc-socks/6958.sock` at the
@@ -79,9 +85,8 @@ iOS sync #3's upstream fixes (kanban columns border-box, fs-utils without a
 
 ## Since 0.12.0
 
-`5119d93` and `a3bb88c`/`9409987` are pushed (Window menu lists vaults; ⌘1–⌘9
-switch tabs). NOT pushed, oldest first — each reported to Clew-boss with
-docs lines and iOS notes:
+Everything below is PUSHED (origin/main `0423008`, 2026-10-02), oldest
+first — each reported to Clew-boss with docs lines and iOS notes:
 
 - `f17c531` **citation pills read what reading mode shows**
   (`live/cite-text.js`, one block render per note) and the hover's **Show in
@@ -118,9 +123,9 @@ docs lines and iOS notes:
 - Then: **no smoke run on a stale build** — `dist/build-stamp.json` (content
   hashes of `src/`) checked by the harness, the sweeps and boot-test.sh
   (`scripts/stale-check.mjs`). The 0.12.0 package predates stamps, so
-  boot-testing it needs `BOOT_TEST_ALLOW_STALE=1`; the next package carries
-  one (unverified until then — check `npx asar list` shows
-  `dist/build-stamp.json`).
+  boot-testing it needs `BOOT_TEST_ALLOW_STALE=1`; 0.12.1-dev.1 carries one
+  (verified). NEVER `asar extract-file` in the repo root — it writes into the
+  cwd, and overwrote package.json once; use `asar list` or a temp dir.
 
 Owner decisions Clew-boss is carrying (2026-10-02): HTML/LaTeX note exports
 render NO Obsidian callouts (built-in or custom; only uppercase GFM alerts
