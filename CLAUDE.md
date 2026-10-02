@@ -950,7 +950,15 @@ except where the selection touches a construct. The durable design is
   parent, or the window a request went to. Not "a frame the app created":
   office live embeds and the Excalidraw/PDF viewers inside notes post to
   window.top from two frames deep. A new listener follows the same rule
-  (`smoke/bridges-scenario.js`, `office-bridges-scenario.js`).
+  (`smoke/bridges-scenario.js`, `office-bridges-scenario.js`). **And a
+  window ADDRESSES only who it means** (§2.8 step 2, 2026-10-02): downward
+  posts target `PREVIEW_ORIGIN`; a preview document's upward posts go
+  through `message-guard.js#postTo` to `parentOrigin()`/`topOrigin()` (read
+  off `location.ancestorOrigins` — parent first, top last, empty at the top
+  where a document is its own parent), never `'*'`; replies go to the
+  asker's `event.origin`; the app page's frame-matching listeners also
+  require `event.origin === PREVIEW_ORIGIN`. Only the content-free token ask
+  stays `'*'`.
 - **PDFs are EmbedPDF, not Chromium's plugin** (MIT, Pdfium-in-wasm, ~9.5
   MB staged) — and not the npm build: the viewer is the owner's OCG/layers
   fork (EmbedPDF v2.15.0 + the ~/Source/pdfium-ocg patch series; the wasm

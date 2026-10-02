@@ -23,10 +23,11 @@ import { initExcalidrawEmbeds } from './excalidraw-embed.js';
 import { initOfficeEmbeds } from './office-embed.js';
 import { figureMorph, initFigures, figuresPending } from './figures.js';
 import { initTabbing, tabbingMorph } from './tabbing.js';
-import { fromWindow } from '../shared/message-guard.js';
+import { fromWindow, parentOrigin, postTo } from '../shared/message-guard.js';
 
 const HOST_SOURCE = 'clew-preview-host';
-const post = (msg) => window.parent.postMessage({ source: 'clew-preview', ...msg }, '*');
+// Addressed to the parent's own origin (frame-bridge.md §2.8 step 2).
+const post = (msg) => postTo(window.parent, { source: 'clew-preview', ...msg }, parentOrigin());
 // A live-edit BLOCK document (protocol.js `__clew_block__`): one rendered
 // block in a frame sized to its content, inside the editor. It has no scroll
 // of its own and no source lines worth reporting, so the reading-mode

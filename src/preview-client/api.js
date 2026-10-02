@@ -31,6 +31,7 @@
 // engine marks the constructs it refused — re-marked after each re-render,
 // since a morph replaces the body's children and in such a document every
 // one of them is the note's own (Clew's inline script is in <head>).
+import { parentOrigin, postTo } from '../shared/message-guard.js';
 (() => {
 	const restricted = () => document.documentElement.hasAttribute('data-clew-restricted');
 	const JS = /^(|text\/javascript|application\/javascript|module)$/i;
@@ -59,7 +60,7 @@
 		console.warn(`clew-csp: ${e.effectiveDirective} ${e.blockedURI || 'inline'}${e.sourceFile ? ` (${e.sourceFile.split('/').pop()}:${e.lineNumber})` : ''}`);
 		if (!restricted() || !/^script-src/.test(e.effectiveDirective)) return;
 		const name = e.effectiveDirective === 'script-src-attr' ? 'inline handler' : 'script';
-		window.parent.postMessage({ source: 'clew-preview', type: 'code-refused', name }, '*');
+		postTo(window.parent, { source: 'clew-preview', type: 'code-refused', name }, parentOrigin());
 	});
 	document.addEventListener('DOMContentLoaded', markAll);
 	document.addEventListener('clew:render', markAll);
@@ -80,7 +81,7 @@
 				reject(new Error(`clew.${method}: no host responded (exported HTML, or Clew is busy)`));
 			}, CALL_TIMEOUT_MS);
 			pending.set(id, { resolve, reject, timer });
-			window.parent.postMessage({ source: 'clew-preview', type: 'api-request', id, method, params }, '*');
+			postTo(window.parent, { source: 'clew-preview', type: 'api-request', id, method, params }, parentOrigin());
 		});
 	}
 

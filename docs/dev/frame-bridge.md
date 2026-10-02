@@ -334,7 +334,7 @@ not. So the work splits:
   design. The listeners that already matched their sending frame (the
   reading view, floating panes, canvas view, frame layer, office dock's own
   frame, PDF annotations) were already right.
-- **Step 2, targets — after the move**: downward (app page → preview frame)
+- **Step 2, targets — after the move (BUILT 2026-10-02)**: downward (app page → preview frame)
   targetOrigin `PREVIEW_ORIGIN` for every post, not only replies; upward, a
   client cannot hard-code its parent (the app page, a canvas scene's preview
   document, or itself in the print view), so posts that carry data target

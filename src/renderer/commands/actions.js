@@ -22,7 +22,7 @@ import { ipc, CH } from '../ipc.js';
 import { parseProperties, applyProperties } from '../../shared/frontmatter.js';
 import { rewriteBlockText } from '../../shared/note-metadata.js';
 import { notice } from '../plugins.js';
-import { fromPreviewOrigin } from '../../shared/message-guard.js';
+import { fromPreviewOrigin, PREVIEW_ORIGIN } from '../../shared/message-guard.js';
 
 export function closeActiveTab() {
 	const tab = workspaceStore.activeTab();
@@ -471,7 +471,7 @@ export function showPdfPage(tabId, page) {
 		if (done || tries++ > 40) { window.removeEventListener('message', onMessage); return; }
 		for (const frame of document.querySelectorAll('clew-file-view:not([data-clew-retiring]) iframe.pdf-frame')) {
 			if (frame.closest('clew-file-view')?.tabId !== tabId) continue;
-			frame.contentWindow?.postMessage({ source: 'clew-preview-host', type: 'pdf-page', page }, '*');
+			frame.contentWindow?.postMessage({ source: 'clew-preview-host', type: 'pdf-page', page }, PREVIEW_ORIGIN);
 		}
 		setTimeout(ask, 250);
 	};

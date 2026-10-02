@@ -43,6 +43,7 @@ import { vaultSettingsStore } from '../../state/vault-settings-store.js';
 import { isDependentFragment } from '../../../shared/fragment-deps.js';
 import { retire } from '../../pdf-frames.js';
 import { citationLines } from '../../../shared/citation-keys.js';
+import { PREVIEW_ORIGIN } from '../../../shared/message-guard.js';
 
 const HOST_SOURCE = 'clew-preview-host';
 const RESTALE_MS = 300;
@@ -289,7 +290,7 @@ class FrameLayer {
 
 	#post(record, msg) {
 		if (!record.ready) { record.queue.push(msg); return; }
-		record.iframe?.contentWindow?.postMessage({ source: HOST_SOURCE, ...msg }, '*');
+		record.iframe?.contentWindow?.postMessage({ source: HOST_SOURCE, ...msg }, PREVIEW_ORIGIN);
 	}
 
 	#broadcast(msg) {
@@ -298,7 +299,7 @@ class FrameLayer {
 
 	#message(event) {
 		const msg = event.data;
-		if (!msg || msg.source !== 'clew-preview') return;
+		if (!msg || msg.source !== 'clew-preview' || event.origin !== PREVIEW_ORIGIN) return;
 		let record = null;
 		for (const r of this.records.values()) {
 			if (r.iframe && event.source === r.iframe.contentWindow) { record = r; break; }

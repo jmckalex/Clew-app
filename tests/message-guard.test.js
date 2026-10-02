@@ -13,7 +13,7 @@
 // come only from the window it expects.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { fromPreviewOrigin, fromWindow, PREVIEW_ORIGIN } from '../src/shared/message-guard.js';
+import { fromPreviewOrigin, fromWindow, PREVIEW_ORIGIN, parentOrigin, topOrigin, postTo } from '../src/shared/message-guard.js';
 
 const viewer = { name: 'a viewer page' };
 
@@ -36,4 +36,35 @@ test('fromWindow: exactly the expected window', () => {
 	assert.equal(fromWindow({ source: parent }, null), false);   // nothing expected: nothing believed
 	const top = { name: 'the print view' };
 	assert.equal(fromWindow({ source: top }, top), true);          // parent === self at the top
+});
+
+// ---- who a window addresses (§2.8 step 2) --------------------------------
+
+const loc = (origin, ancestors) => ({ origin, ancestorOrigins: ancestors });
+
+test('parentOrigin / topOrigin read ancestorOrigins: parent first, top last', () => {
+	// A card in the reading view: parent and top are the app page.
+	const card = loc(PREVIEW_ORIGIN, ['clew-app://app']);
+	assert.equal(parentOrigin(card), 'clew-app://app');
+	assert.equal(topOrigin(card), 'clew-app://app');
+	// A nested card in a canvas scene: the scene is its parent, the app the top.
+	const nested = loc(PREVIEW_ORIGIN, [PREVIEW_ORIGIN, 'clew-app://app']);
+	assert.equal(parentOrigin(nested), PREVIEW_ORIGIN);
+	assert.equal(topOrigin(nested), 'clew-app://app');
+	// The print view: top-level, so its "parent" is itself.
+	const top = loc(PREVIEW_ORIGIN, []);
+	assert.equal(parentOrigin(top), PREVIEW_ORIGIN);
+	assert.equal(topOrigin(top), PREVIEW_ORIGIN);
+	// A browser that cannot say keeps the old behaviour.
+	assert.equal(parentOrigin({ origin: PREVIEW_ORIGIN }), '*');
+});
+
+test('postTo names the origin, sends nothing to an opaque one, never throws', () => {
+	const sent = [];
+	const win = { postMessage: (msg, origin) => sent.push([msg.type, origin]) };
+	assert.equal(postTo(win, { type: 'a' }, 'clew-app://app'), true);
+	assert.equal(postTo(win, { type: 'b' }, 'null'), false);
+	assert.equal(postTo(null, { type: 'c' }, PREVIEW_ORIGIN), false);
+	assert.equal(postTo({ postMessage() { throw new Error('gone'); } }, { type: 'd' }, PREVIEW_ORIGIN), false);
+	assert.deepEqual(sent, [['a', 'clew-app://app']]);
 });

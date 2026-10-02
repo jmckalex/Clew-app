@@ -15,6 +15,7 @@
 import { viewerHandles } from './pdf-handles.js';
 // The pen convention (a pen draws, a finger pans) for every viewer built here.
 import './pdf-pen.js';
+import { topOrigin, postTo } from '../shared/message-guard.js';
 
 const EMBEDPDF_ASSETS = '/__clew_assets__/embedpdf';
 const SAVE_DEBOUNCE_MS = 2500;
@@ -51,7 +52,7 @@ function saveToVault(rel, bytes) {
 				reject(new Error('save timed out'));
 			}, 30_000),
 		});
-		window.top.postMessage({ source: 'clew-pdf', type: 'pdf-save', id, path: rel, bytes }, '*');
+		postTo(window.top, { source: 'clew-pdf', type: 'pdf-save', id, path: rel, bytes }, topOrigin());
 	});
 }
 
@@ -67,7 +68,7 @@ function reportDirty() {
 	const dirty = [...liveHandles].some((h) => h.isDirty());
 	if (dirty === reportedDirty) return;
 	reportedDirty = dirty;
-	window.top.postMessage({ source: 'clew-pdf', type: 'pdf-dirty', dirty }, '*');
+	postTo(window.top, { source: 'clew-pdf', type: 'pdf-dirty', dirty }, topOrigin());
 }
 window.addEventListener('message', (event) => {
 	const msg = event.data;
