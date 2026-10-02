@@ -107,6 +107,14 @@ export const bundles = [
 		format: 'iife',
 	},
 	{
+		// window.clew inside an app frame (frame-bridge.md §7), served by the
+		// clew-frame handler at /__clew_bridge__.js on the app's own origin.
+		entryPoints: [path.join(root, 'src/preview-client/clew-bridge.js')],
+		outfile: path.join(root, 'dist/preview-client/clew-bridge.js'),
+		bundle: true,
+		format: 'iife',
+	},
+	{
 		// The note API (window.clew), injected into preview <head>s.
 		entryPoints: [path.join(root, 'src/preview-client/api.js')],
 		outfile: path.join(root, 'dist/preview-client/api.js'),

@@ -23,7 +23,7 @@ import { settings } from './settings.js';
 import { trust, setTrustNotice } from './trust.js';
 import { readVaultRequests } from './vault-requests.js';
 import { CH } from '../shared/channels.js';
-import { registerPreviewScheme, installPreviewProtocol, installAppProtocol } from './protocol.js';
+import { registerPreviewScheme, installPreviewProtocol, installAppProtocol, installFrameProtocol } from './protocol.js';
 import { VaultSession, focusedSession, sessionForVault, sessionForWindow } from './session.js';
 import { paths } from './paths.js';
 import { prepareNoteFonts } from './note-fonts.js';
@@ -100,6 +100,20 @@ export function createWindow(vaultPath = null) {
 		if (!event.isMainFrame && /^clew-app:/i.test(event.url)) {
 			event.preventDefault();
 			if (process.env.CLEW_SMOKE) console.log(`smoke-app-frame-refused: ${event.url}`);
+			return;
+		}
+		// An app frame stays on its own origin (frame-bridge.md §7, R2): a
+		// frame navigating itself to https://…?<data> is an outbound channel
+		// no CSP closes. Its first load (from about:blank) is the preview
+		// client's own doing and passes.
+		const from = event.frame?.url ?? '';
+		if (!event.isMainFrame && /^clew-frame:/i.test(from)) {
+			let same = false;
+			try { same = new URL(from).origin === new URL(event.url).origin; } catch { /* not a URL */ }
+			if (!same) {
+				event.preventDefault();
+				if (process.env.CLEW_SMOKE) console.log(`smoke-app-nav-refused: ${event.url}`);
+			}
 		}
 	});
 
@@ -354,6 +368,18 @@ app.whenReady().then(async () => {
 		console.error('note fonts:', err);
 	}
 	installAppProtocol({ rendererDir: path.join(distDir, 'renderer') });
+	installFrameProtocol({ bridgeFile: path.join(distDir, 'preview-client', 'clew-bridge.js') });
+	// CLEW_SMOKE_NET_LOG=1: every request that LEAVES the machine (http(s),
+	// ws(s)) from any page, as `smoke-net: <method> <url>` — how a scenario
+	// proves Clew made no outbound request (frame-bridge.md §4.9a). What a
+	// CSP blocks never gets this far.
+	if (process.env.CLEW_SMOKE && process.env.CLEW_SMOKE_NET_LOG) {
+		const logNet = (ses) => ses.webRequest.onBeforeRequest(
+			{ urls: ['http://*/*', 'https://*/*', 'ws://*/*', 'wss://*/*'] },
+			(details, callback) => { console.log(`smoke-net: ${details.method} ${details.url}`); callback({}); });
+		logNet(electronSession.defaultSession);
+		app.on('session-created', logNet);
+	}
 	installPreviewProtocol({
 		distDir,
 		nodeModulesDir: paths.previewAssets,
@@ -527,6 +553,13 @@ if (process.env.CLEW_SMOKE) {
 					primary.webContents.on('console-message', (details) => {
 						console.log(`[smoke:${details.level}] ${details.message}`);
 					});
+				}
+				// CLEW_SMOKE_WEBRTC_POLICY=<policy>: this window's WebRTC IP
+				// handling, for measuring choice D (frame-bridge.md §6) — what an
+				// app frame's ICE can do — before anything is set for real.
+				if (process.env.CLEW_SMOKE_WEBRTC_POLICY) {
+					primary.webContents.setWebRTCIPHandlingPolicy(process.env.CLEW_SMOKE_WEBRTC_POLICY);
+					console.log(`smoke-webrtc-policy: ${primary.webContents.getWebRTCIPHandlingPolicy()}`);
 				}
 				// A trust change reloads the window (frame-bridge.md §4.6), which
 				// ends whatever scenario was running in it. Listening from here
@@ -791,8 +824,9 @@ if (process.env.CLEW_SMOKE) {
 				if (process.env.CLEW_SMOKE_FRAME_SCRIPT) {
 					const frameScript = fs.readFileSync(process.env.CLEW_SMOKE_FRAME_SCRIPT, 'utf8');
 					const match = process.env.CLEW_SMOKE_FRAME_MATCH;
+					// Preview documents, and apps in notes (clew-frame:).
 					const previews = primary.webContents.mainFrame.framesInSubtree
-						.filter((f) => f.url.startsWith('clew-preview:'));
+						.filter((f) => /^clew-(preview|frame):/.test(f.url));
 					const frames = match
 						? previews.filter((f) => f.url.includes(match))
 						: previews.filter((f) => f.parent === primary.webContents.mainFrame).slice(0, 1);

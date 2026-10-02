@@ -37,6 +37,10 @@ export class Indexer {
 	root = null;
 	/** @type {Map<string, {mtimeMs, aliases, headings, links, tags}>} */
 	notes = new Map();
+	/** Vault-relative folders holding a clew-app.json — the apps the vault
+	 *  carries (main/app-frames.js; frame-bridge.md §7, R3's duplicate-id
+	 *  check). Found by the same walk as the notes. */
+	appFolders = new Set();
 	/** @type {(channel: string, payload: any) => void} */
 	send = () => {};
 	#nameMap = new Map(); // lowercased basename -> [relPath]
@@ -63,6 +67,7 @@ export class Indexer {
 		clearTimeout(this.#saveTimer);
 		this.root = null;
 		this.notes.clear();
+		this.appFolders.clear();
 		this.#nameMap.clear();
 	}
 
@@ -74,6 +79,7 @@ export class Indexer {
 
 	#scanAll(cache) {
 		const seen = walkGuard(this.root);
+		this.appFolders.clear();
 		const walk = (dir, rel) => {
 			let entries;
 			try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
@@ -86,6 +92,8 @@ export class Indexer {
 					if (shouldRecurse(abs, seen)) walk(abs, childRel);
 				} else if (kind === 'file' && isNote(entry.name)) {
 					this.#scanOne(childRel, cache?.notes?.[childRel]);
+				} else if (kind === 'file' && entry.name === 'clew-app.json') {
+					this.appFolders.add(rel);
 				}
 			}
 		};

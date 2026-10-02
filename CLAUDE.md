@@ -105,7 +105,15 @@ note API, plugins, and every settings key.
   on a `dist/` built from other sources — by default the harness REFUSES,
   naming the changed files: `src/main/build-stamp.js`, `dist/
   build-stamp.json`, `scripts/stale-check.mjs`, which the sweeps and
-  boot-test.sh call first), `CLEW_SMOKE_METRICS=/p.json`
+  boot-test.sh call first), `CLEW_SMOKE_SCRIPT_RELOADED=/p.js` (the
+  scenario's second half, run in the page a reload brought — a trust change
+  reloads the window; logs `smoke-reloaded: <n>`), `CLEW_SMOKE_TRUST_PROMPT=1`
+  / `CLEW_SMOKE_TRUST_NOTICE=1` (draw the modal trust prompt / the one-time
+  notice, which smoke runs otherwise skip), `CLEW_SMOKE_NET_LOG=1` (every
+  http(s)/ws(s) request that leaves the machine, as `smoke-net: <method>
+  <url>` — how a run proves Clew made none), `CLEW_SMOKE_WEBRTC_POLICY=<p>`
+  (the window's WebRTC IP handling, to measure what an app frame's ICE can
+  do), `CLEW_SMOKE_METRICS=/p.json`
   (app.getAppMetrics), `CLEW_SMOKE_CONFIRM=save|discard|cancel` (answers
   the office Save/Discard/Cancel dialog without UI),
   `CLEW_SMOKE_CLOSE_WINDOW=1` (drives a real window close; logs
@@ -422,6 +430,51 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   Editing either list reconfigures and sends `EV_CALLOUTS_CHANGED`; live
   edit rebuilds its model (`liveRebuild`, the model's cache key carries
   `calloutGeneration()`).
+- **Apps in notes** (`docs/dev/frame-bridge.md` §7–§9 with R1–R3; phase 3,
+  2026-10-02): `@app[Apps/Timer]` (also `@app+[…]{height=…}`,
+  `@begin(app)`) embeds a vault FOLDER holding `clew-app.json` (`id`,
+  `name`, `version`, `entry`, `capabilities`, optional `network` origins).
+  The engine only marks the place (`engine/app-embed.js` → a
+  `<clew-app-embed data-app>` custom element, so a morph keeps it);
+  `main/app-embeds-rewrite.js` resolves it AS THE DOCUMENT IS SERVED
+  (protocol.js, notes, blocks and canvas cards) through
+  `main/app-registry.js#resolveFor` — the refusals by name live in
+  `main/app-frames.js#resolveApp` (not a folder, no manifest, bad manifest,
+  climbs out, a URL — "remote apps are not supported yet" — and TWO folders
+  with one id, both refused). An app runs on `clew-frame://<key>`, key =
+  hash(device vault identity, manifest id) — R3: a moved folder is the same
+  app; `protocol.js#installFrameProtocol` serves only registered keys, only
+  the app's folder (realpath clamp), with the app CSP (`appCsp`: everything
+  `'self'` — choice A — unless `network` is granted, inline script and eval
+  allowed), no referrer, no DNS prefetch, `frame-ancestors` the preview and
+  app origins, the bridge client (`preview-client/clew-bridge.js` →
+  `/__clew_bridge__.js`) injected first; in a restricted vault an app not
+  yet allowed to run is not served at all. main.js pins an app frame's
+  navigation to its own origin (`smoke-app-nav-refused:`). The preview side
+  (`preview-client/app-embed.js`) announces the embed to window.top and
+  builds the sandboxed frame (`allow-scripts allow-same-origin allow-forms`,
+  `referrerpolicy=no-referrer`) only when the host says `app-run`. The HOST
+  is the app page (`renderer/app-host.js`): it draws the prompt (modal, never
+  in a frame; in a restricted vault before the frame exists — R1, choice
+  B), accepts a hello only from a frame whose parent announced that key,
+  answers with a MessageChannel port, limits each port (1 MB, 32 in flight,
+  50/s burst 200), answers `context` and `open` (`links.open`), and relays
+  the rest to main (`APP_CALL`); a grant change closes the app's ports and
+  reloads its frames. MAIN decides every call (`main/app-calls.js`): each
+  method names its capability, checked at call time against
+  `<userData>/app-grants.json` (`main/app-grants.js`, keyed by vault
+  identity + id; grantState: restricted apps wait for a run approval, and
+  one holding `network` is pinned to its approved code — choice C); paths
+  are text types only, never hidden or `.clew/`, and in a RESTRICTED vault
+  every read AND every index answer (list, search, index, backlinks) is
+  clamped to the vault root by realpath — the index follows symlinks;
+  `app.kv` is `apps/<id>/…` in clewdata.json, `app.files` the app's own
+  `data/` (25 MB a file, 250 MB an app, no notes, no dot names). Settings →
+  This vault → Apps lists them with Revoke. The demo vault's
+  `Apps/Flashcards` + `Guide/Apps in Notes.md` are the documentation and the
+  fixture; `smoke/app-bridge-scenario.js` the proof. Under CLEW_SMOKE the
+  grant store writes nothing. WebRTC (choice D) is measured, not set:
+  `CLEW_SMOKE_WEBRTC_POLICY`.
 - **Obsidian's own query formats** — for opening other people's vaults,
   alongside (not replacing) Clew's `query`/`tasks`/`kanban` fences:
   `vault-model.js` (the vault as pages: `file.*`, the link graph,

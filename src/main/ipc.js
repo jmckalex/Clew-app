@@ -37,6 +37,9 @@ import { trust, takeTrustNotice } from './trust.js';
 import { ENABLE_KEYS, identityKey } from './vault-trust.js';
 import { readVaultRequests } from './vault-requests.js';
 import { codeSummary } from './vault-code.js';
+import { appByKey, stateOf, grants } from './app-registry.js';
+import { appKey, appsById, describeCapabilities } from './app-frames.js';
+import { callApp } from './app-calls.js';
 import { registeredRemoteUrl, saveRemoteCopy } from './remote-pdfs.js';
 import { planOpen, pathFromFileUrl } from './open-file.js';
 import { iconTable, resolvedCallouts } from './callout-types.js';
@@ -422,6 +425,87 @@ export function registerIpc() {
 			setImmediate(() => { if (!open.win?.isDestroyed()) open.win.webContents.reload(); });
 		}
 		return { list: trustedVaultsList() };
+	});
+	// ---- apps in notes (frame-bridge.md §7–§9) ---------------------------
+	// Only for an app THIS window registered (it served the note embedding
+	// it): a key another window holds is not this window's business.
+	const ownApp = (s, key) => {
+		const registered = appByKey(key);
+		return registered && registered.sessionId === s.id ? registered : null;
+	};
+	const appStatus = (s, key, registered) => {
+		const restricted = !s.trusted;
+		const st = stateOf(registered, restricted);
+		return {
+			key, id: registered.manifest.id, name: registered.manifest.name, folder: registered.folder,
+			capabilities: registered.manifest.capabilities, network: registered.manifest.network,
+			ask: st.ask, askRun: st.askRun, changed: st.changed, mayRun: st.mayRun, granted: st.granted,
+			restricted, describe: Object.fromEntries(registered.manifest.capabilities.map((c, i) => [c, describeCapabilities(registered.manifest.capabilities, registered.manifest.network)[i]])),
+		};
+	};
+	handle(CH.APP_STATUS, (s, { key }) => {
+		const registered = ownApp(s, key);
+		return registered ? appStatus(s, key, registered) : null;
+	});
+	// The prompt's answer, for everything it asked: Allow grants the asked
+	// capabilities (and, restricted, the run); Don't allow denies them. In a
+	// restricted vault an app holding `network` is pinned to the code that
+	// was approved (choice C).
+	handle(CH.APP_ANSWER, (s, { key, allow }) => {
+		const registered = ownApp(s, key);
+		if (!registered) return null;
+		const restricted = !s.trusted;
+		const st = stateOf(registered, restricted);
+		const asked = st.ask;
+		const pin = restricted && allow === true && (asked.includes('network') || st.granted.includes('network'));
+		grants.answer(registered.vault, registered.manifest.id, {
+			granted: allow === true ? asked : [],
+			denied: allow === true ? [] : asked,
+			...(st.askRun || st.changed ? { run: allow === true } : {}),
+			...(pin ? { code: st.code() } : (allow === true && st.changed ? { code: null } : {})),
+			folder: registered.folder,
+		});
+		s.send(CH.EV_APP_GRANTS_CHANGED, { key });
+		return appStatus(s, key, registered);
+	});
+	handle(CH.APP_CALL, (s, { key, notePath, method, params }) => {
+		const registered = ownApp(s, key);
+		if (!registered) return { ok: false, error: { code: 'denied', message: 'no such app in this window' } };
+		const restricted = !s.trusted;
+		const st = stateOf(registered, restricted);
+		if (!st.mayRun) return { ok: false, error: { code: 'denied', message: 'this app has not been allowed to run here' } };
+		return callApp({
+			root: s.vaults.root, restricted, excludes: s.vaults.excludes,
+			notePath: typeof notePath === 'string' ? notePath : null,
+			app: registered, granted: new Set(st.granted),
+			indexer: s.indexer, search: s.searchService, kv: s.kvStore,
+		}, String(method), params);
+	});
+	// Settings → This vault → Apps: every app the vault carries, with what
+	// this device has let it do.
+	handle(CH.APPS_LIST, (s) => {
+		if (!s.vaults.root) return [];
+		const vault = identityKey(s.vaults.root);
+		const records = grants.list(vault);
+		const ids = appsById(s.vaults.root, s.indexer.appFolders);
+		const out = [];
+		for (const [id, folders] of ids) {
+			const r = records[id] ?? null;
+			out.push({ id, folders, duplicate: folders.length > 1, granted: Object.keys(r?.granted ?? {}), denied: Object.keys(r?.denied ?? {}), run: Boolean(r?.run), runDenied: Boolean(r?.runDenied), pinned: Boolean(r?.code) });
+		}
+		for (const [id, r] of Object.entries(records)) {
+			if (!ids.has(id)) out.push({ id, folders: r.folder ? [r.folder] : [], missing: true, granted: Object.keys(r.granted ?? {}), denied: Object.keys(r.denied ?? {}), run: Boolean(r.run), runDenied: Boolean(r.runDenied), pinned: Boolean(r.code) });
+		}
+		return out.sort((a, b) => a.id.localeCompare(b.id));
+	});
+	// Revoking forgets the app here: its ports close and its frames reload,
+	// so it asks again (§9).
+	handle(CH.APP_REVOKE, (s, { id }) => {
+		if (!s.vaults.root) return false;
+		const vault = identityKey(s.vaults.root);
+		const done = grants.revoke(vault, String(id));
+		s.send(CH.EV_APP_GRANTS_CHANGED, { key: appKey(vault, String(id)) });
+		return done;
 	});
 	// Web PDFs (remote-pdfs.js): the viewer names a HASH; the URL is looked
 	// up in this window's own registrations, never taken from the message.

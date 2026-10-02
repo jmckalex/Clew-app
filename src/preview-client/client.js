@@ -21,6 +21,7 @@ import { initMetaBind } from './meta-bind.js';
 import { initPdfEmbeds, holdIfUnsaved } from './pdf-embed.js';
 import { initExcalidrawEmbeds } from './excalidraw-embed.js';
 import { initOfficeEmbeds } from './office-embed.js';
+import { scanAppEmbeds } from './app-embed.js';
 import { figureMorph, initFigures, figuresPending } from './figures.js';
 import { initTabbing, tabbingMorph } from './tabbing.js';
 import { fromWindow, parentOrigin, postTo } from '../shared/message-guard.js';
@@ -207,6 +208,7 @@ function applyRender(html) {
 		initPdfEmbeds();
 		initExcalidrawEmbeds();
 		initOfficeEmbeds();
+		scanAppEmbeds();
 		retypeset();
 		// Morphs never re-execute scripts; note-API controls re-bind on this.
 		document.dispatchEvent(new CustomEvent('clew:render'));
@@ -599,6 +601,7 @@ initTabbing();
 initPdfEmbeds();
 initExcalidrawEmbeds();
 initOfficeEmbeds();
+scanAppEmbeds();
 initQueryInteract();
 // Previews start dark until the host says otherwise (preview.css defaults).
 document.documentElement.classList.add('wa-dark');

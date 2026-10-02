@@ -302,6 +302,9 @@ export class RenderService {
 				// @reveal[…] — a presentation in an iframe. One registry entry
 				// serves the inline, block and @begin forms (reveal-embed.js).
 				`reveal from ${path.join(engineAssets, 'reveal-embed.js')}`,
+				// @app[…] — an app in a note (app-embed.js marks the place;
+				// main resolves it as the document is served).
+				`app from ${path.join(engineAssets, 'app-embed.js')}`,
 				// @begin(tabbing): the same body as the ```tabbing fence.
 				`tabbing from ${path.join(engineAssets, 'tabbing.js')}`,
 			],

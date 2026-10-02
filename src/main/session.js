@@ -26,6 +26,7 @@ import { shells } from './ipc.js';
 import { trust } from './trust.js';
 import { effectiveAccess } from './vault-trust.js';
 import { readVaultRequests } from './vault-requests.js';
+import { dropSession as dropAppsOf } from './app-registry.js';
 import { CH } from '../shared/channels.js';
 import { watchVaultCallouts } from './callout-types.js';
 
@@ -138,6 +139,7 @@ export class VaultSession {
 	}
 
 	dispose() {
+		dropAppsOf(this.id);
 		// A window's shell dies with the window — the pty, and the shell
 		// inside it, would otherwise outlive everything that could reach it.
 		shells.close(this.id);

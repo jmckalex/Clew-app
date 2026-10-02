@@ -36,6 +36,9 @@ import { settings } from './settings.js';
 import { fontsDir, fallbackConfig } from './pdf-fonts.js';
 import { narrowCors, renderOriginAllowed } from './preview-cors.js';
 import { appFileFor, appPageCsp } from './app-files.js';
+import { FRAME_SCHEME, appFile, appCsp, injectBridge } from './app-frames.js';
+import { appByKey, resolveFor, stateOf } from './app-registry.js';
+import { rewriteAppEmbeds } from './app-embeds-rewrite.js';
 import { APP_ORIGIN } from '../shared/caller-token.js';
 import { readRenderBody } from './caller-token.js';
 import { rewritePdfFrames, viewerUrl } from './pdf-frames-rewrite.js';
@@ -79,6 +82,8 @@ export function registerPreviewScheme() {
 	protocol.registerSchemesAsPrivileged([
 		{ scheme: PREVIEW_SCHEME, privileges },
 		{ scheme: APP_SCHEME, privileges },
+		// Apps in notes, each on an origin of its own (frame-bridge.md §7).
+		{ scheme: FRAME_SCHEME, privileges },
 	]);
 }
 
@@ -104,6 +109,51 @@ export function installAppProtocol({ rendererDir }) {
 }
 
 const RENDERED_SUFFIX = new RegExp(`(${NOTE_EXTENSIONS.map((e) => e.replace('.', '\\.')).join('|')})\\.html$`, 'i');
+
+/**
+ * After app.whenReady(), before any window: `clew-frame://<key>/…`, an app's
+ * own folder and nothing else (frame-bridge.md §7). Served only for a key a
+ * window registered (app-registry.js, as it served the note embedding it),
+ * never under `/<sid>/`, never another app's files, every path clamped to
+ * the folder by realpath. Every response carries the app's CSP (R2 + the
+ * owner's choice A: everything 'self' unless `network` is granted), no ACAO
+ * (its origin reads nothing of the vault), no referrer and no DNS
+ * prefetching; HTML documents get the bridge client first in <head>. In a
+ * vault this device has not trusted, an app the user has not allowed to run
+ * is not served at all (R1, choice B).
+ */
+export function installFrameProtocol({ bridgeFile }) {
+	protocol.handle(FRAME_SCHEME, async (request) => {
+		const plain = (status, text) => new Response(text, { status, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store', 'Content-Security-Policy': "default-src 'none'" } });
+		let url;
+		try { url = new URL(request.url); } catch { return plain(400, 'Bad request'); }
+		if (request.method !== 'GET') return plain(405, 'GET only');
+		const registered = appByKey(url.hostname);
+		const session = registered ? sessionById(registered.sessionId) : null;
+		if (!registered || !session?.vaults.isOpen) return plain(404, 'Not found');
+		const state = stateOf(registered, !session.access.trusted);
+		if (!state.mayRun) return plain(403, 'This app has not been allowed to run here.');
+		const network = state.granted.includes('network') ? registered.manifest.network : null;
+		const headers = (type) => ({
+			'Content-Type': type,
+			'Cache-Control': 'no-store',
+			'Content-Security-Policy': appCsp({ network }),
+			'Referrer-Policy': 'no-referrer',
+			'X-DNS-Prefetch-Control': 'off',
+			'X-Content-Type-Options': 'nosniff',
+		});
+		if (url.pathname === '/__clew_bridge__.js') {
+			try { return new Response(fs.readFileSync(bridgeFile), { headers: headers('text/javascript; charset=utf-8') }); } catch { return plain(500, 'Bridge missing'); }
+		}
+		const file = appFile(registered.abs, url.pathname);
+		if (!file) return plain(404, 'Not found');
+		const type = MIME[path.extname(file).toLowerCase()] ?? 'application/octet-stream';
+		if (/^text\/html/.test(type)) {
+			return new Response(injectBridge(fs.readFileSync(file, 'utf8')), { headers: headers('text/html; charset=utf-8') });
+		}
+		return new Response(fs.readFileSync(file), { headers: headers(type) });
+	});
+}
 
 /** After app.whenReady(). */
 export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDir, embedpdfDir, mptikzDir, zetaDir, noteFontsDir = null, globalPluginsDir = null }) {
@@ -219,7 +269,7 @@ export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDi
 	 * `data-clew-block` on its <html>, a restricted vault's document
 	 * `data-clew-restricted` (the client marks a refused inline script).
 	 */
-	function wrapPreviewDocument(html, { session, sid, block = false, noteDir = '' }) {
+	function wrapPreviewDocument(html, { session, sid, block = false, noteDir = '', notePath = null }) {
 		// A note's own PDF frames go to Clew's viewer (pdf-frames-rewrite.js,
 		// docs/dev/pdf-unification.md §3) — as the document is SERVED, so a
 		// site export (which never comes through here) keeps the author's.
@@ -227,6 +277,8 @@ export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDi
 		// viewer is handed their hash, never the URL to fetch.
 		html = rewritePdfFrames(html, { sid, noteDir, registerRemote: (url) => registerRemotePdf(session, url) }).html;
 		const access = session.access;
+		// `@app[…]` embeds: resolved and registered for this window (§7).
+		html = rewriteAppEmbeds(html, { resolve: (target) => resolveFor(session, target), restricted: !access.trusted, notePath }).html;
 		// Vault plugins load as ordinary vault files; global ones from
 		// the __clew_plugin_file__ namespace (they are outside every
 		// vault). Either way the script's own URL sits in its plugin
@@ -403,9 +455,9 @@ export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDi
 			if (rel === '__clew_fragment__' && request.method === 'POST') {
 				const body = await readRender();
 				if (body.status) return refuse(body);
-				const html = rewritePdfFrames(await renderService.renderFragment(body.text), {
+				const html = rewriteAppEmbeds(rewritePdfFrames(await renderService.renderFragment(body.text), {
 					sid: pathname.slice(0, slash), registerRemote: (url) => registerRemotePdf(session, url),
-				}).html;
+				}).html, { resolve: (target) => resolveFor(session, target), restricted: !session.access.trusted, notePath: null }).html;
 				return new Response(html, { headers: headers('text/html') });
 			}
 
@@ -439,6 +491,7 @@ export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDi
 				const injected = wrapPreviewDocument(html, {
 					session, sid: pathname.slice(0, slash), block: true,
 					noteDir: blockNote ? path.posix.dirname(blockNote).replace(/^\.$/, '') : '',
+					notePath: blockNote,
 				});
 				return new Response(injected, { headers: await noteHeaders(session) });
 			}
@@ -486,6 +539,7 @@ export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDi
 				const injected = wrapPreviewDocument(html, {
 					session, sid: pathname.slice(0, slash),
 					noteDir: path.posix.dirname(relPath).replace(/^\.$/, ''),
+					notePath: relPath,
 				});
 				return new Response(injected, { headers: await noteHeaders(session) });
 			}

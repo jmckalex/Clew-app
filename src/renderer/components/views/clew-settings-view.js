@@ -228,7 +228,41 @@ class ClewSettingsView extends ClewElement {
 				+ 'one anyway still renders inline as usual.'),
 		);
 		this.#pluginRows(section);
+		this.#appRows(section);
 		return section;
+	}
+
+	/** Apps in notes (frame-bridge.md §9): every app this vault carries, what
+	 *  this device lets it do, and Revoke — which forgets the app here, so its
+	 *  frames reload and it asks again. */
+	#appRows(section) {
+		ipc.invoke(CH.APPS_LIST).then((apps) => {
+			if (!apps?.length) return;
+			const heading = document.createElement('p');
+			heading.className = 'settings-hint';
+			heading.textContent = 'Apps in this vault (folders holding clew-app.json, embedded with '
+				+ '@app[…]). Each runs on an origin of its own and reaches only what you allowed, on '
+				+ 'this device.';
+			section.append(heading);
+			for (const app of apps) {
+				const state = app.duplicate ? `refused: ${app.folders.length} folders say they are "${app.id}"`
+					: app.missing ? 'no longer in the vault'
+						: app.runDenied ? 'not allowed to run'
+							: app.granted.length ? `allowed: ${app.granted.join(', ')}`
+								: app.run ? 'allowed to run' : 'not asked yet';
+				const revoke = document.createElement('button');
+				revoke.className = 'hotkey-button';
+				revoke.textContent = 'Revoke';
+				revoke.disabled = !(app.granted.length || app.denied.length || app.run || app.runDenied);
+				revoke.addEventListener('click', () => {
+					revoke.disabled = true;
+					ipc.invoke(CH.APP_REVOKE, { id: app.id }).catch(() => {});
+				});
+				const row = this.#row(`${app.id} (${app.folders.join(', ') || '—'}) — ${state}${app.pinned ? ' · pinned to its approved code' : ''}`, revoke);
+				row.dataset.appId = app.id;
+				section.append(row);
+			}
+		}).catch(() => {});
 	}
 
 	/** Every plugin available here — this vault's (.clew/plugins/) and the

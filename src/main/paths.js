@@ -40,6 +40,9 @@ function trustPaths() {
 		// Which vaults this device trusts to run their notes' code
 		// (main/vault-trust.js; docs/dev/frame-bridge.md §4.2).
 		vaultTrust: path.join(app.getPath('userData'), 'vault-trust.json'),
+		// What each app in a note may do, per vault and app id
+		// (main/app-grants.js; frame-bridge.md §9) — never in the vault.
+		appGrants: path.join(app.getPath('userData'), 'app-grants.json'),
 		// A restricted vault's exports run from here, not from the note's
 		// folder: the engine's config cascade then sees the user's global
 		// ~/.jmarkdown and this directory's one key, never a vault's own

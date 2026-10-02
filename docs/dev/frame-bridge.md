@@ -1094,6 +1094,33 @@ rules, Node.
   once (its calls then answer `denied`). An indicator shows while an app
   with write grants holds a live port.
 
+### 9a. As built (phase 3, the read side, desktop, 2026-10-02)
+
+- `engine/app-embed.js` marks the place; `main/app-embeds-rewrite.js`
+  resolves it as the document is served (`main/app-frames.js#resolveApp`
+  refuses by name; `appKey` = sha256(vault identity, id), 40 hex);
+  `main/app-registry.js` registers it for the window; `protocol.js#
+  installFrameProtocol` serves the folder with the app CSP and the bridge
+  client; `preview-client/app-embed.js` builds the frame on `app-run`;
+  `renderer/app-host.js` prompts, hands the port, limits it, relays;
+  `main/app-calls.js` decides every call; `main/app-grants.js` keeps the
+  answers. The duplicate-id check reads the indexer's `appFolders`.
+- The app CSP's `frame-ancestors` must name BOTH the preview origin and the
+  app page's (every ancestor is checked) — the first build named only the
+  preview origin and the frame was blocked.
+- Found while building, and closed: in a restricted vault the INDEX
+  answers (list, search, index.get, backlinks) must take the same realpath
+  clamp as reads — the indexer follows symlinks, so `notes.list` named a
+  file outside the vault (no content was readable).
+- Choice D, measured (`smoke/app-webrtc-frame.js`): by default an app frame
+  gathers 2 host/udp ICE candidates (no CSP governs WebRTC); with the
+  WINDOW's IP-handling policy `disable_non_proxied_udp` it gathers none —
+  the per-window setting reaches the app's out-of-process frame, so nothing
+  process-wide is needed. Not set: it would also stop WebRTC in a note's
+  own remote frames (a video call page), which is the owner's call.
+- The demo vault carries `Apps/Flashcards` (note.read + app.kv) and
+  `Guide/Apps in Notes.md`.
+
 ## 10. Writes
 
 Every write goes through the editor's save path, never around it: if the
