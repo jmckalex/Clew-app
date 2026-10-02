@@ -21,6 +21,8 @@
 //   const text = await clew.notes.read();  // the note this app sits in
 //   await clew.kv.set('best', 42);         // app.kv
 //   clew.on('theme', ({ theme }) => …);
+//   await clew.notes.write(null, text);   // note.write: through the editor
+//   clew.on('find', ({ query }) => …);    // Clew's Find in this note
 (() => {
 	const HOST = 'clew-app://app';
 	const pending = new Map();
@@ -91,11 +93,25 @@
 		ready,
 		can: (capability) => granted.includes(capability),
 		context: () => call('context'),
+		// A null path is the note the app sits in (note.read / note.write);
+		// any other path needs notes.read / notes.write.
 		notes: Object.freeze({
 			read: (path) => call('notes.read', path ? { path } : {}),
 			list: () => call('notes.list'),
+			write: (path, content) => call('notes.write', { ...(path ? { path } : {}), content }),
+			append: (path, text) => call('notes.append', { ...(path ? { path } : {}), text }),
+			create: (path, content = '') => call('notes.create', { path, content }),
 		}),
-		properties: Object.freeze({ get: (path) => call('properties.get', path ? { path } : {}) }),
+		properties: Object.freeze({
+			get: (path) => call('properties.get', path ? { path } : {}),
+			set: (path, key, value) => call('properties.set', { ...(path ? { path } : {}), key, value }),
+		}),
+		editor: Object.freeze({ insert: (text) => call('editor.insert', { text }) }),
+		find: Object.freeze({ show: (query) => call('find.show', { query }) }),
+		clipboard: Object.freeze({
+			copy: (text) => call('clipboard.copy', { text }),
+			paste: () => call('clipboard.paste'),
+		}),
 		search: (query) => call('search', { query }),
 		index: Object.freeze({
 			get: (path) => call('index.get', { path }),

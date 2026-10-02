@@ -469,7 +469,24 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   every read AND every index answer (list, search, index, backlinks) is
   clamped to the vault root by realpath — the index follows symlinks;
   `app.kv` is `apps/<id>/…` in clewdata.json, `app.files` the app's own
-  `data/` (25 MB a file, 250 MB an app, no notes, no dot names). Settings →
+  `data/` (25 MB a file, 250 MB an app, no notes, no dot names). **The
+  write side** (phase 4): main AUTHORIZES `notes.write`/`notes.append`/
+  `properties.set` (note.write: the embedding note; notes.write: any),
+  `editor.insert` and `find.show`, answering `{ perform, path }`, and the
+  HOST performs them through the editor pool (§10) — a transaction on the
+  editor the user is EDITING the note in (`app-host.js#editorFor`: a tab in
+  source/live mode, the active one first; a reading-mode tab's pooled entry
+  does not count), else a headless pool entry (`app-write:<n>`, skipped by
+  `reap`) that saves at once and closes — so undo, the dirty dot, auto-save,
+  the conflict banner (`conflict` to the app) and history treat an app's
+  edit as the user's own. `notes.create` is main's, `wx` — never
+  overwrites. `find`: an app opens Clew's search on its note, and Clew's
+  search query in that note is forwarded to it (`editorPool` 'find-query').
+  `clipboard`: main's clipboard (an in-memory one under CLEW_SMOKE unless
+  CLEW_SMOKE_CLIPBOARD). Writes are rate-limited 5/s per port. App frames are
+  HOISTED out of the morph (`preview-client/app-embed.js`, the office
+  live-embed arrangement): an app's own insert above it re-created the
+  `<clew-app-embed>` and restarted the app until it was. Settings →
   This vault → Apps lists them with Revoke. The demo vault's
   `Apps/Flashcards` + `Guide/Apps in Notes.md` are the documentation and the
   fixture; `smoke/app-bridge-scenario.js` the proof. Under CLEW_SMOKE the

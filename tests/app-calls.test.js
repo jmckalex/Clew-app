@@ -80,3 +80,31 @@ test('app.files: inside data/, no dot names, no notes, limits', () => {
 	assert.equal(callApp(ctx, 'files.write', { path: 'out/escape.txt', data: 'x' }).error.code, 'denied', 'a link cannot carry a write out');
 	assert.equal(callApp(ctx, 'files.delete', { path: 'saves/one.json' }).result, true);
 });
+
+test('the write side: authorized here, performed by the host; create never overwrites', () => {
+	const { ctx, root } = fixture({ granted: ['note.write', 'notes.create', 'editor.insert', 'find'] });
+	assert.deepEqual(callApp(ctx, 'notes.write', { content: 'x' }).result, { perform: 'write', path: 'Here.md' });
+	assert.equal(callApp(ctx, 'notes.write', { path: 'There.md', content: 'x' }).error.code, 'denied', 'note.write is the embedding note only');
+	assert.equal(callApp(ctx, 'notes.write', { content: 7 }).error.code, 'bad-params');
+	assert.deepEqual(callApp(ctx, 'properties.set', { key: 'k', value: 1 }).result, { perform: 'properties', path: 'Here.md' });
+	assert.deepEqual(callApp(ctx, 'notes.append', { text: 'more' }).result, { perform: 'append', path: 'Here.md' });
+	assert.deepEqual(callApp(ctx, 'notes.create', { path: 'New/Made.md', content: '# Made' }).result, { created: 'New/Made.md' });
+	assert.equal(fs.readFileSync(path.join(root, 'New/Made.md'), 'utf8'), '# Made');
+	assert.equal(callApp(ctx, 'notes.create', { path: 'Here.md', content: 'clobber' }).error.code, 'conflict');
+	assert.equal(fs.readFileSync(path.join(root, 'Here.md'), 'utf8').includes('# Here'), true, 'untouched');
+	assert.equal(callApp(ctx, 'notes.create', { path: '.clew/x.md' }).error.code, 'denied', 'never .clew/');
+	// Restricted: a new note in the vault is fine; one under a link out is not.
+	const r = fixture({ restricted: true, granted: ['notes.create'] });
+	assert.deepEqual(callApp(r.ctx, 'notes.create', { path: 'Fresh/One.md' }).result, { created: 'Fresh/One.md' });
+	assert.equal(callApp(r.ctx, 'notes.create', { path: 'Linked/planted.md' }).error.code, 'denied');
+	assert.equal(callApp(ctx, 'notes.create', { path: 'x.txt' }).error.code, 'bad-params');
+	assert.deepEqual(callApp(ctx, 'editor.insert', { text: 'hi' }).result, { perform: 'insert', path: 'Here.md' });
+	assert.deepEqual(callApp(ctx, 'find.show', { query: 'q' }).result, { perform: 'find', path: 'Here.md', query: 'q' });
+	assert.equal(callApp(ctx, 'clipboard.copy', { text: 'x' }).error.code, 'denied');
+	const withClip = fixture({ granted: ['clipboard'] });
+	let copied = null;
+	withClip.ctx.clipboard = { writeText: (t) => { copied = t; }, readText: () => 'pasted' };
+	assert.equal(callApp(withClip.ctx, 'clipboard.copy', { text: 'x' }).result, true);
+	assert.equal(copied, 'x');
+	assert.equal(callApp(withClip.ctx, 'clipboard.paste').result, 'pasted');
+});

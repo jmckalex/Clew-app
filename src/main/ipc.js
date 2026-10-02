@@ -12,7 +12,7 @@
 // sender's VaultSession, validate, delegate, return plain JSON-safe values.
 // App-global concerns (settings, the recents list, the menu) stay
 // session-free; everything vault-shaped routes through the session.
-import { app, dialog, ipcMain, shell } from 'electron';
+import { app, clipboard, dialog, ipcMain, shell } from 'electron';
 import * as pdfFonts from './pdf-fonts.js';
 import * as officeSlot from './office-slot.js';
 import * as zetaAssets from './zeta-assets.js';
@@ -427,6 +427,11 @@ export function registerIpc() {
 		return { list: trustedVaultsList() };
 	});
 	// ---- apps in notes (frame-bridge.md §7–§9) ---------------------------
+	// An app's clipboard (the `clipboard` capability) is the system's — but
+	// never under the smoke harness, which must leave the user's clipboard
+	// alone, unless a scenario asks for the real one (CLEW_SMOKE_CLIPBOARD).
+	const memoryClipboard = (() => { let text = ''; return { writeText: (t) => { text = String(t); }, readText: () => text }; })();
+	const appClipboard = process.env.CLEW_SMOKE && !process.env.CLEW_SMOKE_CLIPBOARD ? memoryClipboard : clipboard;
 	// Only for an app THIS window registered (it served the note embedding
 	// it): a key another window holds is not this window's business.
 	const ownApp = (s, key) => {
@@ -465,7 +470,9 @@ export function registerIpc() {
 			...(pin ? { code: st.code() } : (allow === true && st.changed ? { code: null } : {})),
 			folder: registered.folder,
 		});
-		s.send(CH.EV_APP_GRANTS_CHANGED, { key });
+		// No EV_APP_GRANTS_CHANGED here: the host that asked is waiting on
+		// this answer and carries on (app-host.js); that event is for a grant
+		// changed from elsewhere (Settings → Revoke), which reloads frames.
 		return appStatus(s, key, registered);
 	});
 	handle(CH.APP_CALL, (s, { key, notePath, method, params }) => {
@@ -474,12 +481,16 @@ export function registerIpc() {
 		const restricted = !s.trusted;
 		const st = stateOf(registered, restricted);
 		if (!st.mayRun) return { ok: false, error: { code: 'denied', message: 'this app has not been allowed to run here' } };
-		return callApp({
+		const out = callApp({
 			root: s.vaults.root, restricted, excludes: s.vaults.excludes,
 			notePath: typeof notePath === 'string' ? notePath : null,
 			app: registered, granted: new Set(st.granted),
-			indexer: s.indexer, search: s.searchService, kv: s.kvStore,
+			indexer: s.indexer, search: s.searchService, kv: s.kvStore, clipboard: appClipboard,
 		}, String(method), params);
+		// A note an app created is a new file Clew wrote: the tree shows it
+		// now, whatever the watcher's budget (CLAUDE.md).
+		if (out.ok && out.result?.created) s.vaults.refreshTree();
+		return out;
 	});
 	// Settings → This vault → Apps: every app the vault carries, with what
 	// this device has let it do.

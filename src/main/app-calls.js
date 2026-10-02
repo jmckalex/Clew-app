@@ -12,8 +12,12 @@
 // frame-bridge.md §8, §9): the app page's bridge host relays each port
 // request as `{ key, notePath, method, params }`, and every method names the
 // capability it needs, checked against the DEVICE's grants at call time —
-// a revoked grant answers `denied` on the next call. Tier 1, the read side
-// (phase 3); the write side is phase 4's.
+// a revoked grant answers `denied` on the next call. Tier 1: the read side
+// (phase 3) and the write side (phase 4). A write to a note is AUTHORIZED
+// here and PERFORMED by the host through the editor pool (§10) — the
+// result `{ perform, path }` tells it what — so undo, the dirty dot,
+// auto-save, the conflict banner and history apply to an app's edit exactly
+// as to the user's; `notes.create` (never overwriting) happens here.
 //
 // Paths: text types only, never hidden (dotfiles, .clew, .obsidian, the
 // vault's own hidden list), and — in a vault this device has NOT trusted —
@@ -53,6 +57,25 @@ export function vaultTextFile(ctx, rel) {
 		let realRoot;
 		try { real = fs.realpathSync(abs); realRoot = fs.realpathSync(ctx.root); } catch { throw appError('not-found', `no such file: ${clean}`); }
 		if (!inside(real, realRoot)) throw appError('not-found', `no such file: ${clean}`);
+	}
+	return abs;
+}
+
+/** A NEW vault text file's path: as vaultTextFile, but the realpath clamp
+ *  (restricted vaults) is taken on its nearest existing folder. */
+export function newVaultFile(ctx, rel) {
+	const clean = String(rel ?? '').replace(/^\/+/, '');
+	if (!clean || clean.split('/').includes('..') || clean.includes('\0')) throw appError('bad-params', `not a vault path: ${JSON.stringify(rel)}`);
+	if (!TEXT_EXT.some((ext) => clean.toLowerCase().endsWith(ext))) throw appError('denied', `not a text file: ${clean}`);
+	if (ctx.excludes.isHidden(clean)) throw appError('denied', `a hidden path: ${clean}`);
+	const abs = path.join(ctx.root, clean);
+	if (ctx.restricted) {
+		let probe = path.dirname(abs);
+		while (!fs.existsSync(probe) && inside(probe, ctx.root) && probe !== ctx.root) probe = path.dirname(probe);
+		let real;
+		let realRoot;
+		try { real = fs.realpathSync(probe); realRoot = fs.realpathSync(ctx.root); } catch { throw appError('denied', `outside the vault: ${clean}`); }
+		if (!inside(real, realRoot)) throw appError('denied', `outside the vault: ${clean}`);
 	}
 	return abs;
 }
@@ -239,6 +262,87 @@ export const METHODS = {
 		},
 	},
 };
+
+/** The note an app's write names, authorized: its vault path, or an error. */
+function writableNote(ctx, rel, { mustExist = true } = {}) {
+	const abs = vaultTextFile(ctx, rel);
+	if (mustExist && !fs.existsSync(abs)) throw appError('not-found', `no such note: ${rel}`);
+	return String(rel).replace(/^\/+/, '');
+}
+
+/** The write capability for a path: `note.write` covers the embedding note. */
+const mayWrite = (ctx, p) => ctx.granted.has('notes.write')
+	|| (ctx.granted.has('note.write') && (p?.path ?? ctx.notePath) === ctx.notePath);
+
+Object.assign(METHODS, {
+	// ---- note.write / notes.write — performed by the host, through the pool --
+	'notes.write': {
+		cap: mayWrite, capName: 'note.write',
+		run: (ctx, p) => {
+			if (typeof p?.content !== 'string') throw appError('bad-params', 'notes.write needs content (text)');
+			if (p.content.length > 1024 * 1024) throw appError('too-large', 'a write is limited to 1 MB');
+			return { perform: 'write', path: writableNote(ctx, p.path ?? ctx.notePath) };
+		},
+	},
+	'notes.append': {
+		cap: mayWrite, capName: 'note.write',
+		run: (ctx, p) => {
+			if (typeof p?.text !== 'string') throw appError('bad-params', 'notes.append needs text');
+			return { perform: 'append', path: writableNote(ctx, p.path ?? ctx.notePath) };
+		},
+	},
+	'properties.set': {
+		cap: mayWrite, capName: 'note.write',
+		run: (ctx, p) => {
+			if (typeof p?.key !== 'string' || !p.key.trim()) throw appError('bad-params', 'properties.set needs a key');
+			const rel = writableNote(ctx, p.path ?? ctx.notePath);
+			if (!/\.(md|jmd)$/i.test(rel)) throw appError('denied', 'properties belong to notes');
+			return { perform: 'properties', path: rel };
+		},
+	},
+	// ---- notes.create — never overwrites -------------------------------------
+	'notes.create': {
+		cap: 'notes.create',
+		run: (ctx, p) => {
+			const rel = String(p?.path ?? '').replace(/^\/+/, '');
+			if (!/\.(md|jmd)$/i.test(rel)) throw appError('bad-params', 'a new note is a .md or .jmd path');
+			const abs = newVaultFile(ctx, rel);
+			const content = typeof p?.content === 'string' ? p.content : '';
+			if (content.length > 1024 * 1024) throw appError('too-large', 'a note is limited to 1 MB here');
+			fs.mkdirSync(path.dirname(abs), { recursive: true });
+			try {
+				fs.writeFileSync(abs, content, { flag: 'wx' });
+			} catch (err) {
+				if (err.code === 'EEXIST') throw appError('conflict', `${rel} already exists — notes.create never overwrites`);
+				throw err;
+			}
+			return { created: rel };
+		},
+	},
+	// ---- editor.insert / find / clipboard — the host's, once allowed ----------
+	'editor.insert': {
+		cap: 'editor.insert',
+		run: (ctx, p) => {
+			if (typeof p?.text !== 'string') throw appError('bad-params', 'editor.insert needs text');
+			if (p.text.length > 256 * 1024) throw appError('too-large', 'an insert is limited to 256 KB');
+			return { perform: 'insert', path: ctx.notePath };
+		},
+	},
+	'find.show': {
+		cap: 'find',
+		run: (ctx, p) => ({ perform: 'find', path: ctx.notePath, query: String(p?.query ?? '').slice(0, 1000) }),
+	},
+	'clipboard.copy': {
+		cap: 'clipboard',
+		run: (ctx, p) => {
+			if (typeof p?.text !== 'string') throw appError('bad-params', 'clipboard.copy needs text');
+			if (p.text.length > 1024 * 1024) throw appError('too-large', 'a copy is limited to 1 MB');
+			ctx.clipboard.writeText(p.text);
+			return true;
+		},
+	},
+	'clipboard.paste': { cap: 'clipboard', run: (ctx) => ctx.clipboard.readText() },
+});
 
 function kvKey(ctx, key) {
 	if (typeof key !== 'string' || !key || key.length > 200) throw appError('bad-params', 'a kv key is a non-empty string of at most 200 characters');

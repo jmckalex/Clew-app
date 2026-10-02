@@ -34,11 +34,18 @@ import { fromPreviewOrigin, PREVIEW_ORIGIN } from '../shared/message-guard.js';
 import { settingsStore } from './state/settings-store.js';
 import { workspaceStore } from './state/workspace-store.js';
 import { vaultStore } from './state/vault-store.js';
+import { editorPool } from './editor/pool.js';
+import { minimalChange } from './editor/minimal-change.js';
+import { parseProperties, applyProperties } from '../shared/frontmatter.js';
+import { openSearchPanel, setSearchQuery, SearchQuery } from '@codemirror/search';
+import { openWikilink } from './commands/actions.js';
 
 const MAX_REQUEST = 1024 * 1024;
 const MAX_IN_FLIGHT = 32;
 const RATE = 50;     // requests per second, refilled continuously
 const BURST = 200;
+const WRITE_RATE = 5; // writes per second (§8)
+const WRITES = new Set(['notes.write', 'notes.append', 'properties.set', 'notes.create', 'editor.insert', 'files.write', 'files.delete', 'kv.set']);
 
 /** key → Set<WindowProxy> of the documents embedding it */
 const embedders = new Map();
@@ -136,6 +143,12 @@ function ensurePrompt(status) {
 		prompts.set(status.key, new Promise((resolve) => {
 			queue.push({ status, resolve });
 			nextPrompt();
+		}).then((after) => {
+			// A frame already running (a trusted vault's starts before the
+			// answer) has its CSP from before it: a `network` grant reaches it
+			// only through a reload.
+			if (after?.granted?.includes('network') && !status.granted.includes('network')) tellEmbedders(status.key, 'app-reload');
+			return after;
 		}).finally(() => prompts.delete(status.key)));
 	}
 	return prompts.get(status.key);
@@ -190,6 +203,7 @@ async function onHello(event) {
 	const record = {
 		key, frame: event.source, port: channel.port1, notePath: notePaths.get(parent) ?? null,
 		granted: new Set(st.granted), inFlight: 0, tokens: BURST, at: performance.now(),
+		writeTokens: WRITE_RATE, writeAt: performance.now(),
 	};
 	if (!ports.has(key)) ports.set(key, new Set());
 	ports.get(key).add(record);
@@ -203,12 +217,18 @@ function reply(record, id, outcome) {
 	try { record.port.postMessage({ v: 1, id, ...outcome }); } catch { /* closed */ }
 }
 
-function take(record) {
+function take(record, write) {
 	const now = performance.now();
 	record.tokens = Math.min(BURST, record.tokens + ((now - record.at) / 1000) * RATE);
 	record.at = now;
+	if (write) {
+		record.writeTokens = Math.min(WRITE_RATE, record.writeTokens + ((now - record.writeAt) / 1000) * WRITE_RATE);
+		record.writeAt = now;
+		if (record.writeTokens < 1) return false;
+	}
 	if (record.tokens < 1) return false;
 	record.tokens -= 1;
+	if (write) record.writeTokens -= 1;
 	return true;
 }
 
@@ -220,7 +240,7 @@ async function onRequest(record, msg) {
 	if (msg.params?.data instanceof ArrayBuffer) size += msg.params.data.byteLength;
 	if (size > MAX_REQUEST && msg.method !== 'files.write') return fail('too-large', 'a request is limited to 1 MB');
 	if (record.inFlight >= MAX_IN_FLIGHT) return fail('rate-limited', 'too many requests in flight');
-	if (!take(record)) return fail('rate-limited', 'too many requests');
+	if (!take(record, WRITES.has(msg.method))) return fail('rate-limited', WRITES.has(msg.method) ? 'too many writes (5 a second)' : 'too many requests');
 	record.inFlight++;
 	try {
 		if (msg.method === 'context') {
@@ -229,6 +249,10 @@ async function onRequest(record, msg) {
 		if (msg.method === 'open') return reply(record, msg.id, await openTarget(record, msg.params?.target));
 		const out = await ipc.invoke(CH.APP_CALL, { key: record.key, notePath: record.notePath, method: msg.method, params: msg.params ?? {} })
 			.catch((err) => ({ ok: false, error: { code: 'internal', message: String(err?.message ?? err) } }));
+		// Main authorized a note edit; it is made HERE, through the editor
+		// pool (§10), so undo, the dirty dot, auto-save and the conflict
+		// banner treat it as they treat the user's own.
+		if (out.ok && out.result?.perform) return reply(record, msg.id, await perform(out.result, msg.params ?? {}));
 		reply(record, msg.id, out);
 	} finally {
 		record.inFlight--;
@@ -246,8 +270,112 @@ async function openTarget(record, target) {
 	const [notePart] = t.split('#');
 	const path = vaultStore.notePaths().includes(notePart) ? notePart : vaultStore.resolveNoteName(notePart);
 	if (!path || !vaultStore.notePaths().includes(path)) return { ok: false, error: { code: 'not-found', message: `no note ${notePart}` } };
-	workspaceStore.openNote(path, { newTab: true });
+	await openWikilink(t, { newTab: true });
 	return { ok: true, result: true };
+}
+
+// ---- the write side, through the editor pool (§10) ---------------------------
+
+const fail = (code, message) => ({ ok: false, error: { code, message } });
+let headless = 0;
+
+/** Apply `edit(text) → text` to a note: as a transaction on the editor the
+ *  user has it open in, or through a headless pool entry that saves at once.
+ *  A note whose editor has an unresolved conflict answers `conflict`. */
+async function editNote(path, edit) {
+	const editing = editorFor(path);
+	if (editing) {
+		const entry = editing;
+		if (entry.conflict) return fail('conflict', `${path} changed on disk while it had unsaved edits; the user must resolve it first`);
+		const before = entry.view.state.doc.toString();
+		const change = minimalChange(before, edit(before));
+		if (change) entry.view.dispatch({ changes: change, userEvent: 'input.app' });
+		return { ok: true, result: true };
+	}
+	const tabId = `app-write:${++headless}`;
+	try {
+		const entry = await editorPool.open(tabId, path);
+		if (entry.conflict) return fail('conflict', `${path} cannot be written now`);
+		const before = entry.view.state.doc.toString();
+		const change = minimalChange(before, edit(before));
+		if (change) {
+			entry.view.dispatch({ changes: change, userEvent: 'input.app' });
+			await editorPool.saveNow(tabId);
+		}
+		return { ok: true, result: true };
+	} finally {
+		editorPool.close(tabId);
+	}
+}
+
+/**
+ * The editor the user is EDITING a note in, or null. A note can have
+ * several pool entries — a split, a reading-mode tab whose editor stays
+ * pooled — each its own state, kept in step through the disk: an app's edit
+ * goes to ONE, the one in an editing mode (the active tab first), and
+ * reaches the rest the way the user's own edits do. Only reading-mode
+ * entries means "not open in an editor": the write goes headless.
+ */
+function editorFor(path) {
+	const editing = editorPool.tabsFor(path).filter((id) => {
+		const mode = workspaceStore.findTab(id)?.tab?.view?.mode;
+		return mode === 'source' || mode === 'live';
+	});
+	const active = workspaceStore.activeTab()?.id;
+	const id = editing.includes(active) ? active : editing[0];
+	return id ? editorPool.get(id) : null;
+}
+
+async function perform(order, params) {
+	try {
+		switch (order.perform) {
+			case 'write':
+				return await editNote(order.path, () => String(params.content));
+			case 'append':
+				return await editNote(order.path, (text) => {
+					const base = text === '' || text.endsWith('\n') ? text : `${text}\n`;
+					return base + String(params.text);
+				});
+			case 'properties':
+				return await editNote(order.path, (text) => {
+					const { entries, clean } = parseProperties(text);
+					if (!clean) throw Object.assign(new Error('frontmatter beyond the editable subset; refusing to rewrite it'), { code: 'denied' });
+					const at = entries.findIndex((e) => e.key === params.key);
+					if (params.value === null || params.value === undefined) { if (at !== -1) entries.splice(at, 1); }
+					else if (at !== -1) entries[at].value = params.value;
+					else entries.push({ key: params.key, value: params.value });
+					return applyProperties(text, entries);
+				});
+			case 'insert': {
+				const entry = editorFor(order.path);
+				if (!entry?.view) return fail('unavailable', 'the note is not open in an editor');
+				if (entry.conflict) return fail('conflict', 'the note has an unresolved conflict');
+				entry.view.dispatch(entry.view.state.replaceSelection(String(params.text)), { userEvent: 'input.app' });
+				return { ok: true, result: true };
+			}
+			case 'find': {
+				const entry = editorFor(order.path);
+				if (!entry?.view) return fail('unavailable', 'the note is not open in an editor');
+				openSearchPanel(entry.view);
+				entry.view.dispatch({ effects: setSearchQuery.of(new SearchQuery({ search: order.query })) });
+				return { ok: true, result: true };
+			}
+			default:
+				return fail('internal', `unknown order ${order.perform}`);
+		}
+	} catch (err) {
+		return fail(err.code && !/^E[A-Z]+$/.test(err.code) ? err.code : 'internal', String(err.message ?? err));
+	}
+}
+
+/** Clew's Find in a note, to the apps embedded in it that take part (§9). */
+function forwardFind({ path, query }) {
+	for (const set of ports.values()) {
+		for (const record of set) {
+			if (record.notePath !== path || !record.granted.has('find')) continue;
+			try { record.port.postMessage({ v: 1, event: 'find', payload: { query } }); } catch { /* gone */ }
+		}
+	}
 }
 
 // ---- 4: grants changed ------------------------------------------------------------
@@ -281,6 +409,7 @@ export function installAppHost() {
 			}
 		}
 	});
+	editorPool.on('find-query', forwardFind);
 	ipc.on(CH.EV_VAULT_OPENED, () => {
 		for (const key of [...ports.keys()]) closePorts(key);
 		embedders.clear();

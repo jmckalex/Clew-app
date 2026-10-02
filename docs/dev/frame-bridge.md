@@ -1138,6 +1138,22 @@ through the same pool entry opened headless, so the same code decides. Main
 snapshots the pre-write content into `.clew/history` on every write, as it
 does for the user's own. Text types only, inside the vault, never `.clew/`.
 
+**As built (phase 4, desktop, 2026-10-03).** Main authorizes each write
+(`app-calls.js`: the path a text note in the vault, never hidden or
+`.clew/`, realpath-clamped in a restricted vault) and answers `{ perform,
+path }`; the host (`app-host.js`) makes the edit on the pooled EditorState
+of the editor the user is EDITING the note in, or through a headless pool
+entry that saves at once — measured: an app's append and insert land in the
+open editor (dirty, then saved), one real ⌘Z takes back its last edit,
+history keeps the old text, and with the note open for reading only the
+write lands on disk headless and the pool entry closes. `notes.create` is
+main's exclusive create (a second create answers `conflict`). Two things the
+build found: a note can have SEVERAL pool entries (a split, a reading tab's
+pooled editor), each its own state, so the edit must go to one — the
+editing one — and reach the rest through the disk, as the user's own edits
+do; and an app's frame must live outside the morph (hoisted, as office live
+embeds are), or an edit above it restarts the app.
+
 ## 11. Tier 2: Node
 
 - Only through a USER-INSTALLED plugin (the global plugins dir in

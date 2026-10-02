@@ -10,6 +10,12 @@
 //             saying hello gets no port; Dup.md's twin ids refused by name.
 //   lifecycle the app's key survives a move of its folder (no new prompt),
 //             and a revoke asks again.
+//   writes    (+ CLEW_SMOKE_FRAME_SCRIPT=smoke/app-bridge-frame.js
+//             CLEW_SMOKE_FRAME_MATCH=clew-frame) the write side (phase 4):
+//             the app's edits land in the open EDITOR (dirty, saved), a real
+//             ⌘Z takes one back, a note is created and not overwritten,
+//             another note is denied, Find opens with the app's query, the
+//             clipboard both ways, and history keeps the old text.
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const { workspaceStore, vaultStore, ipc } = window.__clew;
 for (let i = 0; i < 150 && !vaultStore.vault?.sessionId; i++) await sleep(100);
@@ -25,6 +31,65 @@ workspaceStore.setSidebar('right', { open: false });
 const open = (p) => { const t = workspaceStore.openNote(p, { newTab: true, defaultMode: 'reading' }); workspaceStore.setTabMode(t.id, 'reading'); };
 
 const state = await ipc.invoke('clew:vault-trust-get');
+if (mode === 'headless') {
+	// The note open for READING only: no editor holds it, so an app's write
+	// goes through a headless pool entry that saves at once (§10), and the
+	// editor-only orders answer `unavailable`.
+	const tab = workspaceStore.openNote('Writer.md', { newTab: true, defaultMode: 'reading' });
+	workspaceStore.setTabMode(tab.id, 'reading');
+	await until(() => !!sheet());
+	window.__clewSmokeInput = [{ click: centre(sheet().querySelector('.clew-trust-button')) }, { wait: 7000 }];
+	(async () => {
+		const disk = async () => String(((r) => r?.content ?? r)(await ipc.invoke('clew:note-read', { path: 'Writer.md' })));
+		await until(async () => (await disk()).includes('APPENDED-BY-APP'), 8000);
+		const history = await ipc.invoke('clew:history-list', { path: 'Writer.md' }).catch(() => null);
+		console.log(`smoke-app: headless saved=${(await disk()).includes('APPENDED-BY-APP')} history=${Array.isArray(history) ? history.length : '?'} pool-entries=${window.__clew.editorPool.tabsFor('Writer.md').length}`);
+	})();
+	return;
+}
+if (mode === 'writes') {
+	// The write side (phase 4): Writer.md in an EDITOR on the left — where an
+	// app's edit must land, as a transaction — and in reading mode on the
+	// right, where the app runs.
+	const left = workspaceStore.openNote('Writer.md', { newTab: true, defaultMode: 'source' });
+	workspaceStore.setTabMode(left.id, 'source');
+	await sleep(800);
+	const right = workspaceStore.splitWithClone(workspaceStore.activeGroupId, 'right', left.id);
+	await sleep(500);
+	const clone = workspaceStore.activeTab();
+	workspaceStore.setTabMode(clone.id, 'reading');
+	await until(() => !!sheet());
+	console.log(`smoke-app: writes prompt=${!!sheet()}`);
+	const { editorPool } = window.__clew;
+	const doc = () => editorPool.get(left.id)?.view?.state.doc.toString() ?? '';
+	// The editor's first line, clicked for real before ⌘Z (focus must be the
+	// editor's, not Find's field that the app opened) — by selector, resolved
+	// when its turn comes: the Find panel pushes the lines down meanwhile.
+	window.__clewSmokeInput = [
+		{ click: centre(sheet().querySelector('.clew-trust-button')) },
+		{ wait: 7000 },
+		{ click: { selector: '.cm-content .cm-line' } },
+		{ combo: { key: 'z', modifiers: 4 } },
+		{ wait: 6000 },
+	];
+	(async () => {
+		await until(() => doc().includes('APPENDED-BY-APP'), 12000);
+		const after = doc();
+		await until(() => doc().includes('INSERTED-BY-APP') && !!document.querySelector('.cm-search'), 6000);
+		console.log(`smoke-app: editor appended=${doc().includes('APPENDED-BY-APP')} inserted=${doc().includes('INSERTED-BY-APP')} dirty=${editorPool.isDirty(left.id)} search-panel=${!!document.querySelector('.cm-search')}`);
+		await sleep(2200);
+		const disk = await ipc.invoke('clew:note-read', { path: 'Writer.md' });
+		const created = await ipc.invoke('clew:note-read', { path: 'Created By App.md' }).catch(() => null);
+		console.log(`smoke-app: saved=${String(disk?.content ?? disk).includes('APPENDED-BY-APP')} created=${JSON.stringify(created?.content ?? created)}`);
+		await until(() => !doc().includes('INSERTED-BY-APP'), 9000);
+		console.log(`smoke-app: undo focus=${document.activeElement?.className ?? document.activeElement?.tagName} in-editor=${!!editorPool.get(left.id)?.view?.hasFocus}`);
+		// One ⌘Z takes back the app's LAST edit (the insert), as the user's own.
+		console.log(`smoke-app: undo inserted=${doc().includes('INSERTED-BY-APP')} appended=${doc().includes('APPENDED-BY-APP')}`);
+		const history = await ipc.invoke('clew:history-list', { path: 'Writer.md' }).catch((e) => `ERR ${e.message}`);
+		console.log(`smoke-app: history=${Array.isArray(history) ? history.length : JSON.stringify(history)}`);
+	})();
+	return;
+}
 open('Probe.md');
 await until(() => !!sheet());
 console.log(`smoke-app: trusted=${state.trusted} prompt=${!!sheet()} text="${sheet()?.querySelector('p')?.textContent ?? ''}"`);

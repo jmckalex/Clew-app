@@ -15,6 +15,7 @@
 // EditorState cache (so undo history survives navigating away and back), and
 // external-change conflict detection.
 import { EditorView } from '@codemirror/view';
+import { setSearchQuery } from '@codemirror/search';
 import { Emitter } from '../lib/emitter.js';
 import { debounce } from '../lib/debounce.js';
 import { ipc, CH } from '../ipc.js';
@@ -188,6 +189,13 @@ class EditorPool extends Emitter {
 			// Selection and doc changes, for what reflects the cursor (the
 			// editor toolbar, the selection bubble).
 			if (update.docChanged || update.selectionSet || update.focusChanged) this.emit('view-update', { tabId, update });
+			// Clew's Find in this note, for the apps embedded in it that take
+			// part in Find (app-host.js; frame-bridge.md §9 `find`).
+			for (const tr of update.transactions) {
+				for (const effect of tr.effects) {
+					if (effect.is(setSearchQuery)) this.emit('find-query', { tabId, path: entry.path, query: effect.value.search });
+				}
+			}
 			if (!update.docChanged) return;
 			this.#setDirty(tabId, true);
 			// While a conflict banner is up, auto-save stays paused so typing
@@ -250,6 +258,20 @@ class EditorPool extends Emitter {
 		if (!entry || entry.dirty === dirty) return;
 		entry.dirty = dirty;
 		this.emit('dirty-changed', { tabId, dirty });
+	}
+
+	/** The tabs whose editor holds `path` — an app's edit goes through the one
+	 *  the user is looking at, so undo and the dirty dot see it (§10). */
+	tabsFor(path) {
+		return [...this.#entries].filter(([, e]) => e.path === path && e.view).map(([id]) => id);
+	}
+
+	/** Save now and wait for it (an app's headless write, §10). */
+	async saveNow(tabId) {
+		const entry = this.#entries.get(tabId);
+		if (!entry) return;
+		entry.save.cancel();
+		await this.#save(tabId);
 	}
 
 	/** Flush a pending save immediately (blur, tab switch, close). */
@@ -355,6 +377,9 @@ class EditorPool extends Emitter {
 	/** Destroy editors whose tabs no longer exist. */
 	reap(openTabIds) {
 		for (const tabId of [...this.#entries.keys()]) {
+			// An app's headless write (app-host.js) is in no tab, and closes
+			// itself once saved.
+			if (String(tabId).startsWith('app-write:')) continue;
 			if (!openTabIds.has(tabId)) this.close(tabId);
 		}
 	}

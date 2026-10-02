@@ -54,6 +54,33 @@ const settle = async (name, fn) => {
 	document.getElementById('out').textContent = 'probe done';
 })();
 `);
+// Apps/Writer — the write side (phase 4): its app.js appends to and
+// inserts into the note it sits in, creates a note (and is refused a second
+// time), is refused another note, opens Clew's Find, copies and pastes.
+put('Writer.md', '# Writer\n\nWRITER-NOTE-TEXT\n\n@app+[Apps/Writer]{height=160}\n');
+put('Apps/Writer/clew-app.json', JSON.stringify({ id: 'writer', name: 'Writer', capabilities: ['note.read', 'note.write', 'notes.create', 'editor.insert', 'find', 'clipboard'] }, null, '\t'));
+put('Apps/Writer/index.html', '<!doctype html><html><head><meta charset="utf-8"><title>Writer</title></head><body><p id="out">writer</p><script src="app.js"></script></body></html>\n');
+put('Apps/Writer/app.js', `
+const results = {};
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const settle = async (name, fn) => {
+	try { const v = await fn(); results[name] = v === undefined ? 'ok' : v; } catch (err) { results[name] = 'ERR ' + (err.code ?? err.name); }
+};
+clew.on('find', ({ query }) => { results.findEvent = query; });
+(async () => {
+	await clew.ready;
+	await settle('append', () => clew.notes.append(null, 'APPENDED-BY-APP'));
+	await settle('insert', () => clew.editor.insert('INSERTED-BY-APP '));
+	await settle('create', () => clew.notes.create('Created By App.md', '# Created\\n'));
+	await settle('create-again', () => clew.notes.create('Created By App.md', 'x'));
+	await settle('other-write', () => clew.notes.write('Other.md', 'x'));
+	await settle('find', () => clew.find.show('WRITER'));
+	await settle('copy', () => clew.clipboard.copy('COPIED-BY-APP'));
+	await settle('paste', () => clew.clipboard.paste());
+	await sleep(500);
+	window.__writer = results;
+})();
+`);
 put('Twin/A/clew-app.json', JSON.stringify({ id: 'twin', name: 'Twin A' }));
 put('Twin/A/index.html', '<p>a</p>');
 put('Twin/B/clew-app.json', JSON.stringify({ id: 'twin', name: 'Twin B' }));
