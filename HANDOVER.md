@@ -39,8 +39,8 @@ engine re-vendored at `at-migration@aa4ce1e`, fixing both findings reported
 upstream (a callout broken across pages keeps its strip and tint; every
 LaTeX image route goes through the new `latex-graphics.js`, so an SVG with
 no sibling, or a URL, becomes a link). LaTeX-only: render dump identical.
-**That commit is the pin for iOS sync #4** — Clew-boss asked for no commits
-after it until the iOS copy is done.
+It was the pin for iOS sync #4; iOS copied it (sync5-p1-vendor
+`c2a5512`, verified byte-identical by Clew-boss), so main is free to move.
 
 **The rules this session works under** (the owner's, relayed by the
 coordinating session "Clew-boss", uds `/tmp/cc-socks/6958.sock` at the
