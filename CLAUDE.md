@@ -101,7 +101,11 @@ note API, plugins, and every settings key.
   focus, and the harness's keys never reach the native menu (every ⌘ chord
   used to open "About Electron"). More knobs, all documented in main.js:
   `CLEW_SMOKE_VISIBLE=1` (show the window, to watch a run),
-  `CLEW_SMOKE_LOG=1` (every console line), `CLEW_SMOKE_METRICS=/p.json`
+  `CLEW_SMOKE_LOG=1` (every console line), `CLEW_SMOKE_ALLOW_STALE=1` (run
+  on a `dist/` built from other sources — by default the harness REFUSES,
+  naming the changed files: `src/main/build-stamp.js`, `dist/
+  build-stamp.json`, `scripts/stale-check.mjs`, which the sweeps and
+  boot-test.sh call first), `CLEW_SMOKE_METRICS=/p.json`
   (app.getAppMetrics), `CLEW_SMOKE_CONFIRM=save|discard|cancel` (answers
   the office Save/Discard/Cancel dialog without UI),
   `CLEW_SMOKE_CLOSE_WINDOW=1` (drives a real window close; logs

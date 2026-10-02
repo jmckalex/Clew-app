@@ -27,8 +27,15 @@
 # replaces gave up after its wait and launched anyway, at load 14.71
 # (2026-09-29). Figures run first, while the machine is known quiet.
 #
+# FROM THESE SOURCES OR NOTHING. Before the wait, the app's own build stamp
+# (dist/build-stamp.json in its app.asar — scripts/stale-check.mjs) must
+# match this checkout's src/, or the test stops: exit 4, naming what changed.
+# BOOT_TEST_ALLOW_STALE=1 tests an older build anyway (a release DMG after
+# main moved on), and says so in every run.
+#
 # Exit: 0 both passed · 1 an assertion failed · 2 bad arguments ·
-#       3 the machine never went quiet (nothing was run).
+#       3 the machine never went quiet (nothing was run) ·
+#       4 the app was not built from this checkout (nothing was run).
 cd "$(dirname "$0")/.." || exit 2
 BIN=${1:-out/mac-arm64/Clew.app/Contents/MacOS/Clew}
 S=${2:-/tmp/clew-boot-test}
@@ -36,6 +43,16 @@ MAX=${BOOT_TEST_MAX_LOAD:-6}
 WAIT=${BOOT_TEST_WAIT:-1200}
 case "$S" in /|"$HOME"|"$HOME/"|.|..) echo "boot-test: refusing to clear $S" >&2; exit 2;; esac
 [ -x "$BIN" ] || { echo "boot-test: no executable at $BIN" >&2; exit 2; }
+STALE_ENV=()
+if ! node scripts/stale-check.mjs --app "$BIN"; then
+	if [ -n "${BOOT_TEST_ALLOW_STALE:-}" ]; then
+		echo "boot-test: testing it anyway (BOOT_TEST_ALLOW_STALE)" >&2
+		STALE_ENV=(CLEW_SMOKE_ALLOW_STALE=1)
+	else
+		echo "boot-test: STOPPED — rebuild and package from this checkout, or set BOOT_TEST_ALLOW_STALE=1; nothing was run" >&2
+		exit 4
+	fi
+fi
 
 load1() { sysctl -n vm.loadavg | awk '{ print $2 }'; }
 below() { awk -v l="$1" -v m="$MAX" 'BEGIN { exit !(l < m) }'; }
@@ -58,7 +75,7 @@ check() { # label, then a command that must succeed
 }
 run() { # scenario, vault, extra env...
 	local n=$1 v=$2; shift 2
-	env CLEW_SMOKE_LOG=1 CLEW_USER_DATA="$S/ud-$n" CLEW_SMOKE="$S/$n.png" \
+	env CLEW_SMOKE_LOG=1 CLEW_SMOKE_SOURCES="$PWD" ${STALE_ENV[@]+"${STALE_ENV[@]}"} CLEW_USER_DATA="$S/ud-$n" CLEW_SMOKE="$S/$n.png" \
 		CLEW_SMOKE_SCRIPT="$PWD/smoke/$n-scenario.js" CLEW_SMOKE_VAULT="$v" "$@" \
 		perl -e 'alarm shift; exec @ARGV' 300 "$BIN" > "$S/$n.log" 2>&1
 	grep -E 'smoke-[a-z-]+:|smoke failed' "$S/$n.log" | grep -v smoke-asset > "$S/$n.lines"

@@ -15,6 +15,7 @@ import * as esbuild from 'esbuild';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { sourceHashes, writeBuildStamp } from '../src/main/build-stamp.js';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
@@ -179,9 +180,13 @@ export function writeIconTable() {
 }
 
 export async function buildAll() {
+	// The sources are read BEFORE the build: an edit made while it runs then
+	// shows up as stale, never as built (build-stamp.js).
+	const sources = sourceHashes(root);
 	copyStatic();
 	writeIconTable();
 	await Promise.all(bundles.map((opts) => esbuild.build(opts)));
+	writeBuildStamp(root, sources);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

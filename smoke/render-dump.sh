@@ -10,6 +10,7 @@
 # trusts (the vault-trust guard) — without it the copy opens restricted.
 set -u
 R=$(cd "$(dirname "$0")/.." && pwd); O=$1; KNOWN=${2:-}
+(cd "$R" && node scripts/stale-check.mjs) || { echo "render-dump: dist/ is not built from these sources — nothing was run" >&2; exit 3; }
 E=$R/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron
 mkdir -p "$O"
 for v in demo-vault study-vault; do

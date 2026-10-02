@@ -4,6 +4,18 @@
 smoke/live-sweep.sh [out-dir]` — every live-edit scenario below on a fresh
 fixture (about 15 minutes), then the cross-reference parity verdict.
 
+**Nothing runs on a stale build** (2026-10-02): `node scripts/build.js`
+writes `dist/build-stamp.json`, a content hash of every file under `src/`
+(`src/main/build-stamp.js`; the dev watcher keeps it current), and the
+harness refuses a scenario whose `dist/` was built from other sources —
+`smoke-stale: … changed since its build: <files>`, exit 3, before any
+window — as do live-sweep.sh, render-dump.sh and pdf-sweep.sh up front
+(`node scripts/stale-check.mjs`), and boot-test.sh for a packaged app's own
+stamp (exit 4; `BOOT_TEST_ALLOW_STALE=1` tests an older build anyway).
+`CLEW_SMOKE_ALLOW_STALE=1` runs a scenario anyway, with the warning in its
+log. Content, not mtimes: `git stash pop` rewrites sources in the same second
+as a build, and a commit changes no file time.
+
 Scenarios for the harness documented in CLAUDE.md (`CLEW_SMOKE=/out.png
 CLEW_SMOKE_SCRIPT=<scenario> CLEW_SMOKE_VAULT=<vault> electron .`) —
 committed so sessions stop rewriting them. Always pass

@@ -19,6 +19,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { bundles, copyStatic, writeIconTable } from './build.js';
+import { writeBuildStamp } from '../src/main/build-stamp.js';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const electronBin = createRequire(import.meta.url)('electron');
@@ -51,6 +52,16 @@ function scheduleRespawn() {
 	}, 100);
 }
 
+// dist/build-stamp.json (src/main/build-stamp.js) follows every rebuild and
+// copy, a beat after the last one, so a smoke run against a dev build is
+// checked like any other. Best effort: a source this watcher does not rebuild
+// on (the viewer pages copied by build.js alone) is stamped as built.
+let stampTimer = null;
+function restamp() {
+	clearTimeout(stampTimer);
+	stampTimer = setTimeout(() => writeBuildStamp(root), 300);
+}
+
 function watchPlugin(name, onRebuild) {
 	return {
 		name: `clew-watch-${name}`,
@@ -58,6 +69,7 @@ function watchPlugin(name, onRebuild) {
 			let first = true;
 			build.onEnd((result) => {
 				if (result.errors.length) return;
+				restamp();
 				if (first) { first = false; return; }
 				console.log(`[dev] rebuilt ${name}`);
 				onRebuild?.();
@@ -85,15 +97,15 @@ await Promise.all(contexts.map((c) => c.watch()));
 let copyTimer = null;
 fs.watch(path.join(root, 'src/renderer/styles'), { recursive: true }, () => {
 	clearTimeout(copyTimer);
-	copyTimer = setTimeout(() => { copyStatic(); console.log('[dev] copied static assets'); }, 100);
+	copyTimer = setTimeout(() => { copyStatic(); restamp(); console.log('[dev] copied static assets'); }, 100);
 });
 fs.watch(path.join(root, 'src/renderer/index.html'), () => {
 	clearTimeout(copyTimer);
-	copyTimer = setTimeout(() => { copyStatic(); console.log('[dev] copied static assets'); }, 100);
+	copyTimer = setTimeout(() => { copyStatic(); restamp(); console.log('[dev] copied static assets'); }, 100);
 });
 fs.watch(path.join(root, 'src/engine'), { recursive: true }, () => {
 	clearTimeout(copyTimer);
-	copyTimer = setTimeout(() => { copyStatic(); console.log('[dev] copied static assets'); }, 100);
+	copyTimer = setTimeout(() => { copyStatic(); restamp(); console.log('[dev] copied static assets'); }, 100);
 });
 
 spawnElectron();

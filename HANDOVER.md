@@ -10,7 +10,7 @@ prefer deleting a settled item to explaining it again.
 
 **Where the code is.** `origin/main` = `9409987` (`git fetch` before
 counting). `main` is ahead by the commits listed under "Since 0.12.0" as
-NOT pushed — 18 of them. Tree clean.
+NOT pushed — 19 of them. Tree clean.
 
 **On hold until the owner says go:** a Mac arm64 DEV build — version
 `0.12.1-dev.1`, `CLEW_PACKAGE_OUT=out-dev`, `JMARKDOWN_SRC=/nonexistent
@@ -115,6 +115,12 @@ docs lines and iOS notes:
   re-applies a host's mode; deferred live-field reads tolerate absence).
   Clew-docs' repro — note + PDF opened and split in one tick left an EMPTY
   pane or live edit undrawn. `smoke/open-race-scenario.js`.
+- Then: **no smoke run on a stale build** — `dist/build-stamp.json` (content
+  hashes of `src/`) checked by the harness, the sweeps and boot-test.sh
+  (`scripts/stale-check.mjs`). The 0.12.0 package predates stamps, so
+  boot-testing it needs `BOOT_TEST_ALLOW_STALE=1`; the next package carries
+  one (unverified until then — check `npx asar list` shows
+  `dist/build-stamp.json`).
 
 Owner decisions Clew-boss is carrying (2026-10-02): HTML/LaTeX note exports
 render NO Obsidian callouts (built-in or custom; only uppercase GFM alerts

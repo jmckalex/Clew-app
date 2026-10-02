@@ -12,6 +12,7 @@
 #   node scripts/build.js && smoke/pdf-sweep.sh <out-dir>   (~25 minutes)
 set -u
 R=$(cd "$(dirname "$0")/.." && pwd); O=${1:?usage: pdf-sweep.sh <out-dir>}
+(cd "$R" && node scripts/stale-check.mjs) || { echo "pdf-sweep: dist/ is not built from these sources — nothing was run" >&2; exit 3; }
 case "$O" in /|"$HOME"|"$HOME/"|.|..) echo "pdf-sweep: refusing to clear $O" >&2; exit 1;; esac
 rm -rf "$O"; mkdir -p "$O"; cd "$R"
 E=node_modules/electron/dist/Electron.app/Contents/MacOS/Electron

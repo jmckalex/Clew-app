@@ -7,6 +7,7 @@
 # Each block is one scenario's README recipe; logs and screenshots land in
 # out-dir (default /tmp/clew-sweep). Compare the lines with smoke/README.md.
 cd "$(dirname "$0")/.."
+node scripts/stale-check.mjs || { echo "live-sweep: dist/ is not built from these sources — nothing was run" >&2; exit 3; }
 S=${1:-/tmp/clew-sweep}
 case "$S" in /|"$HOME"|"$HOME/"|.|..) echo "live-sweep: refusing to clear $S" >&2; exit 1;; esac
 E=node_modules/electron/dist/Electron.app/Contents/MacOS/Electron

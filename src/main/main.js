@@ -27,6 +27,7 @@ import { VaultSession, focusedSession, sessionForVault, sessionForWindow } from 
 import { paths } from './paths.js';
 import { prepareNoteFonts } from './note-fonts.js';
 import { assetStamp, stampChanged } from './asset-stamp.js';
+import { staleSources } from './build-stamp.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.dirname(__dirname); // dist/
@@ -427,6 +428,29 @@ async function smokeBootedWindow(readyAt) {
 	console.log(`smoke-boot: window after ${windowMs} ms, page loaded after ${Date.now() - readyAt} ms`);
 	await sleep(Math.max(0, 3000 - (Date.now() - readyAt)));
 	return win;
+}
+
+// A smoke run measures the code in dist/, so that must BE the code in src/
+// (build-stamp.js): refuse, naming every source that changed since the
+// build, when they differ — before any window. A packaged app is checked
+// only when told which checkout to compare with: smoke/boot-test.sh passes
+// CLEW_SMOKE_SOURCES=<repo>. CLEW_SMOKE_ALLOW_STALE=1 runs anyway (and says so).
+if (process.env.CLEW_SMOKE) {
+	const sources = app.isPackaged ? process.env.CLEW_SMOKE_SOURCES : app.getAppPath();
+	const stale = sources ? staleSources(sources, path.join(app.getAppPath(), 'dist', 'build-stamp.json')) : { changed: [] };
+	if (!stale || stale.changed.length) {
+		const what = app.isPackaged ? 'this packaged app' : 'dist/';
+		const listed = stale ? stale.changed.slice(0, 15).join(', ') + (stale.changed.length > 15 ? `, … ${stale.changed.length} in all` : '') : '';
+		const message = stale
+			? `smoke-stale: ${what} was built from other sources than ${sources} — changed since its build (${stale.builtAt}): ${listed}`
+			: `smoke-stale: ${what} has no build stamp (dist/build-stamp.json)`;
+		if (process.env.CLEW_SMOKE_ALLOW_STALE) {
+			console.warn(`${message} — running anyway (CLEW_SMOKE_ALLOW_STALE)`);
+		} else {
+			console.error(`${message}. Rebuild first (node scripts/build.js${app.isPackaged ? ', then package' : ''}), or set CLEW_SMOKE_ALLOW_STALE=1.`);
+			process.exit(3);
+		}
+	}
 }
 
 if (process.env.CLEW_SMOKE) {
