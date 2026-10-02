@@ -20,6 +20,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { settings } from './settings.js';
 import { direntKind, shouldRecurse, walkGuard, writeFileAtomic, WATCH_BUDGET, WATCH_CEILING, watchFilter, watchPlan, scanShare, knownPaths } from './fs-utils.js';
+import { insideByRealpath } from '../engine/vault-bounds.js';
 import { compileExcludes } from './vault-excludes.js';
 import { snapshotBeforeWrite, renameHistory } from './history.js';
 
@@ -95,6 +96,10 @@ export class VaultManager {
 		fs.mkdirSync(path.join(abs, '.clew'), { recursive: true });
 		settings.rememberVault(abs);
 		this.excludes = compileExcludes(this.loadState('vault-settings.json') ?? {});
+		// Restricted or trusted, decided BEFORE the first walk: a vault this
+		// device has not trusted is not followed out of itself by a link
+		// (engine/vault-bounds.js). Closed until the session says otherwise.
+		this.restricted = this.hooks.isRestricted ? this.hooks.isRestricted(abs) !== false : true;
 		// One walk, two uses: the tree the window opens with, and the set of
 		// symlinked directories it skipped as duplicates — which is exactly
 		// what the watcher must not follow a second time.
@@ -177,6 +182,13 @@ export class VaultManager {
 				// and it is affordable because the explorer is windowed.
 				if (this.excludes.isHidden(childRel)) continue;
 				const kind = direntKind(dir, entry);
+				// A link out of a restricted vault is not part of it: not
+				// listed, not walked, not watched (the watcher ignores what is
+				// in `duplicates`).
+				if (this.restricted && kind && !insideByRealpath(path.join(dir, entry.name), this.root)) {
+					if (kind === 'dir') duplicates?.add(childRel);
+					continue;
+				}
 				if (kind === 'dir') {
 					const abs = path.join(dir, entry.name);
 					if (!shouldRecurse(abs, seen)) { duplicates?.add(childRel); continue; }
@@ -196,12 +208,28 @@ export class VaultManager {
 
 	// ---- file operations --------------------------------------------------
 
-	/** Resolve a vault-relative path, refusing anything that escapes the root. */
+	/**
+	 * Resolve a vault-relative path, refusing anything that escapes the root:
+	 * lexically always, and — in a vault this device has not trusted — by
+	 * REALPATH (a link out of the vault; a path not there yet is judged by
+	 * its nearest existing folder). That refusal carries code ELEAVES, which
+	 * the preview handler answers with a clear 403.
+	 */
 	resolve(rel) {
 		if (!this.root) throw new Error('No vault open');
 		const abs = path.resolve(this.root, rel);
 		if (abs !== this.root && !abs.startsWith(this.root + path.sep)) {
 			throw new Error(`Path escapes vault: ${rel}`);
+		}
+		if (this.restricted && abs !== this.root) {
+			let probe = abs;
+			while (!fs.existsSync(probe) && probe !== this.root) {
+				// A dangling link is not "missing": it names somewhere.
+				try { fs.lstatSync(probe); break; } catch { probe = path.dirname(probe); }
+			}
+			if (probe !== this.root && !insideByRealpath(probe, this.root)) {
+				throw Object.assign(new Error(`This link leaves the vault, and a vault you have not trusted is not followed out of itself: ${rel}`), { code: 'ELEAVES' });
+			}
 		}
 		return abs;
 	}

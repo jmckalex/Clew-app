@@ -716,6 +716,21 @@ Updates never ask again, because the identity (§4.3) survives them.
   worker (`dataviewJs`, engine surfaces) has Node's network, which no CSP
   reaches: trust is its only gate.
 
+### 4.9b Links out of a restricted vault (2026-10-03)
+
+Clew-iOS found, in shipped iOS builds, that its preview scheme followed a
+vault's symlink OUT of the vault (a lexical clamp, not realpath): a link to
+the app's preferences was served. Desktop now holds the rule R1 gave Tier-1
+reads for EVERY reader: in a vault this device has not trusted, a path is
+the vault's only when its realpath is inside the root's (missing or
+dangling: outside) — the preview handler (403, `X-Clew-Refused:
+leaves-vault`), the tree walk and watcher, the index (and so search,
+backlinks and app queries), the .bib scan, the canvas rename walk, site
+export, and the render worker's extensions (an embed says "this link
+leaves the vault" in place). A trusted vault's links are followed as
+before — the owner's vaults use 68 of them. `engine/vault-bounds.js`;
+`smoke/symlink-scenario.js`.
+
 ### 4.9a As built (phase 1, desktop, 2026-10-02)
 
 - The device store (`main/vault-trust.js`, version 2) keeps per vault

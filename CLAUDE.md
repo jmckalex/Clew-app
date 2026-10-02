@@ -1336,7 +1336,24 @@ except where the selection touches a construct. The durable design is
   against cycles. New walks MUST use these helpers, not bare
   `entry.isFile()/isDirectory()` (dirents answer false for symlinks).
   In-vault links may point outside the vault by design; chokidar follows
-  links by default, so watching just works.
+  links by default, so watching just works. **But only in a vault this
+  device TRUSTS** (the symlink check, 2026-10-03 — Clew-iOS found its
+  preview scheme serving the app's own preferences through a link in a
+  vault): in a RESTRICTED vault a path is the vault's only when its
+  REALPATH lies inside the root's realpath (`engine/vault-bounds.js#
+  insideByRealpath`; missing or dangling counts as outside — a lexical
+  check passes a link). `vaults.resolve()` refuses such a path (code
+  `ELEAVES`; protocol.js answers 403 `X-Clew-Refused: leaves-vault`), the
+  tree walk and the watcher skip it, the indexer (`restricted`) skips it —
+  so search, backlinks and apps' queries never name it — and so do the .bib
+  scan, the canvas rename walk and site export. The render worker learns it
+  from `CLEW_VAULT_RESTRICTED` (`withinVault`): wikilinks.js resolves
+  nothing outside and an embed of it says "this link leaves the vault…" in
+  place; vault-model.js, query-fences.js and the map fences skip it. The
+  vault learns its state BEFORE its first walk (`hooks.isRestricted`), and a
+  trust change re-walks (session.refreshAccess). The owner's vaults depend
+  on outside links (bibliographies, slide libraries, PDFs) and are trusted:
+  unchanged.
 - Engine changes belong upstream in the jmarkdown repo, additive and
   config-gated, coordinated with its own conventions (read its CLAUDE.md +
   HANDOVER.md first; stage by explicit path — its working tree deliberately

@@ -90,6 +90,8 @@ export class VaultSession {
 		this.remotePdfs = new Map();
 
 		this.vaults.hooks = {
+			// Before the vault's first walk: is it restricted? (vault.js)
+			isRestricted: (root) => !trust.isTrusted(root),
 			onOpen: (root) => {
 				// Before the render service writes its first engine config.
 				this.refreshAccess(root);
@@ -134,6 +136,17 @@ export class VaultSession {
 		const before = JSON.stringify(this.access);
 		this.access = root ? trust.accessFor(root, readVaultRequests) : { ...effectiveAccess(false, null), decided: false };
 		this.trusted = this.access.trusted;
+		// Where the vault ends: its links are followed only when trusted.
+		const restricted = !this.trusted;
+		this.indexer.restricted = restricted;
+		if (this.vaults.restricted !== restricted) {
+			this.vaults.restricted = restricted;
+			// Walked under the other rule: tree, watcher and index again.
+			if (this.vaults.isOpen && this.indexer.root) {
+				this.vaults.reloadExcludes();
+				this.indexer.openVault(this.vaults.root, this.vaults.excludes);
+			}
+		}
 		this.renderService.setAccess(this.access);
 		return JSON.stringify(this.access) !== before;
 	}

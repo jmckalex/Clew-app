@@ -34,6 +34,7 @@ import { toolchainPath } from './render-service.js';
 import { direntKind, shouldRecurse, walkGuard } from './fs-utils.js';
 import { enabledPlugins, previewPluginScripts } from './plugins.js';
 import { bakeFigures, figureEngineAvailable, hasFigures } from './figure-bake.js';
+import { insideByRealpath } from '../engine/vault-bounds.js';
 
 const SITE_MARK = '@@SITE@@';
 const NOTE_EXT = /\.(md|jmd)$/i;
@@ -60,6 +61,9 @@ export async function exportSite({ vaultRoot, engineDir, outDir, distDir, vaultO
 			if (excludes.isHidden(childRel)) continue;
 			if (entry.name.startsWith('.') || IGNORED.has(entry.name)) continue;
 			const kind = direntKind(dir, entry);
+			// A restricted vault's link out is not part of it, and is never
+			// published (engine/vault-bounds.js).
+			if (!access.trusted && kind && !insideByRealpath(path.join(dir, entry.name), vaultRoot)) continue;
 			if (kind === 'dir') {
 				const abs = path.join(dir, entry.name);
 				if (shouldRecurse(abs, seen)) walk(abs, childRel);
@@ -79,6 +83,7 @@ export async function exportSite({ vaultRoot, engineDir, outDir, distDir, vaultO
 				...process.env,
 				PATH: toolchainPath(),
 				CLEW_VAULT_ROOT: vaultRoot,
+				CLEW_VAULT_RESTRICTED: access.trusted ? '' : '1',
 				CLEW_SESSION_ID: SITE_MARK,
 				CLEW_SITE_EXPORT: '1',
 				// The same per-vault gate the live render service passes — an

@@ -578,6 +578,11 @@ export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDi
 				: null;
 			return fileResponse(vaults.resolve(rel), vaultCsp ? { 'Content-Security-Policy': vaultCsp } : {}, request.headers.get('range'));
 		} catch (err) {
+			// A link out of a vault this device has not trusted (vault.js#
+			// resolve): refused by name, never served.
+			if (err?.code === 'ELEAVES') {
+				return new Response(String(err.message), { status: 403, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'X-Clew-Refused': 'leaves-vault' } });
+			}
 			return new Response(`Preview error: ${String(err.message ?? err)}`,
 				{ status: 500, headers: { 'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*' } });
 		}

@@ -371,6 +371,9 @@ export class RenderService {
 				...process.env,
 				PATH: toolchainPath(),
 				CLEW_VAULT_ROOT: this.vaultRoot,
+				// Where the vault ends (engine/vault-bounds.js): a restricted
+				// vault's links are not followed out of it by the extensions.
+				CLEW_VAULT_RESTRICTED: this.#access.trusted ? '' : '1',
 				CLEW_SESSION_ID: this.sessionId ?? '',
 				// Per-vault opt-in for running ```dataviewjs — the DEVICE's
 				// enablement, gated by trust; 'restricted' makes the block's

@@ -37,6 +37,7 @@ import { trust, takeTrustNotice } from './trust.js';
 import { ENABLE_KEYS, identityKey } from './vault-trust.js';
 import { readVaultRequests } from './vault-requests.js';
 import { codeSummary } from './vault-code.js';
+import { insideByRealpath } from '../engine/vault-bounds.js';
 import { appByKey, stateOf, grants } from './app-registry.js';
 import { appKey, appsById, describeCapabilities } from './app-frames.js';
 import { callApp } from './app-calls.js';
@@ -171,6 +172,8 @@ export function registerIpc() {
 				if (s.vaults.excludes.isUnindexed(childRel)) continue;
 				const abs = nodePath.join(dir, entry.name);
 				const kind = direntKind(dir, entry);
+				// A restricted vault's link out is not part of it.
+				if (s.vaults.restricted && kind && !insideByRealpath(abs, s.vaults.root)) continue;
 				if (kind === 'dir') {
 					if (shouldRecurse(abs, seen)) walk(abs, childRel);
 				} else if (kind === 'file' && entry.name.toLowerCase().endsWith('.bib')) {

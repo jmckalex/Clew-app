@@ -18,6 +18,7 @@ import { extractNoteMetadata, extractDrawingMetadata } from '../shared/note-meta
 import { isExcalidrawPath } from '../shared/excalidraw-file.js';
 import { CH, NOTE_EXTENSIONS } from '../shared/channels.js';
 import { direntKind, shouldRecurse, walkGuard, writeFileAtomic } from './fs-utils.js';
+import { insideByRealpath } from '../engine/vault-bounds.js';
 import { compileExcludes } from './vault-excludes.js';
 
 // The ignore rules live in vault-excludes.js now — one list, consulted by
@@ -41,6 +42,10 @@ export class Indexer {
 	 *  carries (main/app-frames.js; frame-bridge.md §7, R3's duplicate-id
 	 *  check). Found by the same walk as the notes. */
 	appFolders = new Set();
+	/** Set by the session: a vault this device has not trusted is indexed
+	 *  only as far as its realpath reaches (engine/vault-bounds.js) — the
+	 *  index feeds search, backlinks and apps' queries. */
+	restricted = true;
 	/** @type {(channel: string, payload: any) => void} */
 	send = () => {};
 	#nameMap = new Map(); // lowercased basename -> [relPath]
@@ -87,6 +92,7 @@ export class Indexer {
 				const childRel = rel ? `${rel}/${entry.name}` : entry.name;
 				if (this.excludes.isUnindexed(childRel)) continue;
 				const kind = direntKind(dir, entry);
+				if (this.restricted && kind && !insideByRealpath(path.join(dir, entry.name), this.root)) continue;
 				if (kind === 'dir') {
 					const abs = path.join(dir, entry.name);
 					if (shouldRecurse(abs, seen)) walk(abs, childRel);
@@ -196,6 +202,7 @@ export class Indexer {
 
 	onFileChanged(relPath) {
 		if (!this.root || !isNote(relPath) || this.excludes.isUnindexed(relPath)) return;
+		if (this.restricted && !insideByRealpath(path.join(this.root, relPath), this.root)) return;
 		const meta = this.#scanOne(relPath);
 		if (!meta) return;
 		for (const link of meta.links) {

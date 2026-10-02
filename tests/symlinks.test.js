@@ -53,9 +53,10 @@ test('shouldRecurse permits each real directory once', () => {
 	assert.equal(shouldRecurse(path.join(external, 'loop'), seen), false); // cycle to root
 });
 
-test('indexer sees symlinked notes and folders, resolves links, survives cycles', () => {
+test('indexer sees symlinked notes and folders, resolves links, survives cycles (a trusted vault)', () => {
 	const { vault } = makeFixture();
 	const indexer = new Indexer();
+	indexer.restricted = false;   // trust covers a vault's links (frame-bridge.md §4)
 	indexer.openVault(vault);
 	try {
 		const paths = [...indexer.notes.keys()].sort();
@@ -68,4 +69,29 @@ test('indexer sees symlinked notes and folders, resolves links, survives cycles'
 	} finally {
 		indexer.closeVault();
 	}
+});
+
+test('a RESTRICTED vault is indexed only as far as its realpath reaches', () => {
+	const { vault } = makeFixture();
+	const indexer = new Indexer();   // restricted by default: fails closed
+	indexer.openVault(vault);
+	try {
+		assert.deepEqual([...indexer.notes.keys()].sort(), ['A.md']);
+		assert.equal(indexer.notes.get('A.md').links[0].resolved, null, 'the link out resolves to nothing');
+	} finally {
+		indexer.closeVault();
+	}
+});
+
+test('insideByRealpath: links out, dangling links and missing paths are outside', async () => {
+	const { insideByRealpath } = await import('../src/engine/vault-bounds.js');
+	const { vault } = makeFixture();
+	assert.equal(insideByRealpath(path.join(vault, 'A.md'), vault), true);
+	assert.equal(insideByRealpath(path.join(vault, 'Linked'), vault), false);
+	assert.equal(insideByRealpath(path.join(vault, 'Linked', 'Single.md'), vault), false);
+	assert.equal(insideByRealpath(path.join(vault, 'External.md'), vault), false);
+	assert.equal(insideByRealpath(path.join(vault, 'Dangling.md'), vault), false);
+	assert.equal(insideByRealpath(path.join(vault, 'Missing.md'), vault), false);
+	// The loop back into the vault, reached from inside: inside.
+	assert.equal(insideByRealpath(path.join(vault, 'Linked', 'loop', 'A.md'), vault), true);
 });
