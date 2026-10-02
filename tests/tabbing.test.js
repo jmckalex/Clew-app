@@ -13,7 +13,7 @@
 // \tabbingsep 5), and the LaTeX it writes back.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseTabbing, layoutTabbing, tabbingLatex, tabbingHtml } from '../src/engine/tabbing.js';
+import { parseTabbing, layoutTabbing, tabbingLatex, tabbingHtml } from '#jmarkdown/tabbing.js';
 
 const ops = (row) => row.items.map((it) => (it.op === 'text' ? JSON.stringify(it.text) : it.op)).join(' ');
 /** Lay out with 10 units a character; returns each row's text lefts in order. */
@@ -111,6 +111,7 @@ test('LaTeX: the environment itself, every mark its command, kill rows killed', 
 		'\\> \\\' x',                // the last shown row: no \\\\
 		'\\poptabs',
 		'\\end{tabbing}',
+		'',                           // the engine ends a block with a blank line
 		'',
 	].join('\n'));
 });

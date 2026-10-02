@@ -265,9 +265,9 @@ export class RenderService {
 				// directive win — see src/engine/figures.js.
 				`tikzFence, metapostFence, latexFence, texFence, tikzDirective from ${path.join(engineAssets, 'figures.js')}`,
 				`queryFence, tasksFence, kanbanFence from ${path.join(engineAssets, 'query-fences.js')}`,
-				// ```tabbing — LaTeX's tabbing, laid out in the preview
-				// (engine/tabbing.js; preview-client/tabbing.js measures).
-				`tabbingFence from ${path.join(engineAssets, 'tabbing.js')}`,
+				// (```tabbing and @begin(tabbing) are the ENGINE's since jmarkdown
+				// 4ab3d6a — registered there after callouts; preview-client/
+				// tabbing.js lays them out with the engine's own layoutTabbing.)
 				`tableBeforeAnchor, blockAnchorLine, blockAnchor from ${path.join(engineAssets, 'block-refs.js')}`,
 				// Obsidian's Dataview, for vaults that arrive carrying it.
 				`dataviewFence, dataviewJsFence, dataviewInline from ${path.join(engineAssets, 'dataview.js')}`,
@@ -305,8 +305,6 @@ export class RenderService {
 				// @app[…] — an app in a note (app-embed.js marks the place;
 				// main resolves it as the document is served).
 				`app from ${path.join(engineAssets, 'app-embed.js')}`,
-				// @begin(tabbing): the same body as the ```tabbing fence.
-				`tabbing from ${path.join(engineAssets, 'tabbing.js')}`,
 			],
 			...this.#biblifyConfig(),
 			// dvisvgm needs ghostscript to convert MetaPost EPS output (and

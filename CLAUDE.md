@@ -359,7 +359,7 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   reconfigures EVERY session); renaming one typesets nothing — identity is
   the TEXT, not the name — but leaves every figure still asking for the old
   name showing its refusal.
-- **Tabbing** (`src/engine/tabbing.js`, owner's ask 2026-09-30): all of
+- **Tabbing** (the ENGINE's since jmarkdown 4ab3d6a — `#jmarkdown/tabbing.js`, the backport of Clew's own; owner's ask 2026-09-30): all of
   LaTeX's `tabbing` — ```` ```tabbing ```` fence or `@begin(tabbing)`, one
   source line a row, `|=` `|>` `|<` `|+` `|-` `|'` `` |` `` `|[` `|]` and a
   `|kill` ruler row, LaTeX's own commands accepted alongside (`\a=` etc. for
@@ -369,11 +369,15 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   the rendered width before it; a ResizeObserver re-lays on fonts, maths,
   resize; morph keeps a block whose source key is unchanged). Pieces are
   `white-space: pre` — a trailing space is part of a width, as in TeX.
-  Self-contained so the jmarkdown backport is a MOVE; the LaTeX renderer
-  exists but a Clew export never loads Clew's engine extensions (export.js
-  runs the user's own config), so tabbing reaches LaTeX export only once
-  backported. Checked additive by `render-dump-scenario.js` (demo and study
-  vaults byte-identical before and after).
+  Backported as a MOVE (jmarkdown 4ab3d6a, 2026-10-03): the engine
+  registers ```tabbing and @begin(tabbing) itself (after callouts), so a
+  LaTeX export has it too; Clew registers nothing and keeps no copy —
+  `preview-client/tabbing.js` imports `layoutTabbing` from
+  `#jmarkdown/tabbing.js`. The engine's own page script (tabbing-page.js) is
+  placed only by a template with a `{{#Tabbing_script}}` section, which
+  Clew's has not. The engine's LaTeX differs from Clew's old copy in two
+  places only: `\a'{e}` (pdfLaTeX cannot typeset the combining form) and a
+  closing blank line.
 - **`@reveal[…]`** (`src/engine/reveal-embed.js`, owner's ask 2026-09-25):
   a presentation as a live iframe. Registered as a named ENVIRONMENT in the
   config, which is why one entry serves `@reveal[…]`, `@reveal+[…]` and
