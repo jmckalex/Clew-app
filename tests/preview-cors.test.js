@@ -8,53 +8,38 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Who may read a clew-preview:// response across origins (src/main/preview-cors.js).
+// Who may read a clew-preview:// response across origins, and who the render
+// POSTs hear (src/main/preview-cors.js; frame-bridge.md §2.6).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { allowedOrigin, narrowCors } from '../src/main/preview-cors.js';
+import { narrowCors, renderOriginAllowed } from '../src/main/preview-cors.js';
 
-const served = () => new Response('body', {
+const served = (extra = {}) => new Response('body', {
 	status: 200,
-	headers: { 'Content-Type': 'text/html', 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' },
+	headers: { 'Content-Type': 'text/html', 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*', ...extra },
 });
 
-test('the preview origin and the app page (null) may read; nothing else', () => {
-	assert.equal(allowedOrigin('clew-preview://vault'), 'clew-preview://vault');
-	assert.equal(allowedOrigin('null'), 'null');
-	assert.equal(allowedOrigin('https://example.com'), null);
-	assert.equal(allowedOrigin('http://localhost:8080'), null);
-	assert.equal(allowedOrigin('file://'), null);
-	assert.equal(allowedOrigin(null), null);
-	assert.equal(allowedOrigin(''), null);
-});
-
-test('an allowed origin is echoed, never a wildcard, and the response varies by it', async () => {
-	const res = narrowCors('null', served());
-	assert.equal(res.headers.get('Access-Control-Allow-Origin'), 'null');
-	assert.match(res.headers.get('Vary'), /Origin/);
+test('every response grants the app page, as a constant — never a wildcard, never null', async () => {
+	const res = narrowCors(served({ Vary: 'Origin' }));
+	assert.equal(res.headers.get('Access-Control-Allow-Origin'), 'clew-app://app');
+	assert.equal(res.headers.get('Vary'), null, 'a constant needs no Vary');
 	assert.equal(res.headers.get('Content-Type'), 'text/html');
 	assert.equal(res.status, 200);
 	assert.equal(await res.text(), 'body');
 });
 
-test('any other origin gets no Access-Control-Allow-Origin at all', () => {
-	const res = narrowCors('https://example.com', served());
-	assert.equal(res.headers.get('Access-Control-Allow-Origin'), null);
-	assert.equal(res.headers.get('Content-Type'), 'text/html');
+test('status and body survive', async () => {
+	const res = narrowCors(new Response('gone', { status: 404 }));
+	assert.equal(res.status, 404);
+	assert.equal(await res.text(), 'gone');
 });
 
-test('a request with no Origin (same-origin, a navigation) gets none either — it needs none', () => {
-	assert.equal(narrowCors(null, served()).headers.get('Access-Control-Allow-Origin'), null);
-});
-
-test('status, status text and a streamed body pass through; 206 and errors too', async () => {
-	const partial = new Response(new Blob(['abc']).stream(), { status: 206, statusText: 'Partial Content', headers: { 'Content-Range': 'bytes 0-2/10' } });
-	const res = narrowCors('clew-preview://vault', partial);
-	assert.equal(res.status, 206);
-	assert.equal(res.statusText, 'Partial Content');
-	assert.equal(res.headers.get('Content-Range'), 'bytes 0-2/10');
-	assert.equal(await res.text(), 'abc');
-	const missing = narrowCors('https://example.com', new Response('nope', { status: 404, headers: { 'Access-Control-Allow-Origin': '*' } }));
-	assert.equal(missing.status, 404);
-	assert.equal(missing.headers.get('Access-Control-Allow-Origin'), null);
+test('the render POSTs hear the app page, a preview document, or no Origin', () => {
+	assert.equal(renderOriginAllowed('clew-app://app'), true);
+	assert.equal(renderOriginAllowed('clew-preview://vault'), true);
+	assert.equal(renderOriginAllowed(null), true);
+	assert.equal(renderOriginAllowed(''), true);
+	for (const o of ['null', 'https://example.com', 'http://localhost:8080', 'file://', 'clew-frame://abc']) {
+		assert.equal(renderOriginAllowed(o), false, o);
+	}
 });

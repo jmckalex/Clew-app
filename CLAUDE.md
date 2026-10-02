@@ -903,15 +903,30 @@ except where the selection touches a construct. The durable design is
   fails from a null origin, and `allow-same-origin` would buy back only
   top-navigation/form/download blocking on a frame that is ALREADY
   cross-origin from the app. Isolation instead: previews live on the
-  `clew-preview://` origin (app is `file://`), `setWindowOpenHandler`
-  denies all popups, and a `will-navigate` guard pins the app frame.
-  Iframes carry `allow="fullscreen"` (EmbedPDF's control needs it).
-  Protocol hardening (2026-09-29): session ids are random (not s1, s2 …),
-  and a response may be READ across origins only by `clew-preview://vault`
-  and `null` — the app page, being file:// — every response leaving through
-  `main/preview-cors.js#narrowCors`; any other origin gets no
-  Access-Control-Allow-Origin. `null` cannot be refused while the app page
-  IS null (HANDOVER §1 has the options). **The render POSTs
+  `clew-preview://` origin (the app page is `clew-app://app` — below),
+  `setWindowOpenHandler` denies all popups, and a `will-navigate` guard
+  pins the app frame. Iframes carry `allow="fullscreen"` (EmbedPDF's
+  control needs it). Protocol hardening (2026-09-29): session ids are
+  random (not s1, s2 …). **The app page has its own origin**
+  (`docs/dev/frame-bridge.md` §2, phase 2, 2026-10-02): `clew-app://app`,
+  registered in the ONE `registerSchemesAsPrivileged` call beside
+  clew-preview (standard, secure — the clipboard needs a secure context),
+  served by `protocol.js#installAppProtocol` from dist/renderer and nothing
+  else (`main/app-files.js`: host `app` only, clamped, typed, no-store; the
+  page's CSP also as a HEADER with `frame-ancestors 'none'`), and a
+  `will-frame-navigate` guard refuses any SUBFRAME loading it
+  (`smoke-app-frame-refused:` under the harness). It used to be `file://`,
+  i.e. `null` — the origin of every sandboxed frame — so `null` had to be
+  allowed to read. Now every clew-preview:// response carries
+  `Access-Control-Allow-Origin: clew-app://app` as a CONSTANT
+  (`main/preview-cors.js#narrowCors`; preview documents are same-origin)
+  and `null` reads nothing; the render POSTs hear only the app page, a
+  preview document or no Origin (`renderOriginAllowed`). An engine
+  root-relative URL put into the app DOM must be pinned to the preview
+  origin (canvas/node-content.js, canvas/portal.js) — against clew-app it
+  names nothing. The move repartitioned the preview frames' storage once
+  (the TikZ result cache re-typeset each figure once, measured).
+  `smoke/app-origin-scenario.js` holds §2.13's assertions. **The render POSTs
   (`__clew_fragment__`, `__clew_block__`) run nothing without the caller
   token** (`docs/dev/frame-bridge.md` §1, agreed with Clew-iOS): 32 random
   bytes per session (`main/caller-token.js`), handed to the window only on

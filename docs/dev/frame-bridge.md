@@ -186,6 +186,19 @@ assume the worst — by moving the app page off `file://` onto
 `clew-app://app`, the origin the iOS app page already has. To be BUILT
 before any embedded-app feature ships.
 
+**Built (phase 2, 2026-10-02):** the move — `main/app-files.js`,
+`protocol.js#installAppProtocol`, `loadURL('clew-app://app/index.html')`,
+the constant ACAO, `renderOriginAllowed`, the subframe guard, the portal
+fix. Measured: origin `clew-app://app`, `isSecureContext` true, a clipboard
+write succeeds, the app page's render POST and block/preview reads succeed,
+the page carries `frame-ancestors 'none'`, a path outside dist/renderer and
+a vault path 404, a note's iframe at the app page is refused
+(`smoke/app-origin-scenario.js`). §2.10's storage question answered: the
+preview frames' storage IS repartitioned under the new top-level site — the
+TikZ/MetaPost result cache re-typeset each figure once
+(`cache-probe first=engine` on the first run of the new build over a
+profile that had it cached, `first=cache` after).
+
 ### 2.1 Why
 
 The app page is `file://`, so its origin is `null`, the same value a

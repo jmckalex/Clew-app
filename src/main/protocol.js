@@ -34,7 +34,9 @@ import { previewPluginScripts, enabledPlugins } from './plugins.js';
 import { previewCsp, isScriptableDocument } from './preview-csp.js';
 import { settings } from './settings.js';
 import { fontsDir, fallbackConfig } from './pdf-fonts.js';
-import { narrowCors } from './preview-cors.js';
+import { narrowCors, renderOriginAllowed } from './preview-cors.js';
+import { appFileFor, appPageCsp } from './app-files.js';
+import { APP_ORIGIN } from '../shared/caller-token.js';
 import { readRenderBody } from './caller-token.js';
 import { rewritePdfFrames, viewerUrl } from './pdf-frames-rewrite.js';
 import { registerRemotePdf, remotePdfFile } from './remote-pdfs.js';
@@ -55,19 +57,50 @@ const MIME = {
 };
 
 export const PREVIEW_SCHEME = 'clew-preview';
+/** The app page's own scheme (frame-bridge.md §2): `clew-app://app/…`. */
+export const APP_SCHEME = 'clew-app';
 
-/** Must run before app.whenReady(). */
+/**
+ * Must run before app.whenReady(). ONE call for every scheme: Electron allows
+ * registerSchemesAsPrivileged once, and a second call risks the first
+ * scheme's privileges. `standard` (a tuple origin, 'self' in a CSP),
+ * `secure` (a secure context — the clipboard, and its delegation to the
+ * office and Excalidraw frames), fetch, CORS and streaming; never
+ * `bypassCSP`, no service workers, no code cache (yet).
+ */
 export function registerPreviewScheme() {
-	protocol.registerSchemesAsPrivileged([{
-		scheme: PREVIEW_SCHEME,
-		privileges: {
-			standard: true,
-			secure: true,
-			supportFetchAPI: true,
-			corsEnabled: true,
-			stream: true,
-		},
-	}]);
+	const privileges = {
+		standard: true,
+		secure: true,
+		supportFetchAPI: true,
+		corsEnabled: true,
+		stream: true,
+	};
+	protocol.registerSchemesAsPrivileged([
+		{ scheme: PREVIEW_SCHEME, privileges },
+		{ scheme: APP_SCHEME, privileges },
+	]);
+}
+
+/**
+ * After app.whenReady(), before any window: the app page's files
+ * (app-files.js — dist/renderer/ and nothing else, host `app` only) on the
+ * DEFAULT session (the canvas webview partition never gets it). No caching:
+ * dev hot reload and View → Reload come through here, and the asset stamp
+ * does not follow renderer builds. The page itself carries its CSP as a
+ * header too, with `frame-ancestors 'none'`: no frame may host the app.
+ */
+export function installAppProtocol({ rendererDir }) {
+	protocol.handle(APP_SCHEME, async (request) => {
+		const found = request.method === 'GET' ? appFileFor(rendererDir, request.url) : null;
+		const notFound = () => new Response('Not found', { status: 404, headers: { 'Content-Type': 'text/plain', 'Cache-Control': 'no-store' } });
+		if (!found) return notFound();
+		let body;
+		try { body = fs.readFileSync(found.file); } catch { return notFound(); }
+		const headers = { 'Content-Type': found.type, 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': APP_ORIGIN };
+		if (found.isPage) headers['Content-Security-Policy'] = appPageCsp(body.toString('utf8'));
+		return new Response(body, { headers });
+	});
 }
 
 const RENDERED_SUFFIX = new RegExp(`(${NOTE_EXTENSIONS.map((e) => e.replace('.', '\\.')).join('|')})\\.html$`, 'i');
@@ -358,8 +391,9 @@ export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDi
 			// sees no Origin on these POSTs, measured). The Origin guard stays
 			// as a second layer. The body is JSON `{token, text, sourcePath?}`.
 			const readRender = async () => {
-				const origin = request.headers.get('origin') ?? '';
-				if (/^https?:/i.test(origin)) return { status: 403, message: 'Forbidden' };
+				// The second layer under the token: an Origin, where one comes,
+				// must be the app page's or a preview document's (§2.6).
+				if (!renderOriginAllowed(request.headers.get('origin') ?? '')) return { status: 403, message: 'Forbidden' };
 				return readRenderBody(await request.text(), session.callerToken);
 			};
 			const refuse = ({ status, message }) =>
@@ -491,7 +525,7 @@ export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDi
 		}
 	};
 	// Every response leaves through the one rule for who may read it across
-	// origins (preview-cors.js): the preview documents and the app page; no
-	// other origin gets an Access-Control-Allow-Origin.
-	protocol.handle(PREVIEW_SCHEME, async (request) => narrowCors(request.headers.get('origin'), await serve(request)));
+	// origins (preview-cors.js): the app page, `clew-app://app`, as a
+	// constant; preview documents are same-origin; nothing else reads.
+	protocol.handle(PREVIEW_SCHEME, async (request) => narrowCors(await serve(request)));
 }

@@ -23,7 +23,7 @@ import { settings } from './settings.js';
 import { trust, setTrustNotice } from './trust.js';
 import { readVaultRequests } from './vault-requests.js';
 import { CH } from '../shared/channels.js';
-import { registerPreviewScheme, installPreviewProtocol } from './protocol.js';
+import { registerPreviewScheme, installPreviewProtocol, installAppProtocol } from './protocol.js';
 import { VaultSession, focusedSession, sessionForVault, sessionForWindow } from './session.js';
 import { paths } from './paths.js';
 import { prepareNoteFonts } from './note-fonts.js';
@@ -38,7 +38,7 @@ registerPreviewScheme();
 
 // SharedArrayBuffer for the ZetaOffice (LibreOffice wasm) viewer, which is
 // a pthreads build. True cross-origin isolation (COOP/COEP) is off the
-// table by architecture: the app page is file:// and previews are
+// table by architecture: the app page is clew-app://app and previews are
 // DELIBERATELY cross-origin clew-preview://, so the top-level document can
 // never satisfy COEP for its frames. This switch enables SAB without COI —
 // a conscious relaxation. The exposure is bounded: arbitrary web content
@@ -89,7 +89,19 @@ export function createWindow(vaultPath = null) {
 	const session = new VaultSession(win, distDir);
 	windowOrder.push(win);
 
-	win.loadFile(path.join(distDir, 'renderer', 'index.html'));
+	// The app page on its own origin (frame-bridge.md §2), not file://, whose
+	// origin is `null` — the one every sandboxed frame has too. Served by
+	// protocol.js#installAppProtocol from dist/renderer and nothing else.
+	win.loadURL('clew-app://app/index.html');
+
+	// Nothing legitimate frames the app page, so no SUBFRAME may load it
+	// (§2.7) — beside `frame-ancestors 'none'` on the document itself.
+	win.webContents.on('will-frame-navigate', (event) => {
+		if (!event.isMainFrame && /^clew-app:/i.test(event.url)) {
+			event.preventDefault();
+			if (process.env.CLEW_SMOKE) console.log(`smoke-app-frame-refused: ${event.url}`);
+		}
+	});
 
 	// External links open in the browser, never inside the app window. This
 	// also catches target=_blank clicks inside canvas-embed web iframes
@@ -341,6 +353,7 @@ app.whenReady().then(async () => {
 	} catch (err) {
 		console.error('note fonts:', err);
 	}
+	installAppProtocol({ rendererDir: path.join(distDir, 'renderer') });
 	installPreviewProtocol({
 		distDir,
 		nodeModulesDir: paths.previewAssets,
@@ -413,7 +426,7 @@ app.on('before-quit', () => {
 
 // Canvas web-page nodes run in <webview> guests: no popups (external links
 // go to the browser), and navigation stays on the open web — never into
-// file:// or clew-preview:// where vault content lives.
+// file://, clew-preview:// where vault content lives, or clew-app://.
 app.on('web-contents-created', (_event, contents) => {
 	if (contents.getType() !== 'webview') return;
 	contents.setWindowOpenHandler(({ url }) => {
