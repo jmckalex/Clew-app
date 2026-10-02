@@ -22,6 +22,7 @@ import { createCodeEditor } from '../../editor/mini-editor.js';
 import { fragmentKey } from '../../../engine/tex-fragments.js';
 import { TOOLBAR_GROUPS } from '../../editor/toolbar/toolbar-spec.js';
 import { calloutsSection } from './settings-callouts.js';
+import { LATEX_ENGINE_SETTING } from '../../../shared/latex-engine-setting.js';
 
 const isMac = navigator.platform.startsWith('Mac');
 
@@ -81,7 +82,7 @@ class ClewSettingsView extends ClewElement {
 					[['auto', 'When the pane is wide enough'], ['on', 'Always'], ['off', 'Never']]),
 				this.#selectRow('PDF paper size (reading-view export)', 'printPaperSize',
 					[['a4', 'A4'], ['letter', 'US Letter'], ['legal', 'US Legal'], ['tabloid', 'Tabloid']]),
-				this.#selectRow('LaTeX engine (PDF via LaTeX export)', 'latexEngine',
+				this.#selectRow(LATEX_ENGINE_SETTING.label, 'latexEngine',
 					[['auto', 'Automatic'], ['pdflatex', 'pdfLaTeX'], ['lualatex', 'LuaLaTeX'], ['xelatex', 'XeLaTeX']]),
 				this.#hint('Automatic reads the exported document: one that loads fontspec, unicode-math, '
 					+ 'polyglossia or Lua code (a \\setmainfont in your jmarkdown config, say) is compiled with '

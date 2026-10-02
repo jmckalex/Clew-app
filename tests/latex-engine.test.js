@@ -11,6 +11,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { chooseLatexEngine, latexmkFlag, firstLatexError } from '../src/main/latex-engine.js';
+import { readFileSync } from 'node:fs';
+import { LATEX_ENGINE_SETTING } from '../src/shared/latex-engine-setting.js';
 
 const doc = (preamble) => `\\documentclass{article}\n\\usepackage[T1]{fontenc}\n${preamble}\n\\begin{document}\nHello.\n\\end{document}\n`;
 
@@ -41,7 +43,7 @@ test('a commented-out line does not count; an escaped % does not hide one', () =
 test('the setting wins, and says so', () => {
 	const forced = chooseLatexEngine(doc('\\usepackage{fontspec}'), 'pdflatex');
 	assert.equal(forced.engine, 'pdflatex');
-	assert.match(forced.reason, /Settings/);
+	assert.equal(forced.reason, 'set in Settings → Appearance → LaTeX engine (PDF via LaTeX export): pdfLaTeX');
 	assert.equal(chooseLatexEngine(doc(''), 'xelatex').engine, 'xelatex');
 	assert.equal(chooseLatexEngine(doc(''), 'nonsense').engine, 'pdflatex');
 });
@@ -51,4 +53,14 @@ test('latexmk flags and the first error of a log', () => {
 	const log = 'This is pdfTeX\n(./x.tex\n! Fatal Package fontspec Error: The fontspec package requires either XeTeX or\n(fontspec)                      LuaTeX.\n\nmore';
 	assert.match(firstLatexError(log), /^! Fatal Package fontspec Error: .* LuaTeX\.$/);
 	assert.equal(firstLatexError('all fine'), '');
+});
+
+test('the reason names the section the Settings view really draws the row in', () => {
+	// The row's label comes from LATEX_ENGINE_SETTING; its section is the
+	// nearest `#section('…'` before it in the view's source.
+	const view = readFileSync(new URL('../src/renderer/components/views/clew-settings-view.js', import.meta.url), 'utf8');
+	const row = view.indexOf("this.#selectRow(LATEX_ENGINE_SETTING.label, 'latexEngine'");
+	assert.ok(row > 0, 'the view draws the row from LATEX_ENGINE_SETTING.label');
+	const sections = [...view.slice(0, row).matchAll(/this\.#section\('([^']+)'/g)];
+	assert.equal(sections.at(-1)?.[1], LATEX_ENGINE_SETTING.section);
 });
