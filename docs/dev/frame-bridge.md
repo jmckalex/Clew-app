@@ -4,9 +4,13 @@ Status (2026-09-30): §1 AGREED with the iOS session and BUILT on desktop;
 §2.8 step 0 BUILT. §2 (the app page's own origin), §3 (Compatibility), §4
 (vault trust) and §5–§16 (the bridge) REVISED to the owner's answers to
 all eleven open questions ("Decisions", at the end), with §4 agreed by the
-iOS session after its review added the engine's own code paths (§4.1) —
-design only; building waits for the owner's go. §1 is a prerequisite: the
-bridge must stand on a protocol that can tell who is asking.
+iOS session after its review added the engine's own code paths (§4.1).
+**2026-10-02: the owner approved building phases 1–4 (§15), with the app
+sections revised first — R1–R3** (apps run in restricted vaults, app
+network, app identity on rename; marked "R1"–"R3" where they land, summed
+up with the choices left open under "Revision R1–R3" at the end, and the
+iOS-facing points under §13). §1 is a prerequisite: the bridge must stand
+on a protocol that can tell who is asking.
 
 ## 1. The caller token
 
@@ -564,7 +568,9 @@ global plugins where the user enabled them for this vault (§4.7).
 What does not run: vault scripts; a note's inline scripts, `Script:`
 files, ```` ```script ```` blocks and custom elements; vault plugins;
 ```dataviewjs (refused BY NAME in place: "this vault's code is off —
-Trust…"); the Note API; app frames (a placeholder).
+Trust…"); the Note API. **App frames are not on this list (R1)**: they run
+in a restricted vault too, each behind its own prompt, isolated by their
+own origin and CSP rather than by the vault's trust (§7).
 
 How, in two layers:
 
@@ -602,9 +608,15 @@ How, in two layers:
   today. (iOS has no HTML/LaTeX/site export; its one export prints the
   reading view, which inherits restricted rendering and the preview CSP.)
 - **Vault HTML runs nothing either**: every vault `.html` document Clew
-  serves in a restricted vault — a `header-html` banner, a vault iframe, a
-  `@reveal` deck from the vault, an app frame's own files — carries
-  `script-src 'none'` as a response HEADER: it draws, it does not run.
+  serves ON THE PREVIEW ORIGIN in a restricted vault — a `header-html`
+  banner, a vault iframe, a `@reveal` deck from the vault — carries
+  `script-src 'none'` as a response HEADER: it draws, it does not run. An
+  app's files served on ITS OWN origin by the `clew-frame` handler (§7) do
+  not get it (R1): the app's scripts are the point, and what contains them
+  is the origin, the sandbox and the app CSP (§7), not the vault's trust.
+  The same files loaded as plain vault HTML (`<iframe src="Apps/Timer/
+  index.html">`) are on the preview origin and DO get it — the preview
+  handler's rule never looks at whether a folder holds a manifest.
   (Measured on iOS: WebKit honours a CSP on WKURLSchemeHandler responses
   in both forms, header and meta, blocking inline and external scripts;
   SchemeHandler serves raw vault HTML untouched, so the header is the
@@ -620,7 +632,9 @@ restriction: they behave as today (§4.10).
   something that would run. A vault with no scripts, plugins, script
   blocks or requests never asks — there is nothing to trust. The count comes
   from the tree (`.clew/scripts`, `.clew/plugins`) and the indexer (notes
-  with scripts or ```dataviewjs, app embeds).
+  with scripts or ```dataviewjs). Apps do not count (R1): they never need
+  the vault's trust, so a vault whose only code is apps never asks, and its
+  apps ask for themselves (§9).
 - **What**: a sheet drawn by the app page (never inside a preview, where
   vault content could imitate it): "This vault contains code: 3 scripts,
   2 plugins (Charts, Header), 14 notes with scripts. It asks for the Note
@@ -728,6 +742,59 @@ global plugins, settings); Node, i.e. the machine; the user's attention
   user grants them on this machine (grants live in userData, never in the
   vault — §9). Today a vault's code already runs on open (§4.1): the
   owner's decision puts all of it behind one per-device question (§4).
+- **A malicious vault's APP, in a vault left restricted (R1).** The case
+  R1 creates: the vault is not trusted, yet its app's code runs. What
+  contains it, in layers: its own origin (`clew-frame://<key>`, §7), so no
+  same-origin path to the preview, the app page or another app; the sandbox
+  (`allow-scripts allow-same-origin allow-forms` — no top navigation,
+  popups, downloads or modal dialogs); navigation pinned to its own origin
+  (§7); no session id (it is never served under `/<sid>/`, and its frame
+  carries `referrerpolicy="no-referrer"`); no caller token; no ACAO for its
+  origin on `clew-preview://` (§2.6), so it cannot READ vault files even
+  with a URL; the app CSP (R2, §7) for the network; and, in a restricted
+  vault, it does not load until the user has answered its prompt (§7).
+  - **With no grants** it can compute and draw inside its frame, read its
+    OWN folder (files the vault already holds — nothing new), and keep
+    origin storage on this device that only it can read. It can draw a
+    convincing fake Clew dialog inside its rectangle — a phishing surface —
+    but anything typed into it has nowhere to go: no network (R2), no
+    write, no navigation off its origin. It can spin a CPU: on desktop
+    site isolation confines that to its own process; on iPad it freezes
+    Clew (§6, denial of service), which is one reason a restricted vault's
+    app waits for its prompt before it loads.
+  - **With "read this note"** (`note.read`) it can also read the embedding
+    note's text — the vault's own text, which the vault's author already
+    has. On its own that grant is safe ONLY because nothing can leave: so
+    the outbound channels matter more here than anywhere else. R2's
+    `connect-src 'self'` closes fetch, XHR, WebSocket, EventSource and
+    beacons; the residual R2 states (an image or frame URL carrying the
+    text out) is closed for apps by the recommended `default-src 'self'`
+    (§7, open choice A). What stays open even then, said plainly: WebRTC's
+    ICE requests (STUN/TURN), which no CSP governs in Chromium or WebKit,
+    and a few bytes per hostname lookup through DNS hints (the handler
+    sends `X-DNS-Prefetch-Control: off`). Closing WebRTC needs an engine
+    switch (desktop: a WebRTC IP-handling policy on the window, to be
+    measured in phase 3; iOS to look at its options).
+  - **With `app.kv` / `app.files`** whatever it learns or is told can be
+    written into data that TRAVELS with the vault (`clewdata.json`,
+    `<app>/data/`) — back to its author if the vault syncs both ways. Within
+    this vault that discloses nothing the author could not read anyway
+    (Tier-1 reads never leave the vault, below), but what the USER types
+    into the app can travel. The prompt says so for a restricted vault
+    (§9).
+  - **`notes.read` never leaves the vault, by realpath.** Clew follows a
+    vault's symlinks (CLAUDE.md), and a vault someone sends can carry one
+    pointing at the home directory. In a RESTRICTED vault every Tier-1 read
+    is clamped to the vault root by realpath (a link out of the vault reads
+    as `not-found`), as are `.clew/` and the trust-bearing files always; in
+    a trusted vault the user's trust covers its links, as Clew's own walks
+    do. The app's own folder is always clamped (§7).
+  - **Never in a restricted vault**: Tier 2 (§11) — the hello answers
+    `tier2: false` and `node:*` is not offered; the vault-wide network
+    switch (§4.9), which is for trusted vaults; and anything the vault's
+    trust would unlock (vault scripts, plugins, note code, the Note API for
+    NOTES). An app's capabilities are its own and never add up to the
+    vault's.
 - **A compromised remote frame.** An https page a note embeds, or an app
   that loads a third-party script. It can post to any window it can reach
   (`window.top`, its parent). It gets no bridge unless the user granted its
@@ -791,20 +858,85 @@ machine itself (malware already running).
   own, registered in the same one `registerSchemesAsPrivileged` call
   (`standard`, `secure`, `supportFetchAPI`, `corsEnabled`, `stream`), whose
   handler serves ONLY the app's folder (realpath clamp, read-only), never
-  `/<sid>/` and never another app's files. `<key>` is derived by Clew,
-  never by the vault: a hash of the device-side vault identity (§4.3 — no
-  absolute paths on iOS, where the container moves on every install) and
-  the app folder's vault-relative path, written as a DNS label (lowercase
-  hex, at most 63 characters). Two vaults' apps never share an origin,
-  even with the same manifest id, and an app keeps its origin — its
-  storage and its grants — across updates. Being its own origin answers "how
+  `/<sid>/` and never another app's files. `<key>` is derived by Clew from
+  the device-side vault identity (§4.3 — no absolute paths on iOS, where
+  the container moves on every install) and **the manifest's `id` (R3)**:
+  a hash of the two, written as a DNS label (lowercase hex, at most 63
+  characters). Two vaults' apps never share an origin, even with the same
+  manifest id; an app keeps its origin — its storage and its grants —
+  across updates AND across a move or rename of its folder.
+- **Why the manifest id, not the folder path (R3)** — the recommendation,
+  over keeping the path and stating the loss:
+  - It is what a user expects: moving `Apps/Timer` to `Tools/Timer`, or
+    renaming it, is the same app, and should not ask again or forget its
+    state.
+  - It is what the data already does: `app.kv` lives under `apps/<id>/` in
+    `clewdata.json` (§9), and `app.files` inside the folder, so both
+    survive a move whatever the key is. A path key would leave the app's
+    ORIGIN storage and grants behind while its kv data and files came
+    along — one app with two identities.
+  - It is no weaker: the vault controls an app's code under either key
+    (an app updated in place keeps its origin and grants either way), and
+    the vault identity in the hash keeps every vault's apps apart, so a
+    vault can only ever claim its OWN apps' ids.
+  - The cost: **two folders in one vault with the same `id` are BOTH
+    refused, by name**, in place of each frame — "two apps in this vault
+    say they are `timer`: Apps/Timer, Old/Timer — give one a new id" —
+    never "the first one wins", which would let a folder take over another
+    app's grants and storage by sorting earlier. Duplicating an app folder
+    to experiment means editing its id; the refusal says so. The id
+    grammar: 1–64 characters of `a-z 0-9 . _ -`, starting with a letter or
+    digit; anything else refuses the manifest by name. The ids are found
+    by the indexer (it already walks every file; `clew-app.json` is a
+    name it knows), so the duplicate check costs no walk of its own.
+  - What still loses the origin: the VAULT moving (§4.3 asks again, once,
+    and its identity is new) — the same for both keys.
+- **Its CSP (R2)**: every document the `clew-frame` handler serves carries
+  a CSP header, and an app's network is OFF by default:
+  `connect-src 'self'` (fetch, XHR, WebSocket, EventSource, beacons) and
+  `form-action 'none'`, which is R2 as accepted. **Recommended on top
+  (open choice A)**: since apps are a new embed kind with nothing to stay
+  compatible with, the whole fetch family is `'self'` too —
+  `default-src 'self' data: blob:; script-src 'self' 'unsafe-inline'
+  'unsafe-eval' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline';
+  form-action 'none'; base-uri 'self'` — which closes R2's stated residual
+  (image, frame, font and stylesheet URLs) for an app nobody granted the
+  network. Inline script and eval are allowed because the app's own code
+  is the point (frameworks use both); the CSP is about where data goes,
+  not what runs. Without choice A, the residual is §4.9's, said the same
+  way: an app can leak what it holds in the URL of an image or a frame.
+- **`network` (R2)**: a capability that lifts that default, declared in
+  the manifest and granted per app per vault like the rest (§9): bare,
+  for any host — the prompt says "send data to the internet"; or scoped,
+  `"network": ["https://api.example.com"]`, for those origins only —
+  "send data to api.example.com". The handler builds the CSP from the
+  grant when it SERVES the document, so a grant or a revocation reloads
+  the app's frames (their ports close first, §9); `network` lifts the
+  same directives choice A restricted, to the granted origins.
+- **Navigation is pinned to its own origin**: an app frame may navigate
+  only within `clew-frame://<key>/` — a `will-frame-navigate` guard on
+  desktop, the navigation policy on iOS — because a frame navigating
+  itself to `https://…?<data>` is an outbound channel no CSP closes (CSP
+  has no navigation directive). The sandbox already denies top navigation
+  and popups.
+- **In a restricted vault (R1)**: the app frame is NOT loaded until the
+  user has answered its prompt — the embed shows a placeholder with the
+  prompt over it, naming the vault as restricted (§9) — even for an app
+  that asks for nothing ("…wants to run here"); a "Don't allow" keeps the
+  placeholder and is remembered like a grant. In a trusted vault the frame
+  loads at once and only capabilities wait for the prompt, as below. This
+  is my reading of "each behind its own grant prompt", and it is also the
+  iPad's denial-of-service mitigation (§6): nothing from an untrusted vault
+  spins a thread before the user says yes. Being its own origin answers "how
   does an isolated app read its own files": same-origin, like any web page
   reads its own; what it cannot do is read the VAULT (a different origin,
   no ACAO for it — §2.6), which it asks for through the bridge.
 - **The frame element**: created by the preview client inside the note's
   flow, `sandbox="allow-scripts allow-same-origin allow-forms"` — safe with
   `allow-same-origin` because the origin is NOT the parent's — which still
-  denies top navigation, popups, downloads and modal dialogs.
+  denies top navigation, popups, downloads and modal dialogs; and
+  `referrerpolicy="no-referrer"`, so the parent's URL (which carries the
+  session id) never reaches it, whatever the scheme's default policy.
 - **Identity**: the app page is the host (never the preview document,
   which is vault content and the app's parent). The app's injected bridge
   client (`clew-bridge.js`, served by the `clew-frame` handler the way
@@ -864,6 +996,7 @@ method names the capability it needs):
 | `find` | find both ways: Clew's find reaches the app's text (the app answers find requests); the app asks Clew to find in the note | |
 | `clipboard` | copy across the boundary: the host writes the app's text to the clipboard, and hands a paste to the app | |
 | `editor.insert` | insert at the note editor's cursor, through the pool | |
+| `network` (R2) | none — it changes the app's CSP (§7): bare, any host; or a list of origins | prompt: "send data to the internet" / "…to api.example.com" |
 
 On iOS the clipboard goes through native `UIPasteboard` over the bridge
 (WebKit ties `navigator.clipboard` writes to a user activation that the
@@ -904,8 +1037,16 @@ rules, Node.
   frame gets no port until answered. A manifest asking for more later asks
   again, for the new capabilities only. Remote apps: the same, naming the
   origin, and never granted by default.
+  - **In a restricted vault (R1)** the prompt names that, and comes before
+    the frame loads (§7): "Timer is an app in **a vault you haven't
+    trusted**. It wants to run here, and to: read this note, keep its own
+    data (which travels with the vault). Its code runs apart from Clew and
+    from the vault. [Allow] [Don't allow]". A request pairing a read with
+    `network` is said as the pair it is: "read this note and send data to
+    the internet".
 - **Storage**: userData `app-grants.json`, keyed by (vault identity on this
-  machine, app folder, manifest id) → capabilities, granted when. Never in
+  machine, manifest id — R3) → capabilities, granted when, and the folder
+  it was granted at (shown in Settings, never part of the key). Never in
   the vault; a vault sent to someone arrives with no grants.
 - **Visible and revocable**: Settings → This vault → Apps lists each app,
   its grants and its live embeds; revoking closes every port of that app at
@@ -940,6 +1081,8 @@ does for the user's own. Text types only, inside the vault, never `.clew/`.
   runs; a kill switch (Settings, and the indicator's menu) that stops them
   all.
 - Desktop only: iOS answers `tier2: false`, and apps check `clew.can()`.
+- Never in a restricted vault (R1): the hello answers `tier2: false` there
+  on every platform, whatever the user installed or enabled.
 
 ## 12. How it relates to what exists
 
@@ -979,6 +1122,33 @@ Measured on WebKit by the iOS session (2026-09-30, a throwaway build):
 - No Tier 2; grants and the trust store in Application Support; the grant
   and trust prompts in the visual viewport; the DoS limit in §6.
 
+**For Clew-iOS to review (R1–R3, 2026-10-02)** — not yet seen by the iOS
+session; each is a question as much as a plan:
+
+1. **R1, apps in restricted vaults.** SchemeHandler serves `clew-frame`
+   documents WITHOUT §4.4's `script-src 'none'` (a different scheme, so a
+   different branch), while raw vault HTML on `clew-preview` keeps it. In
+   a restricted vault the app frame does not load until its prompt is
+   answered — on iPad that is also the only DoS defence that acts BEFORE a
+   thread can spin (§6). The prompt (visual viewport, 44 pt) names the
+   vault as restricted. Tier-1 reads in a restricted vault are clamped to
+   the vault root by realpath — does the provider-relative identity (§4.3)
+   give a root to clamp against for a vault in Files, and do security-
+   scoped bookmarks resolve symlinks the way `realpath` does?
+2. **R2, the app CSP** as a SchemeHandler response header, built from the
+   grant store at serve time (native, so the handler reads it directly);
+   a grant or revocation reloads the app's frames. Measured on iOS already:
+   WebKit honours header CSPs on scheme-handler responses (§4.4). New to
+   check: `default-src 'self'` with `'wasm-unsafe-eval'` on WebKit 18; the
+   navigation policy pinning a `clew-frame` subframe to its own host (it
+   already decides subframe schemes); whether WebKit has any switch for
+   WebRTC ICE in a WKWebView (the residual in §6), and whether it honours
+   `X-DNS-Prefetch-Control`.
+3. **R3, the key** = hash(vault identity, manifest id), so the key needs no
+   path — simpler on iOS than the path key was. The duplicate-id refusal
+   needs the manifest ids from the index (the shared indexer code), and
+   `app-grants.json` in Application Support keys by (identity, id).
+
 ## 14. Test plan
 
 - Unit: the capability map per method; the grant store; manifest parsing;
@@ -989,6 +1159,15 @@ Measured on WebKit by the iOS session (2026-09-30, a throwaway build):
   gets none; writes land through the pool (undo takes them back, history
   keeps the old text); `.clew/` refused; the limits answer `too-large` and
   `rate-limited`.
+- Smoke, R1–R3: in a restricted vault the app frame is a placeholder until
+  its prompt is answered, then runs while the vault's scripts, plugins and
+  note code stay off (their refusals unchanged); a Tier-1 read through a
+  symlink out of a restricted vault answers `not-found`; the app CSP
+  refuses a `fetch` to another LOCAL origin (`clew-preview://vault/…` —
+  our own server, no outside host) and an `<img>` from it under choice A,
+  and allows them to a granted origin; a frame navigation off the app's
+  origin is cancelled; moving the app folder keeps its grants and its
+  localStorage; two folders with one id are both refused by name.
 
 ## 15. Phases
 
@@ -999,7 +1178,10 @@ Measured on WebKit by the iOS session (2026-09-30, a throwaway build):
 2. (c), the app page's own origin (§2), then §2.8 step 2.
 3. Tier 1, read side: the `clew-frame` scheme and handler, the bridge
    client, the port handshake, `note.read`/`notes.read`/`query`/
-   `app.kv`/`app.files`/`links.open`, grants (UX, storage, revocation).
+   `app.kv`/`app.files`/`links.open`, grants (UX, storage, revocation);
+   with R1–R3: the app CSP and `network`, navigation pinned, apps in
+   restricted vaults behind their prompt, the manifest-id key and the
+   duplicate-id refusal, the realpath clamp on restricted reads.
 4. Tier 1, write side: `note.write`/`notes.write`/`notes.create`/
    `editor.insert` through the pool; `find`; `clipboard`.
 5. Remote apps (explicit origin grants).
@@ -1047,3 +1229,42 @@ note-supplied code — Node code on desktop — on first render, today. The
 fix is one switch in the jmarkdown ENGINE (a master change), honoured by
 every such path, which Clew sets for restricted vaults; it can ship ahead
 of the rest of §4.
+
+## Revision R1–R3 (the owner, 2026-10-02)
+
+Accepted by the owner and written in above:
+
+- **R1, apps run in restricted vaults** (§4.4, §4.5, §6, §7, §9, §11):
+  each behind its own prompt, before it loads; vault scripts, plugins, note
+  code and plain vault HTML stay off; Tier 2 never; a trusted vault is
+  unchanged. A vault whose only code is apps never asks for trust.
+- **R2, app network** (§7, §9): `connect-src 'self'` and `form-action
+  'none'` on every app document by default; the `network` capability,
+  bare or scoped to listed origins, lifts it per app per vault.
+- **R3, app identity** (§7, §9): the key is hash(vault identity, manifest
+  id), so a moved or renamed app folder keeps its origin, storage and
+  grants; two folders with one id are both refused by name.
+
+Choices this revision leaves for the owner (the build follows the
+recommendation unless told otherwise):
+
+- **A. `default-src 'self'` for apps** (§7), on top of R2's
+  `connect-src`: recommended — apps have no compatibility burden, and it
+  closes the image/frame-URL residual for every app that has not been
+  granted the network, which is what makes "read this note" safe in a
+  restricted vault (§6). The cost: an app showing a remote image needs
+  `network` for that origin.
+- **B. A restricted vault's app waits for its prompt even when it asks for
+  nothing** (§7): recommended, as the reading of "behind its own grant
+  prompt" and the iPad's only up-front DoS defence. The alternative loads
+  capability-free apps at once.
+- **C. Pinning an approved app's code in a restricted vault** (not built):
+  a content hash of the app's files (not `data/`) stored with the grant,
+  so a vault that syncs new code into a granted app asks again — Tier 2's
+  rule (§11) applied to untrusted vaults. Not recommended for v1: without
+  the network an app's new code can reach nothing its old code could not;
+  worth revisiting with phase 5.
+- **D. WebRTC** (§6): no CSP governs its ICE requests. On desktop a
+  window-wide WebRTC IP-handling policy may close it for app frames (Clew
+  itself uses no WebRTC); phase 3 measures it and reports before setting
+  anything process-wide.
