@@ -34,10 +34,11 @@ import { pathToFileURL } from 'node:url';
 // custom type (CLEW_CALLOUTS) is known, exactly as for `> [!type]`. Found
 // beside the worker script (process.argv[1] is the engine's watch-worker.js,
 // in dev and packaged alike — figures.js finds highlight.js the same way);
-// the vendored mirror is the fallback for a process that is not the worker
-// (the unit tests).
+// the package import is the fallback for a process that is not the worker
+// (the unit tests) — `#jmarkdown/…`, as every other Clew file names the
+// engine, so Clew-iOS's own vendor layout resolves it too.
 const { resolveType } = await import(pathToFileURL(path.join(path.dirname(process.argv[1] ?? ''), 'callout-table.js')).href)
-	.catch(() => import('../../vendor/jmarkdown/src/callout-table.js'));
+	.catch(() => import('#jmarkdown/callout-table.js'));
 
 export const admonitionFence = {
 	name: 'admonitionFence',
