@@ -126,7 +126,9 @@
 .le-quote-2 { border-left-width: 6px; }
 .le-quote-3, .le-quote-4 { border-left-width: 9px; }
 .le-callout {
-	--callout: #6b7785;
+	/* Note's colour, as reading view's base: an unknown type (or a custom
+	   one with no colour) is drawn as a note. */
+	--callout: #5b8def;
 	border-left: 4px solid var(--callout);
 	background: color-mix(in srgb, var(--callout) 12%, transparent);
 	color: var(--clew-text-normal);
@@ -195,6 +197,7 @@
 .le-callout-example       { --callout: #a371f7; }
 .le-callout-quote         { --callout: #8b949e; }
 .le-callout-compatibility { --callout: #00b8a3; }
+.le-callout-suggestion    { --callout: #db61a2; }
 /* A custom colour (Settings → Callouts): preview.css's rule, word for word
    but for the theme selector — kept legible in each theme. */
 .le-callout-custom { --callout: var(--clew-callout-color); }

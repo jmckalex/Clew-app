@@ -25,6 +25,7 @@
 // tables below are what has to change with it.
 import fs from 'node:fs';
 import path from 'node:path';
+import { resolveType } from '#jmarkdown/callout-table.js';
 
 // ---- what Clew supports ----------------------------------------------------
 
@@ -114,16 +115,10 @@ const FRONTMATTER_PLUGINS = {
 	'annotation-target': ['Annotator', 'PDF/EPUB annotation target'],
 };
 
-// Callout types Clew renders (src/engine/callouts.js) — Obsidian's set plus
-// their aliases. Anything outside this falls back to a plain blockquote, which
-// is what the report is for.
-const CALLOUTS = new Set([
-	'note', 'abstract', 'summary', 'tldr', 'info', 'todo',
-	'tip', 'hint', 'important', 'success', 'check', 'done',
-	'question', 'help', 'faq', 'warning', 'caution', 'attention',
-	'failure', 'fail', 'missing', 'danger', 'error', 'bug',
-	'example', 'quote', 'cite', 'compatibility',
-]);
+// Callout types the engine knows (jmarkdown's callout-table.js — Obsidian's
+// set, their aliases, the engine's own `suggestion`). Anything else is drawn
+// as a plain note headed by its name, which is what the report is for.
+const CALLOUTS = { has: (type) => resolveType(type) !== null };
 
 // ---- the walk --------------------------------------------------------------
 
@@ -221,7 +216,7 @@ function scan(vault, { examples = 3 } = {}) {
 			const type = m[1].toLowerCase();
 			if (!CALLOUTS.has(type)) {
 				syntax.add(`callout [!${type}]`, rel,
-					['core Obsidian', 'not a type Clew knows — renders as a plain blockquote']);
+					['core Obsidian', 'not a type Clew knows — drawn as a plain note headed by its name']);
 			}
 		}
 		if (/\[\[[^\]\n]*#\^[^\]\n]+\]\]/.test(masked)) {

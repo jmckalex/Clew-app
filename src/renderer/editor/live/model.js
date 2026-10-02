@@ -45,7 +45,7 @@ import { syntaxTree, ensureSyntaxTree } from '@codemirror/language';
 import { scanFor } from '../jmd/scan-cache.js';
 import { LITERAL_DIRECTIVES } from '../jmd/jmarkdown-scan.js';
 import { MATH_ENVIRONMENT_NAMES } from '../jmd/math-segments.js';
-import { resolveType, calloutGeneration } from '../../../engine/callouts.js';
+import { resolveType, calloutGeneration } from '#jmarkdown/callout-table.js';
 import { IMAGE_EXT } from '../../../shared/file-types.js';
 import { headerlessTables } from '../tables.js';
 import {
@@ -57,7 +57,7 @@ import {
 const MATH_ENVS = new Set(MATH_ENVIRONMENT_NAMES);
 const isMathEnv = (name) => MATH_ENVS.has(name.replace(/\*$/, ''));
 
-/** The engine's callout opener (src/engine/callouts.js), after the `>`s. */
+/** The engine's callout opener (jmarkdown's callouts.js), after the `>`s. */
 const CALLOUT_HEAD = /^[ \t]*\[!([A-Za-z][\w-]*)\][ \t]*([+-]?)[ \t]*(.*)$/;
 /** The engine's alignment rules (syntax-enhancements.js). */
 const ALIGN_CENTER = /^>> .*<<\s*$/;
@@ -78,7 +78,7 @@ const cache = new WeakMap();
 export function liveModel(state, config = {}) {
 	const tree = ensureSyntaxTree(state, state.doc.length, 50) ?? syntaxTree(state);
 	// The callout table is part of the key: a type defined in Settings
-	// (engine/callouts.js#applyCustomCallouts) changes what `[!x]` is.
+	// (the engine's callout-table.js#applyCustomCallouts) changes what `[!x]` is.
 	const key = `${config.normalSyntax === true}|${(config.richFences ?? []).join(',')}|${calloutGeneration()}`;
 	const hit = cache.get(state.doc);
 	if (hit && hit.tree === tree && hit.key === key) return hit.list;
@@ -342,7 +342,10 @@ function build(doc, tree, config) {
 		if (!ALIGN_RIGHT.test(first.text)) {
 			const afterMarks = stripQuotes(first.text, depth);
 			const m = afterMarks && CALLOUT_HEAD.exec(afterMarks.rest);
-			const type = m && resolveType(m[1]);
+			// As the engine's tokenizer reads it: a type known by name or alias,
+			// else an UNKNOWN type — drawn as a note (pencil, note's colour),
+			// titled with its name (jmarkdown a7de8c6, Obsidian's behaviour).
+			const type = m && (resolveType(m[1]) ?? m[1].toLowerCase());
 			if (type) {
 				const headFrom = first.from + afterMarks.offset + (afterMarks.rest.length - afterMarks.rest.trimStart().length);
 				const titleFrom = first.to - m[3].length;

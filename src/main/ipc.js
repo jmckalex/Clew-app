@@ -37,7 +37,7 @@ import { trust } from './trust.js';
 import { registeredRemoteUrl, saveRemoteCopy } from './remote-pdfs.js';
 import { planOpen, pathFromFileUrl } from './open-file.js';
 import { iconTable, resolvedCallouts } from './callout-types.js';
-import { iconKey } from '../shared/custom-callouts.js';
+import { iconKey } from '#jmarkdown/callout-definitions.js';
 import fs from 'node:fs';
 import nodePath from 'node:path';
 

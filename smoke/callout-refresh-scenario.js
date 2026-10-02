@@ -9,10 +9,12 @@
 //   2. a HAND edit of .clew/vault-settings.json (written atomically from
 //      outside the settings stores, as an editor saves): remark → teal, and a
 //      new type `fresh`.
-// Live edit logs `smoke-cr: <step> remark=<border> fresh-head=<bool>`; at the
+// Live edit logs `smoke-cr: <step> remark=<border> fresh=<border>`; at the
 // end Callouts.md goes back to reading view, and the frame script logs the
-// reading view's and the embed frame's remark border and whether [!fresh] is
-// a callout there. All three must be teal's dark-theme colour, fresh in all.
+// reading view's and the embed frame's remark and fresh borders. All three
+// must end teal (remark) and #d35400's dark-theme colour (fresh) — `fresh`
+// being, until the hand edit, an UNKNOWN type drawn in note's blue
+// (jmarkdown a7de8c6).
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const { workspaceStore, vaultStore, vaultSettingsStore, editorPool, ipc, registry } = window.__clew;
 for (let i = 0; i < 150 && !vaultStore.vault?.sessionId; i++) await sleep(100);
@@ -29,29 +31,36 @@ workspaceStore.setTabMode(right.id, 'live');
 await sleep(4000);
 
 const view = editorPool.get(left.id).view;
-const measure = (step) => {
-	const head = (type) => [...view.dom.querySelectorAll('.cm-line.le-callout-head')].find((l) => l.classList.contains(`le-callout-${type}`));
-	const remark = head('remark');
-	console.log(`smoke-cr: ${step} remark=${remark ? getComputedStyle(remark).borderLeftColor : 'none'} fresh-head=${Boolean(head('fresh'))}`);
+// A head is measured scrolled into view: CodeMirror draws only what is near
+// the screen, and the note is longer than one.
+const borderOf = async (written) => {
+	const pos = view.state.doc.toString().indexOf(`> [!${written}]`);
+	view.scrollDOM.scrollTop = Math.max(0, view.lineBlockAt(pos).top - 100);
+	await sleep(200);
+	const line = [...view.dom.querySelectorAll('.cm-line.le-callout-head')].find((l) => { try { return view.posAtDOM(l) === pos; } catch { return false; } });
+	return line ? getComputedStyle(line).borderLeftColor : 'none';
+};
+const measure = async (step) => {
+	console.log(`smoke-cr: ${step} remark=${await borderOf('remark')} fresh=${await borderOf('fresh')}`);
 };
 view.dispatch({ selection: { anchor: view.state.doc.toString().indexOf('The end.') } });
 await sleep(600);
-measure('before');
+await measure('before');
 
 const stored = (await ipc.invoke('clew:vault-settings-get')).callouts;
 const recolour = (list, color) => list.map((e) => (e.name === 'remark' ? { ...e, color } : e));
 await vaultSettingsStore.set('callouts', recolour(stored, '#c0392b'));
 await sleep(3000);
-measure('after-settings');
+await measure('after-settings');
 
 const byHand = { callouts: [...recolour(stored, 'teal'), { name: 'fresh', icon: 'leaf', color: '#d35400' }] };
 await ipc.invoke('clew:note-write', { path: '.clew/vault-settings.json', content: `${JSON.stringify(byHand, null, 2)}\n` });
 for (let i = 0; i < 60; i++) {
 	await sleep(250);
-	if (view.dom.querySelector('.cm-line.le-callout-head.le-callout-fresh')) break;
+	if ((await borderOf('fresh')) !== 'rgb(91, 141, 239)') break;
 }
 await sleep(600);
-measure('after-hand');
+await measure('after-hand');
 
 workspaceStore.activateTab(left.id);
 workspaceStore.setTabMode(left.id, 'reading');

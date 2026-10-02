@@ -155,7 +155,7 @@ export function copyStatic() {
 }
 
 // Font Awesome Free's icons as one table — `family:name` → [width, height,
-// path] — for custom callout types (src/shared/custom-callouts.js): main
+// path] — for custom callout types (the engine's callout-definitions.js): main
 // resolves the names a definition uses from it and hands the worker only
 // those paths, and Settings' icon picker loads it on demand. Never on a
 // render path. Built from the package's own svgs/ (CC BY 4.0, see

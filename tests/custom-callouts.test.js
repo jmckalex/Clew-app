@@ -10,11 +10,14 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validColor, iconKey, checkEntry, resolveCallouts, NAME_RE } from '../src/shared/custom-callouts.js';
+// The rules and the table are the ENGINE's since jmarkdown a7de8c6 (Clew's
+// shared/custom-callouts.js and engine/callouts.js retired); these tests hold
+// what Clew relies on of them.
+import { validColor, iconKey, checkEntry, resolveCallouts, NAME_RE } from '#jmarkdown/callout-definitions.js';
 import {
 	applyCustomCallouts, resolveType, calloutBlock, calloutIcon, calloutColor,
 	CALLOUT_TYPES, BUILTIN_CALLOUT_TYPES,
-} from '../src/engine/callouts.js';
+} from '#jmarkdown/callouts.js';
 
 // A stand-in for dist/main/fa-icons.json: `family:name` → [w, h, d].
 const ICONS = {
@@ -142,7 +145,10 @@ test('the engine draws a custom type: colour on the element, icon, escaped title
 		const html = render('> [!rem]\n> body\n');
 		assert.match(html, /class="callout markdown-alert markdown-alert-remark callout-custom" data-callout="remark" style="--clew-callout-color: #a1b2c3"/);
 		assert.match(html, /viewBox="0 0 448 512"[^>]*><path fill="currentColor" d="M1 2L3 4Z"/);
-		assert.match(html, /A &lt;b&gt;remark&lt;\/b&gt;/);
+		// Through an alias, untitled: the type AS WRITTEN (jmarkdown a7de8c6);
+		// the canonical name gets the definition's own title, escaped.
+		assert.match(html, /<span class="callout-title-inner">Rem<\/span>/);
+		assert.match(render('> [!remark]\n> body\n'), /A &lt;b&gt;remark&lt;\/b&gt;/);
 		// A built-in recoloured keeps its own icon.
 		assert.equal(calloutColor('warning'), 'hsl(30, 80%, 50%)');
 		assert.equal(calloutIcon('warning'), warningIcon);

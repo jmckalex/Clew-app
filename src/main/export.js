@@ -35,6 +35,7 @@ import path from 'node:path';
 import { toolchainPath } from './render-service.js';
 import { printNoteToPdf } from './print-pdf.js';
 import { settings } from './settings.js';
+import { calloutsEnv } from './callout-types.js';
 
 const WORKER_PATH = paths.engineWorker;
 
@@ -46,12 +47,15 @@ function restrictedExportDir() {
 	return dir;
 }
 
-function runWorker({ file, options, cwd }) {
+function runWorker({ file, options, cwd, callouts = '' }) {
 	return new Promise((resolve, reject) => {
 		const child = fork(WORKER_PATH, [], {
 			cwd,
 			stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
-			env: { ...process.env, PATH: toolchainPath() },
+			// The engine renders callouts itself (jmarkdown a7de8c6), HTML and
+			// LaTeX; CLEW_CALLOUTS hands it this vault's custom types, as the
+			// preview does — a `Callouts` key in the user's own config wins.
+			env: { ...process.env, PATH: toolchainPath(), CLEW_CALLOUTS: callouts },
 		});
 		let stderr = '';
 		child.stdout.on('data', () => {});
@@ -111,7 +115,9 @@ export async function exportNote({ win, vaults, sessionId, callerToken = null, r
 	const abs = vaults.resolve(relPath);
 	const cwd = trusted ? path.dirname(abs) : restrictedExportDir();
 	// Exports honor the vault's standard-syntax choice, like previews do.
-	const normalSyntax = vaults.loadState('vault-settings.json')?.normalSyntax === true;
+	const vaultSettings = vaults.loadState('vault-settings.json') ?? {};
+	const normalSyntax = vaultSettings.normalSyntax === true;
+	const callouts = calloutsEnv(settings.get('callouts'), vaultSettings.callouts, paths.faIcons);
 	const base = path.basename(abs).replace(/\.(md|jmd)$/i, '');
 	const ext = format === 'html' ? 'html' : format === 'latex' ? 'tex' : 'pdf';
 
@@ -137,14 +143,14 @@ export async function exportNote({ win, vaults, sessionId, callerToken = null, r
 	}
 
 	if (format === 'html') {
-		await runWorker({ file: abs, options: { to: 'html', output: filePath, normalSyntax }, cwd });
+		await runWorker({ file: abs, options: { to: 'html', output: filePath, normalSyntax }, cwd, callouts });
 		return { output: filePath };
 	}
 
 	// LaTeX (and PDF via LaTeX): build the .tex next to the requested output
 	// so relative graphics resolve, then compile if PDF was asked for.
 	const texFile = format === 'latex' ? filePath : filePath.replace(/\.pdf$/i, '.tex');
-	await runWorker({ file: abs, options: { to: 'latex', output: texFile, normalSyntax }, cwd });
+	await runWorker({ file: abs, options: { to: 'latex', output: texFile, normalSyntax }, cwd, callouts });
 	if (format === 'latex') return { output: texFile };
 	const pdf = await compilePdf(texFile);
 	if (pdf !== filePath) fs.copyFileSync(pdf, filePath);

@@ -8,7 +8,9 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Custom callout types, resolved (shared/custom-callouts.js has the rules):
+// Custom callout types, resolved (the engine's callout-definitions.js has the
+// rules — jmarkdown a7de8c6; Clew's own copy, shared/custom-callouts.js, was
+// retired with it):
 // the app-global list from clew-settings.json and a vault's from its
 // .clew/vault-settings.json, merged over the built-ins with the Font Awesome
 // table in hand, so the render worker (CLEW_CALLOUTS) and the renderer
@@ -19,8 +21,8 @@
 // exists, and never when none does: a vault with no custom types costs
 // nothing at render time. Electron-free; the caller passes the file.
 import fs from 'node:fs';
-import { resolveCallouts } from '../shared/custom-callouts.js';
-import { BUILTIN_CALLOUT_TYPES } from '../engine/callouts.js';
+import { resolveCallouts } from '#jmarkdown/callout-definitions.js';
+import { BUILTIN_CALLOUT_TYPES } from '#jmarkdown/callout-table.js';
 
 let table = null;
 

@@ -116,8 +116,12 @@ test('callouts: type through the aliases, fold, title; body lines carry the type
 	function doc(r) { return '> [!TLDR]- Short *version*\n> body\n'.slice(r.from, r.to); }
 });
 
-test('an unknown callout type is a plain quote, as the engine renders it', () => {
-	assert.deepEqual(kinds('> [!nonsense] Title\n'), ['quote']);
+test('an unknown callout type is a callout, as the engine renders it (a note)', () => {
+	// jmarkdown a7de8c6 draws `[!nonsense]` as a note titled as written;
+	// live edit's model follows (the type lower-cased, the name as written).
+	const c = model('> [!Nonsense] Title\n').find((x) => x.kind === 'callout');
+	assert.equal(c?.type, 'nonsense');
+	assert.equal(c?.rawType, 'Nonsense');
 });
 
 test('alignment beats blockquote', () => {

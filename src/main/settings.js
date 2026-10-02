@@ -61,7 +61,7 @@ const DEFAULTS = {
 	// shadow these where the names meet.
 	texFragments: [],
 	// Custom callout types ([{ name, title?, icon?, color?, aliases? }] —
-	// shared/custom-callouts.js validates them, main/callout-types.js
+	// the engine's callout-definitions.js validates them, main/callout-types.js
 	// resolves them). These are the GLOBAL ones, this Mac's alone; a vault's
 	// own live in its vault-settings.json, travel with it, and win where
 	// the names meet.

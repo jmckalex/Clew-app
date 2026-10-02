@@ -29,7 +29,7 @@ for (const group of section.querySelectorAll('.callout-def-group')) {
 // The custom types are in the palette as well ("Insert … callout").
 const { registry } = window.__clew;
 const inserts = registry.allCommands().filter((c) => c.id.startsWith('format:callout-')).map((c) => c.id.slice(15));
-console.log(`smoke-cs: palette ${['remark', 'pale', 'deep', 'warning'].map((t) => `${t}=${inserts.includes(t)}`).join(' ')} evil=${inserts.includes('evil')}`
+console.log(`smoke-cs: palette ${['remark', 'pale', 'deep', 'warning', 'suggestion'].map((t) => `${t}=${inserts.includes(t)}`).join(' ')} evil=${inserts.includes('evil')}`
 	+ ` warning-name=${JSON.stringify(registry.allCommands().find((c) => c.id === 'format:callout-warning')?.name)}`);
 const remark = [...section.querySelectorAll('.callout-def-row')].find((r) => r.querySelector('.callout-def-name').value === 'remark');
 const sample = remark.querySelector('.callout-sample.is-light .callout-sample-title');

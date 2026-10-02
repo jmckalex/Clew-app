@@ -257,9 +257,7 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   reader and the writer of the syntax cannot drift, the same arrangement
   as block-refs.js/block-ids.js), `obsidian-fences.js` (```mermaid + ```leaflet maps incl. photo
   maps w/ HEIC conversion), `query-fences.js` (```query/```tasks/```kanban
-  + the `vault` global for script blocks), `callouts.js` (every Obsidian
-  `> [!type]`, case-insensitively, incl. foldables — registered LAST so it
-  is offered before the engine's own GFM-alert rule), `block-refs.js`
+  + the `vault` global for script blocks), `block-refs.js`
   (`^block-id` markers), `exif-gps.js`, `clew-template.html` (local
   assets, no CDN), `preview.css`. These may import each other but never
   src/shared (dist/engine is a verbatim copy).
@@ -382,27 +380,48 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   px: 'px'}`, `aspect=16/9` THROWS and the engine then loses every attribute
   (measured) — so `attrsOf` glues orphaned units back and a bare number means
   px; anything with a slash must be quoted, which the manual says.
+- **Callouts are the ENGINE's** (jmarkdown a7de8c6, 2026-10-02): `> [!type]`
+  in reading view, site export, the reading-view PDF AND single-note
+  HTML/LaTeX exports (a tcolorbox with the same icon) is jmarkdown's
+  `callouts.js`; Clew's own extension and `shared/custom-callouts.js` are
+  retired. The TABLE is the engine's import-free `callout-table.js`
+  (built-ins incl. its `suggestion`, aliases, icons, `applyCustomCallouts`,
+  `untitledCalloutTitle`), which the renderer and main import as
+  `#jmarkdown/callout-table.js` — never `#jmarkdown/callouts.js`, which
+  loads the engine's config manager (fs, a cwd config read) and must stay
+  out of Clew's processes. `engine/admonitions.js` imports the same table
+  beside the worker script (`process.argv[1]`), so it shares the engine's
+  instance. An UNKNOWN `[!type]` is drawn as a note (pencil, note's colour)
+  headed by its name; an untitled callout is headed by its type AS WRITTEN
+  (`[!CAUTION]` → Caution — `untitledCalloutTitle`, imported, never
+  mirrored); live edit's model follows both (`resolveType(raw) ??
+  raw.toLowerCase()`, the head widget's `written`). preview.css,
+  live-edit.css and canvas.css use the engine's base (`--callout` note's
+  #5b8def) and `.callout[data-callout]` scoping, as jmarkdown.css does — the
+  engine inlines jmarkdown.css into every document BEFORE preview.css, so
+  Clew's equal-specificity rules (the per-theme clamp) win.
 - **Custom callout types** (owner's ask 2026-10-01; Settings → Callouts):
   `callouts` lists in `clew-settings.json` (global, this Mac) and
   `vault-settings.json` (travels with the vault), `{ name, title?, icon?,
   color?, aliases? }`, merged built-in < global < vault FIELD BY FIELD.
-  `shared/custom-callouts.js` owns the rules (name grammar, colours by
-  grammar only — hex, rgb(), hsl(), CSS names — icons by name, a bad entry
-  SKIPPED with its reason, never half-applied); `main/callout-types.js`
-  resolves with the Font Awesome table (`dist/main/fa-icons.json`, written
-  by scripts/build.js, 1.85 MB, read only once a definition exists — never
-  on a render path) and hands the worker `CLEW_CALLOUTS` (finished entries:
-  label, colour, icon PATH) and the renderer `CALLOUTS_RESOLVED`; both feed
-  `engine/callouts.js#applyCustomCallouts`, whose `CALLOUT_TYPES` is a LIVE
-  binding (read it when used). The colour rides on the element as
+  The engine's `callout-definitions.js` owns the rules (name grammar,
+  colours by grammar only — hex, rgb(), hsl(), CSS names — icons by name, a
+  bad entry SKIPPED with its reason, never half-applied); `main/callout-
+  types.js` resolves with the Font Awesome table (`dist/main/fa-icons.json`,
+  written by scripts/build.js, 1.85 MB, read only once a definition exists —
+  never on a render path) and hands the render worker, the export worker
+  and the site-export worker `CLEW_CALLOUTS` (finished entries: label,
+  colour, icon PATH) and the renderer `CALLOUTS_RESOLVED`; both feed the
+  engine table's `applyCustomCallouts`, whose `CALLOUT_TYPES` is a LIVE
+  binding (read it when used). A user's own `Callouts` config key wins in a
+  note export, by the engine's rule. The colour rides on the element as
   `--clew-callout-color` (never Obsidian's `--callout-color`, an `r, g, b`
   triple in vault snippets), and preview.css / live-edit.css clamp its OKLCH
   lightness per theme — keep those two rules identical. A hand edit of the
   vault file applies live (`watchVaultCallouts`, a watch on `.clew/`).
   Editing either list reconfigures and sends `EV_CALLOUTS_CHANGED`; live
   edit rebuilds its model (`liveRebuild`, the model's cache key carries
-  `calloutGeneration()`). HTML/LaTeX note exports run the user's own config
-  and never see Clew's callouts, built-in or custom.
+  `calloutGeneration()`).
 - **Obsidian's own query formats** — for opening other people's vaults,
   alongside (not replacing) Clew's `query`/`tasks`/`kanban` fences:
   `vault-model.js` (the vault as pages: `file.*`, the link graph,

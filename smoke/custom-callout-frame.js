@@ -8,7 +8,5 @@ const iconOf = (svg) => (svg ? `${svg.getAttribute('viewBox')}|${svg.querySelect
 		+ ` accent=${getComputedStyle(head.querySelector('svg') ?? head).color} title-color=${getComputedStyle(inner).color}`
 		+ ` icon=${iconOf(head.querySelector('svg'))} folded=${c.tagName === 'DETAILS' && !c.open}`);
 });
-const quotes = [...document.querySelectorAll('blockquote')].filter((q) => q.textContent.includes('Refused'));
-console.log(`smoke-cc-read: refused-as-quotes=${quotes.length}`);
 console.log(`smoke-cc-read: style-urls=${[...document.querySelectorAll('[style]')].filter((el) => /url\(/i.test(el.getAttribute('style'))).length}`);
 console.log(`smoke-cc-read: theme=${document.documentElement.dataset.theme ?? 'dark'}`);

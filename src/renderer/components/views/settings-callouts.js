@@ -15,7 +15,7 @@
 // Font Awesome Free), colour (a swatch, or any hex/rgb()/hsl()/CSS name
 // typed), aliases, and a preview in both themes drawn by the same rule
 // reading view and live edit use. A row the rules refuse says why (shared/
-// custom-callouts.js locally, and main's own verdict — which also covers a
+// callout-definitions.js locally, and main's own verdict — which also covers a
 // hand-edited file — after each save).
 //
 // The icon table (~1.9 MB) is fetched from main only when the picker first
@@ -25,8 +25,8 @@ import { vaultStore } from '../../state/vault-store.js';
 import { vaultSettingsStore } from '../../state/vault-settings-store.js';
 import { ipc, CH } from '../../ipc.js';
 import { debounce } from '../../lib/debounce.js';
-import { NAME_RE, validColor, defaultTitle } from '../../../shared/custom-callouts.js';
-import { BUILTIN_CALLOUT_TYPES, builtinCalloutIcon } from '../../../engine/callouts.js';
+import { NAME_RE, validColor, defaultTitle } from '#jmarkdown/callout-definitions.js';
+import { BUILTIN_CALLOUT_TYPES, builtinCalloutIcon } from '#jmarkdown/callout-table.js';
 import { calloutProblems, onCalloutsSynced } from '../../callouts.js';
 
 const PICKER_LIMIT = 240;

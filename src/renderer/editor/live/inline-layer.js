@@ -39,7 +39,7 @@ import { citationLabel, citationsReady, citationsLoaded } from '../complete/cita
 import { engineCiteText, engineCiteHtml, wantCiteTexts, onCiteTexts, citeSignature } from './cite-text.js';
 import { FullciteWidget } from './widgets/fullcite.js';
 import { localCiteText } from './cite-label.js';
-import { calloutColor } from '../../../engine/callouts.js';
+import { calloutColor } from '#jmarkdown/callout-table.js';
 
 const HIDE = Decoration.replace({});
 const markCache = new Map();
@@ -315,7 +315,7 @@ function build(view) {
 					lineClass(c.from, `le-callout-head${calloutFolded(state, c) ? ' le-callout-folded' : ''}`);
 					if (hidden) {
 						const h = c.hidden[0];
-						widget(h.from, h.to, new CalloutHeadWidget(c.type, c.fold, calloutFolded(state, c), Boolean(c.title), c.id));
+						widget(h.from, h.to, new CalloutHeadWidget(c.type, c.fold, calloutFolded(state, c), Boolean(c.title), c.id, c.rawType));
 						if (c.title) mark(c.title.from, c.title.to, 'le-callout-title');
 					}
 					break;

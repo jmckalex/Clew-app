@@ -1,4 +1,4 @@
-# Handover — 2026-10-02 (0.12.0 released; origin/main 0423008; dev build 0.12.1-dev.1)
+# Handover — 2026-10-02 (0.12.0 released; origin/main 0423008; dev build 0.12.1-dev.1; callouts are the engine's)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it); the live edit design AS BUILT is
@@ -23,6 +23,16 @@ entitlements, arm64; CFBundleShortVersionString/CFBundleVersion 0.12.1-dev.1;
 matching 0423008. **boot-test PASSED** without ALLOW_STALE (13 figures
 mpw-ok, cache-probe engine→cache, every live-edit line). Not published
 anywhere. `out-dev/` is gitignored.
+
+**Since the push (local, NOT pushed):** `4bbee43` HANDOVER; `5f870b2` the
+engine re-vendored at `at-migration@a7de8c6`; then **Clew switched to the
+engine's callouts** (CLAUDE.md "Callouts are the ENGINE's"): Clew's own
+callout extension and `shared/custom-callouts.js` retired, the table from
+`#jmarkdown/callout-table.js`, unknown `[!type]` drawn as a note, untitled
+callouts headed as written, `suggestion`, single-note HTML/LaTeX exports
+render callouts (custom types via CLEW_CALLOUTS). Engine findings reported
+upstream: a callout broken across pages loses its strip and tint in LaTeX;
+a markdown `![](x.svg)` still emits `\includegraphics{x.svg}`.
 
 **The rules this session works under** (the owner's, relayed by the
 coordinating session "Clew-boss", uds `/tmp/cc-socks/6958.sock` at the

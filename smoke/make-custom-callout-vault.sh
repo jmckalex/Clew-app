@@ -5,8 +5,10 @@
 # light page, a navy one that must be lightened on the dark one) next to
 # entries that must be REFUSED by name (a bad name, a colour carrying CSS,
 # an unknown icon), and Callouts.md using each — plain, folded `-`, open `+`
-# — plus `[!fresh]`, which nothing defines until callout-refresh-scenario.js
-# writes it in, and Embed.md transcluding Callouts.md.
+# — plus the engine's `suggestion`, an untitled alias (`[!CAUTION]`), an
+# unknown type, `[!fresh]` (unknown until callout-refresh-scenario.js
+# defines it), and Embed.md transcluding Callouts.md. A refused definition
+# leaves its type UNKNOWN: drawn as a note, headed by its name.
 # The theme (dark | light, default dark) is written into a userData dir at
 # <dir>-ud for custom-callout-scenario.js, which also lists the vault as
 # known (trusted) there.
@@ -54,11 +56,20 @@ Before the callouts.
 > [!note]
 > A built-in left alone.
 
+> [!suggestion]
+> The engine's own type (jmarkdown a7de8c6).
+
+> [!CAUTION]
+> An untitled alias: headed as written, in warning's colours.
+
+> [!zzz-unknown]
+> Nobody defined this one: a note, headed by its name.
+
 > [!evil]
-> Refused: a plain quote.
+> Refused definition: drawn as an unknown type.
 
 > [!nosuch]
-> Refused: a plain quote.
+> Refused definition: drawn as an unknown type.
 
 > [!fresh]
 > Defined by hand, later (callout-refresh-scenario.js).

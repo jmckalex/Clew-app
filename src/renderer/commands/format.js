@@ -18,7 +18,7 @@ import { indentMore, indentLess, insertBlankLine, undo, redo } from '@codemirror
 import { toggleWrapSpec } from '../editor/toggle-wrap.js';
 import { vaultSettingsStore } from '../state/vault-settings-store.js';
 import { saveAndInsert } from '../editor/attachments.js';
-import { CALLOUT_TYPES, BUILTIN_CALLOUT_TYPES } from '../../engine/callouts.js';
+import { CALLOUT_TYPES, BUILTIN_CALLOUT_TYPES } from '#jmarkdown/callout-table.js';
 import { CELL_SAFE_COMMANDS } from '../../shared/format-spec.js';
 import {
 	activeCellView, applyStructure, leaveCell, tableTarget, activateCell, rowIndex,

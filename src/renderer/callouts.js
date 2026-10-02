@@ -8,9 +8,10 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Custom callout types in this window (Settings → Callouts; shared/
-// custom-callouts.js has the rules, main/callout-types.js resolves them):
-// the resolved table installed into engine/callouts.js — the one table live
+// Custom callout types in this window (Settings → Callouts; the engine's
+// callout-definitions.js has the rules, main/callout-types.js resolves them):
+// the resolved table installed into the ENGINE's callout-table.js (jmarkdown
+// a7de8c6, import-free so this bundle can take it) — the one table live
 // edit's heads, the toolbar's callout menu and the palette's "Insert …
 // callout" commands read — at boot, on a vault arriving, and whenever main
 // says the definitions changed (Settings in any window for the global list,
@@ -19,7 +20,7 @@
 // (render-service reconfigure), so nothing here touches a preview.
 import { ipc, CH } from './ipc.js';
 import { vaultStore } from './state/vault-store.js';
-import { applyCustomCallouts, CALLOUT_TYPES } from '../engine/callouts.js';
+import { applyCustomCallouts, CALLOUT_TYPES } from '#jmarkdown/callout-table.js';
 import { editorPool } from './editor/pool.js';
 import { syncCalloutCommands } from './commands/format.js';
 

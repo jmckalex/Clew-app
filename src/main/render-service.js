@@ -252,16 +252,14 @@ export class RenderService {
 				// wikilinks.js; this registers the inline ```base fence.
 				`baseFence from ${path.join(engineAssets, 'bases.js')}`,
 				// The Admonition plugin's ```ad-* fences (pre-callout vaults),
-				// mapped onto callout tokens so callouts.js renders them.
+				// mapped onto callout tokens so the engine's callouts render them.
 				`admonitionFence from ${path.join(engineAssets, 'admonitions.js')}`,
 				// Meta Bind's INPUT[…]/VIEW[…] widgets — editable cells that
 				// live in prose, on the same field-edit write path.
 				`metaBindInline, metaBindFence from ${path.join(engineAssets, 'meta-bind.js')}`,
-				// LAST on purpose: marked offers the most recently registered
-				// block extension first, and callouts must be seen before the
-				// engine's own GFM-alert rule so that every `> [!type]` in a
-				// document — the five GFM ones included — renders identically.
-				`calloutBlock from ${path.join(engineAssets, 'callouts.js')}`,
+				// (Callouts are the ENGINE's since jmarkdown a7de8c6 — callouts.js,
+				// registered after its own GFM-alert rule; Clew hands it the custom
+				// types through CLEW_CALLOUTS.)
 				// After callouts (so it is offered first): a note whose
 				// frontmatter declares `kanban-plugin` IS a board, and this
 				// claims the whole body before any other rule can render it
