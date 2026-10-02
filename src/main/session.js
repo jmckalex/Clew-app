@@ -24,6 +24,8 @@ import { KvStore, KV_FILE } from './kv-store.js';
 import { SearchService } from './search.js';
 import { shells } from './ipc.js';
 import { trust } from './trust.js';
+import { effectiveAccess } from './vault-trust.js';
+import { readVaultRequests } from './vault-requests.js';
 import { CH } from '../shared/channels.js';
 import { watchVaultCallouts } from './callout-types.js';
 
@@ -75,9 +77,13 @@ export class VaultSession {
 		this.kvStore.send = this.send;
 		this.kvStore.onCreated = () => this.vaults.refreshTree();
 
-		/** Does this device trust the open vault's notes to run code? The
-		 *  interim guard (vault-trust.js): the engine's note-code paths only. */
+		/** Does this device trust the open vault to run its code — and what,
+		 *  on this device, may run (vault-trust.js#effectiveAccess): vault
+		 *  scripts, plugins, the Note API, dataviewJs, the network. `decided`
+		 *  is false for a vault the device has never answered about (the
+		 *  prompt's cue). Closed until the store says otherwise. */
 		this.trusted = false;
+		this.access = { ...effectiveAccess(false, null), decided: false };
 		/** Web PDFs this session's renders named: sha256(url) → url
 		 *  (remote-pdfs.js). The route serves these and nothing else. */
 		this.remotePdfs = new Map();
@@ -85,8 +91,7 @@ export class VaultSession {
 		this.vaults.hooks = {
 			onOpen: (root) => {
 				// Before the render service writes its first engine config.
-				this.trusted = trust.isTrusted(root);
-				this.renderService.setNoteCode(this.trusted);
+				this.refreshAccess(root);
 				this.renderService.openVault(root);
 				this.indexer.openVault(root, this.vaults.excludes);
 				this.kvStore.open(root);
@@ -117,6 +122,19 @@ export class VaultSession {
 
 		byWebContents.set(this.wcId, this);
 		byId.set(this.id, this);
+	}
+
+	/**
+	 * Re-read what this vault may run from the device's store, and hand it
+	 * to the render service (which reconfigures the engine when it changed).
+	 * Returns true when anything changed.
+	 */
+	refreshAccess(root = this.vaults.root) {
+		const before = JSON.stringify(this.access);
+		this.access = root ? trust.accessFor(root, readVaultRequests) : { ...effectiveAccess(false, null), decided: false };
+		this.trusted = this.access.trusted;
+		this.renderService.setAccess(this.access);
+		return JSON.stringify(this.access) !== before;
 	}
 
 	dispose() {

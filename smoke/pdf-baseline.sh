@@ -17,7 +17,10 @@ node smoke/make-pdf-vault.mjs $O/v3 >/dev/null; run pdf-annotations $O/v3 $O/ud3
 node smoke/make-pdf-vault.mjs $O/v4 >/dev/null; printf '# Embed\n\n![[Paper.pdf]]\n' > $O/v4/Embed.md; run pdf-pen $O/v4 $O/ud4 CLEW_SMOKE_FRAME_SCRIPT=$R/smoke/pdf-pen-frame.js CLEW_SMOKE_FRAME_MATCH=vault/
 node smoke/make-pdf-vault.mjs $O/v5 >/dev/null; node -e "require('fs').writeFileSync('$O/v5/Board.canvas', JSON.stringify({nodes:[{id:'p',type:'file',file:'Paper.pdf',x:0,y:0,width:520,height:640}],edges:[]}))"; printf '# Host\n\n![[Board.canvas]]\n' > $O/v5/Host.md; run pdf-scene $O/v5 $O/ud5 CLEW_SMOKE_CLOSE_WINDOW=1; rm -f $O/v5/.clew/workspace.json; run pdf-scene $O/v5 $O/ud5
 node smoke/make-canvas-vault.mjs $O/v6 >/dev/null; run canvas-engage $O/v6 $O/ud6
-node smoke/make-canvas-vault.mjs $O/v7 >/dev/null; run canvas-esc $O/v7 $O/ud7 CLEW_SMOKE_FRAME_SCRIPT=$R/smoke/canvas-esc-frame.js CLEW_SMOKE_FRAME_MATCH=vault/
+# canvas-esc's "owner" card consumes Esc with its note's OWN script, which
+# runs only in a vault the device trusts (frame-bridge.md §4): the fixture is
+# opened as a KNOWN vault (recentVaults — the first-launch migration).
+node smoke/make-canvas-vault.mjs $O/v7 >/dev/null; mkdir -p $O/ud7; printf '{ "recentVaults": ["%s"] }\n' "$O/v7" > $O/ud7/clew-settings.json; run canvas-esc $O/v7 $O/ud7 CLEW_SMOKE_FRAME_SCRIPT=$R/smoke/canvas-esc-frame.js CLEW_SMOKE_FRAME_MATCH=vault/
 node smoke/make-token-vault.mjs $O/v8 >/dev/null; run caller-token $O/v8 $O/ud8 CLEW_SMOKE_FRAME_SCRIPT=$R/smoke/caller-token-frame.js CLEW_SMOKE_FRAME_MATCH=vault/
 echo "=== tour"; smoke/protocol-tour.sh $O/tour > $O/tour.txt 2>&1; grep -h "smoke-tour" $O/tour.txt | grep -v smoke-boot | sort > $O/tour-lines.txt; wc -l < $O/tour-lines.txt; grep -rhi "smoke-pdf-leak" $O 2>/dev/null | head -3
 echo "=== done"

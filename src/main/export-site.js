@@ -39,7 +39,11 @@ const SITE_MARK = '@@SITE@@';
 const NOTE_EXT = /\.(md|jmd)$/i;
 const IGNORED = new Set(['.obsidian', '.clew', '.git', 'node_modules', '.trash']);
 
-export async function exportSite({ vaultRoot, engineDir, outDir, distDir, vaultOptions = {}, onProgress = () => {} }) {
+// `access` is the window's effective access (vault-trust.js#effectiveAccess):
+// a site bakes what the vault's previews show on THIS device, so a vault this
+// device has not trusted exports without its scripts, its own plugins and
+// dataviewjs, as its previews render without them (frame-bridge.md §4.4).
+export async function exportSite({ vaultRoot, engineDir, outDir, distDir, vaultOptions = {}, access = { trusted: false, plugins: [] }, onProgress = () => {} }) {
 	fs.mkdirSync(outDir, { recursive: true });
 
 	// Collect notes + other files with the standard symlink-safe walk.
@@ -79,7 +83,7 @@ export async function exportSite({ vaultRoot, engineDir, outDir, distDir, vaultO
 				CLEW_SITE_EXPORT: '1',
 				// The same per-vault gate the live render service passes — an
 				// exported site bakes what the vault's previews show.
-				CLEW_DATAVIEW_JS: vaultOptions.dataviewJs === true ? '1' : '',
+				CLEW_DATAVIEW_JS: access.dataviewJs ? '1' : (access.trusted ? '' : 'restricted'),
 				// The note's typeface, for a `font=note` figure's wrapper
 				// (engine/figures.js#noteFontPreamble): the preamble names the
 				// face BY FILE, so a worker without this emits fontspec with no
@@ -146,7 +150,7 @@ export async function exportSite({ vaultRoot, engineDir, outDir, distDir, vaultO
 			const html = fs.readFileSync(tmp, 'utf8');
 			const outFile = path.join(outDir, rel.replace(NOTE_EXT, '.html'));
 			fs.mkdirSync(path.dirname(outFile), { recursive: true });
-			const page = finishPage(html, rel, vaultRoot, vaultOptions);
+			const page = finishPage(html, rel, vaultRoot, access);
 			fs.writeFileSync(outFile, page);
 			if (hasFigures(page)) figurePages.push(outFile);
 		} catch (err) {
@@ -187,7 +191,7 @@ export async function exportSite({ vaultRoot, engineDir, outDir, distDir, vaultO
 		}
 	}
 
-	copyAssets(outDir, vaultRoot, distDir, vaultOptions);
+	copyAssets(outDir, vaultRoot, distDir, access);
 
 	// index.html: the vault's home note, already exported at depth 0.
 	for (const home of ['Welcome.md', 'Start Here.md', 'Home.md', 'index.md', notes[0]]) {
@@ -203,7 +207,7 @@ export async function exportSite({ vaultRoot, engineDir, outDir, distDir, vaultO
 }
 
 /** Relativize marker URLs and wire in the static runtime. */
-function finishPage(html, rel, vaultRoot, vaultOptions) {
+function finishPage(html, rel, vaultRoot, access) {
 	const depth = rel.split('/').length - 1;
 	const prefix = depth === 0 ? '' : '../'.repeat(depth);
 	let out = html
@@ -213,7 +217,7 @@ function finishPage(html, rel, vaultRoot, vaultOptions) {
 		.split('/__clew_assets__/').join(`${prefix || './'}assets/`);
 	// Vault scripts (.clew/scripts/*.js) ship with the site too.
 	let vaultScripts = '';
-	try {
+	if (access.scripts) try {
 		vaultScripts = fs.readdirSync(path.join(vaultRoot, '.clew', 'scripts'))
 			.filter((f) => f.endsWith('.js')).sort()
 			.map((f) => `<script src="${prefix || './'}assets/vault-scripts/${encodeURIComponent(f)}"></script>`)
@@ -223,7 +227,7 @@ function finishPage(html, rel, vaultRoot, vaultOptions) {
 	// in the worker; without this half their fences would land as inert divs).
 	// Both scopes land in assets/plugins/<id>/ below, so the emitted src is
 	// the same whether the plugin was installed in the vault or globally.
-	const pluginScripts = previewPluginScripts(vaultRoot, vaultOptions, paths.globalPlugins)
+	const pluginScripts = previewPluginScripts(vaultRoot, access, paths.globalPlugins)
 		.map((p) => `<script src="${prefix || './'}assets/plugins/${encodeURIComponent(p.id)}/${
 			encodeURIComponent(p.file)}"></script>`)
 		.join('');
@@ -242,7 +246,7 @@ function finishPage(html, rel, vaultRoot, vaultOptions) {
 	return out.replace(/<\/body>/i, `${runtime}</body>`);
 }
 
-function copyAssets(outDir, vaultRoot, distDir, vaultOptions) {
+function copyAssets(outDir, vaultRoot, distDir, access) {
 	const assets = path.join(outDir, 'assets');
 	const nm = paths.previewAssets;
 	const engineAssets = paths.engineAssets;
@@ -275,12 +279,12 @@ function copyAssets(outDir, vaultRoot, distDir, vaultOptions) {
 	}
 	// Vault scripts.
 	const scriptsDir = path.join(vaultRoot, '.clew', 'scripts');
-	if (fs.existsSync(scriptsDir)) {
+	if (access.scripts && fs.existsSync(scriptsDir)) {
 		fs.cpSync(scriptsDir, path.join(assets, 'vault-scripts'), { recursive: true });
 	}
 	// Enabled plugins with a preview surface travel whole (a surface may load
 	// siblings from its own folder — the Charts plugin fetches chart.umd.js).
-	for (const plugin of enabledPlugins(vaultRoot, vaultOptions, paths.globalPlugins)) {
+	for (const plugin of enabledPlugins(vaultRoot, access, paths.globalPlugins)) {
 		if (!plugin.surfaces.preview) continue;
 		fs.cpSync(plugin.dir, path.join(assets, 'plugins', plugin.id), { recursive: true });
 	}

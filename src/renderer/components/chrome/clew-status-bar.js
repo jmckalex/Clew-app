@@ -25,11 +25,17 @@ class ClewStatusBar extends ClewElement {
 		});
 	}
 
+	// Items another module owns (the vault-trust indicator, trust-banner.js)
+	// carry `data-status-keep` and survive every redraw, leftmost.
+	#kept() {
+		return [...this.children].filter((el) => el.hasAttribute('data-status-keep'));
+	}
+
 	render() {
 		const tab = workspaceStore.activeTab();
 		const entry = tab?.kind === 'note' ? editorPool.get(tab.id) : null;
 		if (!entry?.view) {
-			this.replaceChildren();
+			this.replaceChildren(...this.#kept());
 			return;
 		}
 		const text = entry.view.state.doc.toString();
@@ -42,7 +48,7 @@ class ClewStatusBar extends ClewElement {
 		const charsEl = document.createElement('span');
 		charsEl.className = 'status-item';
 		charsEl.textContent = `${chars} character${chars === 1 ? '' : 's'}`;
-		this.replaceChildren(wordsEl, charsEl);
+		this.replaceChildren(...this.#kept(), wordsEl, charsEl);
 	}
 }
 

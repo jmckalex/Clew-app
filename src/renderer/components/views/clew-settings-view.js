@@ -127,6 +127,7 @@ class ClewSettingsView extends ClewElement {
 			this.#texFragmentsSection(),
 			(this.#callouts = calloutsSection((title, rows) => this.#section(title, rows))).element,
 			this.#vaultSection(),
+			this.#trustedVaultsSection(),
 			this.#hotkeysSection(),
 		);
 	}
@@ -151,13 +152,6 @@ class ClewSettingsView extends ClewElement {
 				+ '(*italic*, **bold**, etc.) while keeping everything else — math, '
 				+ 'citations, diagrams, theorems. Renders and exports both honor it. '
 				+ 'The editor highlighting still assumes the dialect for now.'),
-			...this.#vaultToggle('noteApi',
-				'Note API: scripts in rendered notes may control Clew',
-				'Gives <script> tags in reading mode a window.clew API: open notes, '
-				+ 'search, read and write notes and frontmatter, run commands, and share '
-				+ 'state in clewdata.json (which travels with the vault). Notes are code '
-				+ 'with this on — enable it only for vaults you trust. See the Note API '
-				+ 'guide note.'),
 			...this.#vaultToggle('history',
 				'Note history: keep snapshots of notes as they change',
 				'Before a save displaces an existing note (or canvas), the old text '
@@ -208,17 +202,6 @@ class ClewSettingsView extends ClewElement {
 				+ 'directive sigil: with this on, a bare @word that is not a '
 				+ 'registered directive is read as a citation key, so an email '
 				+ 'address or an @mention in prose will change how it renders.'),
-			...this.#vaultToggle('dataviewJs',
-				'Run dataviewjs blocks in this vault',
-				'Obsidian\'s ```dataviewjs blocks are JavaScript, not queries, so '
-				+ 'there is no way to tell in advance what one will do — which is '
-				+ 'why this is per-vault and off by default rather than a global '
-				+ 'setting you turn on once and forget. Turn it on for a vault you '
-				+ 'wrote or trust. Clew gives those blocks a `dv` object over its '
-				+ 'own index: dv.pages, dv.current, dv.table, dv.list, dv.taskList '
-				+ 'and dv.view all work. dv.app, dv.io and dv.luxon have no '
-				+ 'equivalent here and say so by name when a block reaches for '
-				+ 'them. Plain ```dataview queries always run and need no setting.'),
 			...this.#vaultListRow('unindexed',
 				'Listed but not indexed',
 				'**/libs\n**/node_modules',
@@ -251,15 +234,17 @@ class ClewSettingsView extends ClewElement {
 	/** Every plugin available here — this vault's (.clew/plugins/) and the
 	 *  globally installed ones — each with its per-vault enable. */
 	#pluginRows(section) {
-		ipc.invoke(CH.PLUGINS_LIST).then(({ plugins, enabled, globalDir }) => {
+		ipc.invoke(CH.PLUGINS_LIST).then(({ plugins, switchedOn, enabled, trusted, globalDir }) => {
 			const heading = document.createElement('p');
 			heading.className = 'settings-hint';
 			heading.textContent = plugins.length
 				? 'Plugins available here: this vault\'s own (.clew/plugins/) and '
 					+ 'the ones installed globally, marked below. Installing is '
-					+ 'global; enabling is always per-vault — a plugin is arbitrary '
-					+ 'code, so enable only what you trust. Notes already open '
-					+ 're-render; reopen them if a preview plugin doesn\'t appear.'
+					+ 'global; enabling is per vault, on this device — a plugin is '
+					+ 'arbitrary code, so enable only what you trust. This vault\'s own '
+					+ 'plugins run only while the vault is trusted; your global ones '
+					+ 'run wherever you enable them. Notes already open re-render; '
+					+ 'reopen them if a preview plugin doesn\'t appear.'
 				: 'No plugins found. A plugin is a folder with a manifest.json, '
 					+ 'either in this vault\'s .clew/plugins/ or in the global '
 					+ 'folder — install it once there and it is offered in every '
@@ -276,20 +261,22 @@ class ClewSettingsView extends ClewElement {
 			folderRow.title = globalDir ?? '';
 			section.append(folderRow);
 
-			const enabledSet = new Set(enabled);
+			const onSet = new Set(switchedOn ?? enabled);
 			for (const plugin of plugins) {
 				const box = document.createElement('input');
 				box.type = 'checkbox';
-				box.checked = enabledSet.has(plugin.id);
+				const held = plugin.scope === 'vault' && !trusted;
+				box.checked = onSet.has(plugin.id) && !held;
+				box.disabled = held;
 				const surfaces = Object.keys(plugin.surfaces).join(', ') || 'no surfaces';
 				const where = plugin.scope === 'global' ? 'global' : 'this vault';
 				const row = this.#row(
-					`${plugin.name} (${plugin.version}) — ${surfaces} · ${where}`, box);
+					`${plugin.name} (${plugin.version}) — ${surfaces} · ${where}${held ? ' · off while this vault is restricted' : ''}`, box);
 				box.addEventListener('change', () => {
-					if (box.checked) enabledSet.add(plugin.id);
-					else enabledSet.delete(plugin.id);
+					if (box.checked) onSet.add(plugin.id);
+					else onSet.delete(plugin.id);
 					box.disabled = true;
-					vaultSettingsStore.set('plugins', [...enabledSet])
+					ipc.invoke(CH.VAULT_ACCESS_SET, { key: 'plugins', value: [...onSet] })
 						.finally(() => { box.disabled = false; });
 				});
 				section.append(row);
@@ -370,21 +357,23 @@ class ClewSettingsView extends ClewElement {
 	}
 
 	// Trust is this DEVICE's (main/vault-trust.js), not a vault setting, so it
-	// has its own channel rather than #vaultToggle's vault-settings.json.
+	// has its own channel rather than #vaultToggle's vault-settings.json —
+	// and so has every switch over what the vault's code may do (§4.6): the
+	// device's enablement, gated by trust, with the vault's own ask beside it.
 	#trustRow() {
 		const box = document.createElement('input');
 		box.type = 'checkbox';
 		box.disabled = true;
-		const row = this.#row('Trusted on this device: notes may run code', box);
+		box.className = 'settings-trust-switch';
+		const row = this.#row('Trusted on this device: this vault may run its code', box);
 		const hint = document.createElement('p');
 		hint.className = 'settings-hint';
-		hint.textContent = 'Notes can make the engine run code while they render: script '
-			+ 'blocks, Math.… and calc(…) in prose, math.…(, Mathematica, and the Load … '
-			+ 'and Extension … header keys. In a vault this device has not trusted, each '
-			+ 'is refused by name where it stands. Vaults you opened before this setting '
-			+ 'existed, the demo vault and vaults you create are trusted; a vault someone '
-			+ 'sends you is not until you say so. Kept on this device, never in the vault. '
-			+ 'Vault scripts, plugins, dataviewjs and the Note API keep their own switches.';
+		hint.textContent = 'A vault\'s code is its scripts (.clew/scripts), its own plugins, '
+			+ 'the scripts in its notes (and the code a note can make the engine run — script '
+			+ 'blocks, Mathematica, the Load … header keys), dataviewjs and the Note API. In a '
+			+ 'vault this device has not trusted none of it runs, and what a note asked for is '
+			+ 'refused by name where it stands; everything Clew itself does still works. Kept on '
+			+ 'this device, never in the vault. Changing it reloads the window.';
 		const sync = () => ipc.invoke(CH.VAULT_TRUST_GET).then((state) => {
 			box.checked = state?.trusted === true;
 			box.disabled = false;
@@ -394,7 +383,109 @@ class ClewSettingsView extends ClewElement {
 			box.disabled = true;
 			ipc.invoke(CH.VAULT_TRUST_SET, { trusted: box.checked }).finally(sync);
 		});
+		return [row, hint,
+			...this.#accessToggle('scripts', 'Vault scripts: run .clew/scripts in every note',
+				'The vault\'s own scripts, loaded into every rendered note. On by default in a '
+				+ 'trusted vault. Changing it reloads the window.'),
+			...this.#accessToggle('noteApi', 'Note API: scripts in rendered notes may control Clew',
+				'Gives <script> tags in reading mode a window.clew API: open notes, search, read '
+				+ 'and write notes and frontmatter, run commands, and share state in clewdata.json '
+				+ '(which travels with the vault). See the Note API guide note.'),
+			...this.#accessToggle('dataviewJs', 'Run dataviewjs blocks in this vault',
+				'Obsidian\'s ```dataviewjs blocks are JavaScript, not queries, so there is no way '
+				+ 'to tell in advance what one will do. Clew gives those blocks a `dv` object over '
+				+ 'its own index: dv.pages, dv.current, dv.table, dv.list, dv.taskList and dv.view '
+				+ 'all work; dv.app, dv.io and dv.luxon say so by name. Plain ```dataview queries '
+				+ 'always run and need no setting.'),
+			...this.#accessToggle('network', 'Network: let this vault\'s scripts reach other hosts',
+				'Off, a note\'s scripts cannot fetch from or post to another host (images, maps '
+				+ 'and embedded pages still load) — what keeps a script you trusted from sending '
+				+ 'your notes anywhere. Vaults this device knew before Clew asked about trust have '
+				+ 'it on. Changing it reloads the window.'),
+		];
+	}
+
+	/** One of the device's enablements for this vault (§4.6). Off and
+	 *  disabled while the vault is restricted: trust gates every one. */
+	#accessToggle(key, label, hintText) {
+		const box = document.createElement('input');
+		box.type = 'checkbox';
+		box.disabled = true;
+		box.dataset.access = key;
+		const row = this.#row(label, box);
+		const hint = document.createElement('p');
+		hint.className = 'settings-hint';
+		hint.textContent = hintText;
+		const sync = () => ipc.invoke(CH.VAULT_ACCESS_GET).then((access) => {
+			if (!access) return;
+			box.checked = access.trusted && access.enable?.[key] === true;
+			box.disabled = !access.trusted;
+			const asked = access.requests?.[key] === true;
+			row.title = access.trusted ? (asked ? 'This vault asks for it' : '') : 'Off while this vault is restricted on this device';
+		}).catch(() => {});
+		sync();
+		box.addEventListener('change', () => {
+			box.disabled = true;
+			ipc.invoke(CH.VAULT_ACCESS_SET, { key, value: box.checked })
+				.catch(() => {})
+				.finally(() => {
+					invalidateNoteApiGate();
+					sync();
+				});
+		});
 		return [row, hint];
+	}
+
+	// Every vault this device has decided about (§4.6): revoke, trust again,
+	// or forget (its next open asks afresh). A vault open in a window goes
+	// through that window, which reloads.
+	#trustedVaultsSection() {
+		const section = this.#section('Trusted vaults', []);
+		const hint = document.createElement('p');
+		hint.className = 'settings-hint';
+		hint.textContent = 'Every vault this device has decided about. Trusted vaults run their own '
+			+ 'code; restricted ones run none of it. Forgetting a vault makes its next opening a '
+			+ 'first opening, which asks again when it contains code.';
+		const list = document.createElement('div');
+		list.className = 'settings-trusted-vaults';
+		section.append(hint, list);
+		const draw = (entries) => {
+			list.replaceChildren();
+			if (!entries?.length) {
+				const none = document.createElement('p');
+				none.className = 'settings-hint';
+				none.textContent = 'No vault yet.';
+				list.append(none);
+				return;
+			}
+			for (const entry of entries) {
+				const state = document.createElement('span');
+				state.className = 'settings-trust-state';
+				state.textContent = entry.trusted ? 'Trusted' : (entry.decided ? 'Restricted' : 'Not decided');
+				const act = (label, action) => {
+					const button = document.createElement('button');
+					button.className = 'hotkey-button';
+					button.textContent = label;
+					button.addEventListener('click', () => {
+						button.disabled = true;
+						ipc.invoke(CH.TRUSTED_VAULTS_SET, { key: entry.key, action })
+							.then((result) => draw(result?.list ?? entries))
+							.catch(() => { button.disabled = false; });
+					});
+					return button;
+				};
+				const controls = document.createElement('span');
+				controls.className = 'settings-trust-controls';
+				controls.append(state,
+					entry.trusted ? act('Revoke', 'revoke') : act('Trust', 'trust'),
+					act('Forget', 'forget'));
+				const row = this.#row(`${entry.name}${entry.open ? ' (open)' : ''}${entry.exists ? '' : ' — not on disk'}`, controls);
+				row.title = entry.key;
+				list.append(row);
+			}
+		};
+		ipc.invoke(CH.TRUSTED_VAULTS_LIST).then(draw).catch(() => draw([]));
+		return section;
 	}
 
 	#vaultToggle(key, label, hintText, { defaultOn = false } = {}) {

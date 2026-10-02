@@ -8,8 +8,12 @@
 //     CLEW_SMOKE_FRAME_SCRIPT=smoke/global-plugin-frame.js \
 //     CLEW_SMOKE_VAULT=/tmp/gp/vault CLEW_SMOKE_LOG=1 npx electron .
 //
-// Pass --enabled to pre-enable it in the vault (the state after a restart);
-// without it the vault opts out, which is how the trust gate is checked.
+// Pass --enabled to pre-enable it for the vault (the state after a restart):
+// since the full vault-trust design (frame-bridge.md §4.7) the enable lives
+// ON THE DEVICE — userdata/vault-trust.json, written here through the real
+// store — and the vault's own vault-settings.json only asks. The vault stays
+// UNTRUSTED: a global plugin is the user's code and runs anyway. Without
+// --enabled nothing is enabled, which is how the gate is checked.
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -73,5 +77,9 @@ fs.writeFileSync(path.join(vault, 'Note.md'), '# Global plugin test\n\n```hello\
 if (enabled) {
 	fs.writeFileSync(path.join(vault, '.clew', 'vault-settings.json'),
 		JSON.stringify({ plugins: ['hello-global'] }, null, '\t') + '\n');
+	const { createTrustStore } = await import('../src/main/vault-trust.js');
+	const store = createTrustStore({ file: path.join(base, 'userdata', 'vault-trust.json') });
+	store.migrate([]);
+	store.setEnable(vault, { plugins: ['hello-global'] });
 }
 console.log(`fixture in ${base} (vault ${enabled ? 'ENABLES' : 'does not enable'} the plugin)`);

@@ -1,10 +1,12 @@
-// Exports under the interim vault-trust guard (export.js; the owner's Q9),
+// Exports under vault trust (export.js; the owner's Q9),
 // over `node smoke/make-trust-vault.mjs <dir>` opened as a vault this device
 // has never seen. Restricted: the export refuses the note's code by name and
 // never reads the vault's own Code/.jmarkdown/config.json → `restricted
-// refused=12 marks=0 vault-config=false`. Trusted (after VAULT_TRUST_SET): as
-// today, from the note's own folder → `trusted refused=0 marks=9
-// vault-config=true`. Both exports stay inside the fixture.
+// refused=12 marks=0 vault-config=false`. Trusted (after VAULT_TRUST_SET,
+// which reloads the window — run with CLEW_SMOKE_SCRIPT_RELOADED=
+// smoke/trust-export-reloaded.js): as today, from the note's own folder →
+// `trusted refused=0 marks=9 vault-config=true`. Both exports stay inside
+// the fixture.
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const { vaultStore, ipc } = window.__clew;
 for (let i = 0; i < 150 && !vaultStore.vault?.sessionId; i++) await sleep(100);
@@ -18,5 +20,5 @@ const report = async (label, out) => {
 	console.log(`smoke-trust-export: ${label} refused=${refused} marks=${marks} vault-config=${text.includes('vault-config-read')}`);
 };
 await report('restricted', 'out-restricted.html');
+// Answered at once; the reload follows, and the second half runs there.
 await ipc.invoke('clew:vault-trust-set', { trusted: true });
-await report('trusted', 'out-trusted.html');

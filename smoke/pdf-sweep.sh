@@ -37,7 +37,10 @@ run pdf-portal $O/v-po $O/ud-po; rm -f $O/v-po/.clew/workspace.json; run pdf-por
 echo "=== live"; smoke/live-sweep.sh $O/live > $O/live.txt 2>&1; grep -c "^===" $O/live.txt
 
 echo "=== leak"
+# The leak is made by the note's OWN script, which runs only in a vault the
+# device trusts (frame-bridge.md §4): the fixture opens as a KNOWN vault.
 node smoke/make-pdf-vault.mjs $O/v-lk >/dev/null && cp smoke/pdf-leak-note.md $O/v-lk/Leak.md
+mkdir -p $O/ud-lk; printf '{ "recentVaults": ["%s"] }\n' "$O/v-lk" > $O/ud-lk/clew-settings.json
 run pdf-leak $O/v-lk $O/ud-lk CLEW_SMOKE_FRAME_SCRIPT=$R/smoke/pdf-leak-frame.js CLEW_SMOKE_FRAME_MATCH=clewpdf/pdf-page
 
 echo "=== verdict"

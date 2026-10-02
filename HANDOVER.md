@@ -42,6 +42,13 @@ no sibling, or a URL, becomes a link). LaTeX-only: render dump identical.
 It was the pin for iOS sync #4; iOS copied it (sync5-p1-vendor
 `c2a5512`, verified byte-identical by Clew-boss), so main is free to move.
 
+**Frame bridge, tonight (owner's approval 2026-10-02, phases 1–4).**
+`832b6f5` the design revision R1–R3 (Clew-boss approved it as the basis for
+phase 3: choices A and B yes, D measured first, C = pin an app's code hash
+in a restricted vault whenever it holds `network`). Then phase 1, vault
+trust (§4) — see CLAUDE.md "Vault trust" and frame-bridge.md §4.9a. Open
+from it: the EmbedPDF default-stamps fetch (§4.9a — the owner's choice).
+
 **The rules this session works under** (the owner's, relayed by the
 coordinating session "Clew-boss", uds `/tmp/cc-socks/6958.sock` at the
 time of writing; find it with ListAgents):

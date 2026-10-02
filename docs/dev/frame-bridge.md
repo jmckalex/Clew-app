@@ -6,7 +6,8 @@ Status (2026-09-30): §1 AGREED with the iOS session and BUILT on desktop;
 all eleven open questions ("Decisions", at the end), with §4 agreed by the
 iOS session after its review added the engine's own code paths (§4.1).
 **2026-10-02: the owner approved building phases 1–4 (§15), with the app
-sections revised first — R1–R3** (apps run in restricted vaults, app
+sections revised first — R1–R3** (phase 1, §4, BUILT on desktop the same
+night — "As built" at the end of §4) (apps run in restricted vaults, app
 network, app identity on rename; marked "R1"–"R3" where they land, summed
 up with the choices left open under "Revision R1–R3" at the end, and the
 iOS-facing points under §13). §1 is a prerequisite: the bridge must stand
@@ -652,8 +653,9 @@ restriction: they behave as today (§4.10).
 - Settings → This vault → Trust: trusted on this device (a switch), and
   the per-vault enablements — vault scripts, plugins, the Note API,
   `dataviewJs`, network, apps and their grants — each on the device.
-- Settings → General → Trusted vaults: every vault this device trusts, to
-  revoke or forget.
+- Settings → Trusted vaults (a section of its own: Settings has no General
+  section): every vault this device has decided about, to trust, revoke or
+  forget.
 - Revoking reloads the vault in restricted mode: previews re-render, app
   ports close.
 
@@ -700,6 +702,32 @@ Updates never ask again, because the identity (§4.3) survives them.
   server), not a determined script the user chose to trust. The render
   worker (`dataviewJs`, engine surfaces) has Node's network, which no CSP
   reaches: trust is its only gate.
+
+### 4.9a As built (phase 1, desktop, 2026-10-02)
+
+- The device store (`main/vault-trust.js`, version 2) keeps per vault
+  `trusted`, `decided` and `enable` {scripts, plugins, noteApi, dataviewJs,
+  network}; the vault's settings keys are its request
+  (`main/vault-requests.js`). A legacy entry (the interim guard's) copies its
+  vault's enablements on first sight, network ON — a dry run over a copy of
+  the owner's real store gave all nine known vaults exactly what they had.
+- One `session.access` drives everything; the CSP is `main/preview-csp.js`
+  as a response header, the template's inline scripts allowed by hashes
+  read off a render of an empty document. A trusted vault WITH the network
+  gets no CSP at all — the migrated vaults' documents are byte-identical
+  (render dump, with and without their own `.clew`).
+- A trust change, and the scripts and network switches, reload the window
+  behind the close question (`session.askToReload`).
+- **§4.9's claim was not quite true**: EmbedPDF's stamp plugin fetches its
+  default stamp library from `cdn.jsdelivr.net/npm/@embedpdf/default-stamps/
+  …/manifest.json` whenever a viewer opens. In a note (restricted, or
+  trusted without the network) the CSP now blocks it and the in-note viewer
+  has no default stamps; viewers in tabs (`pdf-page.html`, no CSP) and the
+  migrated vaults still fetch it. The owner's choice: vendor the stamps
+  under `__clew_assets__` and point `manifests` at them (no network, stamps
+  everywhere — recommended), set `manifests: []` (none anywhere), or leave it.
+- Scenarios whose fixture relied on a note's own script running (canvas-esc's
+  Esc owner, the deliberate PDF leak) now open their fixture as a KNOWN vault.
 
 ### 4.10 Compatibility, once trusted
 

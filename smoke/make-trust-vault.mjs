@@ -57,5 +57,35 @@ A mathjs math.sqrt(16) call, and shouting <<LOUD>>.
 fs.mkdirSync(path.join(dir, 'Code', '.jmarkdown'), { recursive: true });
 put('Code/.jmarkdown/config.json', JSON.stringify({ 'Body classes': 'vault-config-read' }) + '\n');
 put('Plain.md', '# Plain\n\nNo code here: $x^2$, a [[Code/Trust|link]], and a list.\n\n- one\n- two\n');
+
+// The rest of §4 (frame-bridge.md §4.1): what runs in the PREVIEW rather
+// than the engine, each leaving a mark on the document when it runs, read by
+// smoke/trust-frame.js — a vault script, a vault plugin (preview and app
+// surfaces), a note's own inline script and handler, dataviewjs, the Note
+// API, and a vault HTML page in a frame. The vault ASKS for its plugin, the
+// Note API, dataviewjs and the network in its settings (a request, never a
+// grant).
+fs.mkdirSync(path.join(dir, '.clew', 'scripts'), { recursive: true });
+put('.clew/scripts/mark.js', "document.documentElement.dataset.vaultScript = 'ran';\n");
+fs.mkdirSync(path.join(dir, '.clew', 'plugins', 'vplug'), { recursive: true });
+put('.clew/plugins/vplug/manifest.json', JSON.stringify({ id: 'vplug', name: 'V Plug', version: '1.0.0', surfaces: { preview: 'preview.js', app: 'app.js' } }) + '\n');
+put('.clew/plugins/vplug/preview.js', "document.documentElement.dataset.vaultPlugin = 'ran';\n");
+put('.clew/plugins/vplug/app.js', "window.__vplugApp = 'ran';\n");
+put('.clew/vault-settings.json', JSON.stringify({ plugins: ['vplug'], noteApi: true, dataviewJs: true, network: true }, null, '\t') + '\n');
+put('Page.html', '<!DOCTYPE html><html><body><p>A vault page.</p><script>document.body.dataset.page = "ran";</script></body></html>\n');
+put('Scripts.md', `# Scripts
+
+An inline script and a handler, the note's own:
+
+<script>document.documentElement.dataset.inline = 'ran';</script>
+
+<img id="handler" src="no-such-image.png" onerror="document.documentElement.dataset.handler = 'ran'">
+
+\`\`\`dataviewjs
+dv.paragraph('DVJS-RAN')
+\`\`\`
+
+<iframe id="page" src="Page.html" width="300" height="60"></iframe>
+`);
 put('Welcome.md', '# Trust fixture\n');
 console.log(dir);

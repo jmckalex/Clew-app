@@ -80,7 +80,7 @@ note API, plugins, and every settings key.
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
   dialect scanner's constructs and grammar, live edit's model, reveal rule,
-  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store — 903 tests. DOM/UI work is
+  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary — 999 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
@@ -1057,36 +1057,71 @@ except where the selection touches a construct. The durable design is
   `\bibliography{refs}` is the note's: every citation came out undefined),
   and a PDF is accepted only if THIS run wrote it; a failure names the
   engine, why it was chosen and the log's first error.
-- **The interim vault-trust guard** (owner's approval 2026-09-30;
-  `docs/dev/frame-bridge.md` §4 is the full design it grows into). A note
-  can make the engine run code — script blocks, `Math.…`/`calc(…)` in
-  prose, `math.…(`, `function(…)` blocks, Mathematica, the `Load …` and
-  `Extension …` header keys — so the generated config carries the engine's
-  `Run note code` switch (jmarkdown `note-code.js`), set from the DEVICE's
-  answer: `main/vault-trust.js` (electron-free, tested) keeps
-  `<userData>/vault-trust.json`, keyed by the root's realpath with a
-  {dev, ino, birth} fingerprint checked on every open (a different vault
-  unpacked at a trusted path asks again), never anything the vault carries.
-  The first launch with it records every vault in openVaults/recentVaults
-  as trusted (`trust.migrate`, before any window); the demo vault and a
-  vault created from the welcome screen are trusted by construction;
-  anything else starts restricted. `session.trusted` is decided in
-  `hooks.onOpen` BEFORE the render service writes its first config
-  (`renderService.setNoteCode`, default CLOSED). Off, the engine refuses
-  each construct by name in place (`[data-jmd-refused]`, styled in
-  preview.css); `render-service#noteRefusals` reads those names from each
-  rendered document and sends `EV_NOTE_CODE_REFUSED`, and only then does
-  `renderer/trust-banner.js` show "This vault's notes asked to run code
-  … [Trust this vault]" — a persistent item in the notices column, drawn by
-  the app page, never by a preview. `VAULT_TRUST_GET/SET` (Settings → This
-  vault has the toggle) flip it through `setNoteCode` → reconfigure;
-  frame-layer restales on `EV_VAULT_TRUST_CHANGED`. It covers the engine's
-  note-code paths ONLY — vault scripts, vault plugins, dataviewJs, the Note
-  API and a preview CSP keep their current switches until full §4, which
-  extends this store and identity rather than replacing them. Under
-  CLEW_SMOKE the store writes nothing, so a fresh CLEW_USER_DATA opens every
-  fixture restricted (a scenario that needs a KNOWN vault lists it under
-  `recentVaults` in that userData's clew-settings.json — `smoke/README.md`).
+- **Vault trust** (`docs/dev/frame-bridge.md` §4; the interim guard
+  2026-09-30, the full design 2026-10-02 — owner's approval of phases 1–4).
+  A vault's CODE — `.clew/scripts`, its own plugins (engine, preview and
+  app surfaces), a note's inline `<script>`/handlers, dataviewjs, the Note
+  API, and what a note makes the ENGINE run (script blocks, `Math.…`/
+  `calc(…)`, `math.…(`, `function(…)` blocks, Mathematica, the `Load …`/
+  `Extension …` header keys — the engine's `Run note code`, jmarkdown
+  `note-code.js`) — runs only in a vault THIS DEVICE trusts, and each piece
+  only where the DEVICE enabled it for that vault. `main/vault-trust.js`
+  (electron-free, tested) keeps `<userData>/vault-trust.json` (version 2):
+  per vault, keyed by the root's realpath with a {dev, ino, birth}
+  fingerprint checked on every open (a different vault unpacked at a known
+  path asks again and inherits nothing), `trusted`, `decided` and `enable`
+  {scripts, plugins, noteApi, dataviewJs, network}. The vault's own
+  vault-settings.json keys of those names (+ `network`) are only its
+  REQUEST (`main/vault-requests.js`): shown by the prompt, copied by a yes,
+  mirrored by Settings toggles so a shared vault keeps asking — never read
+  as a grant. **Migration**: every vault known at the interim launch was
+  trusted; the first sight of such a legacy entry copies its
+  vault-settings enablements once, network ON (it had no CSP) — the owner's
+  vaults see no change (dry run over a copy of the real store, 2026-10-02);
+  the store's version 1 → 2 shows the one-time notice (never under
+  CLEW_SMOKE unless `CLEW_SMOKE_TRUST_NOTICE`). The demo vault and a vault
+  created from the welcome screen are trusted by construction (the demo
+  with its own requests). `session.access` (`refreshAccess`, decided in
+  `hooks.onOpen` BEFORE the render service's first config) is the one
+  answer everything reads: protocol.js (vault scripts, plugin tags, the
+  plugin namespaces, the CSP), render-service `setAccess` (Run note code,
+  plugin engine surfaces, `CLEW_DATAVIEW_JS` — `'restricted'` makes the
+  block refuse by name), export-site, `PLUGINS_LIST`, the Note API gate
+  (`VAULT_ACCESS_GET`). **Plugins**: a VAULT plugin runs only when trusted
+  and shadows a global one only then (`plugins.js#enabledPlugins(root,
+  access)` — an access without `trusted` is untrusted); a GLOBAL plugin is
+  the user's code and runs wherever enabled (§4.7). **The CSP**
+  (`main/preview-csp.js`, a response HEADER on every note/block document
+  and on vault HTML/SVG/XML): restricted → `script-src` Clew's own URL
+  prefixes (`/__clew_preview__/`, `/__clew_assets__/`,
+  `/__clew_plugin_file__/`) + `'wasm-unsafe-eval'` + the hashes of the
+  inline scripts an EMPTY document renders with
+  (`render-service#templateScriptHashes`, per config generation — today
+  only the MathJax configuration), vault HTML `script-src 'none'`; and the
+  network (§4.9) `connect-src 'self' blob: data:; form-action 'none';
+  worker-src 'self' blob:` unless the vault is trusted WITH `network` — no
+  CSP at all then, exactly as before. api.js (first in <head>) logs every
+  violation as `clew-csp:` (Clew's own features must cause none) and, in a
+  restricted document (`data-clew-restricted` on <html>), marks a refused
+  script in place and reports it to the app page. **The chrome**
+  (`renderer/trust-banner.js`, app page only): the PROMPT on the first open
+  of an undecided vault that contains code (`main/vault-code.js#
+  codeSummary` — scripts, its own plugins, notes with code, its requests;
+  a vault with none never asks), the status-bar INDICATOR "Restricted ·
+  Trust…" (`data-status-keep` survives the status bar's redraws), the
+  one-time NOTICE. Settings → This vault: the trust switch and the device's
+  enablements; Settings → Trusted vaults: revoke/trust/forget. **A trust
+  change reloads the window** (and so do the scripts and network
+  enablements): `session.askToReload` asks the close question first
+  (office Save/Discard/Cancel, PDF flush) — a Cancel changes nothing;
+  Keep restricted on an already-restricted vault does not reload. A
+  scenario continues across that reload with `CLEW_SMOKE_SCRIPT_RELOADED`.
+  Under CLEW_SMOKE the store writes nothing, so a fresh CLEW_USER_DATA opens
+  every fixture restricted and UNDECIDED; the modal prompt is drawn there
+  only with `CLEW_SMOKE_TRUST_PROMPT=1` (it would swallow other scenarios'
+  input), the indicator always (a scenario that needs a KNOWN vault lists it
+  under `recentVaults` in that userData's clew-settings.json —
+  `smoke/README.md`).
 - Per-vault render options live in `<vault>/.clew/vault-settings.json`
   (`jmarkdownProject: true` re-enables the engine's own-line `[[file.md]]`
   inclusion; `pandocCitations: true` turns on `[@key]`/`@key` — off by

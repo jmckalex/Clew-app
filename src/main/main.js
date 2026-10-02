@@ -20,7 +20,8 @@ import { fileURLToPath } from 'node:url';
 import { registerIpc } from './ipc.js';
 import { appMenu } from './menu.js';
 import { settings } from './settings.js';
-import { trust } from './trust.js';
+import { trust, setTrustNotice } from './trust.js';
+import { readVaultRequests } from './vault-requests.js';
 import { CH } from '../shared/channels.js';
 import { registerPreviewScheme, installPreviewProtocol } from './protocol.js';
 import { VaultSession, focusedSession, sessionForVault, sessionForWindow } from './session.js';
@@ -140,6 +141,27 @@ export function createWindow(vaultPath = null) {
 			if (proceed !== 'pending') finish(proceed);
 		};
 		win.webContents.send(CH.EV_CLOSE_REQUESTED);
+	});
+
+	// A trust change reloads the window (frame-bridge.md §4.6), and a reload
+	// loses what a close would: the same question first. Resolves true when
+	// the page may reload now; false on Cancel, or while a close is already
+	// being asked about. A 'pending' answer (a dialog is up, or PDF
+	// annotations are being written) stops the fail-open timer, as above.
+	session.askToReload = () => new Promise((resolve) => {
+		if (closePending || session.resolveClose) return resolve(false);
+		let timer = null;
+		const done = (proceed) => {
+			clearTimeout(timer);
+			session.resolveClose = null;
+			resolve(proceed === true);
+		};
+		timer = setTimeout(() => done(true), 3000);
+		session.resolveClose = (proceed) => {
+			if (proceed === 'pending') { clearTimeout(timer); return; }
+			done(proceed);
+		};
+		win.webContents.send(CH.EV_CLOSE_REQUESTED, { reason: 'reload' });
 	});
 
 	win.on('closed', () => {
@@ -270,7 +292,7 @@ export function openDemoVault(fromSession = null) {
 	// Clew's own vault (§4.8) is trusted by construction: a copy made just
 	// now from the bundle, or one this device has never decided about. A
 	// decision already recorded — a revoke — stands.
-	if (fresh || !trust.entries()[fs.realpathSync(target)]) trust.trust(target, 'demo');
+	if (fresh || !trust.entries()[fs.realpathSync(target)]) trust.trust(target, 'demo', readVaultRequests(target)?.enable ?? null);
 	return openVaultAnywhere(target, { preferSession: fromSession }).vaults.info;
 }
 
@@ -339,11 +361,21 @@ app.whenReady().then(async () => {
 	// has run their code already — so nothing changes for their owner. Only
 	// a vault first opened AFTER this asks. Before any window: the windows
 	// being restored below are exactly those vaults.
-	trust.migrate([
+	const known = [
 		...(settings.get('openVaults') ?? []),
 		...(settings.get('recentVaults') ?? []),
 		settings.get('lastVault'),
-	]);
+	].filter(Boolean);
+	trust.migrate(known);
+	// The full design (2026-10-02): the store moves to version 2 once, and
+	// that launch says so — naming any known vault this device has NOT
+	// trusted, since those now run none of their code (scripts, plugins
+	// included). Every vault known when the guard arrived is trusted already.
+	if ((!process.env.CLEW_SMOKE || process.env.CLEW_SMOKE_TRUST_NOTICE) && trust.takeNotice()) {
+		const restricted = [...new Set(known)].filter((root) => fs.existsSync(root) && !trust.isTrusted(root))
+			.map((root) => path.basename(root));
+		setTrustNotice({ restricted });
+	}
 
 	// Smoke runs open EXACTLY the given vault — never the user's restored
 	// set. The rest of the isolation lives in settings.js#save: under
@@ -483,6 +515,11 @@ if (process.env.CLEW_SMOKE) {
 						console.log(`[smoke:${details.level}] ${details.message}`);
 					});
 				}
+				// A trust change reloads the window (frame-bridge.md §4.6), which
+				// ends whatever scenario was running in it. Listening from here
+				// on: a load after this point IS that reload.
+				let reloads = 0;
+				primary.webContents.on('did-finish-load', () => { reloads++; });
 				if (process.env.CLEW_SMOKE_SCRIPT) {
 					const script = fs.readFileSync(process.env.CLEW_SMOKE_SCRIPT, 'utf8');
 					await primary.webContents.executeJavaScript(`(async () => { ${script} })()`);
@@ -719,6 +756,17 @@ if (process.env.CLEW_SMOKE) {
 					// With CLEW_SMOKE_MENU: the Window menu once the window is gone.
 					const windowMenu = (Menu.getApplicationMenu()?.items ?? []).find((m) => m.label === 'Window');
 					if (process.env.CLEW_SMOKE_MENU && windowMenu) walk([windowMenu], [], 'smoke-menu-closed');
+				}
+				// CLEW_SMOKE_SCRIPT_RELOADED=/path.js: the scenario's second half,
+				// run in the page that a reload brought (a trust change reloads the
+				// window — vault-trust's scenarios). Waits for that reload — at
+				// most a minute, logging `smoke-reloaded: <n>` — then for the vault.
+				if (process.env.CLEW_SMOKE_SCRIPT_RELOADED) {
+					for (let i = 0; i < 600 && reloads === 0; i++) await sleep(100);
+					console.log(`smoke-reloaded: ${reloads}`);
+					await sleep(3000);
+					const second = fs.readFileSync(process.env.CLEW_SMOKE_SCRIPT_RELOADED, 'utf8');
+					await primary.webContents.executeJavaScript(`(async () => { ${second} })()`);
 				}
 				// Optionally drive the preview iframe's document (cross-origin from
 				// the app, but reachable from main via webFrameMain).

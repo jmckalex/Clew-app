@@ -1,5 +1,5 @@
 #!/bin/bash
-# smoke/render-dump.sh <out-dir> [known]
+# smoke/render-dump.sh <out-dir> [known] [clew]
 # Every note of demo-vault and study-vault rendered through the real preview
 # (render-dump-scenario.js), one sorted `smoke-rd: <path> <sha1>` file per
 # vault: <out-dir>/demo-vault.txt, <out-dir>/study-vault.txt. Run it before
@@ -8,14 +8,25 @@
 # .clew/cache) into <out-dir>; `known` lists the copy under recentVaults in
 # a fresh userData first, so the vault opens as one this device already
 # trusts (the vault-trust guard) — without it the copy opens restricted.
+# `clew` also copies the vault's own .clew/vault-settings.json, plugins and
+# scripts, so the dump covers what a vault's code adds to its documents
+# (plugin engine surfaces and injected script tags) — the copy is otherwise
+# made WITHOUT .clew. Pass `-` for `known` to keep it restricted.
 set -u
-R=$(cd "$(dirname "$0")/.." && pwd); O=$1; KNOWN=${2:-}
+R=$(cd "$(dirname "$0")/.." && pwd); O=$1; KNOWN=${2:-}; CLEW=${3:-}
+[ "$KNOWN" = "-" ] && KNOWN=""
 (cd "$R" && node scripts/stale-check.mjs) || { echo "render-dump: dist/ is not built from these sources — nothing was run" >&2; exit 3; }
 E=$R/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron
 mkdir -p "$O"
 for v in demo-vault study-vault; do
 	W=$O/work-$v; rm -rf "$W"; mkdir -p "$W"
 	rsync -a --exclude .clew "$R/$v/" "$W/vault/"
+	if [ -n "$CLEW" ]; then
+		mkdir -p "$W/vault/.clew"
+		for f in vault-settings.json plugins scripts; do
+			[ -e "$R/$v/.clew/$f" ] && cp -R "$R/$v/.clew/$f" "$W/vault/.clew/"
+		done
+	fi
 	if [ -n "$KNOWN" ]; then mkdir -p "$W/ud"; printf '{ "recentVaults": ["%s"] }\n' "$W/vault" > "$W/ud/clew-settings.json"; fi
 	(cd "$R" && env CLEW_SMOKE_LOG=1 CLEW_USER_DATA="$W/ud" CLEW_SMOKE="$W/shot.png" \
 		CLEW_SMOKE_SCRIPT="$R/smoke/render-dump-scenario.js" CLEW_SMOKE_VAULT="$W/vault" \
