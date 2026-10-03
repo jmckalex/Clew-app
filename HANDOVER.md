@@ -8,21 +8,32 @@ prefer deleting a settled item to explaining it again.
 
 ## Read this first
 
-**Where the code is.** `origin/main` = `67311b6` — the last push
-(2026-10-02, on the owner's word; `0423008` before it). Everything from
-`2f0ad5c` on is local; `git fetch` before counting.
+**Where the code is.** `origin/main` = `9349a48`, pushed 2026-10-03 on the
+owner's word: 23 commits `67311b6..9349a48`, a fast-forward. Anything after
+it is local; `git fetch` before counting.
 
-**Mac Silicon dev build 0.12.1-dev.1** (the owner's go, 2026-10-02), from
-`0423008` with the committed engine and EmbedPDF mirrors and the pinned
-mp-tikz-wasm 0.3.0, by the recipe below plus `CLEW_PACKAGE_VERSION=
-0.12.1-dev.1 CLEW_PACKAGE_OUT=out-dev`: `out-dev/Clew-0.12.1-dev.1-arm64.dmg`
-(222,967,484 bytes). notarytool Accepted; stapler valid on the DMG and the
-app; `spctl` accepts both (Notarized Developer ID); hardened runtime, four
-entitlements, arm64; CFBundleShortVersionString/CFBundleVersion 0.12.1-dev.1;
-`mptikz/bundles/opentype` present; the asar carries `dist/build-stamp.json`
-matching 0423008. **boot-test PASSED** without ALLOW_STALE (13 figures
-mpw-ok, cache-probe engine→cache, every live-edit line). Not published
-anywhere. `out-dev/` is gitignored.
+**Mac Silicon dev build 0.12.1-dev.2** (2026-10-03; the owner's yes in this
+window), built from `9349a48` by the dev.1 recipe with the committed
+mirrors: `out-dev/Clew-0.12.1-dev.2-arm64.dmg`, 230,993,209 bytes, beside
+dev.1's.
+- Signed and notarised: notarytool Accepted; stapler valid on the DMG and
+  the app; `spctl` accepts both (Notarized Developer ID).
+- The app: hardened runtime, the four entitlements, arm64,
+  CFBundleShortVersionString/CFBundleVersion 0.12.1-dev.2,
+  `mptikz/bundles/opentype` present, `dist/build-stamp.json` in the asar.
+- **boot-test PASSED** with no ALLOW_STALE: the stamp matches these
+  sources; 13 figures mpw-ok, cache-probe engine→cache; every live-edit
+  line.
+- In the PACKAGED app (invisible, scratch userData), all four of Clew-boss's
+  checks passed:
+  - the page is `clew-app://app/index.html`;
+  - a copy of the bundled demo vault opens trusted, and its Flashcards app
+    prompts, then runs (first card shown);
+  - an untrusted fixture shows the trust prompt (Keep restricted / Trust on
+    this Mac);
+  - zero network requests over 44 s (the update check stays silent under
+    the harness).
+- Not published anywhere; `out-dev/` is gitignored.
 
 **Since the push (local, NOT pushed):** `4bbee43` HANDOVER; `5f870b2` the
 engine re-vendored at `at-migration@a7de8c6`; then **Clew switched to the
@@ -106,12 +117,28 @@ same way when next in those files.
 coordinating session "Clew-boss", uds `/tmp/cc-socks/6958.sock` at the
 time of writing; find it with ListAgents):
 
-- **Pushes ONLY on the owner's explicit OK, relayed by Clew-boss.**
-  Clew-boss may no longer approve pushes on its own (withdrawn 2026-09-30).
-  Commit locally and say what is unpushed. Never force-push. Clew-app only.
-- **No packaging without the owner.** Packaging needs the owner's yes in
-  THIS window (a question asked here; they answered "Yes, package now" for
-  0.12.0). If a permission prompt blocks, leave it; never route around it.
+- **Pushes on the owner's word in this window, OR on Clew-boss's
+  instruction** (the owner, 2026-10-03, here). The harness allows exactly
+  `git push origin main` (the owner's /permissions rule). Before pushing:
+  a clean tree, a fetch, and a fast-forward. Report the new origin/main.
+  Never force-push. Clew-app only.
+- **Packaging on Clew-boss's instruction** (the owner, 2026-10-03, here:
+  "Package when Clew-boss instructs it"). The recipe only: a bash script, a
+  clean tree, signed and notarised, then notarytool/stapler/spctl, the
+  build stamp and boot-test.sh. Nothing published except Apple's notary
+  submission. If a permission prompt blocks, leave it; never route around
+  it.
+- **Every overnight build ends with an Apple Silicon dev package** (the
+  owner's standing rule, relayed by Clew-boss 2026-10-03: "at the end of an
+  overnight build, we always package a version of the Apple Silicon app so
+  that I can install it and run it locally, for use and debug purposes").
+  When the night's work is verified, Clew-boss sends the instruction.
+  - The recipe is 0.12.1-dev.2's: arm64; current main; `CLEW_PACKAGE_VERSION=
+    0.12.N-dev.M`, incremented each time; `CLEW_PACKAGE_OUT=out-dev`; the
+    committed mirrors (`JMARKDOWN_SRC`/`EMBEDPDF_SRC`/`MPTIKZ_SRC=/nonexistent`).
+  - Keep the NEWEST THREE DMGs (+ blockmaps) in out-dev and move older ones
+    to the Trash, never `rm`.
+  - 0.12.1-dev.2 (2026-10-03) was the first; the next is dev.3.
 - **Report every finished task to Clew-boss** with a docs line for the
   manual (`../Clew-docs`, which this session never edits or commits) and
   notes for Clew-iOS (never edited from here either).
