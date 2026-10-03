@@ -12,6 +12,16 @@ prefer deleting a settled item to explaining it again.
 owner's word: 23 commits `67311b6..9349a48`, a fast-forward. Anything after
 it is local; `git fetch` before counting.
 
+**After dev.3 (local, NOT pushed, NOT in any package):** `3031a15` — the
+live preview pane never covers the block being edited, takes no pointer
+events, and a failed figure shows its first error mapped to the fence line
+(the owner's critical report; live-edit.md §5.12); `4a5a60a` — an "Edit
+source" icon on every rendered block in live edit, the thin bar gone
+(§7.7). ◆ Open, pre-existing, reported: a live-edit frame whose render
+returns after its block scrolled away is appended hidden at the iframe
+default 150 px until drawn again (live-blocks `content=79 frame=150` on
+far-down mermaid frames, when timings shift; reproduced without 4a5a60a).
+
 **Mac Silicon dev build 0.12.1-dev.3** (2026-10-03, the owner's ask in this
 window), built from `bebc385` by the same recipe (committed mirrors):
 `out-dev/Clew-0.12.1-dev.3-arm64.dmg`, 230,993,896 bytes. It carries the
