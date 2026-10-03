@@ -13,8 +13,10 @@
 // the note, where the typo is: `typo-line`). Logs:
 //   `fe: <mode>/<kind>/<input> covered-max=<px> pane-pointer=<v> pane=<shown|hidden> side=<s>`
 //   `fe: error message=<first line> error-line=<n> typo-line=<n> marked=<bool>`
-//   (click) `fe: click caret-at-typo=<bool>` then `fe: fixed doc=<bool> error-after=<…> rerendered=<bool>`
+//   (click) `fe: click caret-at-typo=<bool>` then `fe: fixed doc=<bool> error-after=<…> rerendered=<bool> mark-after=<bool>`
+//   (arrows) `fe: show-log opened=true lines=<n> pane=shown caret-kept=true editor-focus=true`
 //   `fe: escape pane=<hidden|shown>`
+//   (arrows) `fe: left caret-line=<n> mark=false` (the caret out of the figure)
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const { workspaceStore, editorPool, settingsStore, ipc, previewPane } = window.__clew;
 const log = (s) => console.log('smoke-fe: ' + s);
@@ -86,7 +88,15 @@ if (kase.input === 'arrows') {
 	for (let i = 0; i < presses; i++) steps.push({ combo: { key: 'ArrowDown' } }, { wait: 350 });
 	// `esc: false` (make-figure-error-vault's `noesc`) leaves the pane up
 	// for the screenshot.
-	window.__clewSmokeInput = [...steps, { wait: 9000 }, ...(kase.esc === false ? [] : [{ combo: { key: 'Escape' } }]), { wait: 800 }];
+	// Then a REAL click on the pane's own "Show log" (the frame's could not
+	// be clicked: the owner's report), Escape, and the caret out of the
+	// figure — whose line mark must go with it (it stayed: the owner's
+	// report).
+	const leave = [];
+	for (let i = 0; i < 4; i++) leave.push({ combo: { key: 'ArrowDown' } }, { wait: 150 });
+	window.__clewSmokeInput = [...steps, { wait: 9000 },
+		{ click: { selector: 'clew-preview-pane .preview-pane-log-toggle' } }, { wait: 1500 },
+		...(kase.esc === false ? [] : [{ combo: { key: 'Escape' } }, { wait: 800 }, ...leave, { wait: 1200 }])];
 	(async () => {
 		await until(() => view().state.doc.lineAt(view().state.selection.main.head).number >= typoLine(), 5000);
 		await until(() => describe().figureError || describe().renders > 0, 9000);
@@ -94,8 +104,16 @@ if (kase.input === 'arrows') {
 		log(`arrows caret-line=${view().state.doc.lineAt(view().state.selection.main.head).number} typo-line=${typoLine()}`);
 		summary();
 		errorReport();
+		const headBefore = view().state.selection.main.head;
+		await until(() => pane()?.logText && !pane().logText.hidden, 9000);
+		await sleep(300);
+		log(`show-log opened=${pane()?.logText?.hidden === false} lines=${(pane()?.logText?.textContent ?? '').split('\n').length} pane=${pane()?.hidden === false ? 'shown' : 'hidden'} caret-kept=${view().state.selection.main.head === headBefore} editor-focus=${view().hasFocus}`);
+		if (kase.esc === false) { clearInterval(poll); return; }
 		await until(() => pane()?.hidden !== false, 15000);
 		log(`escape pane=${pane()?.hidden === false ? 'shown' : 'hidden'}`);
+		await until(() => view().state.doc.lineAt(view().state.selection.main.head).number > typoLine() + 2, 6000);
+		await sleep(600);
+		log(`left caret-line=${view().state.doc.lineAt(view().state.selection.main.head).number} mark=${Boolean(view().dom.querySelector('.cm-figure-error'))}`);
 		clearInterval(poll);
 	})();
 } else {
@@ -120,7 +138,9 @@ if (kase.input === 'arrows') {
 		await until(() => text().includes(kase.fix) && !text().includes(kase.typo), 4000);
 		await until(() => (describe().renders ?? 0) > rendersBefore && !describe().figureError, 9000);
 		await sleep(500);
-		log(`fixed doc=${!text().includes(kase.typo)} error-after=${JSON.stringify(describe().figureError?.message ?? null)} rerendered=${(describe().renders ?? 0) > rendersBefore}`);
+		// The line mark goes with the error (the owner's report: it stayed).
+		await sleep(1500);
+		log(`fixed doc=${!text().includes(kase.typo)} error-after=${JSON.stringify(describe().figureError?.message ?? null)} rerendered=${(describe().renders ?? 0) > rendersBefore} mark-after=${Boolean(view().dom.querySelector('.cm-figure-error'))}`);
 		summary();
 		await until(() => pane()?.hidden !== false, 15000);
 		log(`escape pane=${pane()?.hidden === false ? 'shown' : 'hidden'}`);

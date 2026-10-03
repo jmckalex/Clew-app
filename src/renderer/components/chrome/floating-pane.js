@@ -115,7 +115,7 @@ export class FloatingPane extends HTMLElement {
 		}
 		this.frameHash = hash;
 		this.frameReady = false;
-		this.frame.src = blockDocumentUrl(hash);
+		this.frame.src = blockDocumentUrl(hash) + (this.frameUrlSuffix ?? '');
 		return 'loaded';
 	}
 

@@ -462,6 +462,8 @@ html[data-theme='light'] .mpw-figure .mpw-console {
 .mpw-figure .mpw-error-rest::before { content: '⏐'; color: #ff8080; opacity: 1; }
 .mpw-figure .mpw-log { margin-top: 4px; font: 12px system-ui, sans-serif; color: #9aa0a6; }
 .mpw-figure .mpw-log > summary { cursor: pointer; }
+/* In the live preview pane's mirror the pane shows the log itself. */
+html[data-clew-mirror] .mpw-figure .mpw-log { display: none; }
 .mpw-figure .mpw-log > .mpw-console { max-height: 16em; overflow: auto; }
 html[data-theme='light'] .mpw-figure .mpw-error-head { color: #a33; background: #fff5f5; border-color: #f0c0c0; }
 html[data-theme='light'] .mpw-figure .mpw-error-where { color: #7a2a2a; }

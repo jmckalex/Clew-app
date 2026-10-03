@@ -35,6 +35,10 @@ const post = (msg) => postTo(window.parent, { source: 'clew-preview', ...msg }, 
 // of its own and no source lines worth reporting, so the reading-mode
 // behaviours below stand down; instead it reports its height.
 const BLOCK = document.documentElement.dataset.clewBlock === '1';
+// The live preview pane's mirror (its frame URL ends `#mirror`): nothing in
+// it can be clicked, so what would need a click — a failed figure's "Show
+// log" — is the pane's to show (preview.css hides it here).
+if (location.hash === '#mirror') document.documentElement.dataset.clewMirror = '1';
 
 // A live-edit block says when the pointer is over it: the editor shows the
 // block's "Edit source" icon then (live/frame-layer.js). The frame is

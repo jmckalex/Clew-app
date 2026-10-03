@@ -14,26 +14,39 @@
 // (shared/figure-errors.js) and sets it here: a tint and a bar at the line's
 // left edge, the message as its tooltip — a LINE decoration, so nothing
 // moves. It goes when the figure renders, or when the cursor leaves it.
+//
+// The leaving is seen INSIDE an editor update (the pane plugin's), where a
+// dispatch is refused — so the pane clears LATER, and names the mark it
+// clears: `{ clear: id }` removes mark `id` and nothing newer. (Until
+// 2026-10-03 the refused dispatch was swallowed and the mark stayed for
+// good — the owner's report.)
 import { StateEffect, StateField } from '@codemirror/state';
 import { Decoration, EditorView } from '@codemirror/view';
 
-/** `{ pos, message }` to mark the line holding `pos`, or null to clear. */
+/** `{ pos, message, id }` to mark the line holding `pos`; `{ clear: id }`
+ *  to remove that mark (only that one); null to remove any. */
 export const setFigureError = StateEffect.define();
 
 export const figureErrorField = StateField.define({
-	create: () => Decoration.none,
-	update(marks, tr) {
+	create: () => ({ id: null, marks: Decoration.none }),
+	update(value, tr) {
+		let { id, marks } = value;
 		marks = marks.map(tr.changes);
 		for (const e of tr.effects) {
 			if (!e.is(setFigureError)) continue;
-			if (!e.value) { marks = Decoration.none; continue; }
+			if (!e.value) { id = null; marks = Decoration.none; continue; }
+			if ('clear' in e.value) {
+				if (e.value.clear === id) { id = null; marks = Decoration.none; }
+				continue;
+			}
 			const line = tr.state.doc.lineAt(Math.min(Math.max(0, e.value.pos), tr.state.doc.length));
+			id = e.value.id ?? null;
 			marks = Decoration.set([Decoration.line({
 				class: 'cm-figure-error',
 				attributes: { title: e.value.message },
 			}).range(line.from)]);
 		}
-		return marks;
+		return marks === value.marks && id === value.id ? value : { id, marks };
 	},
-	provide: (f) => EditorView.decorations.from(f),
+	provide: (f) => EditorView.decorations.from(f, (v) => v.marks),
 });

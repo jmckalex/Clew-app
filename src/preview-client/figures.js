@@ -254,7 +254,7 @@ function compactError(figure) {
 	pre.replaceWith(log);
 	log.append(summary, pre);
 	figure.append(head, log);
-	tellHost({ type: 'figure-error', kind, message: err.message, docLine: err.docLine, before: err.before, after: err.after });
+	tellHost({ type: 'figure-error', kind, message: err.message, docLine: err.docLine, before: err.before, after: err.after, log: pre.textContent });
 }
 
 /** Every failed figure on the page not yet compacted (the library's own

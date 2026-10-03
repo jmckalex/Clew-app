@@ -64,7 +64,8 @@ class ClewPreviewPane extends FloatingPane {
 	#dismissed = null;    // Escape: this target stays hidden until left
 	#renders = 0;         // engine renders applied (scenarios count them)
 	#figureError = null;  // { message, noteLine } of the figure shown, if it failed
-	#marked = null;       // the view whose line is marked
+	#marked = null;       // { view, id }: the line marked, and in which editor
+	#markSeq = 0;
 
 	connectedCallback() {
 		this.innerHTML = '';
@@ -80,7 +81,31 @@ class ClewPreviewPane extends FloatingPane {
 		this.error.hidden = true;
 		this.frame.tabIndex = -1;
 		this.body.append(this.math, this.frame);
-		this.append(this.body, this.error);
+		// A failed figure's log, behind the pane's OWN button: the frame is a
+		// mirror (no pointer events, and a click into it would take the
+		// editor's focus, which closes the pane), so the frame's "Show log"
+		// could not be clicked (the owner's report) — the frame hides it here
+		// (`#mirror`, client.js) and hands the log over with its error.
+		this.logRow = document.createElement('div');
+		this.logRow.className = 'preview-pane-log';
+		this.logRow.hidden = true;
+		this.logToggle = document.createElement('button');
+		this.logToggle.type = 'button';
+		this.logToggle.className = 'preview-pane-log-toggle';
+		this.logToggle.textContent = 'Show log';
+		this.logText = document.createElement('pre');
+		this.logText.className = 'preview-pane-log-text';
+		this.logText.hidden = true;
+		this.logRow.append(this.logToggle, this.logText);
+		// pointerdown is prevented by the base (the editor keeps its focus);
+		// the click still arrives.
+		this.logToggle.addEventListener('click', () => {
+			this.logText.hidden = !this.logText.hidden;
+			this.logToggle.textContent = this.logText.hidden ? 'Show log' : 'Hide log';
+			this.reposition();
+		});
+		this.frameUrlSuffix = '#mirror';
+		this.append(this.body, this.error, this.logRow);
 		this.offLayout = workspaceStore.on('layout-changed', () => this.release());
 		this.offSettings = settingsStore.on('settings-changed', (key) => {
 			if (key === 'previewPane' && settingsStore.get('previewPane') === 'off') this.release();
@@ -205,19 +230,38 @@ class ClewPreviewPane extends FloatingPane {
 		const first = view.state.doc.lineAt(Math.min(target.from, view.state.doc.length)).number;
 		const noteLine = at >= 0 ? first + at : null;
 		this.#figureError = { message: msg.message, noteLine };
+		this.#showLog(msg.log ?? '');
 		if (noteLine && noteLine <= view.state.doc.lines) {
-			view.dispatch({ effects: setFigureError.of({ pos: view.state.doc.line(noteLine).from, message: msg.message }) });
-			this.#marked = view;
+			const id = ++this.#markSeq;
+			view.dispatch({ effects: setFigureError.of({ pos: view.state.doc.line(noteLine).from, message: msg.message, id }) });
+			this.#marked = { view, id };
 		}
 	}
 
+	#showLog(log) {
+		this.logText.textContent = log;
+		this.logText.hidden = true;
+		this.logToggle.textContent = 'Show log';
+		this.logRow.hidden = !log;
+	}
+
+	/**
+	 * The error is gone (the figure rendered, the cursor left it, the pane
+	 * closed): its line mark too. Often called from INSIDE the editor's
+	 * update (the plugin tracks the cursor there), where a dispatch is
+	 * refused — so the mark is cleared on the next tick, by its id, which
+	 * leaves a newer mark alone.
+	 */
 	#clearError() {
 		this.#figureError = null;
-		const view = this.#marked;
+		this.#showLog('');
+		const marked = this.#marked;
 		this.#marked = null;
-		if (view && !view.isDestroyed) {
-			try { view.dispatch({ effects: setFigureError.of(null) }); } catch { /* the view went */ }
-		}
+		if (!marked) return;
+		setTimeout(() => {
+			if (marked.view.isDestroyed) return;
+			try { marked.view.dispatch({ effects: setFigureError.of({ clear: marked.id }) }); } catch { /* the view went */ }
+		}, 0);
 	}
 
 	#sizeFrame() {

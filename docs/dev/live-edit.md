@@ -900,6 +900,21 @@ fit below. Now:
   left edge, the message as tooltip — so nothing moves) until the figure
   renders or the caret leaves. Mermaid's "Parse error on line N" counts
   from the fence's first body line (`client.js#runMermaid`).
+- **Two follow-ups from the owner's first test (2026-10-03).** (1) The line
+  mark stayed after the typo was fixed: the caret leaving the figure is
+  seen INSIDE an editor update (the pane plugin's), where CodeMirror
+  refuses a dispatch — the refusal was swallowed and the pane forgot which
+  editor held the mark. The clear is now deferred a tick and names the mark
+  it clears (`{ clear: id }`, so a newer mark survives it). (2) "Show log"
+  in the pane did nothing and the pane closed: the pane is a mirror, the
+  click went through it to the text and moved the caret out. The frame's
+  own disclosure is hidden in the pane (its URL ends `#mirror`; client.js
+  sets `data-clew-mirror`, preview.css hides `.mpw-log`) and the log comes
+  with the error message; the pane shows it behind its OWN "Show log"
+  button — the one part of the pane that takes the pointer (a press there
+  is prevented, so the editor keeps its focus and caret). Measured:
+  `show-log opened=true pane=shown caret-kept=true editor-focus=true`;
+  leaving the figure without Escape → `mark=false` (it was `true`).
 - **Caret entry stays the trigger** (proposed to the owner): the pane is
   the feedback loop while TYPING, when the pointer is elsewhere, so hover
   would never show it; a chord per glance adds a step to every edit. What
