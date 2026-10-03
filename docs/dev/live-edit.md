@@ -870,6 +870,48 @@ goes away when the pointer does. Source mode, live edit AND reading mode.
 
 ### 5.12 The live preview pane
 
+*As fixed, 2026-10-03 — the owner's report, a critical bug:* a ```tikz
+fence with a typo (`$a\lpha$`) could not be fixed. Moving the caret in
+opened the pane OVER the fence — the attempted drawing and then pdfTeX's
+whole log — and a click on the typo landed on the pane. The cause: a block's
+pane went below its last line when it fitted there, and otherwise ABOVE THAT
+LAST LINE, i.e. over the block itself; an error made it tall enough never to
+fit below. Now:
+
+- **Never over the block being edited.** A display formula or a block goes
+  below its last line when it fits; else BESIDE the text column when the
+  window has 300 px to its right; else below, shrunk to the room there
+  (90 px at least); else not at all (`data-side="none"`) — the line mark
+  and its tooltip still say what is wrong. Inline maths keeps its place
+  above its line, which is never the line being typed.
+- **No pointer events, no focus.** The whole pane is `pointer-events:
+  none`: a click or a wheel over it reaches the note. (The 2026-09-29 wheel
+  rule below — the pane's own overflow scrolling first — is retired with
+  it; a pane taller than its room is clipped.) Escape closes it, as before.
+- **The error where it helps** (`shared/figure-errors.js`, pure, tested): a
+  failed figure (`preview-client/figures.js#compactError`) shows its FIRST
+  error, the text TeX read up to it with a seam at the error point, and the
+  log folded under "Show log" — in the pane, in live-edit frames and in
+  reading view alike. The frame tells its host (`figure-error` /
+  `figure-ok`); the pane finds the fence line by TeX's `l.N` context TEXT
+  (the line number names the WRAPPED document, standalone and preamble
+  included, so it is never used to count) and marks it in the editor
+  (`editor/figure-error-mark.js`: a line decoration — tint, a bar at the
+  left edge, the message as tooltip — so nothing moves) until the figure
+  renders or the caret leaves. Mermaid's "Parse error on line N" counts
+  from the fence's first body line (`client.js#runMermaid`).
+- **Caret entry stays the trigger** (proposed to the owner): the pane is
+  the feedback loop while TYPING, when the pointer is elsewhere, so hover
+  would never show it; a chord per glance adds a step to every edit. What
+  made entry a trap was where the pane went, not when.
+- Measured with real input (`smoke/figure-error-scenario.js`): before, in
+  source view, the pane covered 96 px of the fence (`side=above`), took
+  pointer events, and a click on the typo left the caret where it was.
+  After, in source view and live edit, by arrows and by click, for TikZ,
+  MetaPost, a LaTeX snippet and mermaid: `covered-max=0 pane-pointer=none`,
+  the error on the typo's line (`marked=true`), the click on the typo, the
+  fix typed, the figure re-rendered without an error, Escape closing it.
+
 *As built, 2026-09-29:* the pane is fixed and outside the editor's
 scroller, so a wheel over it reached nothing — the note stood still while
 the pointer was over the pane (measured by bisecting live-blocks'

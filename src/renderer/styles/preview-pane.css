@@ -1,6 +1,7 @@
 /* <clew-preview-pane> (editor/preview-pane.js): the rendering of the
-   formula or diagram being edited. Fixed, one per window, never focused,
-   a mirror — its frame takes no pointer events; its body scrolls. */
+   formula or diagram being edited. Fixed, one per window, never focused, a
+   mirror — it takes no pointer events at all: a click or a wheel over it
+   reaches the note under it. */
 clew-preview-pane {
 	position: fixed;
 	z-index: 940;
@@ -11,7 +12,7 @@ clew-preview-pane {
 	border-radius: 8px;
 	box-shadow: 0 8px 22px var(--clew-shadow);
 	overflow: hidden;
-	pointer-events: auto;
+	pointer-events: none;
 }
 clew-preview-pane[hidden] { display: none; }
 clew-preview-pane .preview-pane-body {
@@ -47,3 +48,9 @@ clew-preview-pane .preview-pane-error {
 	color: var(--clew-danger);
 }
 clew-preview-pane [hidden] { display: none !important; }
+/* The line a failed figure's error is about (editor/figure-error-mark.js): a
+   tint and a bar at its left edge — a line decoration, so nothing moves. */
+.cm-line.cm-figure-error {
+	background: color-mix(in srgb, var(--clew-danger) 12%, transparent);
+	box-shadow: inset 3px 0 0 var(--clew-danger);
+}

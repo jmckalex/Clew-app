@@ -85,7 +85,7 @@ note API, plugins, and every settings key.
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
   dialect scanner's constructs and grammar, live edit's model, reveal rule,
-  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band — 1094 tests. DOM/UI work is
+  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band, figure errors — 1098 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
@@ -910,10 +910,16 @@ except where the selection touches a construct. The durable design is
   pane and the link preview share `components/chrome/floating-pane.js` —
   extend that base, never copy it. `live/keys.js` makes ArrowUp/Down stop
   at a block widget's edge (CodeMirror's vertical motion jumps over it).
-  The pane is fixed, OUTSIDE the editor's scroller, so it passes a wheel it
-  cannot use to the note (its own overflow first; a gesture begun on it
-  stays latched until it pauses) — it ate every wheel from 818cf32 until
-  2026-09-29.
+  The pane NEVER covers the block being edited (a critical bug until
+  2026-10-03: with no room below it went over the fence, and a TikZ error's
+  log hid the typo and took the click meant for it): below the block, else
+  beside the text column, else below and shrunk, else hidden; and it takes
+  NO pointer events — a click or a wheel over it reaches the note. A failed
+  figure shows its first error and folds the log ("Show log",
+  `preview-client/figures.js#compactError`); the pane maps the error to the
+  fence line by TeX's `l.N` context TEXT (`shared/figure-errors.js` — the
+  line number names the WRAPPED document) and marks it
+  (`editor/figure-error-mark.js`, a line decoration).
 - **Cross-references** (§5.13): `editor/live/numbering.js` MIRRORS the
   engine's post-processor numbering over the note's text (per note, keyed
   by line; `typedRefText` imported from the vendored crossref.js); chips,

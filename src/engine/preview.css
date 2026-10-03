@@ -441,6 +441,31 @@ html[data-theme='light'] .mpw-figure .mpw-console {
 	background: #fff5f5;
 	border-color: #f0c0c0;
 }
+/* A failed figure (preview-client/figures.js#compactError): the first error
+   and TeX's line up to it, the log folded away under "Show log". */
+.mpw-figure.mpw-error {
+	display: block;
+	max-width: 60em;
+	text-align: left;
+}
+.mpw-figure .mpw-error-head {
+	font: 12px/1.45 ui-monospace, Menlo, monospace;
+	color: #f0a0a0;
+	background: #2a1f1f;
+	border: 1px solid #5a3535;
+	border-radius: 4px;
+	padding: 6px 8px;
+}
+.mpw-figure .mpw-error-message { font-weight: 600; }
+.mpw-figure .mpw-error-where { display: block; margin-top: 2px; color: #e8c6c6; white-space: pre-wrap; }
+.mpw-figure .mpw-error-rest { opacity: 0.55; }
+.mpw-figure .mpw-error-rest::before { content: '⏐'; color: #ff8080; opacity: 1; }
+.mpw-figure .mpw-log { margin-top: 4px; font: 12px system-ui, sans-serif; color: #9aa0a6; }
+.mpw-figure .mpw-log > summary { cursor: pointer; }
+.mpw-figure .mpw-log > .mpw-console { max-height: 16em; overflow: auto; }
+html[data-theme='light'] .mpw-figure .mpw-error-head { color: #a33; background: #fff5f5; border-color: #f0c0c0; }
+html[data-theme='light'] .mpw-figure .mpw-error-where { color: #7a2a2a; }
+html[data-theme='light'] .mpw-figure .mpw-log { color: #6b7280; }
 .mermaid { text-align: center; }
 
 /* ==highlight== emits span.highlight; the engine's yellow needs dark text

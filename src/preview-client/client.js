@@ -25,6 +25,7 @@ import { scanAppEmbeds } from './app-embed.js';
 import { figureMorph, initFigures, figuresPending } from './figures.js';
 import { initTabbing, tabbingMorph } from './tabbing.js';
 import { fromWindow, parentOrigin, postTo } from '../shared/message-guard.js';
+import { mermaidErrorLine } from '../shared/figure-errors.js';
 
 const HOST_SOURCE = 'clew-preview-host';
 // Addressed to the parent's own origin (frame-bridge.md §2.8 step 2).
@@ -73,7 +74,17 @@ function runMermaid() {
 	for (const div of document.querySelectorAll('.mermaid')) {
 		if (!div.dataset.mermaidSrc) div.dataset.mermaidSrc = div.textContent;
 	}
-	window.mermaid.run({ querySelector: '.mermaid' }).catch?.(() => {});
+	// A diagram that does not parse: the host hears its first line and the
+	// line it names (the live preview pane marks it in the fence, as for a
+	// TikZ error — preview-client/figures.js). Only a page that HAS diagrams
+	// says it rendered, or a TikZ figure's error would be cleared by it.
+	const has = Boolean(document.querySelector('.mermaid'));
+	window.mermaid.run({ querySelector: '.mermaid' })
+		.then?.(() => { if (has) post({ type: 'figure-ok', kind: 'mermaid' }); })
+		.catch?.((err) => {
+			const message = String(err?.message ?? err ?? '');
+			post({ type: 'figure-error', kind: 'mermaid', message: message.split('\n')[0], relLine: mermaidErrorLine(message) });
+		});
 }
 
 function configureMermaid(appTheme) {
