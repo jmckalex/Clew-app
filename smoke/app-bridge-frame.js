@@ -2,7 +2,10 @@
 // note's preview document — that a document on the PREVIEW origin saying
 // hello as if it were an app gets no port.
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-if (location.protocol === 'clew-frame:' && document.title === 'Writer') {
+if (location.protocol === 'clew-frame:' && document.title === 'Watcher') {
+	for (let i = 0; i < 40 && !window.__watch?.granted; i++) await sleep(250);
+	console.log(`smoke-app-frame: watcher ${JSON.stringify(window.__watch ?? 'NO RESULTS')}`);
+} else if (location.protocol === 'clew-frame:' && document.title === 'Writer') {
 	for (let i = 0; i < 60 && !window.__writer; i++) await sleep(250);
 	console.log(`smoke-app-frame: writer ${JSON.stringify(window.__writer ?? 'NO RESULTS')}`);
 } else if (location.protocol === 'clew-frame:') {

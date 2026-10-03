@@ -1143,6 +1143,32 @@ rules, Node.
 - The demo vault carries `Apps/Flashcards` (note.read + app.kv) and
   `Guide/Apps in Notes.md`.
 
+### 9b. As built (events and awareness, desktop, 2026-10-03)
+
+- **`note-changed`** (§8): when the embedding note changes on disk — a
+  save, a sync, another app — the app's ports that may READ it
+  (`note.read`/`notes.read`) get `{event: 'note-changed', payload: {path}}`,
+  at most once per 250 ms each (`app-host.js#noteChanged`, from
+  `EV_FILE_CHANGED`). The demo's Flashcards re-reads its cards on it.
+- **`grant-changed`** (§8): an app asking for more later, answered Allow,
+  gets the new set on its LIVE ports — `{event: 'grant-changed', payload:
+  {granted}}`, and the client's `clew.can()` follows — with no reload
+  (`refreshGrants`). Anything taken away (a capability, the run, `network`
+  either way — the CSP is fixed at load) closes the ports and reloads, as
+  before; Settings → Revoke always does (it forgets the app).
+- **The indicator** (§9): while an app holding `note.write`, `notes.write`,
+  `notes.create` or `editor.insert` has a live port, the status bar says
+  "✎ Writer can edit notes" (or "✎ 2 apps can edit notes"); a click opens
+  Settings at This vault → Apps. Ports whose frame has gone are swept every
+  2 s, so it goes when the note closes.
+- **Live embeds in Settings** (§9): each app's row says which notes it is
+  live in now, in this window (`app-host.js#liveEmbeds`; `APPS_LIST`
+  carries each app's key).
+- Measured: `smoke/app-bridge-scenario.js`, mode `events` — the first
+  frame welcomed with `note.read` gets `grant-changed` `app.kv,note.read`
+  and `clew.can('app.kv')` true without reloading; `note-changed` once for a
+  save; the indicator for Writer only, gone on close.
+
 ## 10. Writes
 
 Every write goes through the editor's save path, never around it: if the

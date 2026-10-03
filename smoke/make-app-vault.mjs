@@ -81,6 +81,24 @@ clew.on('find', ({ query }) => { results.findEvent = query; });
 	window.__writer = results;
 })();
 `);
+// Apps/Watcher — the events (§8): note.read only, so no write indicator;
+// it counts `note-changed` and records each `grant-changed` (app-bridge
+// scenario, mode events, rewrites its manifest to ask for app.kv later).
+put('Watch.md', '# Watch\n\nWATCH-NOTE-TEXT\n\n@app+[Apps/Watcher]{height=120}\n');
+put('Apps/Watcher/clew-app.json', JSON.stringify({ id: 'watcher', name: 'Watcher', capabilities: ['note.read'] }, null, '\t'));
+put('Apps/Watcher/index.html', '<!doctype html><html><head><meta charset="utf-8"><title>Watcher</title></head><body><p id="out">watcher</p><script src="app.js"></script></body></html>\n');
+put('Apps/Watcher/app.js', `
+window.__watch = { noteChanged: 0, grantChanged: [], granted: null, canKv: null };
+clew.on('note-changed', () => { window.__watch.noteChanged += 1; });
+clew.on('grant-changed', ({ granted }) => {
+	window.__watch.grantChanged.push(granted.slice().sort().join(','));
+	window.__watch.canKv = clew.can('app.kv');
+});
+(async () => {
+	const ready = await clew.ready;
+	window.__watch.granted = ready.granted.slice().sort().join(',');
+})();
+`);
 put('Twin/A/clew-app.json', JSON.stringify({ id: 'twin', name: 'Twin A' }));
 put('Twin/A/index.html', '<p>a</p>');
 put('Twin/B/clew-app.json', JSON.stringify({ id: 'twin', name: 'Twin B' }));

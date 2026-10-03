@@ -16,6 +16,14 @@
 //             ⌘Z takes one back, a note is created and not overwritten,
 //             another note is denied, Find opens with the app's query, the
 //             clipboard both ways, and history keeps the old text.
+//   events    (+ CLEW_SMOKE_FRAME_SCRIPT=smoke/app-bridge-frame.js
+//             CLEW_SMOKE_FRAME_MATCH=clew-frame) §8–§9's events and
+//             awareness: Watcher (note.read) allowed — no write indicator;
+//             its note saved → `note-changed`; its manifest asking for
+//             app.kv later, answered Allow → `grant-changed` on the LIVE
+//             port (no reload); Settings lists its live embed; Writer (write
+//             grants) allowed → "✎ Writer can edit notes", gone when its
+//             tab closes.
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const { workspaceStore, vaultStore, ipc } = window.__clew;
 for (let i = 0; i < 150 && !vaultStore.vault?.sessionId; i++) await sleep(100);
@@ -87,6 +95,54 @@ if (mode === 'writes') {
 		console.log(`smoke-app: undo inserted=${doc().includes('INSERTED-BY-APP')} appended=${doc().includes('APPENDED-BY-APP')}`);
 		const history = await ipc.invoke('clew:history-list', { path: 'Writer.md' }).catch((e) => `ERR ${e.message}`);
 		console.log(`smoke-app: history=${Array.isArray(history) ? history.length : JSON.stringify(history)}`);
+	})();
+	return;
+}
+if (mode === 'events') {
+	const { appHost, registry } = window.__clew;
+	const indicator = () => document.querySelector('clew-status-bar .clew-app-write-indicator')?.textContent ?? 'none';
+	const allow = { click: { selector: '.clew-app-sheet .clew-trust-button' } };
+	const watch = workspaceStore.openNote('Watch.md', { newTab: true, defaultMode: 'reading' });
+	workspaceStore.setTabMode(watch.id, 'reading');
+	await until(() => !!sheet());
+	// Three prompts: Watcher's first, Watcher asking for more, Writer's.
+	window.__clewSmokeInput = [allow, { wait: 8000 }, allow, { wait: 9000 }, allow, { wait: 9000 }];
+	(async () => {
+		const live = (name) => appHost.liveEmbeds().filter((e) => e.name === name);
+		await until(() => live('Watcher').length > 0, 12000);
+		console.log(`smoke-app: events watcher-live=${live('Watcher').length} indicator=${JSON.stringify(indicator())}`);
+		// The note saved (as another app or a sync would): the app is told.
+		const text = String(await ipc.invoke('clew:note-read', { path: 'Watch.md' }));
+		await ipc.invoke('clew:note-write', { path: 'Watch.md', content: text + '\nEDITED.\n' });
+		// The app now asks for more; a second view of its note — a split, so
+		// the first stays on screen with its port — announces it.
+		await ipc.invoke('clew:note-write', { path: 'Apps/Watcher/clew-app.json', content: JSON.stringify({ id: 'watcher', name: 'Watcher', capabilities: ['note.read', 'app.kv'] }) });
+		await sleep(1200);
+		const key = live('Watcher')[0]?.key;
+		window.__clew.actions.splitActive('right');
+		const right = workspaceStore.activeGroupId;
+		await sleep(2500);
+		const st = await ipc.invoke('clew:app-status', { key }).catch((e) => ({ error: String(e.message ?? e) }));
+		console.log(`smoke-app: events after-manifest ask=${JSON.stringify(st?.ask ?? st)} prompt=${!!sheet()}`);
+		await until(() => live('Watcher').length >= 2, 12000);
+		await sleep(1500);
+		console.log(`smoke-app: events watcher-ports=${live('Watcher').length}`);
+		// Settings, in the right pane, lists the live embeds.
+		workspaceStore.setActiveGroup(right);
+		registry.runCommand('app:settings');
+		await until(() => document.querySelector('[data-settings-subsection="apps"] [data-app-id="watcher"]'), 5000);
+		console.log(`smoke-app: events settings=${JSON.stringify(document.querySelector('[data-settings-subsection="apps"] [data-app-id="watcher"]')?.textContent ?? '')}`);
+		// Writer: write grants → the indicator, while its port lives.
+		workspaceStore.setActiveGroup(right);
+		const writer = workspaceStore.openNote('Writer.md', { newTab: true, defaultMode: 'reading' });
+		workspaceStore.setTabMode(writer.id, 'reading');
+		await until(() => live('Writer').length > 0, 15000);
+		await sleep(500);
+		console.log(`smoke-app: events writer-indicator=${JSON.stringify(indicator())}`);
+		workspaceStore.closeTab(writer.id, { force: true });
+		await until(() => live('Writer').length === 0, 6000);
+		await sleep(300);
+		console.log(`smoke-app: events after-close=${JSON.stringify(indicator())}`);
 	})();
 	return;
 }

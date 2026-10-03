@@ -18,6 +18,7 @@ import { allCommands, chordOf, recordKeys } from '../../commands/registry.js';
 import { debounce } from '../../lib/debounce.js';
 import { invalidateNoteApiGate } from '../../note-api.js';
 import { ipc, CH } from '../../ipc.js';
+import { liveEmbeds } from '../../app-host.js';
 import { createCodeEditor } from '../../editor/mini-editor.js';
 import { fragmentKey } from '../../../engine/tex-fragments.js';
 import { TOOLBAR_GROUPS } from '../../editor/toolbar/toolbar-spec.js';
@@ -289,7 +290,9 @@ class ClewSettingsView extends ClewElement {
 					revoke.disabled = true;
 					ipc.invoke(CH.APP_REVOKE, { id: app.id }).catch(() => {});
 				});
-				const row = this.#row(`${app.id} (${app.folders.join(', ') || '—'}) — ${state}${app.pinned ? ' · pinned to its approved code' : ''}`, revoke);
+				// Its live embeds (§9): the notes it is open in now, in this window.
+				const live = [...new Set(liveEmbeds().filter((e) => e.key === app.key).map((e) => (e.notePath ?? '?').replace(/\.(md|jmd)$/i, '')))];
+				const row = this.#row(`${app.id} (${app.folders.join(', ') || '—'}) — ${state}${app.pinned ? ' · pinned to its approved code' : ''}${live.length ? ` · live in ${live.join(', ')}` : ''}`, revoke);
 				row.dataset.appId = app.id;
 				section.append(row);
 			}

@@ -1,6 +1,7 @@
 // Flashcards — a small app in a note (Guide/Apps in Notes). It reads the
 // note it sits in (`note.read`) for lines starting `Q:` and `A:`, and keeps
-// its best score in its own corner of clewdata.json (`app.kv`). Everything
+// its best score in its own corner of clewdata.json (`app.kv`); a card
+// added to the note appears when the note is saved (`note-changed`). Everything
 // goes through window.clew, which Clew injects; the app runs on an origin
 // of its own and reaches nothing it was not allowed.
 const $ = (id) => document.getElementById(id);
@@ -69,6 +70,16 @@ async function main() {
 	}
 	cards = cardsIn(await clew.notes.read());
 	order = cards.map((_, i) => i);
+	// The note was saved with new cards (or fewer): start the round again.
+	clew.on('note-changed', async () => {
+		const next = cardsIn(await clew.notes.read());
+		if (JSON.stringify(next) === JSON.stringify(cards)) return;
+		cards = next;
+		order = cards.map((_, i) => i);
+		shown = false;
+		right = seen = 0;
+		draw();
+	});
 	if (clew.can('app.kv')) best = (await clew.kv.get('best')) ?? null;
 	$('flip').onclick = () => { shown = true; draw(); };
 	$('know').onclick = () => answered(true);

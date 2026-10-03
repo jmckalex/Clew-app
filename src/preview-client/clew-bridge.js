@@ -23,6 +23,8 @@
 //   clew.on('theme', ({ theme }) => …);
 //   await clew.notes.write(null, text);   // note.write: through the editor
 //   clew.on('find', ({ query }) => …);    // Clew's Find in this note
+//   clew.on('note-changed', ({ path }) => …);   // the note changed on disk (note.read)
+//   clew.on('grant-changed', ({ granted }) => …); // more was allowed, live
 (() => {
 	const HOST = 'clew-app://app';
 	const pending = new Map();
@@ -56,7 +58,7 @@
 					if (m.ok) resolve(m.result);
 					else reject(Object.assign(new Error(m.error?.message ?? 'failed'), { code: m.error?.code ?? 'internal' }));
 				} else if (m?.event) {
-					if (m.event === 'granted') granted = Array.isArray(m.payload?.granted) ? m.payload.granted : granted;
+					if (m.event === 'granted' || m.event === 'grant-changed') granted = Array.isArray(m.payload?.granted) ? m.payload.granted : granted;
 					emit(m.event, m.payload);
 				}
 			};

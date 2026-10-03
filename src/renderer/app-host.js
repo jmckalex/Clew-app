@@ -27,8 +27,13 @@
 //   3. Over the port: `{v, id, method, params}` → limits here (size, in
 //      flight, rate) → main (APP_CALL), which checks the grant at call time.
 //      `context` and `open` are answered here, `open` under `links.open`.
-//   4. A grant revoked or changed (Settings, a new answer): every port of
-//      that app closes and its frames reload — and ask again if they must.
+//   4. A grant revoked (Settings): every port of that app closes and its
+//      frames reload — and ask again if they must. A grant ADDED (an app
+//      asking for more later, answered Allow) reaches its live ports as a
+//      `grant-changed` event instead; the embedding note's changes reach
+//      the apps that may read it as `note-changed` (§8).
+//   5. While an app with a write grant holds a live port, the status bar
+//      says so (§9); Settings lists every live embed.
 import { ipc, CH } from './ipc.js';
 import { fromPreviewOrigin, PREVIEW_ORIGIN } from '../shared/message-guard.js';
 import { settingsStore } from './state/settings-store.js';
@@ -148,6 +153,9 @@ function ensurePrompt(status) {
 			// answer) has its CSP from before it: a `network` grant reaches it
 			// only through a reload.
 			if (after?.granted?.includes('network') && !status.granted.includes('network')) tellEmbedders(status.key, 'app-reload');
+			// Frames already holding a port (an app asking for more later):
+			// what was granted reaches them live.
+			else refreshGrants(status.key);
 			return after;
 		}).finally(() => prompts.delete(status.key)));
 	}
@@ -201,7 +209,7 @@ async function onHello(event) {
 	if ([...(ports.get(key) ?? [])].some((r) => r.frame === event.source)) return;
 	const channel = new MessageChannel();
 	const record = {
-		key, frame: event.source, port: channel.port1, notePath: notePaths.get(parent) ?? null,
+		key, name: st.name ?? st.id ?? 'App', frame: event.source, port: channel.port1, notePath: notePaths.get(parent) ?? null,
 		granted: new Set(st.granted), inFlight: 0, tokens: BURST, at: performance.now(),
 		writeTokens: WRITE_RATE, writeAt: performance.now(),
 	};
@@ -209,6 +217,7 @@ async function onHello(event) {
 	ports.get(key).add(record);
 	channel.port1.onmessage = (e) => onRequest(record, e.data);
 	event.source.postMessage({ source: 'clew-app-host', type: 'welcome', v: 1, granted: st.granted, tier2: false }, event.origin, [channel.port2]);
+	livePortsChanged();
 }
 
 // ---- 3: requests over the port --------------------------------------------------
@@ -386,6 +395,117 @@ function closePorts(key) {
 		try { record.port.close(); } catch { /* gone */ }
 	}
 	ports.delete(key);
+	livePortsChanged();
+}
+
+/**
+ * The app's grants changed (an answer to a prompt, Settings). What was
+ * ADDED reaches its live ports at once, as a `grant-changed` event (§8) —
+ * an app asking for more later carries on with it, no reload. Anything
+ * TAKEN AWAY — a capability, the run, or `network` either way (the CSP is
+ * fixed when the document loads) — closes every port and reloads its frames,
+ * which ask again if they must.
+ */
+async function refreshGrants(key) {
+	const live = ports.get(key);
+	if (!live?.size) return;
+	const st = await status(key);
+	const now = new Set(st?.mayRun ? st.granted : []);
+	const reload = [...live].some((r) => [...r.granted].some((c) => !now.has(c)) || r.granted.has('network') !== now.has('network'));
+	if (!st?.mayRun || reload) {
+		closePorts(key);
+		tellEmbedders(key, 'app-reload');
+		return;
+	}
+	for (const record of live) {
+		if ([...now].every((c) => record.granted.has(c))) continue;
+		record.granted = new Set(now);
+		try { record.port.postMessage({ v: 1, event: 'grant-changed', payload: { granted: [...now] } }); } catch { /* gone */ }
+	}
+	livePortsChanged();
+}
+
+// ---- 5: what the user is told -------------------------------------------------------
+
+/** An app holding any of these can change notes. */
+const WRITE_CAPS = ['note.write', 'notes.write', 'notes.create', 'editor.insert'];
+let indicator = null;
+
+/** Every live embed: { key, name, notePath, writes } — Settings lists them. */
+export function liveEmbeds() {
+	const out = [];
+	for (const set of ports.values()) {
+		for (const r of set) out.push({ key: r.key, name: r.name, notePath: r.notePath, writes: WRITE_CAPS.some((c) => r.granted.has(c)) });
+	}
+	return out;
+}
+
+/** Ports whose frame has gone (its note closed, re-rendered without it). */
+function sweep() {
+	let gone = false;
+	for (const [key, set] of ports) {
+		for (const r of [...set]) {
+			if (r.frame && r.frame.closed) {
+				try { r.port.close(); } catch { /* gone */ }
+				set.delete(r);
+				gone = true;
+			}
+		}
+		if (!set.size) ports.delete(key);
+	}
+	if (gone) livePortsChanged();
+}
+
+/**
+ * While an app with a WRITE grant holds a live port, the status bar says so
+ * (§9: "an indicator shows while an app with write grants holds a live
+ * port") — quiet, in the trust indicator's place, and a click opens Settings
+ * at This vault → Apps, where it can be revoked.
+ */
+function livePortsChanged() {
+	const writers = [...new Set(liveEmbeds().filter((e) => e.writes).map((e) => e.name))];
+	const bar = document.querySelector('clew-status-bar');
+	if (!writers.length || !bar) {
+		indicator?.remove();
+		indicator = null;
+		return;
+	}
+	if (!indicator) {
+		indicator = document.createElement('button');
+		indicator.className = 'status-item clew-app-write-indicator';
+		indicator.setAttribute('data-status-keep', '');
+		indicator.addEventListener('click', openAppSettings);
+	}
+	indicator.textContent = writers.length === 1 ? `✎ ${writers[0]} can edit notes` : `✎ ${writers.length} apps can edit notes`;
+	indicator.title = `Open now, and allowed to change your notes: ${writers.join(', ')}. Settings → This vault → Apps to revoke.`;
+	if (!indicator.isConnected) bar.prepend(indicator);
+}
+
+async function openAppSettings() {
+	const { runCommand } = await import('./commands/registry.js');
+	runCommand('app:settings');
+	for (let i = 0; i < 30; i++) {
+		const apps = document.querySelector('[data-settings-subsection="apps"]');
+		if (apps) { apps.scrollIntoView({ block: 'center' }); return; }
+		await new Promise((r) => setTimeout(r, 100));
+	}
+}
+
+/** The embedding note changed on disk (a save, a sync, another app): the
+ *  apps in it that may READ it are told — `note-changed` (§8) — at most
+ *  once per quarter second each. */
+const noteTimers = new WeakMap();
+function noteChanged(path) {
+	for (const set of ports.values()) {
+		for (const record of set) {
+			if (record.notePath !== path || !(record.granted.has('note.read') || record.granted.has('notes.read'))) continue;
+			if (noteTimers.has(record)) continue;
+			noteTimers.set(record, setTimeout(() => {
+				noteTimers.delete(record);
+				try { record.port.postMessage({ v: 1, event: 'note-changed', payload: { path } }); } catch { /* gone */ }
+			}, 250));
+		}
+	}
 }
 
 export function installAppHost() {
@@ -397,10 +517,15 @@ export function installAppHost() {
 			onHello(event);
 		}
 	});
+	// Settings → Revoke forgets the app here: its ports close and its frames
+	// reload, so it asks again (an answer to a prompt goes through
+	// refreshGrants instead, which tells live ports what was ADDED).
 	ipc.on(CH.EV_APP_GRANTS_CHANGED, ({ key }) => {
 		closePorts(key);
 		tellEmbedders(key, 'app-reload');
 	});
+	ipc.on(CH.EV_FILE_CHANGED, ({ path } = {}) => { if (path) noteChanged(path); });
+	setInterval(sweep, 2000);
 	settingsStore.on('settings-changed', (k) => {
 		if (k !== 'theme') return;
 		for (const set of ports.values()) {

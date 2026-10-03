@@ -496,7 +496,14 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   HOISTED out of the morph (`preview-client/app-embed.js`, the office
   live-embed arrangement): an app's own insert above it re-created the
   `<clew-app-embed>` and restarted the app until it was. Settings →
-  This vault → Apps lists them with Revoke. The demo vault's
+  This vault → Apps (a subsection of its own) lists them with their live
+  embeds and Revoke. **Events** (§8, 2026-10-03): `note-changed` when the
+  embedding note changes on disk (to ports that may read it), and
+  `grant-changed` when an answer ADDS capabilities — delivered live, no
+  reload; anything removed (and Revoke) closes the ports and reloads. While
+  an app with a write grant holds a live port the status bar says "✎ …
+  can edit notes" (`app-host.js#livePortsChanged`; dead frames swept every
+  2 s). The demo vault's
   `Apps/Flashcards` + `Guide/Apps in Notes.md` are the documentation and the
   fixture; `smoke/app-bridge-scenario.js` the proof. Under CLEW_SMOKE the
   grant store writes nothing. WebRTC (choice D) is measured, not set:

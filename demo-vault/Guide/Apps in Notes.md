@@ -60,9 +60,16 @@ allow more. It reaches Clew through `window.clew`, which Clew injects:
 - **network** — by default an app cannot send anything anywhere: no fetch,
   no form, not even an image from another host. Asking for `network` (or
   `"network": ["https://api.example.com"]` for named hosts only) lifts that.
+- **note.write** — `clew.notes.write(null, text)`, `clew.notes.append(null,
+  text)`, `clew.properties.set(…)` on *this* note, through its editor: ⌘Z
+  takes an app's edit back like your own. **notes.write** — the same on any
+  note. **notes.create** — a new note, never over an existing one.
+  **editor.insert** — at your cursor. **find** and **clipboard** too.
 
 `await clew.ready` tells the app what it was granted; `clew.can('app.kv')`
-asks about one.
+asks about one. `clew.on('note-changed', …)` hears when this note is saved
+(with **note.read** — the cards below follow it), and `clew.on(
+'grant-changed', …)` when you allow more, while the app keeps running.
 
 ## The prompt
 
@@ -78,8 +85,10 @@ works — that is the point of running it apart — but it does not even start
 until you answer, and the prompt says the vault is untrusted. Its code is
 the only code of that vault that runs.
 
-Settings → *This vault* → *Apps* lists every app the vault carries and what
-it may do; **Revoke** forgets the app here, so it asks again.
+Settings → *This vault* → *Apps* lists every app the vault carries, what it
+may do and which notes it is open in now; **Revoke** forgets the app here,
+so it asks again. While an app allowed to change notes is open, the status
+bar says so — "✎ Writer can edit notes" — and a click goes to that list.
 
 ## Cards
 

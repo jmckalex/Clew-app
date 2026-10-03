@@ -520,10 +520,10 @@ export function registerIpc() {
 		const out = [];
 		for (const [id, folders] of ids) {
 			const r = records[id] ?? null;
-			out.push({ id, folders, duplicate: folders.length > 1, granted: Object.keys(r?.granted ?? {}), denied: Object.keys(r?.denied ?? {}), run: Boolean(r?.run), runDenied: Boolean(r?.runDenied), pinned: Boolean(r?.code) });
+			out.push({ id, key: appKey(vault, id), folders, duplicate: folders.length > 1, granted: Object.keys(r?.granted ?? {}), denied: Object.keys(r?.denied ?? {}), run: Boolean(r?.run), runDenied: Boolean(r?.runDenied), pinned: Boolean(r?.code) });
 		}
 		for (const [id, r] of Object.entries(records)) {
-			if (!ids.has(id)) out.push({ id, folders: r.folder ? [r.folder] : [], missing: true, granted: Object.keys(r.granted ?? {}), denied: Object.keys(r.denied ?? {}), run: Boolean(r.run), runDenied: Boolean(r.runDenied), pinned: Boolean(r.code) });
+			if (!ids.has(id)) out.push({ id, key: appKey(vault, id), folders: r.folder ? [r.folder] : [], missing: true, granted: Object.keys(r.granted ?? {}), denied: Object.keys(r.denied ?? {}), run: Boolean(r.run), runDenied: Boolean(r.runDenied), pinned: Boolean(r.code) });
 		}
 		return out.sort((a, b) => a.id.localeCompare(b.id));
 	});

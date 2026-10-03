@@ -161,6 +161,7 @@ import('./pdf-annotations.js').then((m) => { window.__clew.pdfAnnotations = m; }
 import('./pdf-quote.js').then((m) => { window.__clew.pdfQuote = m; });
 import('./build-warnings.js').then((m) => { window.__clew.buildWarnings = m; });
 import('./conflicts.js').then((m) => { window.__clew.conflicts = m; });
+import('./app-host.js').then((m) => { window.__clew.appHost = m; });
 
 // ---- boot -----------------------------------------------------------------
 
