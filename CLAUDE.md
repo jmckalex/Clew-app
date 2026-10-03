@@ -80,7 +80,7 @@ note API, plugins, and every settings key.
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
   dialect scanner's constructs and grammar, live edit's model, reveal rule,
-  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement) — 1048 tests. DOM/UI work is
+  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement), what a site export publishes — 1053 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
@@ -600,6 +600,17 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
 - **Site export** (`src/main/export-site.js`, File → Export → Vault as
   Website): one-shot workers with CLEW_SITE_EXPORT=1, marker-URL
   relativization per page depth, assets/ copy, queries baked static.
+  **What goes out is `main/site-files.js#siteFiles`** (electron-free,
+  tested): what the explorer shows, minus Clew's machinery (`.clew/`, the
+  built-in ignores, dotfiles) and minus PRIVATE STATE — `clewdata.json` at
+  the root (the Note API's shared state, every app's `app.kv`) and the
+  `data/` of every folder holding `clew-app.json` (`app.files`); an app's
+  code still goes out with its folder (Clew-docs' finding 2026-10-03: the
+  site carried both, `smoke/site-privacy-scenario.js`). A website has no
+  bridge, so an `@app` becomes `staticAppEmbeds`' sentence ("Apps/X — an
+  app that runs inside Clew, not on a website"), the box shrunk to it by
+  preview.css. Grants, trust and the web-PDF cache live in userData, out of
+  any walk's reach.
 - `src/renderer/` — `state/` (Emitter stores: vault/workspace/settings/ui/
   bookmarks; the workspace state also carries `collapsedFolders`, the file
   explorer's closed folders — per vault, absence meaning open; the explorer

@@ -31,14 +31,11 @@ import { compileExcludes } from './vault-excludes.js';
 import { readNoteFonts } from './note-fonts.js';
 import { calloutsEnv } from './callout-types.js';
 import { toolchainPath } from './render-service.js';
-import { direntKind, shouldRecurse, walkGuard } from './fs-utils.js';
 import { enabledPlugins, previewPluginScripts } from './plugins.js';
 import { bakeFigures, figureEngineAvailable, hasFigures } from './figure-bake.js';
-import { insideByRealpath } from '../engine/vault-bounds.js';
+import { siteFiles, staticAppEmbeds, NOTE_EXT } from './site-files.js';
 
 const SITE_MARK = '@@SITE@@';
-const NOTE_EXT = /\.(md|jmd)$/i;
-const IGNORED = new Set(['.obsidian', '.clew', '.git', 'node_modules', '.trash']);
 
 // `access` is the window's effective access (vault-trust.js#effectiveAccess):
 // a site bakes what the vault's previews show on THIS device, so a vault this
@@ -47,32 +44,12 @@ const IGNORED = new Set(['.obsidian', '.clew', '.git', 'node_modules', '.trash']
 export async function exportSite({ vaultRoot, engineDir, outDir, distDir, vaultOptions = {}, access = { trusted: false, plugins: [] }, onProgress = () => {} }) {
 	fs.mkdirSync(outDir, { recursive: true });
 
-	// Collect notes + other files with the standard symlink-safe walk.
-	const excludes = compileExcludes(vaultOptions);
-	const notes = [];
-	const files = [];
-	const seen = walkGuard(vaultRoot);
-	const walk = (dir, rel) => {
-		for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-			const childRel = rel ? `${rel}/${entry.name}` : entry.name;
-			// What the explorer shows is what gets published: `hidden` is not
-			// in the vault as far as Clew is concerned, while `unindexed` is
-			// listed and openable and so goes out with the rest.
-			if (excludes.isHidden(childRel)) continue;
-			if (entry.name.startsWith('.') || IGNORED.has(entry.name)) continue;
-			const kind = direntKind(dir, entry);
-			// A restricted vault's link out is not part of it, and is never
-			// published (engine/vault-bounds.js).
-			if (!access.trusted && kind && !insideByRealpath(path.join(dir, entry.name), vaultRoot)) continue;
-			if (kind === 'dir') {
-				const abs = path.join(dir, entry.name);
-				if (shouldRecurse(abs, seen)) walk(abs, childRel);
-			} else if (kind === 'file') {
-				(NOTE_EXT.test(entry.name) ? notes : files).push(childRel);
-			}
-		}
-	};
-	walk(vaultRoot, '');
+	// What goes out (site-files.js): what the explorer shows, without Clew's
+	// machinery and without private state — clewdata.json and every app's
+	// data/ folder — and, in a restricted vault, nothing a link reaches
+	// outside it. `hidden` is not in the vault as far as Clew is concerned;
+	// `unindexed` is listed and openable, so it goes out with the rest.
+	const { notes, files } = siteFiles(vaultRoot, { excludes: compileExcludes(vaultOptions), trusted: Boolean(access.trusted) });
 
 	// One-shot workers with overlap: spawn the next while this one builds.
 	const spawnWorker = () => {
@@ -215,7 +192,8 @@ export async function exportSite({ vaultRoot, engineDir, outDir, distDir, vaultO
 function finishPage(html, rel, vaultRoot, access) {
 	const depth = rel.split('/').length - 1;
 	const prefix = depth === 0 ? '' : '../'.repeat(depth);
-	let out = html
+	// An app has no bridge, origin or grant on a website: its box says so.
+	let out = staticAppEmbeds(html)
 		.split(`/${SITE_MARK}/`).join(prefix || './')
 		// sitePath percent-encodes the marker (@ → %40) in URLs it builds.
 		.split(`/${encodeURIComponent(SITE_MARK)}/`).join(prefix || './')

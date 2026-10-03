@@ -64,17 +64,16 @@ labels numbered in live edit); `036befe` the update check v1
 is this PDF; a picker otherwise) and `[[x.pdf#page=N|PDF p. N]]` at the
 cursor of the note being edited.
 
-**Queued by Clew-boss (2026-10-03), in order:** (A) a website export leaves
-out `clewdata.json` and every app's `data/` (privacy); desktop edit-conflict
-safety (Clew-iOS CONFLICT-SAFETY.md items 1–4, not 5); (B) the app rows get
-their own "Apps" subsection in Settings → This vault, so the refusal text's
-pointer is true; (C) the write-grant indicator, the note-changed and
-grant-changed events (§8–§9), the per-embed list if cheap; then
-tests/app-calls.test.js hung >10 min once under load — make it
-deterministic. NEXT re-vendor (on Clew-boss's go): the engine's
-Bibliography becomes additive — `citation-header.js#noteBibFiles` returns
-the note's files PLUS the vault's (unless `Bibliography mode: replace`), and
-the LaTeX export's BIBINPUTS gains the vault bib's folder.
+Then `4921cc1` quote-and-cite, and (A) **a website export publishes no
+private state**: `main/site-files.js` leaves out `clewdata.json` and every
+app's `data/`, and an `@app` becomes a sentence on the static page.
+
+**Queued by Clew-boss (2026-10-03), in order:**
+1. The e7cf638 re-vendor. Additive Bibliography: `citation-header.js#noteBibFiles` returns the note's files PLUS the vault's unless `Bibliography mode: replace`, and the LaTeX export's BIBINPUTS gains the vault bib's folder. Escapes: `\$` is now enough, so pdf-quote.js's `\\\$` must follow. The `latex-export [code]` lint is shown grouped. Generated and `{-}` headings are unnumbered in live/numbering.js.
+2. Desktop edit-conflict safety: Clew-iOS CONFLICT-SAFETY.md items 1–4, not 5. Record the mtime from a fresh stat AFTER the rename (Clew-iOS's lesson), and test ten saves spaced past the autosave debounce.
+3. (B): the app rows get their own "Apps" subsection in Settings → This vault, so the refusal text's pointer is true.
+4. (C): the write-grant indicator, the note-changed and grant-changed events (§8–§9), and the per-embed list if cheap.
+5. tests/app-calls.test.js hung >10 min once under load: make it deterministic.
 
 **The rules this session works under** (the owner's, relayed by the
 coordinating session "Clew-boss", uds `/tmp/cc-socks/6958.sock` at the
