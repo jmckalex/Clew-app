@@ -1192,6 +1192,22 @@ and re-run. Designed by the planning session; built overnight.
   the page; measured) and answers `pdf-page-shown`; the host asks until it
   does. Reading mode's links go through the same `openWikilink`. The
   live-edit chip's "p. 12" is not built ◆ — the note writes `|p. N` aliases.
+- **A PDF link never replaces the note it is in** (the owner's ask,
+  2026-10-03 — a quote's back-link threw the note away): `openWikilink`
+  sends a PDF to `tree.js#openFileBeside`. A click focuses the PDF's tab
+  wherever it is open (this pane's, then a pane showing it, then a
+  background tab of another pane) and goes to page N; open nowhere, it opens
+  in a new tab — in ANOTHER pane when the window is split (one showing a PDF
+  first), else beside the note. ⌘-click in live edit and reading view (⌘⌥ in
+  source mode, where ⌘-click is the plain "follow"), and every caller that
+  asks for a new tab (canvas cards, apps, the Note API): THIS pane — its tab
+  for the PDF, else a new tab beside the note, even when another pane has
+  it. Measured with real clicks, live edit and reading view
+  (`smoke/pdf-link-scenario.js`): before, a single pane and a split both
+  lost the note's tab to the PDF (and the split gained a second copy of it);
+  after, the note kept in every case, page 3 each time. Other attachments
+  ([[img.png]]) and note-to-note links still navigate in place — the
+  Obsidian way, and not part of the ask.
 - **The command** `pdf:extract-annotations` (palette, on an active PDF tab)
   and the explorer's "Extract annotations to a note" on a `.pdf`
   (`renderer/pdf-annotations.js`): asks the tab's viewer (opening a tab if

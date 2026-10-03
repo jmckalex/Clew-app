@@ -179,12 +179,15 @@ export async function openWikilink(target, { newTab = false, mode } = {}) {
 		const filePath = vaultStore.resolveFileName(name);
 		if (filePath) {
 			if (isCanvasPath(filePath)) workspaceStore.openCanvas(filePath, { newTab });
-			else {
-				const tab = workspaceStore.openFile(filePath, { newTab });
-				// `[[paper.pdf#page=12]]` (§5.15): open, or scroll, there.
+			else if (/\.pdf$/i.test(filePath)) {
+				// A PDF never replaces the tab the link was in — its own tab,
+				// wherever it is open, else a new one, in the other pane of a
+				// split (tree.js#openFileBeside); `newTab` (⌘-click) keeps it in
+				// this pane. `[[paper.pdf#page=12]]` (§5.15): there.
+				const tab = workspaceStore.openFileBeside(filePath, { here: newTab });
 				const page = /^page=(\d+)$/.exec(heading ?? '')?.[1];
-				if (page && /\.pdf$/i.test(filePath) && tab) showPdfPage(tab.id, Number(page));
-			}
+				if (page && tab) showPdfPage(tab.id, Number(page));
+			} else workspaceStore.openFile(filePath, { newTab });
 			return;
 		}
 	}

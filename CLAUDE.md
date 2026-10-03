@@ -85,7 +85,7 @@ note API, plugins, and every settings key.
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
   dialect scanner's constructs and grammar, live edit's model, reveal rule,
-  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers — 1086 tests. DOM/UI work is
+  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers — 1091 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
@@ -968,7 +968,10 @@ except where the selection touches a construct. The durable design is
   getTextSlices) when pdf-page.js is asked by its PARENT;
   `renderer/pdf-annotations.js` + the pure `shared/pdf-annotations-note.js`
   write or MERGE `<pdf> — Annotations.md` (never deleting); it flushes the
-  viewer's pending autosave first. `[[x.pdf#page=N]]` opens a PDF tab there.
+  viewer's pending autosave first. `[[x.pdf#page=N]]` opens a PDF tab there
+  — and NEVER over the note it is in (`tree.js#openFileBeside`): its tab
+  wherever open, else a new tab, in the other pane of a split; ⌘-click (⌘⌥
+  in source mode) keeps it in this pane.
 - **Quote-and-cite from a PDF** (§5.15a): text selected in any PDF viewer
   → "Quote in note" (added to EmbedPDF's OWN selection menu at runtime:
   `commands.registerCommand` + `ui.mergeSchema`, no fork change) or
