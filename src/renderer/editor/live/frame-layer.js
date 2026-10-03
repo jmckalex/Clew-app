@@ -31,7 +31,7 @@ import { ViewPlugin } from '@codemirror/view';
 import { liveStateField } from './reveal-field.js';
 import { liveConfigFacet } from './config.js';
 import {
-	frameKind, frameText, wantsFrame, isPinnedKind, revealIconOutside, setFrameHeight,
+	frameKind, frameText, wantsFrame, isPinnedKind, revealIconOutside, setFrameHeight, defaultHeight,
 } from './frames.js';
 import { handlePreviewMessage } from './frame-host.js';
 import { blockUrl, blockDocumentUrl } from '../../lib/preview-url.js';
@@ -288,6 +288,11 @@ class FrameLayer {
 		iframe.allow = 'fullscreen';
 		iframe.dataset.frameId = record.id;
 		iframe.style.visibility = 'hidden';
+		// Its height from the start: a render that returns after its block
+		// scrolled away is not placed until the block is drawn again, and was
+		// left at the iframe default, 150 px, in the meantime (live-blocks'
+		// `content=79 frame=150`, 2026-10-03).
+		iframe.style.height = `${record.height ?? defaultHeight(record.kind)}px`;
 		// A restale MORPHS the new render in and leaves src naming the old
 		// one, which an engine reconfigure has dropped from main's cache — so
 		// a frame that later RELOADS (its pane re-mounted by a mode switch in
@@ -416,6 +421,10 @@ class FrameLayer {
 				const height = Math.max(8, Math.round(msg.height));
 				if (record.height === height) return;
 				record.height = height;
+				// A frame whose block is not drawn (not placed, hidden) follows
+				// its content now; a placed one resizes WITH its placeholder in
+				// #write, or for a frame it would overlap the text below.
+				if (record.iframe?.style.visibility === 'hidden') record.iframe.style.height = `${height}px`;
 				// Out of the message handler, never inside a view update.
 				requestAnimationFrame(() => {
 					if (!this.records.has(record.id)) return;

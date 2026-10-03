@@ -1838,6 +1838,14 @@ FrameRecord { id, kind, text, sourcePath, placeholderPos, iframe|null, hash|null
               height, lastVisible, pinned, state: 'idle'|'posting'|'loading'|'ready'|'error' }
 ```
 
+A frame is sized from the start — `record.height ?? defaultHeight(kind)` —
+and a frame not placed (its block not drawn, the frame hidden) takes each
+`size` it reports at once; a placed one resizes WITH its placeholder in
+`#write`, never ahead of it. Until 2026-10-03 a render that returned after
+its block had scrolled away was appended at the iframe default, 150 px,
+until the block was drawn again (live-blocks' `content=79 frame=150` on
+far-down mermaid frames under shifted timing: 3 runs in 3; 0 in 4 after).
+
 Lifecycle:
 
 1. `update()` — diff the model's Tier C constructs against the records by
@@ -2009,8 +2017,9 @@ placeholder ignores every event, so a press around a block reveals nothing.
   the page, so "show it on a tap on the block" would need every frame to
   forward taps; always-faint needs nothing and is always findable.
 - Measured with real input (`smoke/live-figure-click-scenario.js`), TikZ,
-  MetaPost and mermaid, twice: `shows=3 hides=2–3 reveals=1 via-icon=1
-  scroll-delta=0` each — the hover shows it, leaving hides it (~210 ms),
+  MetaPost and mermaid, twice: `shows=3 reveals=1 via-icon=1
+  scroll-delta=0` each, `hides=3` (2 for mermaid, the last block: the third
+  hide is the pointer moving on to the next block after the icon's click) — the hover shows it, leaving hides it (~210 ms),
   the graphic's click and the old edge's click reveal nothing, the icon's
   click reveals once; `edge: lit=false cursor=auto`; the keyboard still
   reveals; a note embed's icon sits clear of its frame and the embed's own
