@@ -73,37 +73,66 @@ function linkTarget(path) {
 }
 
 /**
- * The .bib entry whose `file` field names this PDF. One → its key. Several
- * (a chapter and its book), or none while the vault has a bibliography →
- * a picker. No bibliography at all → no citation, and a notice says why.
- * @returns {Promise<{ key: string|null, cancelled?: boolean, why?: string }>}
+ * The .bib entry this PDF is, in this order (the owner's rules, 2026-10-03):
+ *
+ * 1. the entry whose `file` field resolves to it — the .bib's own word wins;
+ * 2. the entry chosen for it before, remembered IN THE VAULT
+ *    (`.clew/pdf-citations.json`, main/pdf-meta.js — never in the .bib,
+ *    whose files may be links to one shared master), "no citation" included;
+ *    a remembered key that no .bib holds any more asks again;
+ * 3. otherwise a picker — several entries naming the PDF, or none while the
+ *    vault has a bibliography — whose answer is then remembered.
+ *
+ * No .bib at all → no citation, and the notice says why. `change`: the
+ * picker regardless (the "change the citation" command), the current
+ * choice marked.
+ * @returns {Promise<{ key: string|null, cancelled?: boolean, why?: string,
+ *   remembered?: boolean, fromFile?: boolean }>}
  */
-async function citationKey(path) {
+async function citationKey(path, { change = false } = {}) {
 	const entries = await ipc.invoke(CH.BIB_ENTRIES).catch(() => []);
 	const exact = entries.filter((e) => e.pdf?.inVault && e.pdf.path === path);
-	if (exact.length === 1) return { key: exact[0].key };
+	if (exact.length === 1 && !change) return { key: exact[0].key, fromFile: true };
 	if (!entries.length) return { key: null, why: 'this vault has no .bib file' };
+	const meta = await ipc.invoke(CH.PDF_META_GET, { path }).catch(() => null);
+	const remembered = meta && 'key' in meta ? meta.key : undefined;
+	let stale = null;
+	if (!change && remembered !== undefined) {
+		if (remembered === null) return { key: null, remembered: true };
+		if (entries.some((e) => e.key === remembered)) return { key: remembered, remembered: true };
+		stale = remembered;   // gone from every .bib: ask again
+	}
+	const picked = await pickEntry(path, entries, exact, { stale, current: change ? remembered : undefined });
+	if (!picked.cancelled) await ipc.invoke(CH.PDF_META_SET, { path, patch: { key: picked.key } }).catch(() => {});
+	return picked;
+}
+
+/** The picker: "no citation", entries naming the PDF (or with its file
+ *  name) first, then the rest. Resolves { key } or { cancelled }. */
+function pickEntry(path, entries, exact, { stale = null, current = undefined } = {}) {
 	const name = path.split('/').pop().toLowerCase();
 	// A .bib written on another machine names the file by a path that is not
 	// this one; the same file NAME is the next best hint, offered first.
 	const named = exact.length ? exact : entries.filter((e) => e.pdf?.path?.split(/[\\/]/).pop().toLowerCase() === name);
-	const rest = exact.length ? [] : entries.filter((e) => !named.includes(e));
+	const rest = entries.filter((e) => !named.includes(e));
+	let resolveKey;
+	const chosen = new Promise((resolve) => { resolveKey = resolve; });
+	const mark = (key) => (current !== undefined && current === key ? 'current' : '');
 	const row = (e, hint) => ({
 		label: e.key,
 		detail: [e.authors, e.year, e.title].filter(Boolean).join(' · '),
-		hint,
+		hint: mark(e.key) || hint,
 		run: () => resolveKey({ key: e.key }),
 	});
-	if (document.querySelector('.clew-modal')) return { key: null, cancelled: true };
-	let resolveKey;
-	const chosen = new Promise((resolve) => { resolveKey = resolve; });
+	if (document.querySelector('.clew-modal')) return Promise.resolve({ key: null, cancelled: true });
 	const file = path.split('/').pop();
 	openListModal({
-		placeholder: exact.length
-			? `Several entries name ${file} — cite which?`
-			: `No .bib entry names ${file} in its file field — cite which entry?`,
+		placeholder: stale ? `${stale} is no longer in any .bib — cite ${file} as which entry? (remembered for this PDF)`
+			: current !== undefined ? `Cite ${file} as which entry? (remembered for this PDF)`
+				: exact.length ? `Several entries name ${file} — cite which? (remembered for this PDF)`
+					: `No .bib entry names ${file} in its file field — cite which entry? (remembered for this PDF)`,
 		items: [
-			{ label: 'Quote without a citation', detail: 'just the text and the page link', run: () => resolveKey({ key: null }) },
+			{ label: 'Quote without a citation', detail: 'just the text and the page link', hint: mark(null), run: () => resolveKey({ key: null }) },
 			...named.map((e) => row(e, exact.length ? 'names this PDF' : 'same file name')),
 			...rest.map((e) => row(e)),
 		],
@@ -116,6 +145,31 @@ async function citationKey(path) {
 		}).observe(document.body, { childList: true });
 	}
 	return chosen;
+}
+
+/** PDFs whose remembered entry has been named in a notice this session. */
+const announced = new Set();
+/** The PDF last quoted from, for the "change the citation" command. */
+let lastQuotedPdf = null;
+
+/**
+ * The command "PDF: change the citation for this PDF…": the active PDF
+ * tab's, else the PDF last quoted from.
+ */
+export async function changePdfCitation() {
+	const tab = workspaceStore.activeTab();
+	const path = tab?.kind === 'file' && /\.pdf$/i.test(tab.path ?? '') ? tab.path : lastQuotedPdf;
+	if (!path) { notice('Open the PDF (or quote from it) first.'); return; }
+	const entries = await ipc.invoke(CH.BIB_ENTRIES).catch(() => []);
+	const exact = entries.filter((e) => e.pdf?.inVault && e.pdf.path === path);
+	if (exact.length === 1) {
+		notice(`The .bib names ${path.split('/').pop()} in its file field (${exact[0].key}), and that wins — change the .bib to change it.`, 7000);
+		return;
+	}
+	if (!entries.length) { notice('This vault has no .bib file to cite from.'); return; }
+	const picked = await citationKey(path, { change: true });
+	if (picked.cancelled) return;
+	notice(picked.key ? `${path.split('/').pop()} is now cited as ${picked.key}.` : `${path.split('/').pop()} is now quoted without a citation.`, 5000);
 }
 
 /** Put a viewer's `pdf-quote` into the note being written. */
@@ -136,7 +190,8 @@ async function quote(msg) {
 	}
 	const path = String(msg.path);
 	const page = Number(msg.page) || 1;
-	const { key, cancelled, why } = await citationKey(path);
+	lastQuotedPdf = path;
+	const { key, cancelled, why, remembered } = await citationKey(path);
 	if (cancelled) return;
 	// Asked again: the picker may have taken a while, and the tab with it.
 	const view = editorPool.get(tab.id)?.view;
@@ -160,7 +215,14 @@ async function quote(msg) {
 	const head = view.state.selection.main.head;
 	workspaceStore.updateTabView(tab.id, { cursor: { anchor: head, head }, cursorLine: view.state.doc.lineAt(head).number });
 	const name = tab.path.split('/').pop().replace(/\.(md|jmd)$/i, '');
-	notice(why ? `Quoted p. ${page} into ${name}, without a citation: ${why}.` : `Quoted p. ${page} into ${name}.`);
+	// A remembered choice is said once (per PDF, per session), so it is
+	// never invisible: what was chosen, and how to change it.
+	let said = '';
+	if (remembered && !announced.has(path)) {
+		announced.add(path);
+		said = ` — ${key ? `cited as ${key}` : 'without a citation'}, as remembered for this PDF ("PDF: change the citation for this PDF…" to change it)`;
+	}
+	notice(why ? `Quoted p. ${page} into ${name}, without a citation: ${why}.` : `Quoted p. ${page} into ${name}${said}.`, said ? 8000 : 3000);
 }
 
 /** The command: ask the document holding the newest selection for it. */

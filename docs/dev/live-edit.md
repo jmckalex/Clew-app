@@ -1252,6 +1252,17 @@ written in one gesture:
   cursor is updated too: the host restores it when the note is shown
   again, and a spot recorded before the insert would be inside the quote
   (measured — a later quote split the first).
+- **Remembered** (the owner's ask, 2026-10-03): a choice made in the picker
+  — an entry, or "Quote without a citation" — is kept for that PDF in
+  `.clew/pdf-citations.json` (`main/pdf-meta.js`), IN THE VAULT and never
+  in the .bib: the owner's .bib files are links to one shared master, so a
+  write there would change every vault's bibliography. Order: the .bib's
+  `file` field, then the remembered choice, then the picker (whose answer is
+  remembered). A remembered key that no .bib holds any more reopens the
+  picker; "PDF: change the citation for this PDF…" (the active PDF tab, else
+  the PDF last quoted from) chooses again; a rename or move carries the
+  entry (`vault.js#rename`); the first quote of a session that uses a
+  remembered choice says so in its notice.
 - **The citation**: the `.bib` entry whose `file` field resolves to this
   PDF (BIB_ENTRIES' `pdf.path`). Several (a chapter and its book), or none
   while the vault has a bibliography → a picker: "Quote without a

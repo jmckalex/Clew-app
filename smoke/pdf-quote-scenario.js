@@ -191,15 +191,55 @@ await until(() => text() !== before4);
 	const added = text().slice(text().indexOf('A paper that no entry'));
 	log(`nocite: cite=${/\\cite|\[@/.test(added.split('\n').slice(0, 3).join('\n'))} link=${added.includes('[[Unlisted.pdf#page=1|PDF p. 1]]')} notice=${JSON.stringify(lastNotice())}`);
 }
+// 4b. The choice is REMEMBERED (.clew/pdf-citations.json): no picker the
+// second time, and the notice says so — once.
 ok = await selectIn(unlisted, 1, 'Its second line.');
-const before4b = text();
-const quoting2 = quote();
+let before4b = text();
+await quote();
+await until(() => text() !== before4b, 4000);
+log(`remembered: picker=${!!document.querySelector('.clew-modal')} cite=${/\\cite|\[@/.test(text().slice(before4b.length > 0 ? text().lastIndexOf('Its second line.') : 0))} notice=${JSON.stringify(lastNotice())}`);
+document.querySelector('.clew-modal')?.remove();
+// 4c. Changed by the command, on the active PDF tab: lewis:1969 now.
+const changing = registry.runCommand('pdf:change-citation');
 await until(() => document.querySelector('.clew-modal .modal-result'));
+log(`change: placeholder=${JSON.stringify(document.querySelector('.clew-modal .modal-input')?.placeholder ?? '')} current=${JSON.stringify([...document.querySelectorAll('.clew-modal .modal-result')].find((r) => /current/.test(r.textContent))?.querySelector('.result-label')?.textContent ?? '')}`);
 [...document.querySelectorAll('.clew-modal .modal-result')].find((r) => r.textContent.includes('lewis:1969'))
 	?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
-await quoting2;
-await until(() => text() !== before4b);
-log(`chosen: cite=${text().includes(cite('lewis:1969', 1))}`);
+await changing;
+await sleep(300);
+const meta = await ipc.invoke('clew:pdf-meta-get', { path: 'Papers/Unlisted.pdf' });
+log(`changed: stored=${JSON.stringify(meta?.key)} notice=${JSON.stringify(lastNotice())}`);
+ok = await selectIn(unlisted, 1, 'A paper that no entry names.');
+before4b = text();
+await quote();
+await until(() => text() !== before4b, 4000);
+log(`chosen: cite=${text().includes(cite('lewis:1969', 1))} picker=${!!document.querySelector('.clew-modal')}`);
+// 4d. A remembered key no .bib holds any more asks again.
+await ipc.invoke('clew:pdf-meta-set', { path: 'Papers/Unlisted.pdf', patch: { key: 'gone:2000' } });
+const stale = quote();
+await until(() => document.querySelector('.clew-modal .modal-result'), 4000);
+log(`stale: picker=${!!document.querySelector('.clew-modal')} placeholder=${JSON.stringify(document.querySelector('.clew-modal .modal-input')?.placeholder ?? '')}`);
+[...document.querySelectorAll('.clew-modal .modal-result')].find((r) => r.textContent.includes('lewis:1969'))
+	?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+await stale;
+// 4e. The .bib's `file` field still wins over a remembered choice.
+await ipc.invoke('clew:pdf-meta-set', { path: 'Papers/Paper.pdf', patch: { key: 'lewis:1969' } });
+openRight('Papers/Paper.pdf');
+ok = await selectIn(paper, 2, 'Signals acquire meaning by reinforcement.');
+before4b = text();
+await quote();
+await until(() => text() !== before4b, 4000);
+log(`file-wins: cite=${text().includes(cite('skyrms:1996', 2))} lewis=${text().split('\n\n').filter((b) => b.includes('reinforcement.') && b.includes('page=2')).some((b) => b.includes('lewis'))}`);
+await ipc.invoke('clew:pdf-meta-set', { path: 'Papers/Paper.pdf', patch: { key: undefined } });
+// 4f. A rename carries what is remembered.
+await ipc.invoke('clew:fs-rename', { path: 'Papers/Unlisted.pdf', newPath: 'Papers/Unlisted Moved.pdf' }).catch((e) => log(`rename-error ${e.message}`));
+await sleep(800);
+log(`renamed: old=${JSON.stringify(await ipc.invoke('clew:pdf-meta-get', { path: 'Papers/Unlisted.pdf' }))} new=${JSON.stringify((await ipc.invoke('clew:pdf-meta-get', { path: 'Papers/Unlisted Moved.pdf' }))?.key)}`);
+await ipc.invoke('clew:fs-rename', { path: 'Papers/Unlisted Moved.pdf', newPath: 'Papers/Unlisted.pdf' }).catch(() => {});
+await sleep(800);
+openRight('Papers/Unlisted.pdf');
+// The viewer reloaded with the renames: select again for step 5.
+await selectIn(unlisted, 1, 'Its second line.');
 
 // 5. The note in reading mode is not written into.
 workspaceStore.setTabMode(draft.id, 'reading');

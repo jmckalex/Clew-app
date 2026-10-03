@@ -35,6 +35,8 @@ export const CH = {
 	HISTORY_READ: 'clew:history-read',
 	HISTORY_RESTORE: 'clew:history-restore',
 	HISTORY_KEEP: 'clew:history-keep',
+	PDF_META_GET: 'clew:pdf-meta-get',
+	PDF_META_SET: 'clew:pdf-meta-set',
 
 	// invoke: persistence
 	WORKSPACE_LOAD: 'clew:workspace-load',

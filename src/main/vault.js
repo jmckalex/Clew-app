@@ -24,6 +24,7 @@ import { insideByRealpath } from '../engine/vault-bounds.js';
 import { compileExcludes } from './vault-excludes.js';
 import { snapshotBeforeWrite, renameHistory, keepVersion } from './history.js';
 import { WriteGuard } from './write-guard.js';
+import { renamePdfMeta } from './pdf-meta.js';
 
 // The walk/watch rules (which directories are never shown, and the
 // descriptor budget the watcher lives inside) are in fs-utils.js, with the
@@ -406,6 +407,8 @@ export class VaultManager {
 		fs.mkdirSync(path.dirname(to), { recursive: true });
 		fs.renameSync(from, to);
 		renameHistory(this.root, rel, newRel);
+		// What quote-and-cite remembers about a PDF moves with it (pdf-meta.js).
+		try { renamePdfMeta(this.root, rel, newRel); } catch (err) { console.warn('[clew] pdf-citations rename:', err?.message ?? err); }
 		this.guard.forget(rel);
 		this.refreshTree();
 	}

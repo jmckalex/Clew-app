@@ -973,7 +973,9 @@ except where the selection touches a construct. The durable design is
   → "Quote in note" (added to EmbedPDF's OWN selection menu at runtime:
   `commands.registerCommand` + `ui.mergeSchema`, no fork change) or
   `pdf:quote-selection` (⌥⌘Q) → a blockquote, `\cite[p. N]{key}` (the
-  .bib entry whose `file` is this PDF; a picker otherwise) and
+  .bib entry whose `file` is this PDF; a picker otherwise, its answer
+  remembered per PDF in the vault's `.clew/pdf-citations.json` —
+  `main/pdf-meta.js`, never the .bib, which may be a shared master) and
   `[[x.pdf#page=N|PDF p. N]]`, as a block of its own at the cursor of the
   note being edited (never one in reading mode). The text and its escaping
   are `shared/pdf-quote.js`, every escape checked through the engine: `\[`

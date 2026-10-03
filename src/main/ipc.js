@@ -30,6 +30,7 @@ import { exportSite } from './export-site.js';
 import { parseBib, bibFilePath } from '../shared/bib.js';
 import { direntKind, shouldRecurse, walkGuard, writeFileAtomic } from './fs-utils.js';
 import { listSnapshots, readSnapshot } from './history.js';
+import { getPdfMeta, setPdfMeta } from './pdf-meta.js';
 import { listPlugins, enabledPlugins } from './plugins.js';
 import { ShellSessions } from './shell-core.js';
 import { paths } from './paths.js';
@@ -143,6 +144,18 @@ export function registerIpc() {
 	handle(CH.HISTORY_READ, (s, { path, id }) => {
 		s.vaults.resolve(path);
 		return readSnapshot(s.vaults.root, path, id);
+	});
+	// Quote-and-cite's memory of a PDF (pdf-meta.js): its chosen entry, its
+	// printed-page offset. The path is checked to be the vault's own PDF.
+	handle(CH.PDF_META_GET, (s, { path }) => {
+		if (!s.vaults.root || !/\.pdf$/i.test(String(path))) return null;
+		s.vaults.resolve(path);
+		return getPdfMeta(s.vaults.root, path);
+	});
+	handle(CH.PDF_META_SET, (s, { path, patch }) => {
+		if (!s.vaults.root || !/\.pdf$/i.test(String(path))) throw new Error('Not a PDF in this vault');
+		s.vaults.resolve(path);
+		return setPdfMeta(s.vaults.root, path, patch);
 	});
 	// A conflict's versions, kept before anything is chosen (conflicts.js).
 	handle(CH.HISTORY_KEEP, (s, { path, text }) => s.vaults.keepVersion(path, text));
