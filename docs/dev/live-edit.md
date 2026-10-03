@@ -1326,8 +1326,11 @@ written in one gesture:
     label that disagrees. A roman label stands: front matter is outside the
     arabic run the offset describes.
   - **The text offset** (`pdf-core.js#textOffset`, once per viewer): up to
-    twelve pages spread over the document; the runs in the top and bottom
-    12% of each (`getPageGeometry`); their text (`getTextSlices`); a number
+    twelve pages spread over the document; the runs on each page's two
+    OUTERMOST text lines at top and bottom, wherever they sit, and in its
+    top and bottom 12% (`edgeRuns`, over `getPageGeometry` — a line break is
+    a run of its own, sized 0 at 0,0, and is left out); their text
+    (`getTextSlices`); a number
     alone or at either end of a run (`bandNumbers`); accepted only when at
     least three pages (two, if only two have numbers) agree on one offset
     and no other offset has half its support — a year, a volume, a footnote
@@ -1337,7 +1340,18 @@ written in one gesture:
     which writes no terminator, with an unbounded `UTF16ToString` — and the
     stale bytes differ run to run, so a digit glued onto a page number moved
     one file's answer between runs (measured). ◆ 9% bands missed the Parekh
-    PDF, a small format whose "268" ends at 91% of the page height.
+    PDF, a small format whose "268" ends at 91% of the page height. ◆ And
+    a fixed band missed LaTeX's default `article` (Clew-docs' finding,
+    2026-10-03): its footer is well up from the edge — a letter layout on
+    pdflatex's default A4 page put the number at 84% of the height — so the
+    outermost lines count wherever they are. Two of them, because a footer
+    may sit above or below a "Downloaded from…" line; a body number that
+    lands there agrees with no other page. Measured
+    (`smoke/make-page-number-pdfs.sh`): `article` on letter, on A4 and 12pt
+    on letter → 57/58/61 and 58/62 as printed; a body of lone numbers (a
+    one-column table) WITH page numbers → 12/15 (the 12% band alone: the PDF
+    page); the same body with NO page numbers → still the PDF page, the
+    notice saying so; the seven real PDFs unchanged, 14/14 in three runs.
   - **Measured** (`smoke/pdf-printed-scenario.js`, copies of seven of the
     owner's PDFs, three identical runs): Parekh (no labels) PDF p. 2 → 268,
     p. 10 → 276; Yu (JSTOR, labels a page ahead) 2/3/4 → 523/524/525;

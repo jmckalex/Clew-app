@@ -10,7 +10,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cleanPdfText, escapeProse, citation, quoteBlock, placeQuote, bandNumbers, textPageOffset, printedPage, cleanPageLabel, usefulPageLabels } from '../src/shared/pdf-quote.js';
+import { cleanPdfText, escapeProse, citation, quoteBlock, placeQuote, bandNumbers, textPageOffset, printedPage, cleanPageLabel, usefulPageLabels, edgeRuns } from '../src/shared/pdf-quote.js';
 
 test('a PDF selection becomes one paragraph', () => {
 	assert.equal(cleanPdfText(['The evo-\nlutionary dynamics of\nsignalling games']), 'The evolutionary dynamics of signalling games');
@@ -151,6 +151,20 @@ test('a page number in a header or footer run', () => {
 	assert.deepEqual(bandNumbers('269\u001b\u0010'), [269]);
 	assert.deepEqual(bandNumbers('267\r\n267\u0006'), [267, 267]);
 	assert.deepEqual(bandNumbers('267\r\n267tly, '), [267]);
+});
+
+test('the runs that may hold a page number: the outermost lines, and the bands', () => {
+	const line = (y, h = 10) => ({ y, height: h });
+	// LaTeX's default article on letter (792pt): the footer's "58" at 696–705,
+	// 88% of the way down — outside a 12% band — and the lowest line.
+	const page = [line(72), line(86), line(100), line(600), line(614), line(696, 9)];
+	assert.deepEqual(edgeRuns(page, 792, { band: 0.05 }), [0, 1, 4, 5], 'two lines each end, the footer among them');
+	// Two runs on one line count as one line.
+	const twoRuns = [line(72), line(73, 8), line(300), line(400), line(500), line(696)];
+	assert.deepEqual(edgeRuns(twoRuns, 792, { band: 0, lines: 1 }), [0, 1, 5]);
+	// The band still counts, whatever the lines.
+	assert.deepEqual(edgeRuns([line(50), line(60), line(300), line(400), line(500), line(780)], 792, { lines: 1 }), [0, 1, 5]);
+	assert.deepEqual(edgeRuns([], 792), []);
 });
 
 test('the offset is accepted only when the pages agree', () => {

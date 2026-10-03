@@ -128,6 +128,37 @@ export function bandNumbers(text) {
 }
 
 /**
+ * Which of a page's text runs may hold its printed number: those on the
+ * page's two OUTERMOST lines at the top and at the bottom, wherever they
+ * sit, and any in the top or bottom `band` of the page. The lines matter
+ * because a fixed band misses generous margins — LaTeX's default `article`
+ * prints its number about 1.5in up a letter page (Clew-docs' finding,
+ * 2026-10-03) — and two of them because a footer may sit under a
+ * "Downloaded from…" line or above it. A number in the body that lands on
+ * such a line agrees with no other page, which textPageOffset requires.
+ * @param {{ y: number, height: number }[]} rects - each run's box, y down
+ * @param {number} height - the page's height
+ * @returns {number[]} indexes into `rects`, ascending
+ */
+export function edgeRuns(rects, height, { band = 0.12, lines = 2 } = {}) {
+	const items = (rects ?? []).map((r, i) => ({ i, top: r.y, bottom: r.y + r.height, mid: r.y + r.height / 2 }))
+		.filter((it) => Number.isFinite(it.top) && Number.isFinite(it.bottom));
+	// A line: runs whose centres fall within the extent of the one above.
+	const groups = [];
+	for (const it of [...items].sort((a, b) => a.mid - b.mid)) {
+		const line = groups[groups.length - 1];
+		if (line && it.mid <= line.bottom) {
+			line.items.push(it);
+			line.bottom = Math.max(line.bottom, it.bottom);
+		} else groups.push({ bottom: it.bottom, items: [it] });
+	}
+	const keep = new Set();
+	for (const line of [...groups.slice(0, lines), ...groups.slice(-lines)]) for (const it of line.items) keep.add(it.i);
+	if (height > 0) for (const it of items) if (it.top <= height * band || it.bottom >= height * (1 - band)) keep.add(it.i);
+	return [...keep].sort((a, b) => a - b);
+}
+
+/**
  * The offset from PDF page to printed page, read off the pages' own header
  * and footer numbers — or null when they do not say so CONSISTENTLY. Each
  * sample is a page (1-based) and the numbers found in its bands; an offset

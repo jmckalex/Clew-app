@@ -85,7 +85,7 @@ note API, plugins, and every settings key.
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
   dialect scanner's constructs and grammar, live edit's model, reveal rule,
-  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers — 1091 tests. DOM/UI work is
+  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers — 1092 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
@@ -989,7 +989,10 @@ except where the selection touches a construct. The durable design is
   header/footer numbers agree on, over a numeric label that disagrees >
   `/PageLabels` via the fork's `getPageLabels`, cleaned — JSTOR's are
   prefixed, bracketed, and can be a page AHEAD, measured > the PDF page).
-  Read band text with getPageGeometry + getTextSlices, NEVER
+  The number is looked for on each page's two OUTERMOST lines wherever
+  they sit, plus the top/bottom 12% (`edgeRuns` — LaTeX's default article
+  footer is outside any fixed band), and accepted only when pages agree.
+  Read that text with getPageGeometry + getTextSlices, NEVER
   getPageTextRects, whose text runs on into stale memory. A
   programmatic insert must also `updateTabView` the cursor — the host
   restores the RECORDED one on re-mount.

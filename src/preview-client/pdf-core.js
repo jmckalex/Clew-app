@@ -16,7 +16,7 @@ import { viewerHandles } from './pdf-handles.js';
 // The pen convention (a pen draws, a finger pans) for every viewer built here.
 import './pdf-pen.js';
 import { topOrigin, postTo } from '../shared/message-guard.js';
-import { bandNumbers, textPageOffset, usefulPageLabels } from '../shared/pdf-quote.js';
+import { bandNumbers, edgeRuns, textPageOffset, usefulPageLabels } from '../shared/pdf-quote.js';
 
 const EMBEDPDF_ASSETS = '/__clew_assets__/embedpdf';
 const SAVE_DEBOUNCE_MS = 2500;
@@ -415,17 +415,21 @@ export async function createViewer({ target, src, onStatus = () => {}, readonly 
 			const page = d.pages[i];
 			const height = page.size?.height ?? 0;
 			if (!height) continue;
-			// The runs in the header and footer bands — the top and bottom 12%
-			// of the page: a small journal format's margins are proportionally
-			// wide (the Parekh PDF's "268" ends at 91% of its height), and a
-			// stray number in the body agrees with no page, so a wide band
-			// costs little. Their text through getTextSlices, the selection's
-			// own reader: getPageTextRects' text runs on into stale memory
-			// after a run's last character ("212" + junk, measured), which
-			// can glue a digit onto a page number.
+			// The runs that may hold the page's number (edgeRuns): its two
+			// outermost lines at top and bottom, wherever they sit — LaTeX's
+			// default article prints its number 1.5in up a letter page — and
+			// the top and bottom 12% (a small journal format's margins are
+			// proportionally wide: the Parekh PDF's "268" ends at 91% of its
+			// height). A stray number in the body agrees with no other page.
+			// Their text through getTextSlices, the selection's own reader:
+			// getPageTextRects' text runs on into stale memory after a run's
+			// last character ("212" + junk, measured), which can glue a digit
+			// onto a page number.
 			let runs = [];
 			try { ({ runs } = await engine.getPageGeometry(d, page).toPromise()); } catch { continue; }
-			const band = (runs ?? []).filter((r) => r.glyphs?.length && (r.rect.y <= height * 0.12 || r.rect.y + r.rect.height >= height * 0.88));
+			// Text with a box: a line break is a run of its own, sized 0 at 0,0.
+			const withText = (runs ?? []).filter((r) => r.glyphs?.length && r.rect.width > 0 && r.rect.height > 0);
+			const band = edgeRuns(withText.map((r) => r.rect), height).map((k) => withText[k]);
 			const numbers = [];
 			if (band.length) {
 				const slices = band.map((r) => ({ pageIndex: i, charIndex: r.charStart, charCount: r.glyphs.length }));
