@@ -63,7 +63,7 @@ if (state0.trusted) {
 	const html1 = await fetchDoc('Code/Trust.md');
 	const plain = await fetchDoc('Plain.md');
 	console.log(`smoke-trust: first trusted=${state0.trusted} decided=${state0.decided} prompt=${!!sheet()} refused=${refusedIn(html1).join('|')} marks=${marks(html1).length} plain-refused=${refusedIn(plain).length}`);
-	console.log(`smoke-trust: prompt lead="${sheet()?.querySelector('p')?.textContent}" details=${sheet()?.querySelectorAll('.clew-trust-details li').length} network-box=${!!sheet()?.querySelector('.clew-trust-network input')} app-plugin=${window.__vplugApp ?? '-'}`);
+	console.log(`smoke-trust: prompt lead="${sheet()?.querySelector('p')?.textContent}" details=${sheet()?.querySelectorAll('.clew-trust-details li').length} network-box=${!!sheet()?.querySelector('.clew-trust-network input')} buttons="${[...(sheet()?.querySelectorAll('button') ?? [])].map((b) => b.textContent.trim()).join('|')}" app-plugin=${window.__vplugApp ?? '-'}`);
 	if (mode === 'trust') {
 		// Real input, dispatched once this script returns; the click reloads
 		// the window, and trust-guard-reloaded.js takes over.
