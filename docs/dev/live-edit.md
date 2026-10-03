@@ -1283,10 +1283,52 @@ written in one gesture:
   before it, `\\\$` was needed, and live edit showed it as `\$5`. Now live
   edit and reading view both show `$5` (`smoke/escapes-scenario.js`), and a
   LaTeX export writes `\$` (the engine's own e02cd51 fixtures).
-- ◆ **`p. N` is the PDF's page**, the one `#page=N` opens. Journal PDFs
-  carry `/PageLabels` (both real papers measured do: Yu 2012's page 2 is
-  "p. 524"); pdfium's `FPDF_GetPageLabel` is not wrapped by the fork's
-  engine, so the printed page needs a fork change — the owner's call.
+- **The printed page** (owner-approved 2026-10-03): the citation names the
+  page the ARTICLE prints; the link stays the PDF's page, which is what
+  `#page=N` opens — so the line says both: `\cite[p. 268]{parekh:2009} ·
+  [[Parekh.pdf#page=2|PDF p. 2]]` (without a citation, `p. 268 · [[…]]`).
+  `shared/pdf-quote.js#printedPage` decides, in this order: an offset set BY
+  HAND ("PDF: set the printed page number…": the number printed on the page
+  in view — the active PDF tab's, else the viewer holding the newest
+  selection — stored as an offset in `.clew/pdf-citations.json`, empty
+  forgets it); the number the pages PRINT, by the offset their header and
+  footer numbers agree on, where the page's label is a different number or
+  there is none; the PDF's `/PageLabels` (roman as printed, "xii"); else the
+  PDF's page, which the notice says once per PDF. A text offset found is
+  remembered beside the entry.
+  - **Labels** come from the fork's `getPageLabels` (EmbedPDF ocg-v2
+    9ab07c9a: pdfium's `FPDF_GetPageLabel` per page, null when the document
+    has none). ◆ **They are not to be trusted on their own** — measured on
+    the owner's PDFs: JSTOR writes `p. [523]` (a prefix; brackets for a
+    number the page does not print), labels some downloads one page AHEAD of
+    what each page prints ("Identity, Supervision, and Work Groups": page 1
+    prints 212, labelled `p. 213`; Yu 2012's page 2 prints 523, labelled
+    `p. 524`), and labels scans `image 1`; others label every page `1…N`,
+    which says nothing. So `cleanPageLabel` strips the prefix and brackets
+    and refuses what is no page number, `usefulPageLabels` drops a set that
+    says nothing, and a printed number the pages agree on outranks a numeric
+    label that disagrees. A roman label stands: front matter is outside the
+    arabic run the offset describes.
+  - **The text offset** (`pdf-core.js#textOffset`, once per viewer): up to
+    twelve pages spread over the document; the runs in the top and bottom
+    12% of each (`getPageGeometry`); their text (`getTextSlices`); a number
+    alone or at either end of a run (`bandNumbers`); accepted only when at
+    least three pages (two, if only two have numbers) agree on one offset
+    and no other offset has half its support — a year, a volume, a footnote
+    number agree with no page. ◆ Not `getPageTextRects`: its text runs on
+    into stale memory after a run's last character (`"269\u001b\u0010"`,
+    `"267\r\n267tly, "`) — upstream EmbedPDF reads `FPDFText_GetBoundedText`,
+    which writes no terminator, with an unbounded `UTF16ToString` — and the
+    stale bytes differ run to run, so a digit glued onto a page number moved
+    one file's answer between runs (measured). ◆ 9% bands missed the Parekh
+    PDF, a small format whose "268" ends at 91% of the page height.
+  - **Measured** (`smoke/pdf-printed-scenario.js`, copies of seven of the
+    owner's PDFs, three identical runs): Parekh (no labels) PDF p. 2 → 268,
+    p. 10 → 276; Yu (JSTOR, labels a page ahead) 2/3/4 → 523/524/525;
+    "Identity, Supervision" (labels a page ahead, no cover) 1/2 → 212/213;
+    Davis on Akerlof and Kranton (labels `1…14`) 2/7 → 350/355; Doris
+    (labels right) 2 → 505; Nash (labels `image N`) 2 → 156; *Stand Out of
+    Our Light* (Cover, Blank, i–xvi, 1…) 14/25/60 → xii/7/42.
 - **Smoke**: `pdf-quote-scenario.js` over `make-quote-vault.mjs`
   (`--real`, `--real-unlisted`, `--pandoc`, `--chord`); selections through EmbedPDF's
   own `setSelection` (the `test-select-text` hook — what a drag ends in),

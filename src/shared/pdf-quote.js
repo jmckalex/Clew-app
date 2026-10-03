@@ -13,12 +13,13 @@
 //
 //     > The selected text, as one paragraph.
 //     >
-//     > \cite[p. 12]{skyrms:1996} · [[Skyrms 1996.pdf#page=12|PDF p. 12]]
+//     > \cite[p. 268]{parekh:2001} · [[Parekh.pdf#page=2|PDF p. 2]]
 //
 // The same shape as an entry of the annotations note (pdf-annotations-note.js):
-// one blockquote, the page link last. `p. N` is the PDF's own page number,
-// which is what `#page=N` opens; a journal article's printed page numbers
-// differ, and the engine does not give us the PDF's page labels yet.
+// one blockquote, the page link last. The citation names the page the
+// article PRINTS (printedPage: by hand, the PDF's page labels, its header
+// and footer numbers); the link, the PDF's own page, which is what
+// `#page=N` opens.
 
 /**
  * The viewer's text — one string per page, its lines broken where the PDF's
@@ -74,6 +75,113 @@ export function escapeProse(text, { normalSyntax = false } = {}) {
 		.replace(/^(#|[-+](?=\s)|\||>)/, '\\$1');
 }
 
+// ---- printed page numbers --------------------------------------------------
+// `p. N` should be the page the ARTICLE prints, not the PDF's page (the
+// owner's Parekh scan's PDF page 2 is printed "268"). Measured on the
+// owner's own PDFs (2026-10-03), a PDF's /PageLabels are not to be taken on
+// trust: JSTOR writes "p. [523]" (a prefix, brackets for an unprinted
+// number), labels some downloads one page AHEAD of what each page prints
+// ("Identity, Supervision, and Work Groups": page 1 prints 212, labelled
+// "p. 213"), and labels scans "image 1"; other PDFs label every page "1…N"
+// from the first, which says nothing. So a label is cleaned, a set that says
+// nothing is none, and a number the pages THEMSELVES print, consistently,
+// outranks a numeric label that disagrees with it.
+
+/** A page label as a page: "p. 524" → "524", "[523]" → "523", "xiv" stays;
+ *  null for what is no page number ("image 1"). */
+export function cleanPageLabel(raw) {
+	let t = typeof raw === 'string' ? raw.trim() : '';
+	t = t.replace(/^(?:pp?\.|pages?)\s*/i, '').trim();
+	const bracketed = /^\[(.+)\]$/.exec(t);
+	if (bracketed) t = bracketed[1].trim();
+	// Digits; roman; or a letter prefix ("S12", "A-3", "e1234") — a few
+	// journals number supplements and online-only articles that way.
+	return /^(?:\d{1,5}|[ivxlcdm]{1,8}|[A-Za-z]{1,3}[-–.]?\d{1,5})$/i.test(t) ? t : null;
+}
+
+/** The PDF's page labels (one per page, as the engine reads them), cleaned —
+ *  or null when they say nothing: none is a page number, or every page is
+ *  labelled with its own PDF page number. */
+export function usefulPageLabels(raw) {
+	if (!Array.isArray(raw) || !raw.length) return null;
+	const labels = raw.map(cleanPageLabel);
+	if (labels.every((l) => l === null)) return null;
+	if (labels.every((l, i) => l === null || l === String(i + 1))) return null;
+	return labels;
+}
+
+/** A page-number candidate in a header or footer run: a number alone, or
+ *  at either end of the run ("268  ECONOMICS AND PHILOSOPHY"), dashes
+ *  allowed ("– 268 –"). Control characters count as spaces: EmbedPDF's
+ *  text runs can carry a line break and stale bytes after the run's own
+ *  text ("269\u001b\u0010", "267\r\n267tly, " — measured on the Parekh PDF). */
+export function bandNumbers(text) {
+	const t = String(text ?? '').replace(/[\p{Cc}\p{Cf}]/gu, ' ').trim();
+	const out = [];
+	const alone = /^[-–—(\[]?\s*(\d{1,4})\s*[-–—)\]]?$/.exec(t);
+	if (alone) return [Number(alone[1])];
+	const first = /^(\d{1,4})\s/.exec(t);
+	const last = /\s(\d{1,4})$/.exec(t);
+	if (first) out.push(Number(first[1]));
+	if (last) out.push(Number(last[1]));
+	return out;
+}
+
+/**
+ * The offset from PDF page to printed page, read off the pages' own header
+ * and footer numbers — or null when they do not say so CONSISTENTLY. Each
+ * sample is a page (1-based) and the numbers found in its bands; an offset
+ * counts once per page. Accepted only when at least `min` pages (3, or every
+ * sampled page with a number when fewer) agree, and no other offset comes
+ * within half of it — a year in a running header, a volume number, a figure
+ * label agree with nothing.
+ * @param {{ page: number, numbers: number[] }[]} samples
+ * @returns {number|null}
+ */
+export function textPageOffset(samples, { min = 3 } = {}) {
+	const support = new Map();
+	let pagesWithNumbers = 0;
+	for (const { page, numbers } of samples ?? []) {
+		const offsets = new Set((numbers ?? []).map((n) => n - page).filter((o) => o + page >= 1));
+		if (offsets.size) pagesWithNumbers += 1;
+		for (const o of offsets) support.set(o, (support.get(o) ?? 0) + 1);
+	}
+	const ranked = [...support].sort((a, b) => b[1] - a[1]);
+	if (!ranked.length) return null;
+	const [best, count] = ranked[0];
+	const runnerUp = ranked[1]?.[1] ?? 0;
+	const need = Math.max(2, Math.min(min, pagesWithNumbers));
+	if (count < need || runnerUp * 2 > count) return null;
+	return best;
+}
+
+/**
+ * What a quote cites as its page, in order: an offset set BY HAND (the
+ * user's word); the number the pages print, by the offset their headers and
+ * footers agree on, where the page's label is a different NUMBER (or there
+ * is none); the PDF's page label (/PageLabels, cleaned — roman as printed,
+ * "xiv", which no arabic offset speaks for); else the PDF's page.
+ * @param {{ pdfPage: number, label?: string|null,
+ *   meta?: { offset?: number, offsetSource?: string } | null,
+ *   textOffset?: number|null }} q
+ *   `label`: this page's, already cleaned (usefulPageLabels).
+ * @returns {{ printed: string, source: 'manual'|'label'|'text'|'pdf' }}
+ */
+export function printedPage({ pdfPage, label = null, meta = null, textOffset = null }) {
+	const page = Number(pdfPage) || 1;
+	if (meta?.offsetSource === 'manual' && Number.isFinite(meta.offset) && page + meta.offset >= 1) {
+		return { printed: String(page + meta.offset), source: 'manual' };
+	}
+	const clean = cleanPageLabel(label);
+	const offset = Number.isFinite(textOffset) ? textOffset
+		: meta?.offsetSource === 'text' && Number.isFinite(meta.offset) ? meta.offset : null;
+	const fromText = offset !== null && page + offset >= 1 ? String(page + offset) : null;
+	const contradicted = fromText && /^\d+$/.test(clean ?? '') && clean !== fromText;
+	if (clean && !contradicted) return { printed: clean, source: 'label' };
+	if (fromText) return { printed: fromText, source: 'text' };
+	return { printed: String(page), source: 'pdf' };
+}
+
 /** The citation for `key` at `page`, in the vault's form. */
 export function citation(key, page, { pandoc = false } = {}) {
 	if (!key) return '';
@@ -82,15 +190,21 @@ export function citation(key, page, { pandoc = false } = {}) {
 
 /**
  * The block to insert.
- * @param {{ text: string, page: number, link: string, key?: string|null,
- *   pandoc?: boolean, normalSyntax?: boolean }} q
+ * @param {{ text: string, page: number, printed?: string|null, link: string,
+ *   key?: string|null, pandoc?: boolean, normalSyntax?: boolean }} q
+ *   `page` is the PDF's (the link's); `printed`, the page the article prints
+ *   (printedPage), cited when given.
  *   `text` already cleaned; `link` the PDF as a wikilink target (a bare
  *   name when the vault has one file by that name, else its path).
  */
-export function quoteBlock({ text, page, link, key = null, pandoc = false, normalSyntax = false }) {
-	const cite = citation(key, page, { pandoc });
+export function quoteBlock({ text, page, printed = null, link, key = null, pandoc = false, normalSyntax = false }) {
+	// The citation names the PRINTED page; the link stays the PDF's, which is
+	// what the viewer opens — so the line says both ("p. 268" · "PDF p. 2").
+	const shown = printed ?? String(page);
+	const cite = citation(key, shown, { pandoc });
 	const back = `[[${link}#page=${page}|PDF p. ${page}]]`;
-	return `> ${escapeProse(text, { normalSyntax })}\n>\n> ${cite ? `${cite} · ` : ''}${back}`;
+	const lead = cite ? `${cite} · ` : shown !== String(page) ? `p. ${shown} · ` : '';
+	return `> ${escapeProse(text, { normalSyntax })}\n>\n> ${lead}${back}`;
 }
 
 /**

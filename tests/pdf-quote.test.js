@@ -10,7 +10,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cleanPdfText, escapeProse, citation, quoteBlock, placeQuote } from '../src/shared/pdf-quote.js';
+import { cleanPdfText, escapeProse, citation, quoteBlock, placeQuote, bandNumbers, textPageOffset, printedPage, cleanPageLabel, usefulPageLabels } from '../src/shared/pdf-quote.js';
 
 test('a PDF selection becomes one paragraph', () => {
 	assert.equal(cleanPdfText(['The evo-\nlutionary dynamics of\nsignalling games']), 'The evolutionary dynamics of signalling games');
@@ -136,4 +136,93 @@ test('two quotes in a row land in order', () => {
 
 test('a blank line holding spaces is replaced, not kept', () => {
 	assert.equal(apply('one\n   \ntwo', 5).text, 'one\n\nQ\n\ntwo');
+});
+
+// ---- printed page numbers ---------------------------------------------------
+
+test('a page number in a header or footer run', () => {
+	assert.deepEqual(bandNumbers('268'), [268]);
+	assert.deepEqual(bandNumbers('– 268 –'), [268]);
+	assert.deepEqual(bandNumbers('268  ECONOMICS AND PHILOSOPHY'), [268]);
+	assert.deepEqual(bandNumbers('JOURNAL OF PHILOSOPHY  269'), [269]);
+	assert.deepEqual(bandNumbers('Downloaded from …'), []);
+	assert.deepEqual(bandNumbers('12345'), [], 'five digits is not a page');
+	// What EmbedPDF's text runs actually hold on the Parekh PDF.
+	assert.deepEqual(bandNumbers('269\u001b\u0010'), [269]);
+	assert.deepEqual(bandNumbers('267\r\n267\u0006'), [267, 267]);
+	assert.deepEqual(bandNumbers('267\r\n267tly, '), [267]);
+});
+
+test('the offset is accepted only when the pages agree', () => {
+	// The Parekh shape: PDF page 2 prints 268, page 3 prints 269, …
+	const pages = [{ page: 1, numbers: [] }, { page: 2, numbers: [268] }, { page: 3, numbers: [269, 2001] }, { page: 4, numbers: [270] }, { page: 5, numbers: [271] }];
+	assert.equal(textPageOffset(pages), 266);
+	// A year in every running header agrees with no page.
+	assert.equal(textPageOffset([{ page: 2, numbers: [2001] }, { page: 3, numbers: [2001] }, { page: 4, numbers: [2001] }]), null);
+	// Two numbers that disagree say nothing.
+	assert.equal(textPageOffset([{ page: 2, numbers: [268] }, { page: 3, numbers: [12] }]), null);
+	// Too little to go on.
+	assert.equal(textPageOffset([{ page: 2, numbers: [268] }]), null);
+	assert.equal(textPageOffset([]), null);
+	// Printed equals PDF page: offset 0, said as such.
+	assert.equal(textPageOffset([{ page: 1, numbers: [1] }, { page: 2, numbers: [2] }, { page: 3, numbers: [3] }]), 0);
+});
+
+test('page labels are cleaned — the shapes measured on the owner\'s PDFs', () => {
+	assert.equal(cleanPageLabel('p. 524'), '524', 'JSTOR');
+	assert.equal(cleanPageLabel('p. [523]'), '523', 'JSTOR, a number the page does not print');
+	assert.equal(cleanPageLabel('[1]'), '1');
+	assert.equal(cleanPageLabel('xiv'), 'xiv');
+	assert.equal(cleanPageLabel('S12'), 'S12');
+	assert.equal(cleanPageLabel('image 1'), null, 'a scan\'s image number is no page');
+	assert.equal(cleanPageLabel(''), null);
+	assert.equal(cleanPageLabel(null), null);
+});
+
+test('a label set that says nothing is none', () => {
+	assert.equal(usefulPageLabels(null), null);
+	assert.equal(usefulPageLabels(['1', '2', '3']), null, '1…N from the first page (Akerlof and Kranton, the Davis PDF)');
+	assert.equal(usefulPageLabels(['[1]', '2', '3']), null);
+	assert.equal(usefulPageLabels(['image 1', 'image 2']), null);
+	assert.deepEqual(usefulPageLabels(['p. [523]', 'p. 524', 'p. 525', 'p. 525']), ['523', '524', '525', '525']);
+	assert.deepEqual(usefulPageLabels(['i', 'ii', '1', '2']), ['i', 'ii', '1', '2']);
+});
+
+test('the printed page: by hand, then what the pages print, then labels, then the PDF page', () => {
+	assert.deepEqual(printedPage({ pdfPage: 2, label: '505' }), { printed: '505', source: 'label' });
+	assert.deepEqual(printedPage({ pdfPage: 5, label: 'xiv' }), { printed: 'xiv', source: 'label' });
+	assert.deepEqual(printedPage({ pdfPage: 2, label: 'p. 505' }), { printed: '505', source: 'label' }, 'cleaned here too');
+	assert.deepEqual(printedPage({ pdfPage: 2, label: null, textOffset: 266 }), { printed: '268', source: 'text' });
+	assert.deepEqual(printedPage({ pdfPage: 2, meta: { offset: 266, offsetSource: 'text' } }), { printed: '268', source: 'text' });
+	assert.deepEqual(printedPage({ pdfPage: 2, label: '524', meta: { offset: 10, offsetSource: 'manual' } }), { printed: '12', source: 'manual' });
+	assert.deepEqual(printedPage({ pdfPage: 2 }), { printed: '2', source: 'pdf' });
+	assert.deepEqual(printedPage({ pdfPage: 2, label: '  ' }), { printed: '2', source: 'pdf' }, 'an empty label is none');
+});
+
+test('a numeric label the pages contradict loses; one they confirm, or a roman one, stands', () => {
+	// "Identity, Supervision, and Work Groups" (JSTOR): page 2 prints 213,
+	// page 3 prints 214 — offset 211 — but page 2 is labelled "p. 214".
+	assert.deepEqual(printedPage({ pdfPage: 2, label: '214', textOffset: 211 }), { printed: '213', source: 'text' });
+	assert.deepEqual(printedPage({ pdfPage: 2, label: '213', textOffset: 211 }), { printed: '213', source: 'label' });
+	// A book: roman front matter labelled, the arabic run offset by 12.
+	assert.deepEqual(printedPage({ pdfPage: 4, label: 'iv', textOffset: -12 }), { printed: 'iv', source: 'label' });
+	// The pages' own word outranks a remembered one.
+	assert.deepEqual(printedPage({ pdfPage: 2, textOffset: 211, meta: { offset: 5, offsetSource: 'text' } }), { printed: '213', source: 'text' });
+});
+
+test('the block cites the printed page and links the PDF page', () => {
+	assert.equal(
+		quoteBlock({ text: 'Text.', page: 2, printed: '268', link: 'Parekh.pdf', key: 'parekh:2001' }),
+		'> Text.\n>\n> \\cite[p. 268]{parekh:2001} · [[Parekh.pdf#page=2|PDF p. 2]]',
+	);
+	assert.equal(
+		quoteBlock({ text: 'Text.', page: 2, printed: '268', link: 'Parekh.pdf', key: 'parekh:2001', pandoc: true }),
+		'> Text.\n>\n> [@parekh:2001, p. 268] · [[Parekh.pdf#page=2|PDF p. 2]]',
+	);
+	assert.equal(
+		quoteBlock({ text: 'Text.', page: 2, printed: '268', link: 'Parekh.pdf' }),
+		'> Text.\n>\n> p. 268 · [[Parekh.pdf#page=2|PDF p. 2]]',
+		'without a citation the printed page still shows',
+	);
+	assert.equal(quoteBlock({ text: 'Text.', page: 7, printed: '7', link: 'x.pdf' }), '> Text.\n>\n> [[x.pdf#page=7|PDF p. 7]]');
 });

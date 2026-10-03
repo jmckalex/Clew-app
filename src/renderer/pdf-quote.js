@@ -25,8 +25,9 @@ import { editorPool } from './editor/pool.js';
 import { ipc, CH } from './ipc.js';
 import { notice } from './plugins.js';
 import { openListModal } from './components/modals/list-modal.js';
-import { fromPreviewOrigin, postTo } from '../shared/message-guard.js';
-import { cleanPdfText, quoteBlock, placeQuote } from '../shared/pdf-quote.js';
+import { openInputModal } from './components/modals/input-modal.js';
+import { fromPreviewOrigin, postTo, PREVIEW_ORIGIN } from '../shared/message-guard.js';
+import { cleanPdfText, quoteBlock, placeQuote, printedPage } from '../shared/pdf-quote.js';
 
 const REQUEST_TIMEOUT_MS = 3000;
 
@@ -149,6 +150,8 @@ function pickEntry(path, entries, exact, { stale = null, current = undefined } =
 
 /** PDFs whose remembered entry has been named in a notice this session. */
 const announced = new Set();
+/** PDFs quoted with their PDF page as the cited one, said once a session. */
+const unprinted = new Set();
 /** The PDF last quoted from, for the "change the citation" command. */
 let lastQuotedPdf = null;
 
@@ -172,6 +175,58 @@ export async function changePdfCitation() {
 	notice(picked.key ? `${path.split('/').pop()} is now cited as ${picked.key}.` : `${path.split('/').pop()} is now quoted without a citation.`, 5000);
 }
 
+/** Ask a viewer's document for the page in view: { path, page, label,
+ *  textOffset } or null. */
+function currentPage(target, origin) {
+	const requestId = ++requestSeq;
+	return new Promise((resolve) => {
+		const timer = setTimeout(() => { pending.delete(requestId); resolve(null); }, REQUEST_TIMEOUT_MS);
+		pending.set(requestId, (msg) => { clearTimeout(timer); resolve(msg); });
+		postTo(target, { source: 'clew-pdf-host', type: 'pdf-current-page', requestId }, origin);
+	});
+}
+
+/**
+ * The command "PDF: set the printed page number…": what the page in view
+ * (the active PDF tab's, else the viewer with the newest selection's) is
+ * printed as. Stored as an offset, BY HAND (main/pdf-meta.js), which
+ * outranks the PDF's labels and its text; an empty answer forgets it.
+ */
+export async function setPrintedPage() {
+	const tab = workspaceStore.activeTab();
+	const frame = tab?.kind === 'file' && /\.pdf$/i.test(tab.path ?? '')
+		? [...document.querySelectorAll('clew-file-view:not([data-clew-retiring])')].find((v) => v.path === tab.path)?.querySelector('iframe.pdf-frame')
+		: null;
+	const target = frame?.contentWindow ?? (selection && !selection.source.closed ? selection.source : null);
+	if (!target) { notice('Open the PDF first, at a page whose printed number you know.'); return; }
+	const here = await currentPage(target, frame ? PREVIEW_ORIGIN : selection.origin);
+	if (!here?.page || !here.path) { notice('The PDF did not say which page is showing — try again once it has loaded.'); return; }
+	const { path, page } = here;
+	const file = path.split('/').pop();
+	const meta = await ipc.invoke(CH.PDF_META_GET, { path }).catch(() => null);
+	const now = printedPage({ pdfPage: page, label: here.label, meta, textOffset: here.textOffset });
+	const from = { manual: 'set by hand', label: "the PDF's page labels", text: 'the page numbers printed on it', pdf: 'nothing found — the PDF page' }[now.source];
+	const answer = await openInputModal({
+		placeholder: `PDF page ${page} of ${file} is printed as…`,
+		value: now.printed,
+		hint: `Now p. ${now.printed} (${from}). Type the number printed on PDF page ${page}; every page follows from it. Empty forgets a number set by hand.`,
+	});
+	if (answer === null) return;
+	const typed = answer.trim();
+	if (!typed) {
+		if (meta?.offsetSource === 'manual') await ipc.invoke(CH.PDF_META_SET, { path, patch: { offset: undefined, offsetSource: undefined } }).catch(() => {});
+		notice(`${file}: no printed page set by hand — quotes cite what the PDF itself says.`, 5000);
+		return;
+	}
+	if (!/^\d{1,5}$/.test(typed)) {
+		notice('A page number, in digits — roman front matter comes only from the PDF\'s own page labels.', 6000);
+		return;
+	}
+	const offset = Number(typed) - page;
+	await ipc.invoke(CH.PDF_META_SET, { path, patch: { offset, offsetSource: 'manual' } }).catch(() => {});
+	notice(`${file}: PDF page ${page} is cited as p. ${typed}, and every page by the same offset (remembered for this PDF).`, 6000);
+}
+
 /** Put a viewer's `pdf-quote` into the note being written. */
 async function quote(msg) {
 	if (msg.empty) { notice('Select some text in a PDF first.'); return; }
@@ -193,11 +248,21 @@ async function quote(msg) {
 	lastQuotedPdf = path;
 	const { key, cancelled, why, remembered } = await citationKey(path);
 	if (cancelled) return;
+	// The page the article PRINTS, cited in place of the PDF's: a number set
+	// by hand, the PDF's /PageLabels, the offset its headers and footers
+	// agree on — found now (and remembered: the vault keeps it beside the
+	// entry) or before — else the PDF's page.
+	const meta = await ipc.invoke(CH.PDF_META_GET, { path }).catch(() => null);
+	const textOffset = Number.isFinite(msg.textOffset) ? msg.textOffset : null;
+	const { printed, source } = printedPage({ pdfPage: page, label: msg.label, meta, textOffset });
+	if (source === 'text' && textOffset !== null && meta?.offsetSource !== 'manual' && meta?.offset !== textOffset) {
+		await ipc.invoke(CH.PDF_META_SET, { path, patch: { offset: textOffset, offsetSource: 'text' } }).catch(() => {});
+	}
 	// Asked again: the picker may have taken a while, and the tab with it.
 	const view = editorPool.get(tab.id)?.view;
 	if (!view || !workspaceStore.findTab(tab.id)) { notice('The note closed before the quote could go in.'); return; }
 	const block = quoteBlock({
-		text, page, key, link: linkTarget(path),
+		text, page, printed, key, link: linkTarget(path),
 		pandoc: vaultSettingsStore.get('pandocCitations') === true,
 		normalSyntax: vaultSettingsStore.get('normalSyntax') === true,
 	});
@@ -222,7 +287,13 @@ async function quote(msg) {
 		announced.add(path);
 		said = ` — ${key ? `cited as ${key}` : 'without a citation'}, as remembered for this PDF ("PDF: change the citation for this PDF…" to change it)`;
 	}
-	notice(why ? `Quoted p. ${page} into ${name}, without a citation: ${why}.` : `Quoted p. ${page} into ${name}${said}.`, said ? 8000 : 3000);
+	// The PDF's own page cited, because nothing said what it prints: once.
+	if (!said && key && source === 'pdf' && !unprinted.has(path)) {
+		unprinted.add(path);
+		said = ` — citing the PDF's page: it has no page labels and no page numbers Clew could read ("PDF: set the printed page number…" to set them)`;
+	}
+	const pages = printed === String(page) ? `p. ${page}` : `p. ${printed} (PDF p. ${page})`;
+	notice(why ? `Quoted ${pages} into ${name}, without a citation: ${why}.` : `Quoted ${pages} into ${name}${said}.`, said ? 8000 : 3000);
 }
 
 /** The command: ask the document holding the newest selection for it. */
@@ -259,6 +330,10 @@ export function installPdfQuote() {
 		if (msg.type === 'pdf-selection') {
 			if (msg.has) selection = { source: event.source, origin: event.origin };
 			else if (selection?.source === event.source) selection = null;
+		} else if (msg.type === 'pdf-current-page') {
+			const answer = pending.get(msg.requestId);
+			pending.delete(msg.requestId);
+			answer?.(msg);
 		} else if (msg.type === 'pdf-quote') {
 			if (msg.requestId != null) {
 				const answer = pending.get(msg.requestId);

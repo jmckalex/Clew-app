@@ -85,7 +85,7 @@ note API, plugins, and every settings key.
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
   dialect scanner's constructs and grammar, live edit's model, reveal rule,
-  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers — 1074 tests. DOM/UI work is
+  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers — 1086 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
@@ -980,8 +980,14 @@ except where the selection touches a construct. The durable design is
   note being edited (never one in reading mode). The text and its escaping
   are `shared/pdf-quote.js`, every escape checked through the engine: `\[`
   is display maths here, and a `$` is `\$` (an escaped dollar is
-  `span.escaped`, out of MathJax's reach, since jmarkdown e02cd51). `p. N` is the
-  PDF's page, not the printed one (page labels need the fork). A
+  `span.escaped`, out of MathJax's reach, since jmarkdown e02cd51). The
+  cite names the PRINTED page, the link the PDF's (`printedPage`: set by
+  hand ("PDF: set the printed page number…") > the offset the pages'
+  header/footer numbers agree on, over a numeric label that disagrees >
+  `/PageLabels` via the fork's `getPageLabels`, cleaned — JSTOR's are
+  prefixed, bracketed, and can be a page AHEAD, measured > the PDF page).
+  Read band text with getPageGeometry + getTextSlices, NEVER
+  getPageTextRects, whose text runs on into stale memory. A
   programmatic insert must also `updateTabView` the cursor — the host
   restores the RECORDED one on re-mount.
 - **Sidenotes** (§5.16): footnotes in the margin when the pane is wide —

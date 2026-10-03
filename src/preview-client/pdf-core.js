@@ -16,6 +16,7 @@ import { viewerHandles } from './pdf-handles.js';
 // The pen convention (a pen draws, a finger pans) for every viewer built here.
 import './pdf-pen.js';
 import { topOrigin, postTo } from '../shared/message-guard.js';
+import { bandNumbers, textPageOffset, usefulPageLabels } from '../shared/pdf-quote.js';
 
 const EMBEDPDF_ASSETS = '/__clew_assets__/embedpdf';
 const SAVE_DEBOUNCE_MS = 2500;
@@ -104,6 +105,22 @@ window.addEventListener('message', (event) => {
 		if (quoting) quoting.sendQuote(msg.requestId);
 		else postTo(window.top, { source: 'clew-pdf', type: 'pdf-quote', requestId: msg.requestId, empty: true }, topOrigin());
 	}
+	// The page in view and what it is printed as — for "PDF: set the printed
+	// page number…" (renderer/pdf-quote.js), asked of a tab's viewer.
+	if (msg.type === 'pdf-current-page') {
+		const handle = quoting ?? [...viewerHandles].find((h) => h.currentPage);
+		const reply = (page, label = null, textOffset = null) => postTo(window.top, {
+			source: 'clew-pdf', type: 'pdf-current-page', requestId: msg.requestId, path: handle?.path ?? null, page, label, textOffset,
+		}, topOrigin());
+		if (!handle) reply(null);
+		else {
+			const page = handle.currentPage?.() ?? null;
+			(async () => {
+				const label = page ? (await handle.pageLabels())?.[page - 1] ?? null : null;
+				reply(page, label, await handle.textOffset().catch(() => null));
+			})().catch(() => reply(page));
+		}
+	}
 	// For scenarios (smoke/pdf-quote-scenario.js): select `match` on `page`,
 	// through to `to.match` on `to.page` — EmbedPDF's own setSelection, which
 	// is what a drag ends in, so its selection menu appears as for a drag.
@@ -149,7 +166,7 @@ export function vaultRelOf(src) {
 export async function createViewer({ target, src, onStatus = () => {}, readonly = false, buffer: given = null, name = null }) {
 	const rel = vaultRelOf(src);
 	const handle = {
-		target, container: null, saveTimer: null,
+		target, container: null, saveTimer: null, path: rel, readonly,
 		// An edit still waiting on the debounce is written before the viewer
 		// goes (a note re-rendered without its embed, say), not dropped.
 		dispose() {
@@ -373,6 +390,53 @@ export async function createViewer({ target, src, onStatus = () => {}, readonly 
 		await selectionCap.setSelection({ start: { page: page - 1, index: start[0] }, end: { page: (to?.page ?? page) - 1, index: end[1] } }).toPromise();
 		return true;
 	};
+	// What its pages are PRINTED as (quote-and-cite cites that, not the PDF
+	// page; shared/pdf-quote.js#printedPage decides between them): the
+	// document's /PageLabels through the fork's getPageLabels, cleaned (null
+	// when it has none, when they say nothing, or on a build without the
+	// method); and the offset its header and footer numbers agree on. Each
+	// asked once per viewer.
+	let labelsTask = null;
+	handle.pageLabels = () => (labelsTask ??= (async () => {
+		const d = doc();
+		if (!engine?.getPageLabels || !d) return null;
+		try { return usefulPageLabels(await engine.getPageLabels(d).toPromise()); } catch { return null; }
+	})());
+	let offsetTask = null;
+	handle.textOffset = () => (offsetTask ??= (async () => {
+		const d = doc();
+		const count = d?.pages?.length ?? 0;
+		if (!engine?.getPageGeometry || !engine.getTextSlices || !count) return null;
+		// Up to twelve pages, spread over the document: front matter, a page
+		// with a figure, a blank page do not decide it alone.
+		const picks = count <= 12 ? [...Array(count).keys()] : [...new Set(Array.from({ length: 12 }, (_, i) => Math.round((i * (count - 1)) / 11)))];
+		const samples = [];
+		for (const i of picks) {
+			const page = d.pages[i];
+			const height = page.size?.height ?? 0;
+			if (!height) continue;
+			// The runs in the header and footer bands — the top and bottom 12%
+			// of the page: a small journal format's margins are proportionally
+			// wide (the Parekh PDF's "268" ends at 91% of its height), and a
+			// stray number in the body agrees with no page, so a wide band
+			// costs little. Their text through getTextSlices, the selection's
+			// own reader: getPageTextRects' text runs on into stale memory
+			// after a run's last character ("212" + junk, measured), which
+			// can glue a digit onto a page number.
+			let runs = [];
+			try { ({ runs } = await engine.getPageGeometry(d, page).toPromise()); } catch { continue; }
+			const band = (runs ?? []).filter((r) => r.glyphs?.length && (r.rect.y <= height * 0.12 || r.rect.y + r.rect.height >= height * 0.88));
+			const numbers = [];
+			if (band.length) {
+				const slices = band.map((r) => ({ pageIndex: i, charIndex: r.charStart, charCount: r.glyphs.length }));
+				let texts = [];
+				try { texts = await engine.getTextSlices(d, slices).toPromise(); } catch { continue; }
+				for (const t of texts ?? []) numbers.push(...bandNumbers(t));
+			}
+			samples.push({ page: i + 1, numbers });
+		}
+		return textPageOffset(samples);
+	})());
 	handle.sendQuote = async (requestId = null) => {
 		let quote = null;
 		let error = null;
@@ -380,9 +444,16 @@ export async function createViewer({ target, src, onStatus = () => {}, readonly 
 			// EmbedPDF refuses a document that forbids copying its text.
 			error = /permission/i.test(String(err?.message ?? err)) ? 'copy-denied' : String(err?.message ?? err);
 		}
+		let label = null;
+		let textOffset = null;
+		if (quote) {
+			label = (await handle.pageLabels())?.[quote.page - 1] ?? null;
+			textOffset = await handle.textOffset().catch(() => null);
+		}
 		postTo(window.top, {
 			source: 'clew-pdf', type: 'pdf-quote', requestId,
 			path: rel, remote: readonly, page: quote?.page ?? null, text: quote?.text ?? null,
+			label, textOffset,
 			empty: !quote && !error, error,
 		}, topOrigin());
 	};

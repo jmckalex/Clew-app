@@ -238,18 +238,22 @@ become boxes) because they run the user's own config; Obsidian draws an
 unknown `[!type]` as a default callout and reads callout CSS snippets —
 Clew does neither. Report only; nothing built.
 
+**Quote-and-cite's printed page** (item 2, owner-approved 2026-10-03,
+local): the cite names the page the article prints, the link the PDF's
+(live-edit.md §5.15a). EmbedPDF fork commit `9ab07c9a` (ocg-v2, NOT pushed;
+only its six files — the owner's pdfium-src change untouched) adds
+`getPageLabels`; Clew re-synced. Measured on copies of seven of the owner's
+PDFs, 14/14 pages right, three identical runs. ◆ For the owner: upstream
+EmbedPDF's `getPageTextRects` returns text that runs on into stale wasm
+memory (`FPDFText_GetBoundedText` writes no terminator; it is read with an
+unbounded `UTF16ToString`) — Clew avoids it; a one-line fix in the fork
+(read with the length) is theirs to choose.
+
 ## Open — waiting on the owner
 
 As relayed by Clew-boss on 2026-10-01; none is to be started without the
 owner's word.
 
-- **Quote-and-cite page numbers** — `\cite[p. N]` uses the PDF's own page
-  (what `#page=N` opens). A journal article's printed page differs, and
-  real PDFs say so: both measured papers carry `/PageLabels` (Yu 2012's PDF
-  page 2 is "p. 524"). Pdfium has `FPDF_GetPageLabel`; the EmbedPDF fork's
-  engine does not wrap it. The fix is a small method in the fork
-  (`~/Source/EmbedPDF/v2`, then `npm run sync-embedpdf`) — the owner's
-  call, since the fork is theirs.
 - **LaTeX export** — the engine's fallback for an unknown lexer, if
   `4aeca69`'s pygments-lexers did not settle it (LuaLaTeX when a note
   needs it is built: `0b4b7a4`).

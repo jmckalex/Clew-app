@@ -28,7 +28,7 @@ import { bookmarkStore } from '../state/bookmark-store.js';
 import { editorPool } from '../editor/pool.js';
 import { openQuickSwitcher } from '../components/modals/clew-quick-switcher.js';
 import { extractAnnotations } from '../pdf-annotations.js';
-import { quoteSelection, changePdfCitation } from '../pdf-quote.js';
+import { quoteSelection, changePdfCitation, setPrintedPage } from '../pdf-quote.js';
 import { buildWarnings } from '../build-warnings.js';
 import { warningSummary } from '../../shared/build-warnings.js';
 import { openListModal } from '../components/modals/list-modal.js';
@@ -187,6 +187,10 @@ export function registerBuiltinCommands() {
 		// .clew/pdf-citations.json): choose again.
 		{ id: 'pdf:change-citation', name: 'PDF: change the citation for this PDF…', when: needsVault,
 			run: () => changePdfCitation() },
+		// The number printed on the page in view, when the PDF's labels and
+		// its text do not say (remembered in .clew/pdf-citations.json).
+		{ id: 'pdf:set-printed-page', name: 'PDF: set the printed page number…', when: needsVault,
+			run: () => setPrintedPage() },
 		{ id: 'nav:quick-switcher', name: 'Open quick switcher', hotkeys: ['Mod-o'], when: needsVault,
 			inModal: false, run: () => openQuickSwitcher() },
 		{ id: 'nav:back', name: 'Navigate back', hotkeys: ['Mod-[', 'Mod-Alt-ArrowLeft'], when: needsVault,
