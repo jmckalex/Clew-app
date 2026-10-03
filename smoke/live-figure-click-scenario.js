@@ -8,16 +8,20 @@
 // main — for TikZ, MetaPost and mermaid in turn: a hover on the block, a move
 // away, a click on the graphic, a hover then a click on the old top edge,
 // then a hover and a click on the icon. Logs:
-//   `fc: <kind>: shows=3 hides=2 reveals=1 via-icon=1 scroll-delta=0`
+//   `fc: tikz: shows=3 hides=3 reveals=1 via-icon=1 scroll-delta=0`,
+//   the same for metapost, and `fc: mermaid: shows=3 hides=2 …`
 //   (shown by the hover, the graphic click's pointer and the icon hover;
-//   hidden by leaving and by the edge; ONE reveal — the icon's, made while
-//   it was up — none from the graphic or the edge)
+//   hidden by leaving, by the edge and — for all but the LAST block — by
+//   the pointer moving on to the next block after the icon's click; ONE
+//   reveal — the icon's, made while it was up — none from the graphic or
+//   the edge)
 //   `fc: fade-after-leave ms=…` and `fc: edge: lit=false cursor=auto`
 // extra — the keyboard (ArrowDown into the MetaPost figure) and an
 // interactive block's own click (the collapsible note embed's title link,
 // which opens Other.md), with its icon OUTSIDE the corner:
 //   `fc: keyboard revealed=true`
-//   `fc: note-icon outside=true clear-of-frame=true`
+//   `fc: note-icon shown=true outside=true clear-of-frame=true` (read when
+//   the icon comes up: by the last line the tab is Other.md, the icon gone)
 //   `fc: own-click opened=Other.md`
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const { workspaceStore, editorPool, settingsStore, ipc } = window.__clew;
@@ -87,17 +91,19 @@ if (mode === 'extra') {
 		// The note embed's icon, OUTSIDE its corner (its chevron is there).
 		let iconSeen = false;
 		let clear = null;
+		let outside = null;
 		const t0 = Date.now();
 		while (Date.now() - t0 < 9000 && workspaceStore.activeTab()?.path !== 'Other.md') {
 			const ic = iconOf('note');
 			if (ic?.classList.contains('is-shown') && !iconSeen) {
 				iconSeen = true;
+				outside = ic.classList.contains('is-outside');
 				const r = ic.getBoundingClientRect();
 				clear = r.left >= body('note').getBoundingClientRect().right;
 			}
 			await sleep(50);
 		}
-		log(`note-icon shown=${iconSeen} outside=${iconOf('note')?.classList.contains('is-outside') ?? 'absent'} clear-of-frame=${clear}`);
+		log(`note-icon shown=${iconSeen} outside=${outside} clear-of-frame=${clear}`);
 		log(`own-click opened=${workspaceStore.activeTab()?.path}`);
 	})();
 } else {
