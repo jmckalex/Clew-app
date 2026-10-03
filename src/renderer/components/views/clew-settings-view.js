@@ -173,10 +173,12 @@ class ClewSettingsView extends ClewElement {
 				'Bibliography file (vault-wide)',
 				'refs.bib — a path from the vault root, or an absolute path',
 				'Every note resolves \\cite commands against this BibTeX file, '
-				+ 'with no per-note properties needed. A note that sets its own '
-				+ 'Bibliography: property still wins, and @bibliography blocks '
-				+ 'keep their full jmarkdown behaviour (sections, scopes, styles). '
-				+ 'Clear the field to turn vault-wide citations off.'),
+				+ 'with no per-note properties needed — in reading view and in '
+				+ 'exports. A note\'s own Bibliography: property ADDS to it (where '
+				+ 'both hold a key, the note\'s entry wins); "Bibliography mode: '
+				+ 'replace" in a note uses its own alone. @bibliography blocks keep '
+				+ 'their full jmarkdown behaviour (sections, scopes, styles). Clear '
+				+ 'the field to turn vault-wide citations off.'),
 			...this.#vaultTextRow('bibliographyStyle',
 				'Bibliography style',
 				'chicago (default) — a style name or a .csl file path',
@@ -233,8 +235,24 @@ class ClewSettingsView extends ClewElement {
 				+ 'Notes never need an inline @bibliography block for it; authoring '
 				+ 'one anyway still renders inline as usual.'),
 		);
-		this.#pluginRows(section);
-		this.#appRows(section);
+		// Plugins, then Apps — each in a place made now, so whichever list
+		// answers first, the order on screen is this one.
+		const plugins = document.createElement('div');
+		plugins.className = 'settings-plugins';
+		section.append(plugins);
+		this.#pluginRows(plugins);
+		// Apps, a subsection of its own: the refusal an app shows, the demo's
+		// Flashcards and the guide all send the reader to "Settings → This
+		// vault → Apps".
+		const apps = document.createElement('div');
+		apps.className = 'settings-apps';
+		apps.dataset.settingsSubsection = 'apps';
+		const subhead = document.createElement('h3');
+		subhead.className = 'settings-subhead';
+		subhead.textContent = 'Apps';
+		apps.append(subhead);
+		section.append(apps);
+		this.#appRows(apps);
 		return section;
 	}
 
@@ -243,7 +261,14 @@ class ClewSettingsView extends ClewElement {
 	 *  frames reload and it asks again. */
 	#appRows(section) {
 		ipc.invoke(CH.APPS_LIST).then((apps) => {
-			if (!apps?.length) return;
+			if (!apps?.length) {
+				const none = document.createElement('p');
+				none.className = 'settings-hint';
+				none.textContent = 'No apps in this vault. An app is a folder holding clew-app.json, '
+					+ 'embedded in a note with @app[folder].';
+				section.append(none);
+				return;
+			}
 			const heading = document.createElement('p');
 			heading.className = 'settings-hint';
 			heading.textContent = 'Apps in this vault (folders holding clew-app.json, embedded with '

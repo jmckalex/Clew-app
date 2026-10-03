@@ -82,11 +82,12 @@ needs a native helper — later, with the owner.
 Then engine `at-migration@455cb61`: exports pass the vault's bibliography to
 their build (processFile's `bibliography`), so a note citing only the
 vault's file exports resolved.
+Then (B): Settings → This vault has an "Apps" subsection (the pointer every
+app refusal, the demo's Flashcards and the guide give is now true).
 
 **Queued by Clew-boss (2026-10-03), in order:**
-1. (B): the app rows get their own "Apps" subsection in Settings → This vault, so the refusal text's pointer is true.
-2. (C): the write-grant indicator, the note-changed and grant-changed events (§8–§9), and the per-embed list if cheap.
-3. tests/app-calls.test.js hung >10 min once under load: make it deterministic.
+1. (C): the write-grant indicator, the note-changed and grant-changed events (§8–§9), and the per-embed list if cheap.
+2. tests/app-calls.test.js hung >10 min once under load: make it deterministic.
 
 **The rules this session works under** (the owner's, relayed by the
 coordinating session "Clew-boss", uds `/tmp/cc-socks/6958.sock` at the
