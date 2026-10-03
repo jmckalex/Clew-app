@@ -1970,6 +1970,53 @@ block: `body { margin: 0; padding: 0 }`, `overflow: hidden`, and no
 Everything the engine refuses by name renders its refusal inside the
 frame, exactly as reading mode shows it.
 
+### 7.7 The way to a block's source: an "Edit source" icon
+
+*The owner's design, 2026-10-03* (replacing a thin bar along each frame's
+top, which lit up under the pointer and revealed the source when clicked —
+the owner met it by accident and did not want it). Every rendered block —
+figures, mermaid, maps, boards, embeds, PDFs, slides, apps — has ONE
+"Edit source" icon (`code`, Clew's own icon set, theme colours, 26 px, a
+tooltip and an `aria-label`) over its upper-right corner
+(`frame-layer.js#revealButton`, in the frame layer, so CodeMirror never
+recycles it). It fades in while the pointer is over the block or the icon
+and out 200 ms after the pointer leaves; a click on it puts the cursor at
+the block's start, which reveals the source — what the arrow keys still do.
+A click on the graphic itself is the graphic's (a map pans, a board drags, a
+figure does nothing); the 6 px above the frame is a spacer, and the
+placeholder ignores every event, so a press around a block reveals nothing.
+
+- **Where, per kind** (`frames.js#revealIconOutside`): INSIDE the corner,
+  6 px in, for figures (TikZ, MetaPost, LaTeX/TeX), tabbing, games,
+  Mathematica, mermaid, maps (Clew's put their zoom at the top LEFT),
+  query/tasks/kanban/dataview/base, slides, canvas, office thumbnails,
+  video and audio. OUTSIDE the corner — in the margin beside the block's
+  top edge — where the block's own controls are at its top right: a PDF
+  (the viewer's toolbar ends in buttons), a note embed (its disclosure
+  chevron), Excalidraw (title bar, view-mode UI), an app and raw HTML
+  (anything at all).
+- **Hover, across processes.** A block's frame is cross-origin, i.e.
+  another process, and the page around it sees nothing of the pointer
+  inside — no `:hover` on the iframe, no enter or leave events (measured).
+  So the block document says so (`client.js`, block mode: `pointer` on
+  entering and again on its moves, at most every 200 ms, stamped with the
+  EVENT's time), and the page hides every icon on a pointer move of its own
+  (it sees moves only outside every frame), dropping an `over` older than
+  that move — a busy frame's late message would otherwise bring an icon
+  back after the pointer had gone.
+- **Touch** (no hover; proposed for the iPad): the icon stays faintly
+  visible (`@media (hover: none)`, 60%). A tap inside a frame never reaches
+  the page, so "show it on a tap on the block" would need every frame to
+  forward taps; always-faint needs nothing and is always findable.
+- Measured with real input (`smoke/live-figure-click-scenario.js`), TikZ,
+  MetaPost and mermaid, twice: `shows=3 hides=2–3 reveals=1 via-icon=1
+  scroll-delta=0` each — the hover shows it, leaving hides it (~210 ms),
+  the graphic's click and the old edge's click reveal nothing, the icon's
+  click reveals once; `edge: lit=false cursor=auto`; the keyboard still
+  reveals; a note embed's icon sits clear of its frame and the embed's own
+  title link still opens the note. Before: no icon, the edge lit
+  (`rgba(139,126,200,0.22)`) and revealed on all three.
+
 As built (review after Phase 5): the fragment-edit row's trigger
 (`EV_RENDER_DONE`) never fires for a live-edit note, because the layer does
 not RENDER_SUBSCRIBE. The replacement: the frame layer re-renders EVERY

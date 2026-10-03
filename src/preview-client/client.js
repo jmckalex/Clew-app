@@ -36,6 +36,30 @@ const post = (msg) => postTo(window.parent, { source: 'clew-preview', ...msg }, 
 // behaviours below stand down; instead it reports its height.
 const BLOCK = document.documentElement.dataset.clewBlock === '1';
 
+// A live-edit block says when the pointer is over it: the editor shows the
+// block's "Edit source" icon then (live/frame-layer.js). The frame is
+// another process, and the page around it sees nothing of the pointer
+// inside — no :hover on the iframe, no enter or leave (measured). So the
+// frame says it, on entering and again on its pointer moves (at most every
+// 200 ms: a frame does not always see itself left and re-entered), and `at`
+// (the clock both processes share) lets the page drop an `over` that
+// arrives after the pointer has already left.
+if (BLOCK) {
+	// The EVENT's time, not the handler's: a busy frame handles its last
+	// move late, and stamping then would outdate the page's "left".
+	const when = (e) => Math.round(performance.timeOrigin + e.timeStamp);
+	let said = 0;
+	const over = (e) => {
+		const at = when(e);
+		if (at - said < 200) return;
+		said = at;
+		post({ type: 'pointer', over: true, at });
+	};
+	document.documentElement.addEventListener('pointerenter', (e) => { said = 0; over(e); });
+	document.addEventListener('pointermove', over, { passive: true });
+	document.documentElement.addEventListener('mouseleave', (e) => { said = 0; post({ type: 'pointer', over: false, at: when(e) }); });
+}
+
 // ---- inbound: host → preview ---------------------------------------------
 
 window.addEventListener('message', (event) => {

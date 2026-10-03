@@ -58,15 +58,21 @@ await ipc.invoke('clew:note-write', { path: 'Child.md', content: '# Child\n\nUPD
 log('child-rewritten');
 
 const mermaidSlot = document.querySelector('.le-frame-slot[data-kind="mermaid"]');
-const edge = mermaidSlot.querySelector('.le-frame-edge').getBoundingClientRect();
 const mermaidId = mermaidSlot.dataset.frameId;
 const queryFrame = () => [...document.querySelectorAll('.le-frames iframe')]
 	.find((f) => document.querySelector(`.le-frame-slot[data-frame-id="${CSS.escape(f.dataset.frameId)}"]`)?.dataset.kind === 'query');
 const pdfFrame = [...document.querySelectorAll('.le-frames iframe')]
 	.find((f) => document.querySelector(`.le-frame-slot[data-frame-id="${CSS.escape(f.dataset.frameId)}"]`)?.dataset.kind === 'pdf');
 const qr = queryFrame().getBoundingClientRect();
+// Revealed through its "Edit source" icon (frame-layer.js#revealButton): a
+// hover on the block brings it up, a click on it reveals. (The thin bar
+// along a frame's top used to do it; it does nothing now.) Every timer
+// below runs HOVER ms later for it.
+const HOVER = 700;
 window.__clewSmokeInput = [
-	{ click: { x: Math.round(edge.left + 40), y: Math.round(edge.top + edge.height / 2) } },
+	{ move: { selector: '.le-frame-slot[data-kind="mermaid"] .le-frame-body' } },
+	{ wait: HOVER },
+	{ click: { selector: '.le-frame-reveal[data-kind="mermaid"]' } },
 	{ wait: 1200 },                                   // t≈1.2 revealed
 	{ combo: { key: 'ArrowDown', modifiers: 0 } },    // leave nothing to chance: move off? stays inside
 	{ wait: 300 },
@@ -85,19 +91,19 @@ setTimeout(() => {
 	const sourceVisible = view.contentDOM.textContent.includes('A[Start] --> B[End]');
 	log(`revealed hidden-frame=${!frame || frame.style.visibility === 'hidden'} source-visible=${sourceVisible}`);
 	window.__lbTop = view.scrollDOM.scrollTop;
-}, 1000);
+}, HOVER + 1000);
 const hitAt = (x, y) => {
 	const el = document.elementFromPoint(x, y);
 	return el?.closest('clew-preview-pane') ? 'pane' : el?.tagName === 'IFRAME' ? 'frame' : el?.closest('.cm-content') ? 'text' : el?.tagName.toLowerCase() ?? 'none';
 };
 const wheelX = Math.round(qr.left + qr.width / 2);
-setTimeout(() => { window.__lbHit = hitAt(wheelX, Math.round(qr.top + 20)); }, 1450);
+setTimeout(() => { window.__lbHit = hitAt(wheelX, Math.round(qr.top + 20)); }, HOVER + 1450);
 setTimeout(() => {
 	log(`pane-wheel hit=${window.__lbHit} scrolled=${view.scrollDOM.scrollTop > (window.__lbTop ?? 0)}`);
 	window.__lbDownFrom = view.scrollDOM.scrollTop;
 	window.__lbDownHit = hitAt(wheelX, 500);
-}, 2300);
-setTimeout(() => log(`frame-wheel hit=${window.__lbDownHit} scrolled=${view.scrollDOM.scrollTop > (window.__lbDownFrom ?? 0) + 800}`), 4600);
+}, HOVER + 2300);
+setTimeout(() => log(`frame-wheel hit=${window.__lbDownHit} scrolled=${view.scrollDOM.scrollTop > (window.__lbDownFrom ?? 0) + 800}`), HOVER + 4600);
 setTimeout(() => {
 	log(`pinned-survived=${Boolean(pdfFrame && document.contains(pdfFrame))} max-frames=${maxFrames}`);
 	// Back at the top after the round trip: every drawn frame must sit on
@@ -113,4 +119,4 @@ setTimeout(() => {
 	// `*styled*` rendered as <em>, standard markdown's reading, not the
 	// dialect's <strong>.
 	window.__clew.vaultSettingsStore.set('normalSyntax', true).then(() => log('normal-syntax-set'));
-}, 8500);
+}, HOVER + 8500);

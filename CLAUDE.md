@@ -825,6 +825,14 @@ except where the selection touches a construct. The durable design is
   indent, callout tint) apply in BOTH states — entering a line never
   changes its height (CodeMirror's `cm-widgetBuffer` images lifted a
   heading 1px until live-edit.css tamed them).
+- **A block's source is reached through its "Edit source" icon**
+  (live-edit.md §7.7, the owner's design 2026-10-03): one `</>` over every
+  rendered block's upper-right corner (outside it for PDF, note embeds,
+  Excalidraw, apps, HTML — `frames.js#revealIconOutside`), shown on hover;
+  a click on the graphic is the graphic's, and the placeholder ignores every
+  event (the thin bar that revealed on a click is gone). Hover crosses a
+  process boundary: the block's frame posts `pointer` (client.js), the page
+  hides on its own pointer moves — the page sees nothing over an OOPIF.
 - **Tier C frames are hoisted.** Engine-only blocks render through
   `POST/GET __clew_block__` (protocol.js; a FULL engine document through
   `wrapPreviewDocument`, the same injection notes get) into iframes that
