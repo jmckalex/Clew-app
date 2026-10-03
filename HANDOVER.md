@@ -1,4 +1,4 @@
-# Handover — 2026-10-03 (0.12.0 released; origin/main 67311b6; frame bridge phases 1–4, update check and quote-and-cite LOCAL)
+# Handover — 2026-10-04 small hours (origin/main f3a7d5b; tonight's items LOCAL: bd17b1d … 636c165; dev.4 built, dev.5 from the final commit)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it); the live edit design AS BUILT is
@@ -11,6 +11,59 @@ prefer deleting a settled item to explaining it again.
 **Where the code is.** `origin/main` = `9349a48`, pushed 2026-10-03 on the
 owner's word: 23 commits `67311b6..9349a48`, a fast-forward. Anything after
 it is local; `git fetch` before counting.
+
+**Tonight (2026-10-03 evening, the owner's plan via Clew-boss).** Pushed
+first: origin/main = `f3a7d5b` (13 commits). Then, each its own commit,
+NOT pushed:
+- `bd17b1d` — EmbedPDF fork `7e5d802f` (ocg-v2, LOCAL, only engine.ts):
+  getPageTextRects reads each run's text with its length (stale heap bytes
+  984/7/5 runs → 0/0/0); re-vendored.
+- `686232b` — PDF save safety (pdf-unification.md §7b): a viewer's save
+  never overwrites a version it did not load; both versions to history;
+  Keep mine / theirs / both side by side / Later. iOS does its native half
+  (PDF_WRITE base/force/create, PDF_VERSION_RESTORE).
+- `c9e20cd` — docs/dev/book-mode.md, the book-mode DESIGN (no code), 13
+  merged owner questions — for the owner to read.
+- `4ddda35` — clew:// links + the `clew` command (docs/dev/deep-links.md).
+  ◆ main.js now takes `requestSingleInstanceLock()`: one process per
+  profile (a second launch hands over its command line and exits).
+- dev.4 (0.12.1-dev.4) from `4ddda35` (`out-dev/`): notarized, stapled,
+  signature, version, `clew://` in Info.plist and the shipped CLI checked;
+  the BOOT TEST NEVER RAN — `boot-test.sh` aborted, load 26 after its
+  20-minute wait (Kaspersky's kavd + CrashPlan at ~45% each). Superseded by
+  dev.5, whose packaging replaces `out-dev/mac-arm64/Clew.app`: to test
+  dev.4 later, mount its DMG and run `BOOT_TEST_ALLOW_STALE=1
+  smoke/boot-test.sh /Volumes/<its volume>/Clew.app/Contents/MacOS/Clew`.
+
+**Then the owner's "smaller build" (2026-10-04, via Clew-boss), each its own
+commit, NOT pushed:**
+- `9d4adb2` — tests: 17 files' fixtures under ONE mkdtemp root each,
+  removed in `after`; a full `npm test` leaves nothing in $TMPDIR. The
+  one-time cleanup of the 8,343 old fixture folders (prefixes clew-grants-,
+  clew-atomic-, clew-history-, clew-trust-, clew-remote-, clew-kv-, …; all
+  real dirs, none newer than 5 min, oldest 2026-09-30) was REFUSED by the
+  session's permission check — left for the owner to approve or do.
+- `17a06c5` — `main/callout-types.js` is shareable (no Node built-in, no
+  `process`, the icon table handed in or loaded lazily; `hasCustomCallouts`
+  for a host that fetches it); the disk side is `main/callout-files.js`.
+  iOS can drop its re-implementation in `src/shim/ipc.js`.
+- `8e0640c` — `renderer/lib/device-name.js`: "this Mac / this iPad / this
+  iPhone / this computer / this device" (iPadOS = MacIntel + touch points;
+  a host may set `globalThis.__clewDeviceName`). iOS can drop its
+  trust-banner.js build patch. TeX fragments' "this machine" → "this Mac".
+- `f098976` — admonitions.js imports the table beside the worker only when
+  one is THERE; else `#jmarkdown/callout-table.js` (iOS can drop its
+  admonitions.js build patch). `smoke/admonition-alias-scenario.js`.
+- `636c165` — trust-guard-scenario logs the prompt's buttons.
+- ◆ FOUND, not fixed: an UNTITLED ```ad-type fence draws no heading at all
+  (icon only — `ad-hint`, `ad-rem` alike), while an untitled `> [!type]` is
+  headed by its type. admonitions.js leaves a known type's title '' — which
+  Clew's own callout renderer used to fill; the engine's does not. One-line
+  fix (`untitledCalloutTitle(rawType)` from the table) + its test's
+  expectation; the owner's call.
+- ◆ mp-tikz-wasm 0.3.1 is published (52b7bbc, sha256 24b0cd29…, 44,239,255
+  bytes; optional PDF output, lazier auto.js, Node workers; engines and SVG
+  unchanged). NOT re-pinned — Clew-boss's call.
 
 **After dev.3 (local, NOT pushed, NOT in any package):** `3031a15` — the
 live preview pane never covers the block being edited, takes no pointer

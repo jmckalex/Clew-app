@@ -85,7 +85,7 @@ note API, plugins, and every settings key.
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
   dialect scanner's constructs and grammar, live edit's model, reveal rule,
-  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band, figure errors, the PDF save guard, deep links and the clew command — 1110 tests. DOM/UI work is
+  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band, figure errors, the PDF save guard, deep links and the clew command, the shareable callout resolver, the device word — 1124 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
@@ -413,7 +413,10 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   loads the engine's config manager (fs, a cwd config read) and must stay
   out of Clew's processes. `engine/admonitions.js` imports the same table
   beside the worker script (`process.argv[1]`), so it shares the engine's
-  instance. An UNKNOWN `[!type]` is drawn as a note (pencil, note's colour)
+  instance — but only when a callout-table.js IS there (a packaged
+  engine-assets/ has no package.json for `#jmarkdown`); otherwise the
+  package import, because in a WebKit worker a file: URL beside nothing
+  never settles (Clew-iOS, f098976). An UNKNOWN `[!type]` is drawn as a note (pencil, note's colour)
   headed by its name; an untitled callout is headed by its type AS WRITTEN
   (`[!CAUTION]` → Caution — `untitledCalloutTitle`, imported, never
   mirrored); live edit's model follows both (`resolveType(raw) ??
@@ -431,7 +434,10 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   bad entry SKIPPED with its reason, never half-applied); `main/callout-
   types.js` resolves with the Font Awesome table (`dist/main/fa-icons.json`,
   written by scripts/build.js, 1.85 MB, read only once a definition exists —
-  never on a render path) and hands the render worker, the export worker
+  never on a render path). It is SHAREABLE — no Node built-in, no
+  `process`, the table handed in by its caller (Clew-iOS runs it in a
+  page); the desktop's disk side, `iconTable` and `watchVaultCallouts`, is
+  `main/callout-files.js`. It hands the render worker, the export worker
   and the site-export worker `CLEW_CALLOUTS` (finished entries: label,
   colour, icon PATH) and the renderer `CALLOUTS_RESOLVED`; both feed the
   engine table's `applyCustomCallouts`, whose `CALLOUT_TYPES` is a LIVE
