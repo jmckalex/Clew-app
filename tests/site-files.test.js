@@ -8,7 +8,7 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { test } from 'node:test';
+import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -16,8 +16,12 @@ import path from 'node:path';
 import { siteFiles, staticAppEmbeds } from '../src/main/site-files.js';
 import { compileExcludes } from '../src/main/vault-excludes.js';
 
+// One temp root for the file, removed when it is done — whatever fails.
+const base = fs.mkdtempSync(path.join(os.tmpdir(), 'clew-site-files-'));
+after(() => fs.rmSync(base, { recursive: true, force: true }));
+
 function vault(files) {
-	const root = fs.mkdtempSync(path.join(os.tmpdir(), 'clew-site-files-'));
+	const root = fs.mkdtempSync(path.join(base, 'vault-'));
 	for (const [rel, text] of Object.entries(files)) {
 		fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });
 		fs.writeFileSync(path.join(root, rel), text);
@@ -34,7 +38,6 @@ test('notes and attachments go out; Clew machinery does not', () => {
 	const { notes, files } = walk(root);
 	assert.deepEqual(notes.sort(), ['Notes/A.md', 'Welcome.md']);
 	assert.deepEqual(files, ['Attachments/x.png']);
-	fs.rmSync(root, { recursive: true, force: true });
 });
 
 test('shared state and app data are private by default', () => {
@@ -52,13 +55,11 @@ test('shared state and app data are private by default', () => {
 	const { files, withheld } = walk(root);
 	assert.deepEqual(files.sort(), ['Apps/Probe/clew-app.json', 'Apps/Probe/index.html', 'Notes/clewdata.json', 'Research/data/table.csv']);
 	assert.deepEqual(withheld.sort(), ['Apps/Probe/data', 'clewdata.json']);
-	fs.rmSync(root, { recursive: true, force: true });
 });
 
 test('a hidden folder is not walked', () => {
 	const root = vault({ 'Welcome.md': '# Hi', 'Archive/Old.md': 'old' });
 	assert.deepEqual(walk(root, { hidden: ['Archive'] }).notes, ['Welcome.md']);
-	fs.rmSync(root, { recursive: true, force: true });
 });
 
 test('a restricted vault is not followed out of itself', () => {
@@ -67,8 +68,6 @@ test('a restricted vault is not followed out of itself', () => {
 	fs.symlinkSync(outside, path.join(root, 'Linked'));
 	assert.deepEqual(walk(root, {}, false).notes, ['Welcome.md']);
 	assert.deepEqual(walk(root, {}, true).notes.sort(), ['Linked/Elsewhere.md', 'Welcome.md']);
-	fs.rmSync(root, { recursive: true, force: true });
-	fs.rmSync(outside, { recursive: true, force: true });
 });
 
 test('an @app in a static page says what it is, and loads nothing', () => {

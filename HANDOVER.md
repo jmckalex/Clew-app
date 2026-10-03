@@ -88,8 +88,19 @@ Then (C): apps get `note-changed` and `grant-changed` (live, no reload), a
 "✎ … can edit notes" status-bar indicator while a write-granted app is live,
 and Settings lists each app's live embeds (frame-bridge.md §9b).
 
-**Queued by Clew-boss (2026-10-03), in order:**
-1. tests/app-calls.test.js hung >10 min once under load: make it deterministic.
+**Queued by Clew-boss:** nothing (2026-10-03, after the flaky-test fix —
+the morning brief carries the rest for the owner). The app-calls hang was
+never reproduced (16 parallel runs: ~250 ms each); its fixtures now live
+under one temp root removed after the file, its link out no longer names
+the whole system temp folder, and `npm test` has a 60 s per-test timeout.
+Leftovers: 285 old `clew-calls-*` fixtures removed from $TMPDIR (links
+unlinked first, nothing followed); 144 made at 02:51–02:53 by a concurrent
+run of the OLD file were left — the same command clears them later
+(`find "$TMPDIR" -maxdepth 1 -name 'clew-calls-*' -type d -mmin +5`, then
+`find <dir> -type l -delete`, then `rm -rf <dir>`). Other test files still
+leave fixtures behind (clew-history, -trust, -atomic, -remote, -kv,
+-symlinks …: thousands), none linking outside its own root — tidy them the
+same way when next in those files.
 
 **The rules this session works under** (the owner's, relayed by the
 coordinating session "Clew-boss", uds `/tmp/cc-socks/6958.sock` at the

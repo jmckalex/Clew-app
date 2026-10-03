@@ -73,7 +73,12 @@ note API, plugins, and every settings key.
   machine rather than run on one), because the hardened runtime is what breaks the
   forked worker or the wasm (entitlements.mac.plist says which entitlement
   carries which).
-- **Tests:** `npm test` (`node --test`, files in `tests/`): workspace tree,
+- **Tests:** `npm test` (`node --test --test-timeout=60000` — a test that
+  hangs fails within a minute, by name, instead of stalling the run; files
+  in `tests/`; a test's temp files go under ONE `mkdtemp` root of its own,
+  removed in an `after` hook, and no fixture links outside that root —
+  app-calls' once linked the whole system temp folder, 429 times over):
+  workspace tree,
   note-metadata extractor, BibTeX parser, the ported jmarkdown-scan suite,
   canvas model, diary, frontmatter, plugins discovery, query/leaflet/exif
   parsers, Excalidraw round-trip, markdown tables, callouts, block

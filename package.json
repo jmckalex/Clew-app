@@ -16,7 +16,7 @@
     "dev": "node scripts/vendor-jmarkdown.js && node scripts/vendor-embedpdf.js && node scripts/dev.js",
     "build": "node scripts/build.js",
     "start": "node scripts/build.js && electron .",
-    "test": "node --test",
+    "test": "node --test --test-timeout=60000",
     "sync-engine": "node scripts/vendor-jmarkdown.js",
     "sync-embedpdf": "node scripts/vendor-embedpdf.js",
     "sync-mptikz": "node scripts/stage-mptikz.js",

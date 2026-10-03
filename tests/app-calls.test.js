@@ -1,4 +1,4 @@
-import { test } from 'node:test';
+import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -6,14 +6,21 @@ import path from 'node:path';
 import { callApp } from '../src/main/app-calls.js';
 import { compileExcludes } from '../src/main/vault-excludes.js';
 
+// One temp root for this file, removed when it is done. Fixtures used to be
+// left in the system's temp folder, each with a link out of itself — one of
+// them to the temp folder ITSELF, a web of cycles that grew by one per run
+// (429 found, 2026-10-03) for any walk that follows links.
+const base = fs.mkdtempSync(path.join(os.tmpdir(), 'clew-calls-'));
+after(() => fs.rmSync(base, { recursive: true, force: true }));
+
 function fixture({ restricted = false, granted = [] } = {}) {
-	const root = fs.mkdtempSync(path.join(os.tmpdir(), 'clew-calls-'));
+	const root = fs.mkdtempSync(path.join(base, 'vault-'));
 	const put = (rel, text) => { fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true }); fs.writeFileSync(path.join(root, rel), text); };
 	put('Here.md', '---\ntitle: Here\n---\n# Here\n[[There]]');
 	put('There.md', '# There');
 	put('.clew/vault-settings.json', '{}');
 	put('Apps/T/clew-app.json', '{"id":"t"}');
-	const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'clew-outside-'));
+	const outside = fs.mkdtempSync(path.join(base, 'outside-'));
 	fs.writeFileSync(path.join(outside, 'secret.md'), 'SECRET');
 	fs.symlinkSync(outside, path.join(root, 'Linked'));
 	const kv = new Map();
@@ -25,7 +32,7 @@ function fixture({ restricted = false, granted = [] } = {}) {
 		search: { search: (q) => [{ path: 'Here.md', q }] },
 		kv: { get: (k) => kv.get(k), set: (k, v) => (kv.set(k, v), v), delete: (k) => (kv.delete(k), null), list: (pre) => Object.fromEntries([...kv].filter(([k]) => k.startsWith(pre))) },
 	};
-	return { ctx, root, kv };
+	return { ctx, root, kv, outside };
 }
 
 test('note.read reads the embedding note only; notes.read any text file', () => {
@@ -66,7 +73,7 @@ test('query, kv in the app\'s own namespace, and denied without the grant', () =
 });
 
 test('app.files: inside data/, no dot names, no notes, limits', () => {
-	const { ctx, root } = fixture({ granted: ['app.files'] });
+	const { ctx, root, outside } = fixture({ granted: ['app.files'] });
 	assert.deepEqual(callApp(ctx, 'files.write', { path: 'saves/one.json', data: '{"a":1}' }).result, { path: 'saves/one.json', size: 7 });
 	assert.equal(fs.readFileSync(path.join(root, 'Apps/T/data/saves/one.json'), 'utf8'), '{"a":1}');
 	assert.equal(callApp(ctx, 'files.read', { path: 'saves/one.json' }).result, '{"a":1}');
@@ -76,7 +83,9 @@ test('app.files: inside data/, no dot names, no notes, limits', () => {
 	assert.equal(callApp(ctx, 'files.write', { path: '.hidden', data: 'x' }).error.code, 'denied');
 	assert.equal(callApp(ctx, 'files.write', { path: 'note.md', data: 'x' }).error.code, 'denied');
 	assert.equal(callApp(ctx, 'files.write', { path: 'big.bin', data: new Uint8Array(25 * 1024 * 1024 + 1) }).error.code, 'too-large');
-	fs.symlinkSync(os.tmpdir(), path.join(root, 'Apps/T/data/out'));
+	// A link out of the data folder — to this fixture's own outside folder,
+	// never to the temp folder at large.
+	fs.symlinkSync(outside, path.join(root, 'Apps/T/data/out'));
 	assert.equal(callApp(ctx, 'files.write', { path: 'out/escape.txt', data: 'x' }).error.code, 'denied', 'a link cannot carry a write out');
 	assert.equal(callApp(ctx, 'files.delete', { path: 'saves/one.json' }).result, true);
 });
