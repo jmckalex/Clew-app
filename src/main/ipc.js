@@ -45,7 +45,8 @@ import { callApp } from './app-calls.js';
 import { checkForUpdate } from './updater.js';
 import { registeredRemoteUrl, saveRemoteCopy } from './remote-pdfs.js';
 import { planOpen, pathFromFileUrl } from './open-file.js';
-import { iconTable, resolvedCallouts } from './callout-types.js';
+import { resolvedCallouts } from './callout-types.js';
+import { iconTable } from './callout-files.js';
 import { iconKey } from '#jmarkdown/callout-definitions.js';
 import fs from 'node:fs';
 import nodePath from 'node:path';
@@ -336,7 +337,7 @@ export function registerIpc() {
 	// list is read from disk, so a hand edit is what this answers with.
 	handle(CH.CALLOUTS_RESOLVED, (s) => {
 		const vaultList = s.vaults.root ? s.vaults.loadState('vault-settings.json')?.callouts : undefined;
-		const { custom, problems } = resolvedCallouts(settings.get('callouts'), vaultList, paths.faIcons);
+		const { custom, problems } = resolvedCallouts(settings.get('callouts'), vaultList, () => iconTable(paths.faIcons));
 		return { custom, problems };
 	});
 	// The icon table, for Settings only (never a render): whole for the

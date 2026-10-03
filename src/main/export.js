@@ -38,6 +38,7 @@ import { bibliographyDirs, bibliographyList } from './citation-header.js';
 import { printNoteToPdf } from './print-pdf.js';
 import { settings } from './settings.js';
 import { calloutsEnv } from './callout-types.js';
+import { iconTable } from './callout-files.js';
 import { chooseLatexEngine, engineName, latexmkFlag, firstLatexError } from './latex-engine.js';
 
 const WORKER_PATH = paths.engineWorker;
@@ -161,7 +162,7 @@ export async function exportNote({ win, vaults, sessionId, callerToken = null, r
 	// Exports honor the vault's standard-syntax choice, like previews do.
 	const vaultSettings = vaults.loadState('vault-settings.json') ?? {};
 	const normalSyntax = vaultSettings.normalSyntax === true;
-	const callouts = calloutsEnv(settings.get('callouts'), vaultSettings.callouts, paths.faIcons);
+	const callouts = calloutsEnv(settings.get('callouts'), vaultSettings.callouts, () => iconTable(paths.faIcons));
 	const base = path.basename(abs).replace(/\.(md|jmd)$/i, '');
 	const ext = format === 'html' ? 'html' : format === 'latex' ? 'tex' : 'pdf';
 	// The vault's bibliography, for this build only (jmarkdown 455cb61): an
