@@ -80,7 +80,7 @@ note API, plugins, and every settings key.
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
   dialect scanner's constructs and grammar, live edit's model, reveal rule,
-  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement), what a site export publishes, build-warning grouping — 1061 tests. DOM/UI work is
+  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers — 1074 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
@@ -115,7 +115,9 @@ note API, plugins, and every settings key.
   (the window's WebRTC IP handling, to measure what an app frame's ICE can
   do), `CLEW_SMOKE_METRICS=/p.json`
   (app.getAppMetrics), `CLEW_SMOKE_CONFIRM=save|discard|cancel` (answers
-  the office Save/Discard/Cancel dialog without UI),
+  the office Save/Discard/Cancel dialog without UI), a trash under the
+  harness moves the file into the run's userData (`smoke-trash/`) and logs
+  `smoke-trash: <rel>` instead of filling the user's own Trash,
   `CLEW_SMOKE_CLOSE_WINDOW=1` (drives a real window close; logs
   `smoke-windows: N`), `CLEW_SMOKE_CLIPBOARD=1` (+`__clewSmokeClipboard`
   preload), `CLEW_SMOKE_MENU=1` (the application menu as the OS holds it,
@@ -1303,8 +1305,31 @@ except where the selection touches a construct. The durable design is
   grammars, so a fragment is coloured exactly as the fence it lands in. The pool also owns dirty state,
   auto-save (1s debounce), a per-path EditorState cache (undo survives
   navigation; discarded when disk content diverges), and conflict state
-  (external change + unsaved edits → banner, auto-save paused; the pool
-  ignores echoes of its own saves via `lastWrittenText`). **Opening is
+  (the pool ignores echoes of its own saves via `lastWrittenText`).
+  **Edit-conflict safety** (FEATURE-IDEAS #1, 2026-10-03; Clew-iOS's
+  CONFLICT-SAFETY.md items 1–4): a note changed in two places never loses a
+  version silently. MAIN remembers, per note, the mtime and a hash of what it
+  last read or wrote (`main/write-guard.js`, the mtime from a FRESH stat after
+  the atomic rename — a cached pre-write one gave Clew-iOS a false conflict
+  on every second save); the pool's saves are GUARDED (`NOTE_WRITE {guard}`):
+  over a version not seen — mtime moved AND the text neither what was seen
+  nor what is written — nothing is written and the answer is `{conflict,
+  disk}` (`force` overrides). Opt-in: other NOTE_WRITE callers cannot answer a
+  refusal; `.clew/` and clewdata.json are never guarded. The pool then
+  HOLDS (`#hold`): both versions to the note's history first
+  (`HISTORY_KEEP` → `history.js#keepVersion`, whatever the interval or the
+  history setting), auto-save paused, kind `save` (refused) or `disk` (a
+  change arrived under unsaved edits — the old banner's case, through the
+  same hold). The banner and `renderer/conflicts.js`'s sheet offer Keep mine
+  (force) / Keep theirs (read AFRESH, so main has seen it — or the next save
+  is refused) / Keep both ("Note (conflict YYYY-MM-DD).md") / Compare (a
+  line diff); `resolveConflict` keeps the editor's text in history first,
+  whatever is chosen. Dropbox's "Note (Name's conflicted copy …).md" beside a
+  note gets a persistent notice → the same sheet (keep the note / the copy /
+  both); git markers in a note's text get a notice only. The text helpers
+  are `shared/conflict-text.js`, Clew-iOS's module, shared so they cannot
+  drift. `smoke/conflicts-scenario.js`, `conflicts-typing-scenario.js`.
+  **Opening is
   serialised** (2026-10-02, Clew-docs' repro): `open()` of a note already
   being opened WAITS for that open (`entry.opening`) — handing the entry
   back early left a host with no view (an empty pane) or with the old view

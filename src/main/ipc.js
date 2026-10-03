@@ -119,7 +119,9 @@ export function registerIpc() {
 	handle(CH.VAULT_TREE, (s) => s.vaults.tree());
 
 	handle(CH.NOTE_READ, (s, { path }) => s.vaults.readNote(path));
-	handle(CH.NOTE_WRITE, (s, { path, content }) => s.vaults.writeNote(path, content));
+	// `guard`: an editor's save, refused over a version not seen
+	// (write-guard.js) — answered `{ conflict, disk }`; `force` overrides.
+	handle(CH.NOTE_WRITE, (s, { path, content, guard = false, force = false }) => s.vaults.writeNote(path, content, { guard, force }));
 	handle(CH.NOTE_CREATE, (s, { path }) => s.vaults.createNote(path));
 	handle(CH.FS_CREATE_FOLDER, (s, { path }) => s.vaults.createFolder(path));
 	handle(CH.FS_RENAME, (s, { path, newPath }) => {
@@ -142,6 +144,8 @@ export function registerIpc() {
 		s.vaults.resolve(path);
 		return readSnapshot(s.vaults.root, path, id);
 	});
+	// A conflict's versions, kept before anything is chosen (conflicts.js).
+	handle(CH.HISTORY_KEEP, (s, { path, text }) => s.vaults.keepVersion(path, text));
 	handle(CH.HISTORY_RESTORE, (s, { path, id }) => {
 		s.vaults.resolve(path);
 		const text = readSnapshot(s.vaults.root, path, id);

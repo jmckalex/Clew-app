@@ -245,12 +245,36 @@ class EditorPool extends Emitter {
 		if (!entry?.view || !entry.dirty || entry.conflict) return;
 		const content = entry.view.state.doc.toString();
 		try {
-			await ipc.invoke(CH.NOTE_WRITE, { path: entry.path, content });
+			// Guarded: main refuses a save over a version it has not seen —
+			// another device's or app's, landed before the watcher said so
+			// (main/write-guard.js) — and hands back what is on disk.
+			const result = await ipc.invoke(CH.NOTE_WRITE, { path: entry.path, content, guard: true });
+			if (result?.conflict) {
+				if (this.#entries.get(tabId) === entry) await this.#hold(tabId, entry, content, result.disk, 'save');
+				return;
+			}
 			entry.lastWrittenText = content;
 			this.#setDirty(tabId, false);
 		} catch (err) {
 			console.error(`Failed to save ${entry.path}:`, err);
 		}
+	}
+
+	/**
+	 * Two versions of one note: the editor's (`mine`) and another on disk
+	 * (`theirs`). Both go to the note's history FIRST — nothing is chosen
+	 * yet, and whatever is chosen, neither is lost — then auto-save holds
+	 * and the host offers the choice (renderer/conflicts.js). `kind`: 'save'
+	 * (a save main refused) or 'disk' (a change arrived under unsaved edits).
+	 */
+	async #hold(tabId, entry, mine, theirs, kind) {
+		entry.save.cancel();
+		entry.conflict = theirs;
+		entry.conflictKind = kind;
+		await ipc.invoke(CH.HISTORY_KEEP, { path: entry.path, text: theirs }).catch(() => {});
+		await ipc.invoke(CH.HISTORY_KEEP, { path: entry.path, text: mine }).catch(() => {});
+		if (this.#entries.get(tabId) !== entry || entry.conflict !== theirs) return;
+		this.emit('conflict-changed', { tabId, active: true, kind });
 	}
 
 	#setDirty(tabId, dirty) {
@@ -303,10 +327,10 @@ class EditorPool extends Emitter {
 				this.#reload(tabId, entry, disk);
 				continue;
 			}
-			// Local unsaved edits AND a different version on disk.
-			entry.conflict = disk;
-			entry.save.cancel();
-			this.emit('conflict-changed', { tabId, active: true });
+			if (entry.conflict === disk) continue;
+			// Local unsaved edits AND a different version on disk — or, while a
+			// conflict is open, a newer one: it is the new "theirs", kept too.
+			await this.#hold(tabId, entry, current, disk, entry.conflictKind ?? 'disk');
 		}
 	}
 
@@ -319,28 +343,55 @@ class EditorPool extends Emitter {
 		entry.lastWrittenText = content;
 		entry.save.cancel();
 		this.#setDirty(tabId, false);
+		this.emit('reloaded', { tabId, path: entry.path, text: content });
 	}
 
-	/** Resolve a conflict: 'keep' writes the editor's version over the disk
-	 *  version; 'reload' discards local edits and loads the disk version. */
-	async resolveConflict(tabId, choice) {
+	/**
+	 * Resolve a conflict (renderer/conflicts.js offers the choice):
+	 * - 'mine': the editor's text is written over the disk's, by force;
+	 * - 'theirs': the disk's is loaded into the editor (read afresh, so main
+	 *   has seen it — the next save is not refused for it);
+	 * - 'both': the disk's goes to `sibling` ("Note (conflict date).md"),
+	 *   and the editor's is written to the note.
+	 * The editor's text is kept in history first, whatever is chosen: it may
+	 * have grown since the conflict began (CONFLICT-SAFETY.md item 3, the
+	 * banner's old "Load disk version", which dropped it). 'keep' and
+	 * 'reload' are the old names of 'mine' and 'theirs'.
+	 */
+	async resolveConflict(tabId, choice, { sibling = null } = {}) {
 		const entry = this.#entries.get(tabId);
-		if (!entry?.conflict) return;
-		const disk = entry.conflict;
-		entry.conflict = null;
-		if (choice === 'reload') {
-			this.#reload(tabId, entry, disk);
-		} else {
-			const content = entry.view.state.doc.toString();
-			try {
-				await ipc.invoke(CH.NOTE_WRITE, { path: entry.path, content });
-				entry.lastWrittenText = content;
+		if (!entry?.conflict) return null;
+		const which = choice === 'keep' ? 'mine' : choice === 'reload' ? 'theirs' : choice;
+		const { path } = entry;
+		const theirs = entry.conflict;
+		const mine = entry.view.state.doc.toString();
+		await ipc.invoke(CH.HISTORY_KEEP, { path, text: mine }).catch(() => {});
+		let wrote = null;
+		try {
+			if (which === 'theirs') {
+				const disk = await ipc.invoke(CH.NOTE_READ, { path }).catch(() => theirs);
+				entry.conflict = null;
+				entry.conflictKind = null;
+				this.#reload(tabId, entry, disk);
+			} else {
+				if (which === 'both') {
+					if (!sibling) throw new Error('keep both: no name for the other version');
+					await ipc.invoke(CH.NOTE_WRITE, { path: sibling, content: theirs });
+					wrote = sibling;
+				}
+				entry.conflict = null;
+				entry.conflictKind = null;
+				await ipc.invoke(CH.NOTE_WRITE, { path, content: mine, force: true });
+				entry.lastWrittenText = mine;
 				this.#setDirty(tabId, false);
-			} catch (err) {
-				console.error(`Failed to save ${entry.path}:`, err);
 			}
+		} catch (err) {
+			console.error(`Failed to resolve the conflict in ${path}:`, err);
+			entry.conflict = entry.conflict ?? theirs;
+			throw err;
 		}
 		this.emit('conflict-changed', { tabId, active: false });
+		return { choice: which, sibling: wrote };
 	}
 
 	/** A file was renamed: keep editors and cached states pointed right. */

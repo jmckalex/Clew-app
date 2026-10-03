@@ -74,12 +74,19 @@ escapes print as themselves (`\$` out of MathJax's reach — pdf-quote.js now
 writes `\$`); the LaTeX-export lint shown as a quiet "⚠ N" in the status bar
 and in an export's notice (renderer/build-warnings.js); `{-}` and generated
 headings unnumbered (live/numbering.js; the crossref parity is now strict).
+Then **desktop edit-conflict safety** (Clew-iOS CONFLICT-SAFETY.md items
+1–4; CLAUDE.md "Edit-conflict safety"): main's write guard, the pool's hold
+with both versions in history first, Keep mine / theirs / both / Compare,
+Dropbox copies and git markers. Item 5 (iCloud's NSFileVersion on the Mac)
+needs a native helper — later, with the owner.
 
 **Queued by Clew-boss (2026-10-03), in order:**
-1. Desktop edit-conflict safety: Clew-iOS CONFLICT-SAFETY.md items 1–4, not 5. Record the mtime from a fresh stat AFTER the rename (Clew-iOS's lesson), and test ten saves spaced past the autosave debounce.
-2. (B): the app rows get their own "Apps" subsection in Settings → This vault, so the refusal text's pointer is true.
-3. (C): the write-grant indicator, the note-changed and grant-changed events (§8–§9), and the per-embed list if cheap.
-4. tests/app-calls.test.js hung >10 min once under load: make it deterministic.
+1. (B): the app rows get their own "Apps" subsection in Settings → This vault, so the refusal text's pointer is true.
+2. (C): the write-grant indicator, the note-changed and grant-changed events (§8–§9), and the per-embed list if cheap.
+3. tests/app-calls.test.js hung >10 min once under load: make it deterministic.
+4. When jmarkdown lands the export hook (configured bibliography files named
+   by the host — Clew-boss asked for it), wire export.js to pass the vault's
+   bibliography: a small follow-up commit.
 
 **The rules this session works under** (the owner's, relayed by the
 coordinating session "Clew-boss", uds `/tmp/cc-socks/6958.sock` at the

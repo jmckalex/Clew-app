@@ -12,7 +12,7 @@
 // its tree, file operations, chokidar watching, and .clew/ state persistence.
 // All renderer-supplied paths are vault-relative and validated to stay inside
 // the vault root.
-import { shell } from 'electron';
+import { app, shell } from 'electron';
 import chokidar from 'chokidar';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -22,7 +22,8 @@ import { settings } from './settings.js';
 import { direntKind, shouldRecurse, walkGuard, writeFileAtomic, WATCH_BUDGET, WATCH_CEILING, watchFilter, watchPlan, scanShare, knownPaths } from './fs-utils.js';
 import { insideByRealpath } from '../engine/vault-bounds.js';
 import { compileExcludes } from './vault-excludes.js';
-import { snapshotBeforeWrite, renameHistory } from './history.js';
+import { snapshotBeforeWrite, renameHistory, keepVersion } from './history.js';
+import { WriteGuard } from './write-guard.js';
 
 // The walk/watch rules (which directories are never shown, and the
 // descriptor budget the watcher lives inside) are in fs-utils.js, with the
@@ -93,6 +94,7 @@ export class VaultManager {
 		}
 		this.close();
 		this.root = abs;
+		this.guard.clear();
 		fs.mkdirSync(path.join(abs, '.clew'), { recursive: true });
 		settings.rememberVault(abs);
 		this.excludes = compileExcludes(this.loadState('vault-settings.json') ?? {});
@@ -234,20 +236,43 @@ export class VaultManager {
 		return abs;
 	}
 
+	/** What each note was when last read or written here (write-guard.js). */
+	guard = new WriteGuard();
+
 	readNote(rel) {
-		return fs.readFileSync(this.resolve(rel), 'utf8');
+		return this.guard.read(rel, this.resolve(rel));
 	}
 
-	writeNote(rel, content) {
+	/**
+	 * Write a note. `guard` (an editor's save — the only writer that can
+	 * answer a refusal): refuse a write over a version this vault has not
+	 * seen, answering `{ conflict: true, disk }` and writing nothing;
+	 * `force` writes regardless (the user chose to keep theirs over it).
+	 * Every write, guarded or not, is remembered as seen.
+	 */
+	writeNote(rel, content, { guard = false, force = false } = {}) {
 		const abs = this.resolve(rel);
+		if (guard && !force) {
+			const refused = this.guard.check(rel, abs, content);
+			if (refused) return refused;
+		}
 		const created = !fs.existsSync(abs);
 		fs.mkdirSync(path.dirname(abs), { recursive: true });
 		this.snapshotHistory(rel);
 		writeFileAtomic(abs, content);
+		this.guard.wrote(rel, abs, content);
 		// A NEW file (an annotations note, a template's output, a save to a
 		// path that did not exist) is a structure change; an autosave of an
 		// existing note is not, and must not pay for a tree walk.
 		if (created) this.refreshTree();
+		return { written: true };
+	}
+
+	/** Keep `text` as a version of `rel` in its history, now (a conflict's
+	 *  two sides, before anything is chosen — history.js#keepVersion). */
+	keepVersion(rel, text) {
+		this.resolve(rel);
+		return keepVersion(this.root, rel, text);
 	}
 
 	/**
@@ -381,11 +406,23 @@ export class VaultManager {
 		fs.mkdirSync(path.dirname(to), { recursive: true });
 		fs.renameSync(from, to);
 		renameHistory(this.root, rel, newRel);
+		this.guard.forget(rel);
 		this.refreshTree();
 	}
 
 	async trash(rel) {
-		await shell.trashItem(this.resolve(rel));
+		const abs = this.resolve(rel);
+		if (process.env.CLEW_SMOKE) {
+			// A scenario's file never lands in the user's own Trash: it goes
+			// into the run's userData, and the log says so.
+			const bin = path.join(app.getPath('userData'), 'smoke-trash');
+			fs.mkdirSync(bin, { recursive: true });
+			fs.renameSync(abs, path.join(bin, `${Date.now()}-${path.basename(abs)}`));
+			console.log(`smoke-trash: ${rel}`);
+		} else {
+			await shell.trashItem(abs);
+		}
+		this.guard.forget(rel);
 		this.refreshTree();
 	}
 

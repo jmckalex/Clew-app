@@ -34,6 +34,7 @@ export const CH = {
 	HISTORY_LIST: 'clew:history-list',
 	HISTORY_READ: 'clew:history-read',
 	HISTORY_RESTORE: 'clew:history-restore',
+	HISTORY_KEEP: 'clew:history-keep',
 
 	// invoke: persistence
 	WORKSPACE_LOAD: 'clew:workspace-load',
