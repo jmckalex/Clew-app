@@ -1,15 +1,20 @@
-import { test } from 'node:test';
+import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createRemotePdfCache, remoteKey } from '../src/main/remote-pdf-cache.js';
 
+// One temp root for this file, removed when it is done: fixtures used to
+// be left in the system's temp folder, thousands of them over the runs.
+const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'clew-remote-'));
+after(() => fs.rmSync(tmpRoot, { recursive: true, force: true }));
+
 const PDF = (n = 1) => Buffer.from(`%PDF-1.7\n${'x'.repeat(n)}\n%%EOF\n`);
 const DAY = 24 * 60 * 60 * 1000;
 
 function setup({ responses = {}, limits } = {}) {
-	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'clew-remote-'));
+	const dir = fs.mkdtempSync(path.join(tmpRoot, 'clew-remote-'));
 	let clock = 1_000_000;
 	const calls = [];
 	const fetchPdf = async (url, opts) => {

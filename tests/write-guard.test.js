@@ -8,7 +8,7 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { test } from 'node:test';
+import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -16,8 +16,13 @@ import path from 'node:path';
 import { WriteGuard, guardable } from '../src/main/write-guard.js';
 import { writeFileAtomic } from '../src/main/fs-utils.js';
 
+// One temp root for this file, removed when it is done: fixtures used to
+// be left in the system's temp folder, thousands of them over the runs.
+const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'clew-guard-'));
+after(() => fs.rmSync(tmpRoot, { recursive: true, force: true }));
+
 function note(text = '# Note\n') {
-	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'clew-guard-'));
+	const dir = fs.mkdtempSync(path.join(tmpRoot, 'clew-guard-'));
 	const abs = path.join(dir, 'Note.md');
 	fs.writeFileSync(abs, text);
 	return { dir, abs };

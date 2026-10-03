@@ -8,15 +8,20 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { test } from 'node:test';
+import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { KvStore, KV_FILE } from '../src/main/kv-store.js';
 
+// One temp root for this file, removed when it is done: fixtures used to
+// be left in the system's temp folder, thousands of them over the runs.
+const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'clew-kv-'));
+after(() => fs.rmSync(tmpRoot, { recursive: true, force: true }));
+
 function makeStore() {
-	const root = fs.mkdtempSync(path.join(os.tmpdir(), 'clew-kv-'));
+	const root = fs.mkdtempSync(path.join(tmpRoot, 'clew-kv-'));
 	const store = new KvStore();
 	const events = [];
 	store.send = (_ch, payload) => events.push(payload);

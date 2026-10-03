@@ -8,7 +8,7 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { test } from 'node:test';
+import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -16,8 +16,13 @@ import path from 'node:path';
 import { direntKind, shouldRecurse, walkGuard } from '../src/main/fs-utils.js';
 import { Indexer } from '../src/main/indexer.js';
 
+// One temp root for this file, removed when it is done: fixtures used to
+// be left in the system's temp folder, thousands of them over the runs.
+const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'clew-symlinks-'));
+after(() => fs.rmSync(tmpRoot, { recursive: true, force: true }));
+
 function makeFixture() {
-	const base = fs.mkdtempSync(path.join(os.tmpdir(), 'clew-symlinks-'));
+	const base = fs.mkdtempSync(path.join(tmpRoot, 'clew-symlinks-'));
 	const vault = path.join(base, 'vault');
 	const external = path.join(base, 'external');
 	fs.mkdirSync(vault);

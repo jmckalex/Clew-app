@@ -1,11 +1,16 @@
-import { test } from 'node:test';
+import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createGrantStore, grantState } from '../src/main/app-grants.js';
 
-const file = () => path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'clew-grants-')), 'app-grants.json');
+// One temp root for this file, removed when it is done: fixtures used to
+// be left in the system's temp folder, thousands of them over the runs.
+const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'clew-grants-'));
+after(() => fs.rmSync(tmpRoot, { recursive: true, force: true }));
+
+const file = () => path.join(fs.mkdtempSync(path.join(tmpRoot, 'clew-grants-')), 'app-grants.json');
 const m = (caps) => ({ id: 'timer', capabilities: caps });
 
 test('answers persist, per vault and id; a new capability is asked for alone', () => {

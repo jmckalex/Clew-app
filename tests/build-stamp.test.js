@@ -8,15 +8,20 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { test } from 'node:test';
+import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { sourceHashes, writeBuildStamp, staleSources } from '../src/main/build-stamp.js';
 
+// One temp root for this file, removed when it is done: fixtures used to
+// be left in the system's temp folder, thousands of them over the runs.
+const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'clew-stamp-test-'));
+after(() => fs.rmSync(tmpRoot, { recursive: true, force: true }));
+
 const checkout = () => {
-	const root = fs.mkdtempSync(path.join(os.tmpdir(), 'clew-stamp-test-'));
+	const root = fs.mkdtempSync(path.join(tmpRoot, 'clew-stamp-test-'));
 	fs.mkdirSync(path.join(root, 'src', 'renderer'), { recursive: true });
 	fs.writeFileSync(path.join(root, 'src', 'renderer', 'a.js'), 'export const a = 1;\n');
 	fs.writeFileSync(path.join(root, 'src', 'b.css'), 'body {}\n');

@@ -8,7 +8,7 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { test } from 'node:test';
+import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -18,7 +18,12 @@ import {
 	prepareNoteFonts, readNoteFonts, tableChecksum, tableDirectory,
 } from '../src/main/note-fonts.js';
 
-const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'clew-note-fonts-'));
+// One temp root for this file, removed when it is done: fixtures used to
+// be left in the system's temp folder, thousands of them over the runs.
+const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'clew-note-fonts-'));
+after(() => fs.rmSync(tmpRoot, { recursive: true, force: true }));
+
+const tmp = () => fs.mkdtempSync(path.join(tmpRoot, 'clew-note-fonts-'));
 
 // ---- a collection built by hand, so the extractor is tested everywhere ----
 

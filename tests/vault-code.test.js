@@ -1,10 +1,15 @@
-import { test } from 'node:test';
+import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { noteCodeKinds, codeSummary } from '../src/main/vault-code.js';
 import { requestsOf, readVaultRequests } from '../src/main/vault-requests.js';
+
+// One temp root for this file, removed when it is done: fixtures used to
+// be left in the system's temp folder, thousands of them over the runs.
+const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'clew-code-'));
+after(() => fs.rmSync(tmpRoot, { recursive: true, force: true }));
 
 test('noteCodeKinds finds code that announces itself, outside code', () => {
 	assert.deepEqual(noteCodeKinds('# Plain\n\nNothing here.'), []);
@@ -21,7 +26,7 @@ test('noteCodeKinds finds code that announces itself, outside code', () => {
 });
 
 test('codeSummary counts what would run, and a vault with none is empty', () => {
-	const root = fs.mkdtempSync(path.join(os.tmpdir(), 'clew-code-'));
+	const root = fs.mkdtempSync(path.join(tmpRoot, 'clew-code-'));
 	fs.writeFileSync(path.join(root, 'A.md'), '# A\n\n<script>\n  go()\n</script>\n');
 	fs.writeFileSync(path.join(root, 'B.md'), '# B\n\nplain\n');
 	const plain = codeSummary({ root, notePaths: ['B.md'], requests: requestsOf({}) });
@@ -46,7 +51,7 @@ test('codeSummary counts what would run, and a vault with none is empty', () => 
 });
 
 test('readVaultRequests: a missing file is an empty request', () => {
-	const root = fs.mkdtempSync(path.join(os.tmpdir(), 'clew-req-'));
+	const root = fs.mkdtempSync(path.join(tmpRoot, 'clew-req-'));
 	assert.deepEqual(readVaultRequests(root), { enable: { plugins: [], noteApi: false, dataviewJs: false, network: false } });
 	fs.rmSync(root, { recursive: true, force: true });
 });

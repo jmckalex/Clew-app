@@ -1,12 +1,17 @@
-import { test } from 'node:test';
+import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createTrustStore, fingerprintOf, identityKey, effectiveAccess, normalizeEnable } from '../src/main/vault-trust.js';
 
+// One temp root for this file, removed when it is done: fixtures used to
+// be left in the system's temp folder, thousands of them over the runs.
+const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'clew-trust-'));
+after(() => fs.rmSync(tmpRoot, { recursive: true, force: true }));
+
 function scratch() {
-	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'clew-trust-'));
+	const dir = fs.mkdtempSync(path.join(tmpRoot, 'clew-trust-'));
 	const vault = (name) => {
 		const root = path.join(dir, name);
 		fs.mkdirSync(root, { recursive: true });

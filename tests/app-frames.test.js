@@ -1,11 +1,16 @@
-import { test } from 'node:test';
+import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { parseManifest, appKey, appsById, resolveApp, appFile, appCsp, injectBridge, codeHash, describeCapabilities } from '../src/main/app-frames.js';
 
-const vault = () => fs.mkdtempSync(path.join(os.tmpdir(), 'clew-apps-'));
+// One temp root for this file, removed when it is done: fixtures used to
+// be left in the system's temp folder, thousands of them over the runs.
+const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'clew-apps-'));
+after(() => fs.rmSync(tmpRoot, { recursive: true, force: true }));
+
+const vault = () => fs.mkdtempSync(path.join(tmpRoot, 'clew-apps-'));
 const put = (root, rel, text) => { fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true }); fs.writeFileSync(path.join(root, rel), text); };
 const manifest = (o) => JSON.stringify({ id: 'timer', name: 'Timer', ...o });
 

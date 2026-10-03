@@ -8,15 +8,20 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { test } from 'node:test';
+import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { STAMP_FILES, assetStamp, stampChanged } from '../src/main/asset-stamp.js';
 
+// One temp root for this file, removed when it is done: fixtures used to
+// be left in the system's temp folder, thousands of them over the runs.
+const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'clew-stamp-'));
+after(() => fs.rmSync(tmpRoot, { recursive: true, force: true }));
+
 test('the stamp follows the engines, the bundle indexes and the app version, and nothing else', () => {
-	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'clew-stamp-'));
+	const dir = fs.mkdtempSync(path.join(tmpRoot, 'clew-stamp-'));
 	fs.mkdirSync(path.join(dir, 'bundles'));
 	for (const f of STAMP_FILES) fs.writeFileSync(path.join(dir, f), 'v1');
 	fs.writeFileSync(path.join(dir, 'auto.js'), 'not part of the stamp');
@@ -35,7 +40,7 @@ test('the stamp follows the engines, the bundle indexes and the app version, and
 });
 
 test('stampChanged records the stamp and reports a change once', () => {
-	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'clew-stamp-'));
+	const dir = fs.mkdtempSync(path.join(tmpRoot, 'clew-stamp-'));
 	const record = path.join(dir, 'deeper', 'asset-stamp.txt');
 	assert.equal(stampChanged(record, 'A'), true, 'no record yet: clear once');
 	assert.equal(fs.readFileSync(record, 'utf8'), 'A');

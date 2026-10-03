@@ -8,7 +8,7 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { test } from 'node:test';
+import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -17,8 +17,13 @@ import {
 	isTracked, snapshotBeforeWrite, listSnapshots, readSnapshot, renameHistory,
 } from '../src/main/history.js';
 
+// One temp root for this file, removed when it is done: fixtures used to
+// be left in the system's temp folder, thousands of them over the runs.
+const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'clew-history-'));
+after(() => fs.rmSync(tmpRoot, { recursive: true, force: true }));
+
 function makeVault() {
-	const root = fs.mkdtempSync(path.join(os.tmpdir(), 'clew-history-'));
+	const root = fs.mkdtempSync(path.join(tmpRoot, 'clew-history-'));
 	fs.mkdirSync(path.join(root, 'Sub'));
 	fs.writeFileSync(path.join(root, 'A.md'), 'version one\n');
 	fs.writeFileSync(path.join(root, 'Sub', 'B.md'), 'b text\n');
