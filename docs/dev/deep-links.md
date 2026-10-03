@@ -98,3 +98,71 @@ clew export --latex|--pdf|--html <note>  export a note beside it
   (exit 1); no app → "Clew is not running" without a launcher, and with the
   shim's launcher Clew STARTED and opened the note (1 s); the shim written by
   the real Help menu item and used.
+
+## Without RunAsNode — the fuses (a note for the owner; nothing changed)
+
+*Clew-boss raised it, 2026-10-03.* Electron's hardening advice is to turn
+OFF the `RunAsNode` and `EnableNodeCliInspectArguments` fuses in shipped
+builds, and ON `OnlyLoadAppFromAsar` and `EmbeddedAsarIntegrityValidation`.
+With RunAsNode on (Clew configures no fuses), any local process can run
+Clew's signed binary as plain Node (`ELECTRON_RUN_AS_NODE=1`) and act with
+the macOS privacy grants the user gave Clew (Files and Folders, Full Disk
+Access if granted). The `clew` shim above relies on exactly that.
+
+**What turning the fuses off would cost — more than the command.**
+
+- `RunAsNode` OFF breaks every worker Clew starts with
+  `child_process.fork` — inside Electron, `fork` IS RunAsNode
+  (`process.execPath` + `ELECTRON_RUN_AS_NODE=1`): the render workers
+  (`render-service.js`), note exports (`export.js`) and site exports
+  (`export-site.js`). Reading view, live edit's frames and every export
+  would stop. The way out is Electron's own `utilityProcess.fork`, which
+  works with the fuse off — but the engine's `watch-worker.js` talks
+  `process.send` / `process.on('message')`, and a utility process talks
+  `process.parentPort`. Clew would need a small wrapper script that bridges
+  the two before importing the worker (no engine change), and the
+  render-service's fork/kill/standby logic moved to the utilityProcess
+  API. A day's work, plus a full sweep; the risk is in the warm-standby
+  and generation-counter paths.
+- `EnableNodeCliInspectArguments` OFF: no cost (`--inspect` is debugging).
+- `OnlyLoadAppFromAsar` ON: no cost — the app is `app.asar` (dist/ +
+  package.json); the engine and assets outside it are files the workers
+  read, not the app.
+- `EmbeddedAsarIntegrityValidation` ON: electron-builder writes the asar
+  hash into Info.plist when asked (`electronFuses` in the build config);
+  nothing patches the asar at run time, so no cost beyond the setting.
+  The boot test must then run against the packaged binary as now.
+
+**How the command could work without RunAsNode.**
+
+1. **The binary is its own client (recommended).** The shim runs Clew's
+   binary NORMALLY with `--clew-cli <command…>`. Very early in main.js —
+   where the single-instance lock is taken — a process carrying
+   `--clew-cli`:
+   - that did NOT get the lock (Clew is running) connects to the socket,
+     sends the request, prints the answer and exits with its code, before
+     any window or the app's ready;
+   - that DID get the lock (Clew is not running) starts the real app
+     detached (without the flag), waits for its socket, and does the same.
+   Replies, exit codes and `export`'s output path all survive; nothing runs
+   as Node. Cost: one Electron process start per command (a few hundred
+   ms, it exits before ready). The JSON protocol, the socket and the host
+   stay exactly as built.
+2. **A POSIX shell shim over the socket** (`nc -U`). macOS's BSD `nc` has
+   `-U`; Linux distributions ship different netcats (openbsd-netcat has
+   `-U`, others do not, `socat` is not standard). Building a JSON line
+   from arguments in `sh` needs careful escaping, and reading the answer
+   back means parsing JSON with `sed`. Works on macOS, fragile elsewhere.
+3. **Hand the command over as argv** (`second-instance`): the shim runs
+   the binary with the command; the running app receives argv and cwd and
+   acts. No reply channel — the terminal learns nothing (no "exported …",
+   no exit code); acceptable for `open`/`new`, poor for `export`.
+4. **`open 'clew://…'`** (macOS `open`, Linux `xdg-open`) for open/new,
+   with only `export` needing the socket. The command would then obey the
+   LINK rules — asking before an unknown vault, even for the user's own
+   command — and still need a client for export (1 or 2).
+
+Recommendation: if the fuses are turned off, do 1 for the command — it
+keeps everything the command does today — and move the workers to
+`utilityProcess` first, because that, not the command, is what the fuse
+would break. Both are the owner's call; nothing has changed tonight.
