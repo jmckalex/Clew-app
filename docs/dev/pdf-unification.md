@@ -271,6 +271,57 @@ band=1 on=1 click=1 away=0 focus=1 blur=0`, the fade starting ~0.8 s after
 leaving, a real click on "›" turning the page with the pill kept;
 synthetic touch `tap-band=1 tap-elsewhere=0`.
 
+### 7b. PDF save safety (2026-10-03, the owner's ask)
+
+The notes' write guard (2f5d80d) extended to annotated PDFs: a viewer's
+save never overwrites a version of the PDF it did not LOAD — the PDF
+annotated on another device and synced in, saved by another app, or by
+another viewer of it in this window.
+
+- **The version** a viewer loaded is the SHA-1 of its bytes, computed in
+  the viewer as it opens them (`pdf-core.js#versionOf`, `crypto.subtle`) —
+  nothing recorded when the file was served, so a port keeps the viewer
+  code and checks natively. Every save carries it as `base`.
+- **The check** (`main/pdf-guard.js`, electron-free, tested;
+  `vault.writePdf`): the write goes ahead when the disk still holds `base`,
+  or already holds exactly the bytes being written; otherwise NOTHING is
+  written, both versions go to the PDF's history first
+  (`.clew/history/<rel>/<stamp>.pdf` — `history.js#keepVersion(…, { any:
+  true })`, bytes as they are), and the answer is `{ conflict, mine,
+  theirs }` (their history names). The disk's hash is cached by mtime and
+  size, refreshed by a FRESH stat after every write, so an ordinary
+  autosave reads nothing back. A save with no `base` (an older viewer)
+  cannot be judged and writes, as all did before.
+- **The viewer** pauses: autosave held (`handle.conflict`), its status "not
+  saved — changed elsewhere", not dirty (the close handshake must not wait
+  for a save that will not land), and says `pdf-conflict` up to the app
+  page — from a tab, a canvas card, a note's embed or a scene alike.
+- **The sheet** (`renderer/pdf-conflicts.js`, the notes' sheet without its
+  line diff): Keep mine (saved over theirs, `force`) / Keep theirs (the
+  viewer reloads the disk's; mine stays in history) / **Keep both, side by
+  side** (mine written NEW as "x (conflict YYYY-MM-DD).pdf" — `create`,
+  never over a file — the viewer reloads theirs, and the copy opens in the
+  pane beside, a new one split off when there is only one) / Later (a
+  persistent notice with "Resolve…"; nothing saves meanwhile). ◆ Compare: a
+  PDF has no line diff, so comparing is looking at both — which is what
+  Keep both does; a separate "Compare" would have had to write the copy
+  anyway.
+- The VIEWER carries the choice out (`pdf-resolve` → `pdf-resolved`): it
+  holds mine, edits made since the refusal included. A viewer that has gone
+  (its tab closed before the choice) cannot: the versions in history do it
+  (`CH.PDF_VERSION_RESTORE`).
+- Measured with real input (`smoke/pdf-conflict-scenario.js`): before, the
+  other device's version was overwritten unseen (`sheet=false disk=mine
+  history=0`); after, `refused sheet=true disk=theirs history=2`, and each
+  choice — mine (`disk=mine`, later saves work, no second conflict), theirs
+  (the viewer reloaded without mine), both (`copy=mine`, side by side),
+  later (`notice=true`, an edit while held saves nothing) — in a tab and a
+  note's embed; with the tab closed before the choice, history did mine and
+  both.
+- **iOS** keeps the viewer and the sheet as they are and answers natively:
+  `PDF_WRITE` with `base`/`force`/`create` (refuse, keep both versions,
+  answer `{ conflict, mine, theirs }`), and `PDF_VERSION_RESTORE`.
+
 ## 8. iOS (worked through with the iOS session)
 
 The iPad has no Chromium viewer — WebKit shows a PDF in an iframe as ONE

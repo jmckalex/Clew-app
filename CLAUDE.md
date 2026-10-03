@@ -85,7 +85,7 @@ note API, plugins, and every settings key.
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
   dialect scanner's constructs and grammar, live edit's model, reveal rule,
-  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band, figure errors — 1098 tests. DOM/UI work is
+  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band, figure errors, the PDF save guard — 1103 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
@@ -1229,6 +1229,15 @@ except where the selection touches a construct. The durable design is
   (`pdfCjkFonts`), downloaded on demand into userData by
   `main/pdf-fonts.js` — 139 MB, so never shipped; `src/shared/pdf-fonts.json`
   (2.6 KB, regenerate with `scripts/gen-pdf-fonts.js`) names the files.
+  **A PDF save is GUARDED like a note's** (pdf-unification.md §7b,
+  2026-10-03): the viewer names the version it LOADED (the SHA-1 of its
+  bytes, `pdf-core.js#versionOf`) and `vault.writePdf` (`main/pdf-guard.js`)
+  refuses a write over any other version — both versions to the PDF's
+  history first, `{ conflict, mine, theirs }` back; the viewer pauses and
+  `renderer/pdf-conflicts.js` asks: Keep mine / Keep theirs / Keep both,
+  side by side (the copy "x (conflict YYYY-MM-DD).pdf", `create` — never
+  over a file) / Later. The viewer carries the choice out; one that has gone
+  leaves it to the versions in history (`PDF_VERSION_RESTORE`).
 - Exports (`export.js`) use the note's own directory as cwd — the user's
   normal jmarkdown config cascade, NOT the Clew preview config — except
   for a vault this device does not trust (below), whose exports run from
