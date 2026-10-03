@@ -671,11 +671,15 @@ if (process.env.CLEW_SMOKE) {
 							// at dispatch time from the frame (webFrameMain) and the
 							// iframe's own box in the app page. `match` is a substring
 							// of the frame's URL (the note), as CLEW_SMOKE_FRAME_MATCH.
+							// The selector also reaches into open shadow roots: the
+							// PDF viewer draws its UI in one.
 							const { match, selector } = ev.frameClick;
 							const frame = primary.webContents.mainFrame.framesInSubtree.find((f) =>
 								f.url.startsWith('clew-preview:') && f.url.includes(match) && f.parent === primary.webContents.mainFrame);
 							const inner = frame && await frame.executeJavaScript(`(() => {
-								const r = document.querySelector(${JSON.stringify(selector)})?.getBoundingClientRect();
+								const deep = (root) => root.querySelector(${JSON.stringify(selector)})
+									?? [...root.querySelectorAll('*')].reduce((hit, el) => hit ?? (el.shadowRoot ? deep(el.shadowRoot) : null), null);
+								const r = deep(document)?.getBoundingClientRect();
 								return r ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null; })()`);
 							const outer = inner && await primary.webContents.executeJavaScript(`(() => {
 								const f = [...document.querySelectorAll('iframe')].find((el) => el.offsetParent && (el.src || '').includes(${JSON.stringify(match)}));
@@ -747,6 +751,9 @@ if (process.env.CLEW_SMOKE) {
 							// every older scenario was written against) CDP's key
 							// inserts nothing.
 							if (ev.combo.text) Object.assign(params, { text: ev.combo.text, unmodifiedText: ev.combo.text });
+							// `code`: the physical key, when it is not the one `key`
+							// implies — a Mac's ⌥Q is key "œ" on code "KeyQ".
+							if (ev.combo.code) params.code = ev.combo.code;
 							await dbg.sendCommand('Input.dispatchKeyEvent', { type: 'keyDown', ...params });
 							await dbg.sendCommand('Input.dispatchKeyEvent', { type: 'keyUp', ...params });
 							for (const [bit, mod] of pressed.reverse()) {

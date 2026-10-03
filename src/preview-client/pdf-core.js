@@ -79,6 +79,55 @@ window.addEventListener('message', (event) => {
 	for (const h of liveHandles) h.flush?.();
 });
 
+// ---- quote-and-cite (FEATURE-IDEAS #2) -------------------------------------
+// The app page (renderer/pdf-quote.js) puts the text selected in a PDF into
+// the note being written. It needs to know WHERE a selection is — each
+// document says when it gains or loses one (`pdf-selection`), and the app
+// keeps the newest — and then the text: asked for by the app's command
+// (`pdf-quote-request`), or sent unasked by the "Quote in note" item each
+// viewer adds to EmbedPDF's selection menu. Either way the answer is one
+// `pdf-quote` message.
+let quoting = null;           // the viewer in this document with the newest selection
+let reportedSelection = false;
+function noteSelection(handle, has) {
+	if (has) quoting = handle;
+	else if (quoting === handle) quoting = null;
+	if (has || reportedSelection !== Boolean(quoting)) {
+		reportedSelection = Boolean(quoting);
+		postTo(window.top, { source: 'clew-pdf', type: 'pdf-selection', has: reportedSelection }, topOrigin());
+	}
+}
+window.addEventListener('message', (event) => {
+	const msg = event.data;
+	if (event.source !== window.top || msg?.source !== 'clew-pdf-host') return;
+	if (msg.type === 'pdf-quote-request') {
+		if (quoting) quoting.sendQuote(msg.requestId);
+		else postTo(window.top, { source: 'clew-pdf', type: 'pdf-quote', requestId: msg.requestId, empty: true }, topOrigin());
+	}
+	// For scenarios (smoke/pdf-quote-scenario.js): select `match` on `page`,
+	// through to `to.match` on `to.page` — EmbedPDF's own setSelection, which
+	// is what a drag ends in, so its selection menu appears as for a drag.
+	if (msg.type === 'test-select-text') {
+		const handle = [...viewerHandles].find((h) => h.selectText);
+		const reply = (ok, text = null) => postTo(window.top, { source: 'clew-pdf', type: 'test-selected', ok, text }, topOrigin());
+		if (!handle) reply(false);
+		else {
+			handle.selectText(msg.page, msg.match, msg.to)
+				.then(async (ok) => reply(ok, ok ? (await handle.selectedQuote())?.text ?? null : null), () => reply(false));
+		}
+	}
+});
+// A quotation-mark icon for the menu item, drawn here (no icon set copied).
+const QUOTE_ICON = {
+	viewBox: '0 0 24 24',
+	strokeLinecap: 'round',
+	strokeLinejoin: 'round',
+	paths: [
+		{ d: 'M5 7h4v5H5z M9 12c0 2.8-1.4 4.4-4 5', stroke: 'currentColor', fill: 'none', strokeWidth: 2 },
+		{ d: 'M14 7h4v5h-4z M18 12c0 2.8-1.4 4.4-4 5', stroke: 'currentColor', fill: 'none', strokeWidth: 2 },
+	],
+};
+
 /** clew-preview://vault/<sid>/<path> → the vault-relative <path>. */
 export function vaultRelOf(src) {
 	const pathname = new URL(src, location.href).pathname;      // /<sid>/<rel>
@@ -105,6 +154,7 @@ export async function createViewer({ target, src, onStatus = () => {}, readonly 
 		// goes (a note re-rendered without its embed, say), not dropped.
 		dispose() {
 			this.unlisten?.();
+			this.unquote?.();
 			liveHandles.delete(this);
 			viewerHandles.delete(this);
 			const pending = this.flush?.();
@@ -147,6 +197,7 @@ export async function createViewer({ target, src, onStatus = () => {}, readonly 
 		stamp: { manifests: [{ url: `${location.origin}/__clew_assets__/stamps/{locale}/manifest.json`, fallbackLocale: 'en' }] },
 		theme: { preference: document.documentElement.dataset.theme === 'light' ? 'light' : 'dark' },
 		tabBar: 'never',
+		icons: { clewQuote: QUOTE_ICON },
 		...(readonly ? { disabledCategories: ['annotation', 'redaction'] } : {}),
 	});
 	if (!container) throw new Error('EmbedPDF.init returned nothing');
@@ -287,6 +338,86 @@ export async function createViewer({ target, src, onStatus = () => {}, readonly 
 		scrollCap?.scrollToPage?.({ pageNumber: Math.max(1, Number(page) || 1), behavior: 'instant' });
 	};
 	handle.currentPage = () => scrollCap?.getCurrentPage?.() ?? null;
+	// The selection, for quote-and-cite: its text (one string per page) and
+	// the first page it touches, 1-based.
+	const selectionCap = registry.getPlugin('selection')?.provides();
+	handle.selectedQuote = async () => {
+		const formatted = selectionCap?.getFormattedSelection?.() ?? [];
+		if (!formatted.length) return null;
+		const text = await selectionCap.getSelectedText().toPromise();
+		return { page: Math.min(...formatted.map((f) => f.pageIndex)) + 1, text };
+	};
+	/** [first, last] char index of `match` on `page` (1-based) — a string,
+	 *  or { index, length } — or null. Searched run by run: the page's text
+	 *  as one slice carries line breaks (CRLF) that are no char index. */
+	const charsOf = async (page, match) => {
+		const d = doc();
+		const pageIndex = page - 1;
+		if (!engine || !d?.pages?.[pageIndex]) return null;
+		if (typeof match === 'object' && match) return [match.index, match.index + match.length - 1];
+		const { runs } = await engine.getPageGeometry(d, d.pages[pageIndex]).toPromise();
+		const slices = (runs ?? []).map((r) => ({ pageIndex, charIndex: r.charStart, charCount: r.glyphs.length }));
+		const texts = slices.length ? await engine.getTextSlices(d, slices).toPromise() : [];
+		let all = '';
+		const index = [];
+		texts.forEach((t, i) => {
+			[...(t ?? '')].forEach((c, j) => { all += c; index.push(slices[i].charIndex + j); });
+		});
+		const at = all.indexOf(match);
+		return at < 0 ? null : [index[at], index[at + match.length - 1]];
+	};
+	handle.selectText = async (page, match, to = null) => {
+		const start = await charsOf(page, match);
+		const end = to ? await charsOf(to.page, to.match) : start;
+		if (!start || !end || !selectionCap?.setSelection) return false;
+		await selectionCap.setSelection({ start: { page: page - 1, index: start[0] }, end: { page: (to?.page ?? page) - 1, index: end[1] } }).toPromise();
+		return true;
+	};
+	handle.sendQuote = async (requestId = null) => {
+		let quote = null;
+		let error = null;
+		try { quote = await handle.selectedQuote(); } catch (err) {
+			// EmbedPDF refuses a document that forbids copying its text.
+			error = /permission/i.test(String(err?.message ?? err)) ? 'copy-denied' : String(err?.message ?? err);
+		}
+		postTo(window.top, {
+			source: 'clew-pdf', type: 'pdf-quote', requestId,
+			path: rel, remote: readonly, page: quote?.page ?? null, text: quote?.text ?? null,
+			empty: !quote && !error, error,
+		}, topOrigin());
+	};
+	if (selectionCap) {
+		let has = false;
+		const off = selectionCap.onSelectionChange?.(() => {
+			const now = (selectionCap.getFormattedSelection?.() ?? []).length > 0;
+			if (now !== has) { has = now; noteSelection(handle, now); }
+		});
+		handle.unquote = () => { off?.(); if (has) noteSelection(handle, false); };
+		// The item in EmbedPDF's own selection menu, beside Copy. Its schema is
+		// read when the menu is drawn, so merging at runtime is enough — no
+		// change to the vendored viewer.
+		const commandsCap = registry.getPlugin('commands')?.provides();
+		const uiCap = registry.getPlugin('ui')?.provides();
+		const menus = uiCap?.getSchema?.()?.selectionMenus;
+		const menu = menus?.selection;
+		if (commandsCap?.registerCommand && menu && !menu.items.some((i) => i.id === 'clew-quote')) {
+			commandsCap.registerCommand({
+				id: 'clew:quote-in-note',
+				label: 'Quote in note',
+				icon: 'clewQuote',
+				categories: ['selection', 'selection-quote'],
+				action: () => { handle.sendQuote(); },
+			});
+			const item = { type: 'command-button', id: 'clew-quote', commandId: 'clew:quote-in-note', variant: 'icon', categories: ['selection', 'selection-quote'] };
+			const copyAt = menu.items.findIndex((i) => i.id === 'copy-selection');
+			const items = [...menu.items];
+			items.splice(copyAt + 1, 0, item);
+			const depends = menu.visibilityDependsOn
+				? { ...menu.visibilityDependsOn, itemIds: [...(menu.visibilityDependsOn.itemIds ?? []), 'clew-quote'] }
+				: menu.visibilityDependsOn;
+			uiCap.mergeSchema({ selectionMenus: { ...menus, selection: { ...menu, items, visibilityDependsOn: depends } } });
+		}
+	}
 	/**
 	 * For scenarios: annotations made from script as the UI makes them — a
 	 * highlight over the text run holding `match` on `page` (1-based), or a

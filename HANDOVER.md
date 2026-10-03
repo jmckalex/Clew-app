@@ -1,4 +1,4 @@
-# Handover — 2026-10-02 (0.12.0 released; origin/main 0423008; dev build 0.12.1-dev.1; callouts are the engine's)
+# Handover — 2026-10-03 (0.12.0 released; origin/main 67311b6; frame bridge phases 1–4, update check and quote-and-cite LOCAL)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it); the live edit design AS BUILT is
@@ -8,9 +8,9 @@ prefer deleting a settled item to explaining it again.
 
 ## Read this first
 
-**Where the code is.** `origin/main` = `0423008` — pushed 2026-10-02 on
-the owner's word ("push all", confirmed in this window), 19 commits
-9409987..0423008. Anything after it is local; `git fetch` before counting.
+**Where the code is.** `origin/main` = `67311b6` — the last push
+(2026-10-02, on the owner's word; `0423008` before it). Everything from
+`2f0ad5c` on is local; `git fetch` before counting.
 
 **Mac Silicon dev build 0.12.1-dev.1** (the owner's go, 2026-10-02), from
 `0423008` with the committed engine and EmbedPDF mirrors and the pinned
@@ -45,9 +45,36 @@ It was the pin for iOS sync #4; iOS copied it (sync5-p1-vendor
 **Frame bridge, tonight (owner's approval 2026-10-02, phases 1–4).**
 `832b6f5` the design revision R1–R3 (Clew-boss approved it as the basis for
 phase 3: choices A and B yes, D measured first, C = pin an app's code hash
-in a restricted vault whenever it holds `network`). Then phase 1, vault
-trust (§4) — see CLAUDE.md "Vault trust" and frame-bridge.md §4.9a. Open
-from it: the EmbedPDF default-stamps fetch (§4.9a — the owner's choice).
+in a restricted vault whenever it holds `network`). Then `6623303` phase 1,
+vault trust (§4) — see CLAUDE.md "Vault trust" and frame-bridge.md §4.9a;
+`e8c4738` + `fb32347` phase 2, the app page on `clew-app://app` and every
+postMessage naming its target's origin; `88b6dd2` the stamp library
+vendored (no jsdelivr request, the owner's option 1); `1f99cdd` phase 3 and
+`ecb5ff6` phase 4, apps in notes read and write (frame-bridge.md §7–§10 "as
+built"). Each measured from worktrees: render dump identical outside the
+engine's inlined stylesheet, PDF sweep identical, app batteries as expected,
+no `smoke-net:` line. Then `888bf25` the symlink check (a restricted vault's
+links out of itself are not followed — realpath, `engine/vault-bounds.js`);
+`4aeca69` engine `at-migration@4ab3d6a` (tabbing is the engine's, footnote
+labels numbered in live edit); `036befe` the update check v1
+(`docs/dev/auto-update.md` §7). Then **quote-and-cite from a PDF**
+(FEATURE-IDEAS #2; live-edit.md §5.15a): select text in any PDF viewer →
+"Quote in note" in the viewer's own selection menu, or `pdf:quote-selection`
+(⌥⌘Q, Edit menu) → a blockquote, `\cite[p. N]{key}` (the entry whose `file`
+is this PDF; a picker otherwise) and `[[x.pdf#page=N|PDF p. N]]` at the
+cursor of the note being edited.
+
+**Queued by Clew-boss (2026-10-03), in order:** (A) a website export leaves
+out `clewdata.json` and every app's `data/` (privacy); desktop edit-conflict
+safety (Clew-iOS CONFLICT-SAFETY.md items 1–4, not 5); (B) the app rows get
+their own "Apps" subsection in Settings → This vault, so the refusal text's
+pointer is true; (C) the write-grant indicator, the note-changed and
+grant-changed events (§8–§9), the per-embed list if cheap; then
+tests/app-calls.test.js hung >10 min once under load — make it
+deterministic. NEXT re-vendor (on Clew-boss's go): the engine's
+Bibliography becomes additive — `citation-header.js#noteBibFiles` returns
+the note's files PLUS the vault's (unless `Bibliography mode: replace`), and
+the LaTeX export's BIBINPUTS gains the vault bib's folder.
 
 **The rules this session works under** (the owner's, relayed by the
 coordinating session "Clew-boss", uds `/tmp/cc-socks/6958.sock` at the
@@ -163,18 +190,18 @@ Clew does neither. Report only; nothing built.
 As relayed by Clew-boss on 2026-10-01; none is to be started without the
 owner's word.
 
-- **The frame-bridge revision** — `docs/dev/frame-bridge.md` (§1 the
-  caller token is BUILT; §2 option (c), the app page moving to
-  `clew-app://app` so null-origin reads can be refused, is DESIGN only;
-  §3 Compatibility; §4 vault trust, of which the interim guard is built).
-  Read it before any build; it is built before any embedded-app feature
-  ships.
-- **Auto-update** — `docs/dev/auto-update.md`, its four open questions (§6).
-- **LaTeX export** — LuaLaTeX when a note uses fontspec, and the engine's
-  fallback for an unknown lexer.
-- **Tabbing** — `|*` and the fidelity items; and the **backport of
-  tabbing to jmarkdown** (`src/engine/tabbing.js` is self-contained so the
-  backport is a move; LaTeX export sees tabbing only after it).
+- **Quote-and-cite page numbers** — `\cite[p. N]` uses the PDF's own page
+  (what `#page=N` opens). A journal article's printed page differs, and
+  real PDFs say so: both measured papers carry `/PageLabels` (Yu 2012's PDF
+  page 2 is "p. 524"). Pdfium has `FPDF_GetPageLabel`; the EmbedPDF fork's
+  engine does not wrap it. The fix is a small method in the fork
+  (`~/Source/EmbedPDF/v2`, then `npm run sync-embedpdf`) — the owner's
+  call, since the fork is theirs.
+- **LaTeX export** — the engine's fallback for an unknown lexer, if
+  `4aeca69`'s pygments-lexers did not settle it (LuaLaTeX when a note
+  needs it is built: `0b4b7a4`).
+- **Tabbing** — `|*` and the fidelity items (the backport to jmarkdown is
+  done: `4aeca69`).
 - **The deferred code review** (`/code-review ultra`; the owner triggers
   it, never a session).
 - Two older offers awaiting a yes/no: parallelise `live-sweep.sh` (per-run

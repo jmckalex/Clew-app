@@ -29,6 +29,7 @@ import { officeDock } from './office-dock.js';
 import { installTrustBanner, trustBannerVaultShown } from './trust-banner.js';
 import { installAppHost } from './app-host.js';
 import { installUpdateNotice } from './update-notice.js';
+import { installPdfQuote } from './pdf-quote.js';
 import { installCalloutSync } from './callouts.js';
 import './components/chrome/clew-app.js';
 import './editor/toolbar/clew-selection-bubble.js';
@@ -126,6 +127,7 @@ registerBuiltinCommands();
 initPlugins();
 installHotkeys();
 installPdfSaveBridge();
+installPdfQuote();
 installOfficeSaveBridge();
 installOfficeThumbBridge();
 installExcalidrawSaveBridge();
@@ -152,6 +154,7 @@ import('./editor/live/table-cell-editor.js').then((m) => { window.__clew.activeC
 import('./commands/registry.js').then((registry) => { window.__clew.registry = registry; });
 import('./editor/live/numbering.js').then((m) => { window.__clew.numbering = m; });
 import('./pdf-annotations.js').then((m) => { window.__clew.pdfAnnotations = m; });
+import('./pdf-quote.js').then((m) => { window.__clew.pdfQuote = m; });
 
 // ---- boot -----------------------------------------------------------------
 

@@ -28,6 +28,7 @@ import { bookmarkStore } from '../state/bookmark-store.js';
 import { editorPool } from '../editor/pool.js';
 import { openQuickSwitcher } from '../components/modals/clew-quick-switcher.js';
 import { extractAnnotations } from '../pdf-annotations.js';
+import { quoteSelection } from '../pdf-quote.js';
 import { openListModal } from '../components/modals/list-modal.js';
 import { openHistoryModal } from '../components/modals/clew-history-modal.js';
 import { ipc, CH } from '../ipc.js';
@@ -169,6 +170,11 @@ export function registerBuiltinCommands() {
 		{ id: 'pdf:extract-annotations', name: 'PDF: extract annotations to a note',
 			when: (ctx) => ctx.activeTabKind === 'file' && /\.pdf$/i.test(ctx.activeTab?.path ?? ''),
 			run: (ctx) => extractAnnotations(ctx.activeTab.path) },
+		// FEATURE-IDEAS #2: the text selected in any PDF viewer, quoted into
+		// the note being written with its citation and page (pdf-quote.js).
+		// Always offered: with nothing selected it says so.
+		{ id: 'pdf:quote-selection', name: 'PDF: quote the selection in the note', hotkeys: ['Mod-Alt-q'], when: needsVault,
+			run: () => quoteSelection() },
 		{ id: 'nav:quick-switcher', name: 'Open quick switcher', hotkeys: ['Mod-o'], when: needsVault,
 			inModal: false, run: () => openQuickSwitcher() },
 		{ id: 'nav:back', name: 'Navigate back', hotkeys: ['Mod-[', 'Mod-Alt-ArrowLeft'], when: needsVault,

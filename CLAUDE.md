@@ -80,7 +80,7 @@ note API, plugins, and every settings key.
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
   dialect scanner's constructs and grammar, live edit's model, reveal rule,
-  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary — 999 tests. DOM/UI work is
+  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement) — 1048 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
@@ -137,9 +137,12 @@ note API, plugins, and every settings key.
   (`move` is a bare pointer move — hover; `modifiers` on it makes a
   ⌘-hover; a combo's `text` makes the key TYPE, as a real one does — a real
   Enter carries `"\r"`, which is what puts a newline in a textarea, and the
-  default, text-less key inserts nothing; `frameClick` clicks the centre of an element INSIDE a preview
+  default, text-less key inserts nothing; a combo's `code` names the
+  physical key when `key` does not imply it — a Mac's ⌥Q is key "œ" on
+  code "KeyQ"; `frameClick` clicks the centre of an element INSIDE a preview
   frame whose URL contains `match` — cross-origin, so the scenario cannot
-  measure it — resolved at dispatch time), dispatched over CDP
+  measure it — resolved at dispatch time, open shadow roots searched too:
+  the PDF viewer draws its UI in one), dispatched over CDP
   `Input.dispatch*` — `webContents.sendInputEvent` NEVER reaches OOPIFs
   (i.e. every preview iframe), and combos need real modifier keydowns
   around the letter. Each key carries a REAL `keyCode`, because xterm —
@@ -513,7 +516,9 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
 - `src/preview-client/client.js` — injected into every rendered note:
   morphdom patching (guards: scripts, canvas-embed scenes, initialized
   leaflet divs, custom elements — kept, attrs synced), postMessage bridge,
-  checkbox enabling, mermaid theming. Chrome a plugin or vault script adds
+  checkbox enabling, mermaid theming, the app's chords forwarded (its
+  `chordOf` mirrors the registry's — Option recovery included, or no ⌥
+  chord leaves a preview). Chrome a plugin or vault script adds
   to the document is discarded by every morph unless it carries
   **`data-clew-keep`** — the opt-out that lets a banner, an overlay or a
   PDF viewer survive a re-render instead of restarting. The reading view
@@ -931,6 +936,18 @@ except where the selection touches a construct. The durable design is
   `renderer/pdf-annotations.js` + the pure `shared/pdf-annotations-note.js`
   write or MERGE `<pdf> — Annotations.md` (never deleting); it flushes the
   viewer's pending autosave first. `[[x.pdf#page=N]]` opens a PDF tab there.
+- **Quote-and-cite from a PDF** (§5.15a): text selected in any PDF viewer
+  → "Quote in note" (added to EmbedPDF's OWN selection menu at runtime:
+  `commands.registerCommand` + `ui.mergeSchema`, no fork change) or
+  `pdf:quote-selection` (⌥⌘Q) → a blockquote, `\cite[p. N]{key}` (the
+  .bib entry whose `file` is this PDF; a picker otherwise) and
+  `[[x.pdf#page=N|PDF p. N]]`, as a block of its own at the cursor of the
+  note being edited (never one in reading mode). The text and its escaping
+  are `shared/pdf-quote.js`, every escape checked through the engine: `\[`
+  is display maths here, and `$` must reach MathJax as `\$`. `p. N` is the
+  PDF's page, not the printed one (page labels need the fork). A
+  programmatic insert must also `updateTabView` the cursor — the host
+  restores the RECORDED one on re-mount.
 - **Sidenotes** (§5.16): footnotes in the margin when the pane is wide —
   reading mode clones the engine's endnotes into a `data-clew-keep` layer
   (the end list hidden by a body class; print/export untouched), live edit

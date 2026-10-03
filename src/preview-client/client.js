@@ -360,6 +360,13 @@ function chordOf(e) {
 	if (e.altKey) parts.push('Alt');
 	if (e.shiftKey) parts.push('Shift');
 	let key = e.key;
+	// Option transforms the typed character on mac (⌥Q is œ): the base key
+	// from the physical code, as the registry does — without it no ⌥ chord
+	// was ever forwarded from here.
+	if (isMacLike && e.altKey) {
+		const m = /^(?:Key([A-Z])|Digit([0-9]))$/.exec(e.code);
+		if (m) key = m[1] ?? m[2];
+	}
 	if (key === ' ') key = 'Space';
 	if (key.length === 1) key = key.toLowerCase();
 	if (['Meta', 'Control', 'Alt', 'Shift'].includes(key)) return null;

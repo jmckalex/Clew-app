@@ -1204,6 +1204,78 @@ and re-run. Designed by the planning session; built overnight.
   four-page PDF written by hand (the demo's sample.pdf has one page, and a
   two-page one could not scroll page 2 to the top).
 
+### 5.15a Quote-and-cite from a PDF
+
+FEATURE-IDEAS #2 (owner-approved 2026-10-03): text selected in any PDF
+viewer — a tab, a canvas card, a note's embed — goes into the note being
+written in one gesture:
+
+    > Conventions are equilibria in a game of coordination; their
+    > evolutionary dynamics are slow.
+    >
+    > \cite[p. 1]{skyrms:1996} · [[Paper.pdf#page=1|PDF p. 1]]
+
+**As built:**
+
+- **Two ways in.** A "Quote in note" item (a drawn quotation-mark icon)
+  in EmbedPDF's OWN selection menu, next to Copy — added at runtime with
+  the viewer's `commands.registerCommand` and `ui.mergeSchema`
+  (`selectionMenus` is read when the menu is drawn, so no fork change);
+  and the command `pdf:quote-selection` (palette, Edit → Quote PDF
+  Selection in Note, ⌥⌘Q). Inside a PDF TAB (or canvas card) ⌥⌘Q does
+  not reach the app — pdf-page.html forwards no chords, EmbedPDF owning
+  ⌘F, ⌘C and ⌘Z there — so the menu item is the in-viewer route; the chord
+  works from a note, and from a PDF embedded in a note's reading view. ◆
+  That last one needed a fix found here: the preview client's `chordOf`
+  claimed to mirror the registry's but lacked its Option recovery (a Mac's
+  ⌥Q is key "œ"), so NO ⌥ chord was ever forwarded from a preview —
+  measured with a real ⌥⌘Q: nothing before, quoted after.
+- **The viewer** (`pdf-core.js`): each document reports when it gains or
+  loses a selection (`pdf-selection` to window.top); the app keeps the
+  newest one's window and asks it (`pdf-quote-request`); the answer, or the
+  menu item's unasked send, is one `pdf-quote` message {path, page — the
+  first page the selection touches —, text per page, remote, error}.
+  Listeners follow the message-guard rule (the app page only from the
+  preview origin; viewers only from window.top).
+- **The note** (`renderer/pdf-quote.js`): the active tab when it is a note
+  in source or live; else the note last active in an editing mode; else
+  the one note being edited on screen. A note in reading mode has no
+  cursor and is never written into — the command says so. The insert is a
+  block of its own: on a blank line, before a block the cursor starts, or
+  after the END of the block the cursor is in (never inside a paragraph,
+  quote or list; a heading ends at its line), blank lines either side,
+  the cursor after it so a second quote lands beneath. The tab's recorded
+  cursor is updated too: the host restores it when the note is shown
+  again, and a spot recorded before the insert would be inside the quote
+  (measured — a later quote split the first).
+- **The citation**: the `.bib` entry whose `file` field resolves to this
+  PDF (BIB_ENTRIES' `pdf.path`). Several (a chapter and its book), or none
+  while the vault has a bibliography → a picker: "Quote without a
+  citation", entries with the same FILE NAME first (a .bib written on
+  another machine), then the rest. No .bib at all → no citation, and the
+  notice says why. `\cite[p. N]{key}`, or `[@key, p. N]` with
+  `pandocCitations`. A web PDF (§4) is refused by name — save a copy.
+- **The text** (`shared/pdf-quote.js`, pure, tested): one paragraph; a
+  word broken by a line-end hyphen joined (`evo-\nlutionary`), soft
+  hyphens dropped. Markup the dialect would read is escaped, every rule
+  checked by rendering through the engine: `* _ ^ ~ \` <`, `==`, `::`
+  (a description list), `@name`, an opening `/` (dialect only), a first
+  line that would be a heading, list, table row or quote. ◆ Three need
+  more than a backslash: `[` never (`\[` is display maths here) — only
+  `[[` and `[@` become `&#91;`; a backslash is doubled; and `$` is written
+  `\\\$`, which the engine passes to the page as `\$` — a literal dollar to
+  MathJax (which typesets `$5 and $10` AFTER the engine) and to LaTeX. ◆
+  Live edit shows that one as `\$5`; reading mode and exports show `$5`.
+- ◆ **`p. N` is the PDF's page**, the one `#page=N` opens. Journal PDFs
+  carry `/PageLabels` (both real papers measured do: Yu 2012's page 2 is
+  "p. 524"); pdfium's `FPDF_GetPageLabel` is not wrapped by the fork's
+  engine, so the printed page needs a fork change — the owner's call.
+- **Smoke**: `pdf-quote-scenario.js` over `make-quote-vault.mjs`
+  (`--real`, `--real-unlisted`, `--pandoc`, `--chord`); selections through EmbedPDF's
+  own `setSelection` (the `test-select-text` hook — what a drag ends in),
+  the menu item by a REAL click (`frameClick` now searches open shadow
+  roots, where the viewer draws its UI).
+
 ### 5.16 Sidenotes
 
 When the pane is wide, footnotes sit in the margin beside the text that
