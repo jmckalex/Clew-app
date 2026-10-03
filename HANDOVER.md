@@ -55,12 +55,12 @@ commit, NOT pushed:**
   one is THERE; else `#jmarkdown/callout-table.js` (iOS can drop its
   admonitions.js build patch). `smoke/admonition-alias-scenario.js`.
 - `636c165` — trust-guard-scenario logs the prompt's buttons.
-- ◆ FOUND, not fixed: an UNTITLED ```ad-type fence draws no heading at all
-  (icon only — `ad-hint`, `ad-rem` alike), while an untitled `> [!type]` is
-  headed by its type. admonitions.js leaves a known type's title '' — which
-  Clew's own callout renderer used to fill; the engine's does not. One-line
-  fix (`untitledCalloutTitle(rawType)` from the table) + its test's
-  expectation; the owner's call.
+- the untitled ```ad-type fence (Clew-boss approved it as consistency with
+  the owner's callout rule): it drew NO heading — the engine heads an
+  untitled callout with `untitledCalloutTitle(token.written)`, and an
+  admonition token carried no `written`. Now it does: `ad-hint` → Hint,
+  `ad-rem` → Rem (as written, as `[!CAUTION]` → Caution). See the commit
+  after 51615b9.
 - ◆ mp-tikz-wasm 0.3.1 is published (52b7bbc, sha256 24b0cd29…, 44,239,255
   bytes; optional PDF output, lazier auto.js, Node workers; engines and SVG
   unchanged). NOT re-pinned — Clew-boss's call.

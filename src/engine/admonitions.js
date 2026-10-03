@@ -25,7 +25,10 @@
 // `icon:` and `color:` are the plugin's cosmetic overrides and the
 // callout's own type styling applies instead. An `ad-` type Clew's callout
 // table does not know renders as a note titled with the raw type, which is
-// how the plugin treated user-defined types too.
+// how the plugin treated user-defined types too. An untitled fence of a
+// known type is headed by its type AS WRITTEN (`ad-hint` → Hint), as an
+// untitled `> [!type]` is: the token carries `written`, which the engine's
+// renderer hands to untitledCalloutTitle — without it the heading was empty.
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -87,6 +90,7 @@ export const admonitionFence = {
 			type: 'calloutBlock',   // callouts.js owns the rendering
 			raw: match[0],
 			calloutType: type ?? 'note',
+			written: rawType,   // the type as written, for an untitled heading
 			fold,
 			title: title || (type ? '' : rawType.charAt(0).toUpperCase() + rawType.slice(1)),
 			tokens: [],

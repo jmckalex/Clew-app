@@ -4,8 +4,9 @@
 // Fixture: smoke/make-custom-callout-vault.sh <dir> with CLEW_USER_DATA=
 // <dir>-ud; FRAME_MATCH `Admonitions.md`, frame admonition-alias-frame.js,
 // which logs `smoke-adm: <n> type=… title=… custom=… color=…`. Expected:
-// `ad-rem` and `ad-remark` both type=remark (the alias resolved; titles
-// "Remark" and "Titled"), custom=true, color #2e8b57; `ad-hint` type=tip.
+// `ad-rem` and `ad-remark` both type=remark (the alias resolved), custom=
+// true, color #2e8b57, headed "Rem" (untitled: the type AS WRITTEN, as
+// `> [!rem]` is) and "Titled"; `ad-hint` type=tip headed "Hint".
 // A table that is NOT the engine's would know no `remark`: ad-rem would
 // come out a note titled "Rem".
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

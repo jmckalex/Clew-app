@@ -16,6 +16,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { admonitionFence } from '../src/engine/admonitions.js';
+import { untitledCalloutTitle } from '#jmarkdown/callout-table.js';
 
 const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'clew-admonitions-'));
 after(() => fs.rmSync(tmpRoot, { recursive: true, force: true }));
@@ -59,6 +60,16 @@ test('aliases fold like callouts; unknown types become titled notes', () => {
 	const custom = tokenize('```ad-recipe\nStir well.\n```\n');
 	assert.equal(custom.calloutType, 'note');
 	assert.equal(custom.title, 'Recipe', 'user-defined types keep their name');
+});
+
+test('an untitled fence is headed by its type as written, as > [!type] is', () => {
+	// The engine's renderer heads an untitled callout with
+	// untitledCalloutTitle(token.written); without `written` it drew none.
+	const heading = (src) => untitledCalloutTitle(tokenize(src).written);
+	assert.equal(heading('```ad-warning\nx\n```\n'), 'Warning');
+	assert.equal(heading('```ad-hint\nx\n```\n'), 'Hint', 'an alias, as written — [!CAUTION] is Caution');
+	assert.equal(heading('```ad-NOTE\nx\n```\n'), 'Note');
+	assert.equal(tokenize('```ad-tip\ntitle: Mine\nx\n```\n').title, 'Mine', 'a title still wins');
 });
 
 test('an option-like first content line is not eaten as an option', () => {
