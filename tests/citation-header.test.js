@@ -11,7 +11,7 @@
 // A note's citation keys, for the blocks rendered on its behalf (src/main/citation-header.js).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { citationHeader, noteBibFiles } from '../src/main/citation-header.js';
+import { citationHeader, noteBibFiles, bibliographyDirs, bibliographyList } from '../src/main/citation-header.js';
 
 const note = (header, body = '# Note\n\n![[Child]]\n') => `---\n${header}\n---\n${body}`;
 
@@ -44,11 +44,40 @@ test('quotes, lists, absolute paths and URLs', () => {
 	assert.equal(citationHeader(note('Bibliography style: "chicago"'), '/v'), '---\nBibliography style: chicago\n---\n');
 });
 
-test('noteBibFiles: the header\'s bibliography, against the note\'s folder', () => {
+test('noteBibFiles: the header\'s bibliography ADDS to the vault\'s (jmarkdown 909af7a)', () => {
 	const note = '---\nBibliography: refs.bib, ../shared/more.bib\nResolve citations: true\n---\n# N\n\nNo cites at all.';
-	assert.deepEqual(noteBibFiles(note, '/v/Notes', '/v/vault.bib'), ['/v/Notes/refs.bib', '/v/shared/more.bib'],
-		'a header that names one wins, cites or not — and the vault\'s is not added');
+	assert.deepEqual(noteBibFiles(note, '/v/Notes', '/v/vault.bib'), ['/v/vault.bib', '/v/Notes/refs.bib', '/v/shared/more.bib'],
+		'the configured file first, then the note\'s, against its folder');
+	assert.deepEqual(noteBibFiles(note, '/v/Notes', ''), ['/v/Notes/refs.bib', '/v/shared/more.bib'], 'no vault bibliography: the note\'s');
 	assert.deepEqual(noteBibFiles('---\nBibliography: https://example.org/x.bib\n---\n', '/v', ''), [], 'a URL is no file to watch');
+	assert.deepEqual(noteBibFiles('---\nBibliography: /v/vault.bib\n---\n\\cite{a}', '/v', '/v/vault.bib'), ['/v/vault.bib'], 'named twice, kept once');
+});
+
+test('noteBibFiles: `Bibliography mode: replace` is the note\'s alone', () => {
+	const note = '---\nBibliography: refs.bib\nBibliography mode: replace\n---\n\\cite{a}';
+	assert.deepEqual(noteBibFiles(note, '/v/Notes', '/v/vault.bib'), ['/v/Notes/refs.bib']);
+	assert.deepEqual(noteBibFiles('---\nBibliography_mode: Replace\n---\n\\cite{a}', '/v', '/v/vault.bib'), ['/v/vault.bib'],
+		'replace with no Bibliography of its own: the configured one (the engine says so too)');
+});
+
+test('a Bibliography written as a YAML list, over several lines', () => {
+	const note = '---\nBibliography:\n  - local.bib\n  - ../Library/vault2.bib\nResolve citations: true\n---\n# L';
+	assert.deepEqual(noteBibFiles(note, '/v/Notes', ''), ['/v/Notes/local.bib', '/v/Library/vault2.bib']);
+	assert.equal(citationHeader(note, '/v/Notes'), '---\nBibliography: /v/Notes/local.bib, /v/Library/vault2.bib\nResolve citations: true\n---\n');
+	assert.deepEqual(noteBibFiles('---\nBibliography: [a.bib, "b.bib"]\n---\n', '/v', ''), ['/v/a.bib', '/v/b.bib']);
+});
+
+test('bibliographyDirs: every folder a LaTeX export\'s bibliographies live in', () => {
+	const note = '---\nBibliography: local2.bib, ../Library/vault2.bib\n---\n';
+	assert.deepEqual(bibliographyDirs(note, '/v/Notes', ['/v/Library/vault.bib', '/home/me/master.bib']), ['/v/Notes', '/v/Library', '/home/me']);
+	assert.deepEqual(bibliographyDirs('# none', '/v/Notes'), ['/v/Notes']);
+});
+
+test('bibliographyList reads a value as the engine does', async () => {
+	const { parseBibliographyList } = await import('#jmarkdown/bibliographies.js');
+	for (const value of ['refs.bib', 'a.bib, b.bib', '[a.bib, "b.bib"]', 'a.bib\n- b.bib\n  - c.bib', "'q.bib' ,, ", ['x.bib', 'y.bib, z.bib'], '', null]) {
+		assert.deepEqual(bibliographyList(value), parseBibliographyList(value), JSON.stringify(value));
+	}
 });
 
 test('noteBibFiles: the vault\'s bibliography only for a note that cites', () => {

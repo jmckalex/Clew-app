@@ -80,7 +80,7 @@ note API, plugins, and every settings key.
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
   dialect scanner's constructs and grammar, live edit's model, reveal rule,
-  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement), what a site export publishes — 1053 tests. DOM/UI work is
+  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement), what a site export publishes, build-warning grouping — 1061 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
@@ -938,9 +938,17 @@ except where the selection touches a construct. The durable design is
   citation is "Show in Library" (the spec carries `cite: [keys]`; the first
   key, as a pill's click; ⌘ opens the entry's PDF through `bib-pdf.js`, the
   Library's own opener). Reading mode re-renders a note when the .bib its
-  citations come from changes (`citation-header.js#noteBibFiles`: the
-  header's `Bibliography`, else the vault's when the note cites; open
-  previews rebuilt, others marked stale).
+  citations come from changes (`citation-header.js#noteBibFiles`; open
+  previews rebuilt, others marked stale). **A note's `Bibliography` ADDS to
+  the vault's** (jmarkdown 909af7a/e7cf638, 2026-10-03): the vault's file
+  (configured in Clew's generated config) then the note's, a later file
+  winning a key both hold; `Bibliography mode: replace` restores the note's
+  alone; a value may be a comma list, a YAML list or run over several
+  header lines — `shared/citation-keys.js#citationLines` reads continuation
+  lines as the engine's header does, and `citation-header.js#
+  bibliographyList` mirrors the engine's parser (a parity test holds it;
+  the engine's module loads its config manager, so it is never imported).
+  `smoke/bib-additive-scenario.js`.
 - **PDF annotations → note** (§5.15): the viewer (pdf-core.js) lists its
   annotations with the text under them (engine glyph geometry +
   getTextSlices) when pdf-page.js is asked by its PARENT;
@@ -955,7 +963,8 @@ except where the selection touches a construct. The durable design is
   `[[x.pdf#page=N|PDF p. N]]`, as a block of its own at the cursor of the
   note being edited (never one in reading mode). The text and its escaping
   are `shared/pdf-quote.js`, every escape checked through the engine: `\[`
-  is display maths here, and `$` must reach MathJax as `\$`. `p. N` is the
+  is display maths here, and a `$` is `\$` (an escaped dollar is
+  `span.escaped`, out of MathJax's reach, since jmarkdown e02cd51). `p. N` is the
   PDF's page, not the printed one (page labels need the fork). A
   programmatic insert must also `updateTabView` the cursor — the host
   restores the RECORDED one on re-mount.
@@ -1191,8 +1200,25 @@ except where the selection touches a construct. The durable design is
   Compiled with the NOTE's folder on BIBINPUTS/TEXINPUTS (the .tex is
   written beside the chosen output — the vault root by default — and
   `\bibliography{refs}` is the note's: every citation came out undefined),
-  and a PDF is accepted only if THIS run wrote it; a failure names the
-  engine, why it was chosen and the log's first error.
+  and since the additive Bibliography every bibliography's folder too
+  (`citation-header.js#bibliographyDirs`: the note's files, the configured
+  ones as the engine resolves them from the export's working folder, the
+  vault's) — `\bibliography{…}` names EACH file by its basename, and a note's
+  `../Library/x.bib` was never found; a key in two files is the engine's
+  merged `<output>-bibliography.bib` beside the .tex. NOTE: an export runs
+  the user's own config cascade, so the VAULT's bibliography (Clew's
+  generated preview config) is not in it — a note citing only the vault's
+  file exports with those citations undefined (measured 2026-10-03; an
+  engine hook would be needed). A PDF is accepted only if THIS run wrote
+  it; a failure names the engine, why it was chosen and the log's first
+  error. **Build warnings** — the engine's, incl. its LaTeX-export lint
+  (`latex-export [code]: …`, jmarkdown 0631c42, on EVERY build; `Silence
+  warnings:` turns codes off) — ride on `EV_RENDER_DONE` and an export's
+  result; `renderer/build-warnings.js` keeps them per note and says them
+  quietly: a "⚠ N" in the status bar for the active note (reading view
+  too), its tooltip grouped by code (`shared/build-warnings.js`), its
+  click the list; an export with warnings says so in its notice
+  (`smoke/build-warnings-scenario.js`).
 - **Vault trust** (`docs/dev/frame-bridge.md` §4; the interim guard
   2026-09-30, the full design 2026-10-02 — owner's approval of phases 1–4).
   A vault's CODE — `.clew/scripts`, its own plugins (engine, preview and

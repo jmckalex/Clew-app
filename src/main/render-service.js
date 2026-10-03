@@ -506,7 +506,9 @@ export class RenderService {
 			if (!this.#noteCode) {
 				try { this.#noteRefusals(relPath, fs.readFileSync(entry.htmlFile, 'utf8')); } catch { /* unreadable: nothing to say */ }
 			}
-			this.send(CH.EV_RENDER_DONE, { path: relPath });
+			// The build's warnings (incl. the LaTeX-export lint, jmarkdown
+			// 0631c42), for the status bar (renderer/build-warnings.js).
+			this.send(CH.EV_RENDER_DONE, { path: relPath, warnings: Array.isArray(result.warnings) ? result.warnings : [] });
 			return entry.htmlFile;
 		}
 		this.send(CH.EV_RENDER_ERROR, { path: relPath, message: result.message, stack: result.stack });

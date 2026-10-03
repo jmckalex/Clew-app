@@ -30,6 +30,8 @@ import markedAlert from 'marked-alert';
 import { renderAlertLatex } from './alerts.js';
 import { calloutBlock } from './callouts.js';
 import { tabbingFence, tabbing } from './tabbing.js';
+import { escapedCharacters } from './escapes.js';
+import { latexLint, resetLatexLint } from './latex-lint.js';
 import createMarkdownDemo from './markdown-demo.js';
 import strategicFormGame from './strategic-form-games.js';
 import createTiKZ from './tikz.js';
@@ -97,6 +99,7 @@ global.isLatex = isLatex;
 // Start each build with a clean warning list (module state survives across
 // processFile calls in library/watch use); the summary prints after writeOutput.
 resetWarnings();
+resetLatexLint();
 resetIndexing();
 const markdownFile = filename;
 // In stdin mode, [[file.md]] inclusions and the "Markdown file directory"
@@ -432,6 +435,14 @@ marked_copy.use(markedMoreLists());
 // with +/-/* inside an aligned equation can be mistaken for a list item.
 registerExtension(jmarkdownSyntaxEnhancements.mathBlock);
 
+// A backslash-escaped character prints as itself in both outputs (escapes.js):
+// TeX-escaped in LaTeX, and `\$` kept out of MathJax's reach in HTML.
+registerExtension(escapedCharacters);
+
+// The LaTeX-export lint (latex-lint.js): warnings, in every build, for what
+// renders in HTML but breaks a LaTeX export. Main parser only.
+marked.use({ walkTokens: latexLint });
+
 // This extension has to be registered after the directives in order for it to work.
 registerExtensions([
 	jmarkdownSyntaxEnhancements.emojis
@@ -625,6 +636,9 @@ const input = isStdin ? await readStdin() : fs.readFileSync(filename, 'utf8');
 // In stdin mode without -o, write to stdout (outFile === null is the sentinel).
 const outFile = options.output
 	|| (isStdin ? null : filename.replace(/\.([^.]+)$/, isLatex ? '.tex' : '.html'));
+// Where the output goes, for what is written beside it: several bibliographies
+// merged into one, for bibtex or the runtime client (bibliographies.js).
+configManager.set('Output file', outFile ? path.resolve(outFile) : null);
 
 function writeOutput(text) {
 	if (outFile === null) {

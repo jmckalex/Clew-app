@@ -141,7 +141,7 @@ await quote();
 await until(() => text() !== before2);
 {
 	const t = text();
-	log(`escaped: selected=${ok} dollars=${t.includes('costs \\\\\\$5 and pays \\\\\\$10')} sup=${t.includes('x\\^2')} line=${JSON.stringify(t.split('\n').find((l) => l.includes('A bet')))}`);
+	log(`escaped: selected=${ok} dollars=${t.includes('costs \\$5 and pays \\$10')} sup=${t.includes('x\\^2')} line=${JSON.stringify(t.split('\n').find((l) => l.includes('A bet')))}`);
 	await editorPool.flush?.(draft.id);
 	await sleep(1500);
 	let html = '';
@@ -158,7 +158,7 @@ await until(() => text() !== before2);
 	};
 	const para = paraOf('A bet costs');
 	const citeHtml = paraOf('PDF p. 1</');
-	log(`render: dollars=${para.includes('\\$5') && para.includes('\\$10')} sup=${/<sup/.test(para)} cite=${/Skyrms|1996/.test(citeHtml) && !citeHtml.includes('\\cite')} link=${/Paper\.pdf/.test(citeHtml)}`);
+	log(`render: dollars=${/class="escaped">\$<\/span>5/.test(para) && /class="escaped">\$<\/span>10/.test(para)} sup=${/<sup/.test(para)} cite=${/Skyrms|1996/.test(citeHtml) && !citeHtml.includes('\\cite')} link=${/Paper\.pdf/.test(citeHtml)}`);
 	log(`render-para: ${JSON.stringify(para.replace(/\s+/g, ' ').slice(0, 160))}`);
 	log(`render-cite: ${JSON.stringify(citeHtml.replace(/\s+/g, ' ').slice(0, 300))}`);
 }

@@ -29,6 +29,8 @@ import { editorPool } from '../editor/pool.js';
 import { openQuickSwitcher } from '../components/modals/clew-quick-switcher.js';
 import { extractAnnotations } from '../pdf-annotations.js';
 import { quoteSelection } from '../pdf-quote.js';
+import { buildWarnings } from '../build-warnings.js';
+import { warningSummary } from '../../shared/build-warnings.js';
 import { openListModal } from '../components/modals/list-modal.js';
 import { openHistoryModal } from '../components/modals/clew-history-modal.js';
 import { ipc, CH } from '../ipc.js';
@@ -105,6 +107,12 @@ async function exportActiveNote(format) {
 	try {
 		const result = await ipc.invoke(CH.EXPORT_NOTE, { path: ctx.notePath, format });
 		if (result?.output) console.log(`Exported to ${result.output}`);
+		// What the build said (the LaTeX-export lint, among others), grouped;
+		// the status bar's ⚠ lists them.
+		if (Array.isArray(result?.warnings)) {
+			buildWarnings.set(ctx.notePath, result.warnings);
+			if (result.warnings.length) notice(`Exported ${result.output?.split('/').pop() ?? ''} — ${warningSummary(result.warnings)} (⚠ in the status bar lists them)`, 6000);
+		}
 	} catch (err) {
 		console.error('Export failed:', err);
 		alert(`Export failed: ${err.message ?? err}`);

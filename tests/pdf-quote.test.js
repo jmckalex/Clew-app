@@ -26,7 +26,7 @@ test('a PDF selection becomes one paragraph', () => {
 
 test('prose that would be markup is escaped', () => {
 	assert.equal(escapeProse('x^2 and H_2O and a*b*c'), 'x\\^2 and H\\_2O and a\\*b\\*c');
-	assert.equal(escapeProse('costs $5 and $10'), 'costs \\\\\\$5 and \\\\\\$10');
+	assert.equal(escapeProse('costs $5 and $10'), 'costs \\$5 and \\$10');
 	assert.equal(escapeProse('see /tmp/ here'), 'see \\/tmp/ here');
 	assert.equal(escapeProse('==mark=='), '\\=\\=mark\\=\\=');
 	assert.equal(escapeProse('<b>bold</b>'), '\\<b>bold\\</b>');

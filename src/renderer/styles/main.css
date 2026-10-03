@@ -178,3 +178,14 @@ button {
 	margin-right: auto;
 }
 .clew-trust-indicator:hover { text-decoration: underline; }
+/* The active note's last build had warnings (renderer/build-warnings.js):
+   quiet, in the warning colour, a list behind the click. */
+.clew-build-warnings {
+	font: inherit;
+	background: none;
+	border: none;
+	padding: 0;
+	color: var(--clew-warning);
+	cursor: pointer;
+}
+.clew-build-warnings:hover { text-decoration: underline; }

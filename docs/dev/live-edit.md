@@ -997,10 +997,14 @@ design's reading was right except where marked ◆):
   book).
 - Clew's engine config sets `Header style: fenced`, so `Headings: numeric`
   must sit in `---` frontmatter.
-- A note with footnotes gets a generated `<h1>Endnotes</h1>`, which numeric
-  headings number too ◆ — at the end it shifts nothing; where `@endnotes`
-  places it mid-note, every later heading is one more in the export than
-  Clew shows (a known gap, not mirrored).
+- Generated headings — an endnotes title (`<h1>Endnotes</h1>` or a mid-note
+  `@endnotes{title=…}`), the bibliography's, the index's — and a heading
+  marked `{-}` take NO number and leave the count alone (jmarkdown b212e82,
+  2026-10-03; until then the engine numbered them, and a mid-note
+  `@endnotes` put every later heading one ahead of Clew). The mirror skips
+  `{-}` (`UNNUMBERED_RE`); generated headings are no `#` line in it. The
+  crossref fixture holds both, and the parity is strict — the frame no
+  longer filters the endnotes heading out.
 
 **As built:**
 
@@ -1260,12 +1264,14 @@ written in one gesture:
   hyphens dropped. Markup the dialect would read is escaped, every rule
   checked by rendering through the engine: `* _ ^ ~ \` <`, `==`, `::`
   (a description list), `@name`, an opening `/` (dialect only), a first
-  line that would be a heading, list, table row or quote. ◆ Three need
-  more than a backslash: `[` never (`\[` is display maths here) — only
-  `[[` and `[@` become `&#91;`; a backslash is doubled; and `$` is written
-  `\\\$`, which the engine passes to the page as `\$` — a literal dollar to
-  MathJax (which typesets `$5 and $10` AFTER the engine) and to LaTeX. ◆
-  Live edit shows that one as `\$5`; reading mode and exports show `$5`.
+  line that would be a heading, list, table row or quote. ◆ Two need
+  more than a backslash: `[` never (`\[` is display maths here) — only `[[`
+  and `[@` become `&#91;`; and a backslash is doubled. ◆ `$` is `\$` since
+  jmarkdown e02cd51 wraps an escaped dollar in `span.escaped`, out of
+  MathJax's reach (it typesets `$5 and $10` in the page, after the engine);
+  before it, `\\\$` was needed, and live edit showed it as `\$5`. Now live
+  edit and reading view both show `$5` (`smoke/escapes-scenario.js`), and a
+  LaTeX export writes `\$` (the engine's own e02cd51 fixtures).
 - ◆ **`p. N` is the PDF's page**, the one `#page=N` opens. Journal PDFs
   carry `/PageLabels` (both real papers measured do: Yu 2012's page 2 is
   "p. 524"); pdfium's `FPDF_GetPageLabel` is not wrapped by the fork's

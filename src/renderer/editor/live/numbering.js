@@ -56,6 +56,7 @@ const VERBATIM = new Set(['equation', 'TeX', 'HTML', 'comment', 'mermaid', 'TiKZ
 const ENV_OPEN_RE = /^[ \t]*(?:@begin\(([\w*-]+)\)|(:{3,})[ \t]*([\w*-]+))(?:\[([^\]\n]*)\])?(?:\{([^}\n]*)\})?/;
 const ENV_CLOSE_RE = /^[ \t]*(?:@end\(([\w*-]+)\)|(:{3,})[ \t]*$)/;
 const HEADING_RE = /^(#{1,6})[ \t]+(.+?)[ \t]*#*[ \t]*$/;
+const UNNUMBERED_RE = /\{-\}/;
 const LABEL_RE = /(^|[^\w@:\\])[@:]label\[([^\]\n]+)\]/g;
 const FOOTNOTE_RE = /\[(?:fn:|\^([^\]\s:]+):)/g;
 // A classic note's definition line, `[^a]: …`, and its references, `[^a]`.
@@ -233,7 +234,12 @@ function compute(text, numbered) {
 		let headingType;
 		if (heading) {
 			const depth = heading[1].length;
-			if (meta.headingsNumeric) {
+			// `{-}` marks a heading unnumbered (index.js#stripUnnumberedMarker);
+			// like LaTeX's \section* it leaves the count alone — the engine's
+			// numbering pass honours it since jmarkdown b212e82. Headings the
+			// engine GENERATES (an endnotes title, the bibliography's) are no
+			// `#` line here, and take no number there either.
+			if (meta.headingsNumeric && !UNNUMBERED_RE.test(heading[2])) {
 				h[depth - 1] += 1;
 				for (let d = depth; d < 6; d += 1) h[d] = 0;
 				headingNumber = h.slice(0, depth).join('.');
@@ -265,7 +271,7 @@ function compute(text, numbered) {
 			// A footnote's own number, before any construct it sits in (above).
 			if (note) info = { number: String(note.number), type: 'footnote', kind: 'footnote', title: '', status: 'ok' };
 			else if (hostEnv) info = { number: hostEnv.number, type: hostEnv.type, kind: hostEnv.name, title: hostEnv.title, status: 'ok' };
-			else if (heading) info = { number: headingNumber, type: headingType, kind: 'heading', title: heading[2].replace(/[@:]label\[[^\]]*\]/g, '').trim(), status: headingNumber ? 'ok' : 'numberless' };
+			else if (heading) info = { number: headingNumber, type: headingType, kind: 'heading', title: heading[2].replace(/[@:]label\[[^\]]*\]/g, '').replace(/\s*\{-\}\s*/, ' ').trim(), status: headingNumber ? 'ok' : 'numberless' };
 			else info = { number: '', type: undefined, kind: 'plain', title: '', status: 'numberless' };
 			const host = hostEnv && !note ? { from: hostEnv.line, to: hostEnv.line } : { from: lineNo, to: lineNo };
 			record(key, { ...info, line: lineNo, host });

@@ -43,11 +43,12 @@ export function cleanPdfText(pages) {
  * Every rule below was checked by rendering through the engine (2026-10-03):
  * unescaped, `x^2` is a superscript, `H_2O` a subscript, `a*b*` strong,
  * ` /tmp/ ` italic, `==x==` a highlight, `a::b` mangled and `X:: Y` a
- * description list. Three need more than a backslash:
+ * description list. Two need more than a backslash, and one needed it:
  *
- * - `$`: MathJax typesets `$5 and $10` in the PAGE, after the engine, and
- *   the engine reads a pair of `\\$` as maths of its own — `\\\$` is what
- *   reaches the page as `\$`, a literal dollar to MathJax (and to LaTeX).
+ * - `$` is `\$`: since jmarkdown e02cd51 the engine wraps an escaped dollar
+ *   in `span.escaped`, which MathJax (it typesets `$5 and $10` in the PAGE,
+ *   after the engine) does not read a delimiter across, and a LaTeX export
+ *   writes `\$`. Before it, the escape had to be `\\\$`.
  * - `[`: `\[` is display maths in this dialect, so a bracket is never
  *   backslashed (`[sic]` is plain text anyway); only `[[` (a wikilink) and
  *   `[@` (a pandoc citation) are hidden, as the entity `&#91;`.
@@ -57,7 +58,7 @@ export function escapeProse(text, { normalSyntax = false } = {}) {
 	let out = String(text)
 		.replace(/\\/g, '\\\\')
 		.replace(/[*_^~`<]/g, (c) => `\\${c}`)
-		.replace(/\$/g, () => '\\\\\\$')
+		.replace(/\$/g, '\\$$')
 		.replace(/\[(?=[[@])/g, '&#91;')
 		.replace(/==/g, '\\=\\=')
 		.replace(/::+/g, (run) => run.replace(/:/g, '\\:'))

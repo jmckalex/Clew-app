@@ -2,11 +2,11 @@
 // reading-mode one of Crossrefs.md (the engine's own numbers, in the shape
 // the scenario prints Clew's) and the link popover's.
 const refs = [...document.querySelectorAll('.xref-ref, .xref-cref')].map((e) => e.textContent);
-// The engine's generated Endnotes <h1> is numbered too under numeric
-// headings; it has no source line and nothing can refer to it, so it is left
-// out (docs/dev/live-edit.md §5.13 — and where @endnotes places it mid-note,
-// later headings shift by one: a known gap).
-const targets = [...document.querySelectorAll('[data-xref-number], .header-label')].filter((e) => !e.closest('.endnotes-heading')).map((e) => (e.classList.contains('header-label')
+// Every number the engine printed. Its generated headings (an endnotes
+// title, the bibliography's) and `{-}` headings take none since jmarkdown
+// b212e82 — before it the generated Endnotes <h1> was numbered and had to be
+// left out here, and a mid-note @endnotes shifted every later heading.
+const targets = [...document.querySelectorAll('[data-xref-number], .header-label')].map((e) => (e.classList.contains('header-label')
 	? `heading:${e.textContent.replace(/\.$/, '')}`
 	: `${e.dataset.xrefType}:${e.dataset.xrefNumber}`));
 if (SMOKE_FRAME.endsWith('.html')) {

@@ -60,6 +60,14 @@ test('headings: numbered only under Headings: numeric, h1 included', () => {
 	assert.equal(commandForDepth(1, { documentClass: 'book' }), 'chapter');
 });
 
+test('a {-} heading takes no number and leaves the count alone (jmarkdown b212e82)', () => {
+	const n = num('---\nHeadings: numeric\n---\n# Doc\n\n## Preface {-} @label[pre]\n\n## Setup @label[sec]\n\n# Appendix {-}\n\n# Last\n');
+	assert.deepEqual([...n.lines.values()].map((l) => l.number), ['1', '1.1', '2'], 'Preface and Appendix are skipped');
+	assert.equal(refDisplay(n, 'sec', 'ref').text, '1.1', 'not 1.2: the {-} heading before it did not count');
+	assert.equal(refDisplay(n, 'pre', 'ref').state, 'numberless');
+	assert.equal(n.labels.get('pre').title, 'Preface');
+});
+
 test('a plain label has no number; a footnote label its note\'s (jmarkdown ffb39ea); a label in a theorem its number', () => {
 	const n = num('Loose @label[loose].\n\nA note[fn: one] and another[fn: see @label[fnl]].\n\n@begin(theorem)\nBody @label[inthm]\n@end(theorem)\n');
 	assert.equal(refDisplay(n, 'loose', 'ref').text, '??');

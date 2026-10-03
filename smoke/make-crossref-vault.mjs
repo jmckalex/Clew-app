@@ -3,7 +3,8 @@
 // two equations, the shared theorem counter (a theorem and a lemma), a
 // figure — plus a plain (numberless) label, a label inside a footnote (the
 // engine prints ?? for it — its footnote branch never matches), an unknown
-// key and a colon twin.
+// key and a colon twin — and, under numeric headings, a `{-}` heading and a
+// titled mid-note @endnotes, which take no number (jmarkdown b212e82).
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -18,6 +19,8 @@ Headings: numeric
 
 ## Setup @label[sec-setup]
 
+Setup prose with an aside[fn(early): an early note.].
+
 @begin(equation){#eq-a}
 a = b
 @end(equation)
@@ -29,6 +32,14 @@ Everything is itself.
 @begin(lemma){#lem-one}
 A lemma about nothing.
 @end(lemma)
+
+@endnotes(early){title="Early notes"}
+
+## Interlude {-}
+
+Between the sections: an unnumbered heading, and a titled endnotes list
+above it — neither takes a number nor moves the ones after (jmarkdown
+b212e82).
 
 ## Results
 
