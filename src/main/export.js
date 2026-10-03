@@ -164,6 +164,14 @@ export async function exportNote({ win, vaults, sessionId, callerToken = null, r
 	const callouts = calloutsEnv(settings.get('callouts'), vaultSettings.callouts, paths.faIcons);
 	const base = path.basename(abs).replace(/\.(md|jmd)$/i, '');
 	const ext = format === 'html' ? 'html' : format === 'latex' ? 'tex' : 'pdf';
+	// The vault's bibliography, for this build only (jmarkdown 455cb61): an
+	// export runs the user's own config cascade, not Clew's generated one, so
+	// without it a note citing only the vault's file exported every such
+	// citation undefined. A configured file in every respect — a note's own
+	// Bibliography adds to it, `Bibliography mode: replace` drops it.
+	const vaultBibName = String(vaultSettings.bibliography ?? '').trim();
+	const vaultBib = vaultBibName ? path.resolve(vaults.root, vaultBibName) : null;
+	const bibliography = vaultBib ? [vaultBib] : [];
 
 	// A relative outFile is vault-relative, not process-relative: the caller
 	// is a scenario inside the vault, and resolving against the working
@@ -191,17 +199,17 @@ export async function exportNote({ win, vaults, sessionId, callerToken = null, r
 	}
 
 	if (format === 'html') {
-		const { warnings } = await runWorker({ file: abs, options: { to: 'html', output: filePath, normalSyntax }, cwd, callouts });
+		const { warnings } = await runWorker({ file: abs, options: { to: 'html', output: filePath, normalSyntax, bibliography }, cwd, callouts });
 		return { output: filePath, warnings };
 	}
 
 	// LaTeX (and PDF via LaTeX): build the .tex next to the requested output
 	// so relative graphics resolve, then compile if PDF was asked for.
 	const texFile = format === 'latex' ? filePath : filePath.replace(/\.pdf$/i, '.tex');
-	const { warnings } = await runWorker({ file: abs, options: { to: 'latex', output: texFile, normalSyntax }, cwd, callouts });
+	const { warnings } = await runWorker({ file: abs, options: { to: 'latex', output: texFile, normalSyntax, bibliography }, cwd, callouts });
 	if (format === 'latex') return { output: texFile, warnings };
 	const noteDir = path.dirname(abs);
-	const configured = [...configuredBibliographies(cwd), ...(vaultSettings.bibliography ? [path.resolve(vaults.root, vaultSettings.bibliography)] : [])];
+	const configured = [...configuredBibliographies(cwd), ...bibliography];
 	const bibDirs = bibliographyDirs(fs.readFileSync(abs, 'utf8'), noteDir, configured);
 	const { pdf, engine, reason } = await compilePdf(texFile, noteDir, bibDirs);
 	if (pdf !== filePath) fs.copyFileSync(pdf, filePath);

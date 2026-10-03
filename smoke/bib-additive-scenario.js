@@ -12,6 +12,11 @@
 //   restale: paper-updated=true                         (a vault.bib edit re-renders a
 //            note naming its OWN Bibliography — it draws on the vault's too now)
 //   export <engine> <note>: ok=… bibliography={…} undefined=N engine=…
+//     — an export is handed the vault's bibliography for its build
+//     (jmarkdown 455cb61), so: Paper (its own file + the vault's, a key in
+//     both → the engine's merged file) undefined=0; Replace (the note's
+//     alone) undefined=1 — vaultonly; Cites (the vault's alone) undefined=0;
+//     Split undefined=0 (BIBINPUTS); Merge undefined=0.
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const { vaultStore, ipc, settingsStore } = window.__clew;
 const log = (s) => console.log('smoke-bib: ' + s);
@@ -45,7 +50,7 @@ const engines = String(await ipc.invoke('clew:note-read', { path: 'bib-engines.t
 for (const engine of engines) {
 	settingsStore.set('latexEngine', engine);
 	await sleep(300);
-	for (const note of ['Paper', 'Split', 'Merge']) {
+	for (const note of ['Paper', 'Replace', 'Cites', 'Split', 'Merge']) {
 		const out = `out/${note}-${engine}.pdf`;
 		const result = await ipc.invoke('clew:export-note', { path: `Notes/${note}.md`, format: 'pdf', outFile: out }).catch((err) => ({ error: String(err.message ?? err) }));
 		const tex = await ipc.invoke('clew:note-read', { path: out.replace(/\.pdf$/, '.tex') }).catch(() => '');

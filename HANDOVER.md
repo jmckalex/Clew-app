@@ -79,14 +79,14 @@ Then **desktop edit-conflict safety** (Clew-iOS CONFLICT-SAFETY.md items
 with both versions in history first, Keep mine / theirs / both / Compare,
 Dropbox copies and git markers. Item 5 (iCloud's NSFileVersion on the Mac)
 needs a native helper — later, with the owner.
+Then engine `at-migration@455cb61`: exports pass the vault's bibliography to
+their build (processFile's `bibliography`), so a note citing only the
+vault's file exports resolved.
 
 **Queued by Clew-boss (2026-10-03), in order:**
 1. (B): the app rows get their own "Apps" subsection in Settings → This vault, so the refusal text's pointer is true.
 2. (C): the write-grant indicator, the note-changed and grant-changed events (§8–§9), and the per-embed list if cheap.
 3. tests/app-calls.test.js hung >10 min once under load: make it deterministic.
-4. When jmarkdown lands the export hook (configured bibliography files named
-   by the host — Clew-boss asked for it), wire export.js to pass the vault's
-   bibliography: a small follow-up commit.
 
 **The rules this session works under** (the owner's, relayed by the
 coordinating session "Clew-boss", uds `/tmp/cc-socks/6958.sock` at the
@@ -202,14 +202,6 @@ Clew does neither. Report only; nothing built.
 As relayed by Clew-boss on 2026-10-01; none is to be started without the
 owner's word.
 
-- **An export does not see the vault's bibliography.** A note export runs
-  the user's own jmarkdown config cascade (deliberately not Clew's preview
-  config), so the vault's bibliography — which previews get through Clew's
-  generated config — is not in it: a note citing only the vault's file
-  exports with those citations undefined (measured 2026-10-03,
-  `smoke/bib-additive-scenario.js`, Paper: `undefined=1`). Fixing it needs
-  an engine hook (a build option or env naming extra configured files) —
-  the owner's call, upstream in jmarkdown.
 - **Quote-and-cite page numbers** — `\cite[p. N]` uses the PDF's own page
   (what `#page=N` opens). A journal article's printed page differs, and
   real PDFs say so: both measured papers carry `/PageLabels` (Yu 2012's PDF

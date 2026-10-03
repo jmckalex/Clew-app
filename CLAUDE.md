@@ -1207,11 +1207,13 @@ except where the selection touches a construct. The durable design is
   ones as the engine resolves them from the export's working folder, the
   vault's) — `\bibliography{…}` names EACH file by its basename, and a note's
   `../Library/x.bib` was never found; a key in two files is the engine's
-  merged `<output>-bibliography.bib` beside the .tex. NOTE: an export runs
-  the user's own config cascade, so the VAULT's bibliography (Clew's
-  generated preview config) is not in it — a note citing only the vault's
-  file exports with those citations undefined (measured 2026-10-03; an
-  engine hook would be needed). A PDF is accepted only if THIS run wrote
+  merged `<output>-bibliography.bib` beside the .tex. An export runs the
+  user's own config cascade, so the VAULT's bibliography (which previews get
+  from Clew's generated config) is handed to the build as processFile's
+  `bibliography` option (jmarkdown 455cb61; the CLI's `--bibliography`) — a
+  configured file in every respect: a note's own Bibliography adds to it,
+  `replace` drops it. Before that, a note citing only the vault's file
+  exported every such citation undefined. A PDF is accepted only if THIS run wrote
   it; a failure names the engine, why it was chosen and the log's first
   error. **Build warnings** — the engine's, incl. its LaTeX-export lint
   (`latex-export [code]: …`, jmarkdown 0631c42, on EVERY build; `Silence
