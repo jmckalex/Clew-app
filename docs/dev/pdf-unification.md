@@ -237,6 +237,40 @@ EmbedPDF's own toolbar (a lock badge) rather than in Clew's strip, that
 would be a fork change in `~/Source/EmbedPDF/v2` (branch `ocg-v2`), then
 `npm run sync-embedpdf`; not proposed.
 
+### 7a. A quieter page navigator (2026-10-03, the owner's ask)
+
+EmbedPDF's "‹ 2 18 ›" pill (`viewers/snippet/src/components/page-controls.tsx`
+in the fork) SHOWS on every scroll and hides four seconds later — over the
+text being read. `preview-client/pdf-quiet-nav.js`, installed by pdf-core on
+EVERY viewer (tab, embed, canvas card, scene), turns that round, from
+Clew's side with no fork change: a stylesheet in the viewer's shadow root
+overrides the pill's own opacity (`[data-overlay-id="page-controls"]`, the
+schema's overlay id) and a class says when to show it.
+
+- Hidden at rest and while the document scrolls.
+- Shown when the pointer comes into a band around it (56 px above it, 96 px
+  either side, down to the viewer's bottom — `inNavBand`, pure, tested);
+  kept while the pointer is in the band or on it; faded 0.7 s after it
+  leaves. Kept while its own ‹ › turn the page under the pointer (a scroll
+  that would otherwise hide it).
+- KEYBOARD focus shows it — `:has(:focus-visible)`: Tab, or the page field
+  being typed in (a text field is always :focus-visible) — but not the
+  focus a mouse click leaves on its buttons, which held it up after the
+  pointer had gone (`:focus-within`, measured, replaced).
+- Hidden, it takes no pointer events, so the text under it stays
+  selectable.
+- **Touch** (iPad; proposed, and built so the shared module never strands a
+  finger without hover): a TAP in the band shows it for four seconds; a
+  tap anywhere else hides it.
+
+Measured with real input (`smoke/pdf-nav-scenario.js`, the pill's opacity
+polled through the viewer's `test-nav` hook): EmbedPDF's own `rest=0
+scroll=1 band=1 on=1 away=1 focus=1 blur=1` (shown on load and on scroll,
+still up two seconds after the pointer left); Clew's `rest=0 scroll=0
+band=1 on=1 click=1 away=0 focus=1 blur=0`, the fade starting ~0.8 s after
+leaving, a real click on "›" turning the page with the pill kept;
+synthetic touch `tap-band=1 tap-elsewhere=0`.
+
 ## 8. iOS (worked through with the iOS session)
 
 The iPad has no Chromium viewer — WebKit shows a PDF in an iframe as ONE

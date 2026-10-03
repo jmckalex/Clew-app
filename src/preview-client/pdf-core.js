@@ -17,6 +17,7 @@ import { viewerHandles } from './pdf-handles.js';
 import './pdf-pen.js';
 import { topOrigin, postTo } from '../shared/message-guard.js';
 import { bandNumbers, edgeRuns, textPageOffset, usefulPageLabels } from '../shared/pdf-quote.js';
+import { installQuietNavigator } from './pdf-quiet-nav.js';
 
 const EMBEDPDF_ASSETS = '/__clew_assets__/embedpdf';
 const SAVE_DEBOUNCE_MS = 2500;
@@ -121,6 +122,30 @@ window.addEventListener('message', (event) => {
 			})().catch(() => reply(page));
 		}
 	}
+	// For scenarios (smoke/pdf-nav-scenario.js): the page navigator's state —
+	// its opacity as drawn, its box in this document, whether it holds the
+	// keyboard focus; `focus`/`blur` move the focus into its page field or
+	// out first.
+	if (msg.type === 'test-nav') {
+		const root = [...viewerHandles].find((h) => h.container?.shadowRoot)?.container.shadowRoot;
+		const pill = root?.querySelector('[data-overlay-id="page-controls"]');
+		if (msg.focus) pill?.querySelector('input')?.focus();
+		if (msg.blur) root?.activeElement?.blur?.();
+		// A synthetic touch tap at a point in this document (the harness has
+		// no touch input): the host hears it as a finger's pointerdown.
+		if (msg.tap) {
+			const host = root.host;
+			host.dispatchEvent(new PointerEvent('pointerdown', { pointerType: 'touch', clientX: msg.tap.x, clientY: msg.tap.y, bubbles: true, composed: true }));
+		}
+		const box = pill?.firstElementChild?.firstElementChild;
+		const r = box?.getBoundingClientRect();
+		postTo(window.top, {
+			source: 'clew-pdf', type: 'test-nav', requestId: msg.requestId,
+			opacity: box ? Number(getComputedStyle(box).opacity) : null,
+			rect: r ? { x: r.left, y: r.top, width: r.width, height: r.height } : null,
+			focused: Boolean(pill?.matches(':has(:focus-visible)')),
+		}, topOrigin());
+	}
 	// For scenarios (smoke/pdf-quote-scenario.js): select `match` on `page`,
 	// through to `to.match` on `to.page` — EmbedPDF's own setSelection, which
 	// is what a drag ends in, so its selection menu appears as for a drag.
@@ -172,6 +197,7 @@ export async function createViewer({ target, src, onStatus = () => {}, readonly 
 		dispose() {
 			this.unlisten?.();
 			this.unquote?.();
+			this.unquiet?.();
 			liveHandles.delete(this);
 			viewerHandles.delete(this);
 			const pending = this.flush?.();
@@ -221,6 +247,8 @@ export async function createViewer({ target, src, onStatus = () => {}, readonly 
 	handle.container = container;
 
 	const registry = await container.registry;
+	// The page navigator shows when asked for, not on every scroll.
+	handle.unquiet = installQuietNavigator(container);
 	const docManager = registry.getPlugin('document-manager')?.provides();
 	if (!docManager) throw new Error('document-manager plugin unavailable');
 	// Buffer, not URL: third-party URL loaders allowlist http(s)/blob and read

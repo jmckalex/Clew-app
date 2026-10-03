@@ -85,7 +85,7 @@ note API, plugins, and every settings key.
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
   dialect scanner's constructs and grammar, live edit's model, reveal rule,
-  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers — 1092 tests. DOM/UI work is
+  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band — 1094 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
@@ -1204,7 +1204,12 @@ except where the selection touches a construct. The durable design is
   (`viewerHandles`, also `window.__clewPdfHandles`); `pdf-pen.js`, imported
   by pdf-core, is the pen convention — after a pen has been seen, a finger
   pans a viewer whose free-drag tool is armed, a mouse never affected (the
-  iOS port's module, upstreamed). Anything that removes a view must go through retire() and
+  iOS port's module, upstreamed). `pdf-quiet-nav.js` makes EmbedPDF's page
+  pill quiet in every viewer (pdf-unification.md §7a): hidden at rest and
+  while scrolling, shown by the pointer in a band around it, by KEYBOARD
+  focus (`:has(:focus-visible)`, never a click's leftover focus) or a tap
+  there, from Clew's side (shadow-root CSS on `data-overlay-id`, no fork
+  change). Anything that removes a view must go through retire() and
   anything that finds "the view for a path" must skip
   `[data-clew-retiring]`. CJK fallback fonts are an app setting
   (`pdfCjkFonts`), downloaded on demand into userData by
