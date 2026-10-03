@@ -82,7 +82,19 @@
       "output": "out",
       "buildResources": "build-resources"
     },
+    "protocols": [
+      {
+        "name": "Clew link",
+        "schemes": [
+          "clew"
+        ]
+      }
+    ],
     "extraResources": [
+      {
+        "from": "dist/cli",
+        "to": "cli"
+      },
       {
         "from": "THIRD-PARTY-NOTICES.md",
         "to": "THIRD-PARTY-NOTICES.md"

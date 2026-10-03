@@ -20,6 +20,16 @@ import { sourceHashes, writeBuildStamp } from '../src/main/build-stamp.js';
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
 export const bundles = [
+	// The `clew` command (FEATURE-IDEAS #8): plain Node, run by the shim
+	// Help → Install the clew Command writes, with Clew's own binary as Node
+	// (ELECTRON_RUN_AS_NODE). Packaged unpacked (Resources/cli), beside the app.
+	{
+		entryPoints: [path.join(root, 'src/cli/clew.mjs')],
+		outfile: path.join(root, 'dist/cli/clew.mjs'),
+		bundle: true,
+		platform: 'node',
+		format: 'esm',
+	},
 	{
 		entryPoints: [path.join(root, 'src/main/main.js')],
 		outfile: path.join(root, 'dist/main/main.js'),

@@ -223,6 +223,13 @@ export function registerIpc() {
 	handle(CH.RENDER_HTML, (s, { path }) => s.renderService.renderedHtml(path));
 	// Guarded by the version the viewer loaded (`base`); `force` is "Keep
 	// mine", `create` the conflict copy (main/pdf-guard.js, vault.writePdf).
+	// What a clew:// link or the `clew` command left for this window to show
+	// (main/deep-link-host.js) — handed over ONCE.
+	handle(CH.DEEP_LINK_TAKE, (s) => {
+		const links = s.pendingLinks ?? [];
+		s.pendingLinks = [];
+		return links;
+	});
 	handle(CH.PDF_WRITE, (s, { path, bytes, base, force, create }) => s.vaults.writePdf(path, bytes, { base, force: Boolean(force), create: Boolean(create) }));
 	// A conflict's version from the PDF's history — the conflict sheet's way
 	// to "Keep mine" / "Keep both" when the viewer that held mine is gone.

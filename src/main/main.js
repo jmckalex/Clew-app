@@ -30,6 +30,7 @@ import { paths } from './paths.js';
 import { prepareNoteFonts } from './note-fonts.js';
 import { assetStamp, stampChanged } from './asset-stamp.js';
 import { staleSources } from './build-stamp.js';
+import { listenForLinks, onSecondInstance, startDeepLinks } from './deep-link-host.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.dirname(__dirname); // dist/
@@ -46,6 +47,19 @@ registerPreviewScheme();
 // runs only in canvas-web-node <webview> guests (separate processes), and
 // SAB matters for cross-origin data mainly as a Spectre timer amplifier.
 app.commandLine.appendSwitch('enable-features', 'SharedArrayBuffer');
+
+// One process per profile (keyed by the userData folder, which paths.js has
+// set by now — so smoke runs, each with its own, never collide): a second
+// launch — a clew:// link on Windows and Linux, the app started twice —
+// hands its command line to this one and goes (deep-link-host.js).
+if (!app.requestSingleInstanceLock()) app.exit(0);
+app.on('second-instance', (_event, argv) => {
+	onSecondInstance(argv);
+	const s = focusedSession();
+	if (s?.win && !s.win.isDestroyed() && !process.env.CLEW_SMOKE) { s.win.show(); s.win.focus(); }
+});
+// A link that opened the app arrives before ready (macOS `open-url`).
+listenForLinks();
 
 let quitting = false;
 const windowOrder = []; // creation order, for the smoke hook
@@ -426,6 +440,9 @@ app.whenReady().then(async () => {
 		createWindow(process.env.CLEW_SMOKE_VAULT);
 		// Only ever against a LOOPBACK feed here (updater.js#checkAllowed).
 		startUpdateChecks();
+		// Links given on the command line; the `clew` command only with a
+		// socket the scenario names (CLEW_CLI_SOCKET).
+		startDeepLinks({ openVaultAnywhere, root: rootDir });
 		return;
 	}
 
@@ -441,6 +458,8 @@ app.whenReady().then(async () => {
 	else for (const vaultPath of toOpen) createWindow(vaultPath);
 	// The daily update check: packaged builds only (updater.js).
 	startUpdateChecks();
+	// clew:// links and the `clew` command, once the restored windows exist.
+	startDeepLinks({ openVaultAnywhere, root: rootDir });
 
 	app.on('activate', () => {
 		if (BrowserWindow.getAllWindows().length === 0) createWindow(null);

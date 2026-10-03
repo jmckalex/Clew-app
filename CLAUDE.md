@@ -85,7 +85,7 @@ note API, plugins, and every settings key.
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
   dialect scanner's constructs and grammar, live edit's model, reveal rule,
-  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band, figure errors, the PDF save guard — 1103 tests. DOM/UI work is
+  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band, figure errors, the PDF save guard, deep links and the clew command — 1110 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
@@ -581,6 +581,21 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   `node_modules`, `.trash`, dotfiles) live here too, where they used to be
   copied into three files that could drift. Changing either list reloads
   the vault in place (`vaults.reloadExcludes()` + a fresh index).
+- **`clew://` links and the `clew` command** (`docs/dev/deep-links.md`,
+  2026-10-03): `clew://open?vault=…&note=…[&line=N][#heading]` and
+  `clew://new?…&daily=1|&note=…`; `clew open|new|export`. Parsed by the pure
+  `main/deep-links.js`, done by `main/deep-link-host.js` (`open-url`, the
+  command line, `second-instance`, and a 0600 socket in the profile folder
+  for the command, `src/cli/clew.mjs` → `dist/cli` → `Resources/cli`). A link
+  OPENS and NAVIGATES only — `new` creates an empty note and says so; other
+  actions are refused by name; an unknown vault is asked about first; trust
+  never changes. One process per profile: `requestSingleInstanceLock()` in
+  main.js (keyed by userData, so smoke runs never collide). The window takes
+  what to show (`pendingLinks`, DEEP_LINK_TAKE) at the end of `showVault`,
+  into a tab of its own. Help → Install the clew Command writes a shim that
+  runs Clew's binary as Node (`ELECTRON_RUN_AS_NODE`) — never with sudo.
+  Dev on macOS is NOT registered for `clew://` (it would register bare
+  Electron): give the link on the command line.
 - **The update check** (`docs/dev/auto-update.md` v1, 2026-10-03): notify
   only. `main/updater.js` fetches `https://clew-app.com/downloads/
   latest.json` 30 s after launch and daily (packaged builds only, setting
