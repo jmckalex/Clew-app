@@ -12,6 +12,19 @@ prefer deleting a settled item to explaining it again.
 owner's word: 23 commits `67311b6..9349a48`, a fast-forward. Anything after
 it is local; `git fetch` before counting.
 
+**Mac Silicon dev build 0.12.1-dev.3** (2026-10-03, the owner's ask in this
+window), built from `bebc385` by the same recipe (committed mirrors):
+`out-dev/Clew-0.12.1-dev.3-arm64.dmg`, 230,993,896 bytes. It carries the
+printed page (d358d18, a956fed), the PDF link fix (18023d5) and the quiet
+page navigator (bebc385). notarytool Accepted; stapler valid and spctl
+accepted on DMG and app; hardened runtime, four entitlements, arm64,
+version 0.12.1-dev.3, opentype bundle present. boot-test PASSED (stamp
+matches; 13 figures mpw-ok; every live-edit line). Packaged checks: the
+page is clew-app://app/index.html; the bundled demo opens trusted and
+Flashcards prompts then runs; an untrusted fixture shows the trust prompt;
+zero network requests; pdf-nav-scenario against the packaged binary reads
+as in dev. out-dev holds dev.1–dev.3 (three, nothing trashed).
+
 **Mac Silicon dev build 0.12.1-dev.2** (2026-10-03; the owner's yes in this
 window), built from `9349a48` by the dev.1 recipe with the committed
 mirrors: `out-dev/Clew-0.12.1-dev.2-arm64.dmg`, 230,993,209 bytes, beside
