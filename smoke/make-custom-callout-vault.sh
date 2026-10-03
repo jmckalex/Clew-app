@@ -7,7 +7,8 @@
 # an unknown icon), and Callouts.md using each — plain, folded `-`, open `+`
 # — plus the engine's `suggestion`, an untitled alias (`[!CAUTION]`), an
 # unknown type, `[!fresh]` (unknown until callout-refresh-scenario.js
-# defines it), and Embed.md transcluding Callouts.md. A refused definition
+# defines it), Embed.md transcluding Callouts.md, and Admonitions.md (```ad-
+# fences through the alias, the name and a built-in alias). A refused definition
 # leaves its type UNKNOWN: drawn as a note, headed by its name.
 # The theme (dark | light, default dark) is written into a userData dir at
 # <dir>-ud for custom-callout-scenario.js, which also lists the vault as
@@ -77,3 +78,21 @@ Before the callouts.
 The end.
 MD
 printf '%s\n' '# Embed' '' '![[Callouts]]' '' 'After the embed.' > "$D/Embed.md"
+# Admonition fences through the same table (admonition-alias-scenario.js):
+# the custom type's ALIAS, the custom type by name, a built-in alias.
+cat > "$D/Admonitions.md" <<'MD'
+# Admonitions
+
+```ad-rem
+Through the custom type's alias.
+```
+
+```ad-remark
+title: Titled
+The custom type by name.
+```
+
+```ad-hint
+A built-in alias.
+```
+MD
