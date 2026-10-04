@@ -44,14 +44,14 @@ import { chooseLatexEngine, engineName, latexmkFlag, firstLatexError } from './l
 const WORKER_PATH = paths.engineWorker;
 
 /** Where a restricted vault's export runs from (see the header). */
-function restrictedExportDir() {
+export function restrictedExportDir() {
 	const dir = paths.restrictedExport;
 	fs.mkdirSync(path.join(dir, '.jmarkdown'), { recursive: true });
 	fs.writeFileSync(path.join(dir, '.jmarkdown', 'config.json'), JSON.stringify({ 'Run note code': false }, null, '\t') + '\n');
 	return dir;
 }
 
-function runWorker({ file, options, cwd, callouts = '' }) {
+export function runWorker({ file, options, cwd, callouts = '' }) {
 	return new Promise((resolve, reject) => {
 		const child = fork(WORKER_PATH, [], {
 			cwd,
@@ -86,7 +86,7 @@ function runWorker({ file, options, cwd, callouts = '' }) {
  * ~/.jmarkdown/config.json, overridden by the working folder's own
  * .jmarkdown/config.json, each relative path against the working folder.
  */
-function configuredBibliographies(cwd) {
+export function configuredBibliographies(cwd) {
 	let value = '';
 	for (const file of [path.join(os.homedir(), '.jmarkdown', 'config.json'), path.join(cwd, '.jmarkdown', 'config.json')]) {
 		try {
@@ -113,7 +113,7 @@ const findTex = (name) => TEX_DIRS.map((dir) => path.join(dir, name)).find((p) =
  *
  * @returns {Promise<{pdf: string, engine: string, reason: string}>}
  */
-function compilePdf(texFile, noteDir, bibDirs = [noteDir]) {
+export function compilePdf(texFile, noteDir, bibDirs = [noteDir]) {
 	const { engine, reason } = chooseLatexEngine(fs.readFileSync(texFile, 'utf8'), settings.get('latexEngine') ?? 'auto');
 	const latexmk = findTex('latexmk');
 	const tex = latexmk ?? findTex(engine);

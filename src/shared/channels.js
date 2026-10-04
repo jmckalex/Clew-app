@@ -93,6 +93,7 @@ export const CH = {
 
 	// invoke: export via the engine
 	EXPORT_NOTE: 'clew:export-note',
+	EXPORT_BOOK: 'clew:export-book',
 	CANVAS_EXPORT_PNG: 'clew:canvas-export-png',
 	EXPORT_SITE: 'clew:export-site',
 	SNIPPETS_GET: 'clew:snippets-get',

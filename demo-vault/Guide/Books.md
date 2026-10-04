@@ -78,5 +78,23 @@ two books: the status bar names the one you opened most recently, adds
 `Book: next chapter` and `Book: previous chapter` move through the book.
 They have no keys of their own; give them some in *Settings → Hotkeys*.
 
-Building a book — the whole thing as one PDF, one LaTeX file, or a set of
-HTML pages — comes next, with the engine's book support.
+## Building the book
+
+*Build* in the Book panel — PDF, LaTeX or HTML — or *File → Export → Book
+as …* makes the whole book ONE document: the master's text, then each
+chapter in order, every chapter's front matter left out and its `#`
+heading made a chapter (a chapter with no `#` heading gets one from its
+title). It goes into a `build/` folder beside the master, named after it —
+`build/Signals.pdf` — and a rebuild replaces it. LaTeX's own files (`.aux`,
+`.log` …) stay in `build/` too, so nothing lands beside a chapter.
+
+A chapter that links to no note stops the build, by name. What the build
+had to say is listed under the panel's *Last build* — click the ⚠ — and a
+chapter's row carries its own count: each warning names its chapter and
+line, and choosing it opens the chapter there. A chapter that sets its own
+`Resolve citations` or `Bibliography style`, as Conventions does for its
+own reading view, is told that a book takes those from its master.
+
+Still to come: numbering by chapter (Figure 2.3), each chapter's own
+bibliography, language and macros applied, and the HTML as one page per
+chapter.

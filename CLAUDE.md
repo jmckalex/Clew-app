@@ -98,7 +98,7 @@ note API, plugins, and every settings key.
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
   dialect scanner's constructs and grammar, live edit's model, reveal rule,
-  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band, figure errors, the PDF save guard, deep links and the clew command, the shareable callout resolver, the device word, where notices sit, pinned apps, the demo vault's updates (untouched files by hash and by shipped history), the ticker's live rules, origin-bound network grants, books (the master reader, chapter titles, words and status, the index's chapter lists and their renames) — 1158 tests. DOM/UI work is
+  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band, figure errors, the PDF save guard, deep links and the clew command, the shareable callout resolver, the device word, where notices sit, pinned apps, the demo vault's updates (untouched files by hash and by shipped history), the ticker's live rules, origin-bound network grants, books (the master reader, chapter titles, words and status, the index's chapter lists and their renames, a build's warnings placed) — 1159 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
@@ -598,9 +598,26 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   a `headless-write:` pool entry saves at once), rebuilt from the links as
   written (aliases kept) and refused when the master's front matter is
   unclean, its list holds entries the reader could not take, or the list
-  changed under the panel. Building a book (File → Export → Book as …)
-  waits on the engine's `chapters` (jmarkdown, upstream). Demo:
-  `Books/Signals/` + `Guide/Books.md`; proof: `smoke/book-panel-scenario.js`.
+  changed under the panel. **Building** (`main/export-book.js`, 2026-10-04,
+  engine piece 1 = jmarkdown 0372f23): the master and its chapters are ONE
+  document made by the ENGINE — processFile's `chapters`, each chapter
+  handed relative to the master — never assembled here; HTML, LaTeX or PDF
+  via LaTeX into `build/` beside the master, named by it, LaTeX's
+  intermediates there too; a chapter that is no note stops it by name. It
+  reuses export.js's worker, working folder (the vault's trust), vault
+  bibliography, callouts and `compilePdf` (exported for it; the note path
+  is unchanged), with every bibliography's folder on BIBINPUTS. The engine
+  names a chapter's warnings `<chapter>:<line>: …`; `shared/book.js#
+  placeWarnings` maps them to vault paths, `renderer/books.js#bookBuilds`
+  keeps each book's last build, and the panel's ⚠ lists them — each opens
+  its chapter at its line (`openNoteAtLine`). File → Export → Book as …
+  (`needs: 'book'`, `bookActive` pushed by menu-bridge only when it flips),
+  `export:book-{pdf,latex,html}`, the panel's Build row; a build makes its
+  book the recent one. Per-chapter numbering, the whitelisted chapter keys
+  APPLIED, scoped footnote ids and split HTML are the engine's pieces to
+  come — each drops in with no change here but its option. Demo:
+  `Books/Signals/` + `Guide/Books.md`; proof: `smoke/book-panel-scenario.js`,
+  `smoke/book-export-scenario.js`.
 - **Obsidian's own query formats** — for opening other people's vaults,
   alongside (not replacing) Clew's `query`/`tasks`/`kanban` fences:
   `vault-model.js` (the vault as pages: `file.*`, the link graph,

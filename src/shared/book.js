@@ -223,3 +223,29 @@ export function chapterLink(path, unambiguous) {
 	const name = baseName(path);
 	return `[[${unambiguous ? name : path.replace(/\.(md|jmd)$/i, '')}]]`;
 }
+
+/**
+ * A book build's warnings, placed (book-mode.md §5): the engine names a
+ * chapter's warning `<chapter>:<line>: …` or `<chapter>: …`, the chapter as
+ * the host handed it (jmarkdown book.js, warnings.js). `chapters` maps each
+ * name handed to the engine to its vault path; anything not located is the
+ * master's.
+ * @param {string[]} warnings
+ * @param {Map<string, string>} chapters name as handed → vault path
+ * @param {string} master the master's vault path
+ * @returns {Array<{ path: string, line: number|null, text: string }>}
+ */
+export function placeWarnings(warnings, chapters, master) {
+	const names = [...chapters.keys()].sort((a, b) => b.length - a.length);
+	return (warnings ?? []).map((raw) => {
+		const warning = String(raw);
+		for (const name of names) {
+			if (!warning.startsWith(`${name}:`)) continue;
+			const rest = warning.slice(name.length + 1);
+			const located = /^(\d+): ([\s\S]*)$/.exec(rest);
+			if (located) return { path: chapters.get(name), line: Number(located[1]), text: located[2] };
+			if (rest.startsWith(' ')) return { path: chapters.get(name), line: null, text: rest.slice(1) };
+		}
+		return { path: master, line: null, text: warning };
+	});
+}

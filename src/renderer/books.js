@@ -18,6 +18,11 @@ import { vaultStore } from './state/vault-store.js';
 import { workspaceStore } from './state/workspace-store.js';
 import { registerCommand } from './commands/registry.js';
 import { ipc, CH } from './ipc.js';
+import { editorPool } from './editor/pool.js';
+import { Emitter } from './lib/emitter.js';
+import { notice } from './plugins.js';
+import { openListModal } from './components/modals/list-modal.js';
+import { openNoteAtLine } from './commands/actions.js';
 import { currentBook, readMaster, chapterTitle, countWords, chapterStatus } from '../shared/book.js';
 
 const baseName = (rel) => rel.split('/').pop().replace(/\.(md|jmd)$/i, '');
@@ -96,6 +101,66 @@ export function bookStatusItem(path) {
 	return el;
 }
 
+/** The master a build from `path` builds: the note itself, or its book. */
+export function bookToBuild(path) {
+	if (masterEntry(path)) return path;
+	return bookOfNote(path)?.master ?? null;
+}
+
+const FORMAT_WORDS = { pdf: 'PDF', latex: 'LaTeX', html: 'HTML' };
+
+/** Each book's last build this session: master → { format, output, warnings, at }. */
+export const bookBuilds = new (class extends Emitter {
+	#byMaster = new Map();
+	get(master) { return this.#byMaster.get(master) ?? null; }
+	set(master, build) { this.#byMaster.set(master, build); this.emit('changed', { master }); }
+	clear() { this.#byMaster.clear(); this.emit('changed', { master: null }); }
+})();
+
+/**
+ * Build `master` as `format` ('pdf' | 'latex' | 'html') into build/ beside it
+ * (main/export-book.js). Unsaved edits to the book are saved first; the book
+ * becomes the one its chapters show (D10); the notice names the output and
+ * any warnings, which the Book panel lists by chapter and line.
+ */
+export async function buildBook(master, format) {
+	editorPool.flushAll();
+	const name = bookTitle(master);
+	notice(`Building ${name} as ${FORMAT_WORDS[format]}…`, 2500);
+	try {
+		const result = await ipc.invoke(CH.EXPORT_BOOK, { master, format });
+		workspaceStore.setRecentBook(master);
+		const warnings = Array.isArray(result?.warnings) ? result.warnings : [];
+		bookBuilds.set(master, { format, output: result.outputRel ?? result.output, warnings, at: Date.now() });
+		const where = result.outputRel ?? result.output;
+		notice(warnings.length
+			? `Built ${name} → ${where} — ${warnings.length} warning${warnings.length === 1 ? '' : 's'} (the Book panel lists them)`
+			: `Built ${name} → ${where}`, 6000);
+		return result;
+	} catch (err) {
+		const message = String(err?.message ?? err).replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
+		bookBuilds.set(master, { format, output: null, error: message, warnings: [], at: Date.now() });
+		notice(`${name} was not built: ${message}`, 8000);
+		return null;
+	}
+}
+
+/** The last build's warnings, each opening its chapter at its line. */
+export function showBookWarnings(master, onlyPath = null) {
+	const build = bookBuilds.get(master);
+	const warnings = (build?.warnings ?? []).filter((w) => !onlyPath || w.path === onlyPath);
+	if (!warnings.length) return;
+	const short = (p) => p.split('/').pop().replace(/\.(md|jmd)$/i, '');
+	openListModal({
+		placeholder: `${warnings.length} warning${warnings.length === 1 ? '' : 's'} from ${bookTitle(master)}'s last build — type to filter`,
+		items: warnings.map((w) => ({
+			label: w.text,
+			hint: `${short(w.path)}${w.line ? `:${w.line}` : ''}`,
+			run: () => (w.line ? openNoteAtLine(w.path, w.line) : workspaceStore.openNote(w.path)),
+		})),
+	});
+}
+
 export function showBookPanel() {
 	workspaceStore.setSidebar('right', { open: true, activeTool: 'book' });
 }
@@ -119,9 +184,17 @@ export function installBooks() {
 	};
 	workspaceStore.on('active-changed', noteOpened);
 	workspaceStore.on('layout-changed', noteOpened);
-	vaultStore.on('vault-changed', () => facts.clear());
+	vaultStore.on('vault-changed', () => { facts.clear(); bookBuilds.clear(); });
 	registerCommand({ id: 'book:next-chapter', name: 'Book: next chapter', when: inBook, run: () => stepChapter(1) });
 	registerCommand({ id: 'book:previous-chapter', name: 'Book: previous chapter', when: inBook, run: () => stepChapter(-1) });
+	for (const format of ['pdf', 'latex', 'html']) {
+		registerCommand({
+			id: `export:book-${format}`,
+			name: `Export book as ${FORMAT_WORDS[format]}${format === 'pdf' ? ' (via LaTeX)' : ''}`,
+			when: (ctx) => bookToBuild(ctx.notePath) !== null,
+			run: (ctx) => { const master = bookToBuild(ctx?.notePath ?? workspaceStore.activeTab()?.path); if (master) buildBook(master, format); },
+		});
+	}
 	registerCommand({
 		id: 'book:show-panel', name: 'Book: show the Book panel',
 		when: (ctx) => ctx.vaultOpen && vaultStore.masters().length > 0,

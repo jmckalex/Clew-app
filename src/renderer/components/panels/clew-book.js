@@ -27,7 +27,7 @@ import { showMenu } from '../chrome/menu.js';
 import { editNote } from '../../editor/note-edit.js';
 import { parseProperties, applyProperties } from '../../../shared/frontmatter.js';
 import { BOOK_STATUSES, readMaster, laterNotice, moveChapter, withChapters, chapterLink } from '../../../shared/book.js';
-import { masterEntry, shownBook, bookTitle, noteFacts } from '../../books.js';
+import { masterEntry, shownBook, bookTitle, noteFacts, bookBuilds, buildBook, showBookWarnings } from '../../books.js';
 
 const baseName = (rel) => rel.split('/').pop().replace(/\.(md|jmd)$/i, '');
 const formatCount = (n) => n.toLocaleString('en-US');
@@ -47,6 +47,7 @@ export class ClewBook extends ClewElement {
 		this.listen(workspaceStore, 'active-changed', () => this.#refresh());
 		this.listen(workspaceStore, 'layout-changed', () => this.#refresh());
 		this.listen(workspaceStore, 'book-changed', () => this.#refresh());
+		this.listen(bookBuilds, 'changed', () => this.#refresh());
 		this.listen(vaultStore, 'index-changed', (path) => {
 			if (this.#pending && (!path || path === this.#pending.master)) this.#pending = null;
 			this.#refresh();
@@ -116,6 +117,7 @@ export class ClewBook extends ClewElement {
 		totals.title = 'Words of prose: front matter, code, maths and comments are not counted.';
 		frag.append(totals);
 		frag.append(this.#addButton(master, active, entry, editable, order));
+		frag.append(this.#build(master, resolved));
 		this.replaceChildren(frag);
 	}
 
@@ -208,6 +210,15 @@ export class ClewBook extends ClewElement {
 			status.textContent = facts?.status ?? '—';
 			status.title = 'This chapter’s status (its own front matter): click to change';
 			if (facts?.status) status.dataset.status = facts.status;
+			const flagged = (bookBuilds.get(master)?.warnings ?? []).filter((w) => w.path === path).length;
+			if (flagged) {
+				const warn = document.createElement('button');
+				warn.className = 'book-warn';
+				warn.textContent = `⚠ ${flagged}`;
+				warn.title = 'The last build’s warnings in this chapter — click to list them';
+				warn.addEventListener('click', () => showBookWarnings(master, path));
+				words.before(warn);
+			}
 			status.addEventListener('click', () => {
 				const r = status.getBoundingClientRect();
 				const mark = (value) => ((facts?.status ?? '') === value ? '✓ ' : '\u2003');
@@ -228,6 +239,49 @@ export class ClewBook extends ClewElement {
 			el.append(remove);
 		}
 		return el;
+	}
+
+	/** Build (book-mode.md §5) and what the last build said. */
+	#build(master, resolved) {
+		const box = document.createElement('div');
+		box.className = 'book-build';
+		const row = document.createElement('div');
+		row.className = 'book-build-row';
+		row.append('Build: ');
+		const dangling = resolved.some((p) => !p);
+		for (const [format, label] of [['pdf', 'PDF'], ['latex', 'LaTeX'], ['html', 'HTML']]) {
+			const button = document.createElement('button');
+			button.className = 'book-build-button';
+			button.dataset.format = format;
+			button.textContent = label;
+			button.disabled = dangling || !resolved.length;
+			button.title = dangling ? 'A chapter links to no note — fix the list first'
+				: `Build the book as ${label} into build/ beside its master`;
+			button.addEventListener('click', () => buildBook(master, format));
+			row.append(button);
+		}
+		box.append(row);
+		const last = bookBuilds.get(master);
+		if (last) {
+			const said = document.createElement('div');
+			said.className = 'book-build-last';
+			if (last.error) {
+				said.classList.add('is-error');
+				said.textContent = `Last build failed: ${last.error}`;
+			} else {
+				said.append(`Last build: ${last.output}`);
+				if (last.warnings.length) {
+					const warn = document.createElement('button');
+					warn.className = 'book-warn';
+					warn.textContent = `⚠ ${last.warnings.length}`;
+					warn.title = 'Click to list them — each opens its chapter at its line';
+					warn.addEventListener('click', () => showBookWarnings(master));
+					said.append(' · ', warn);
+				}
+			}
+			box.append(said);
+		}
+		return box;
 	}
 
 	#addButton(master, active, entry, editable, order) {

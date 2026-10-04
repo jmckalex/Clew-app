@@ -1,16 +1,18 @@
 // Vaults for book-panel-scenario.js (book mode, docs/dev/book-mode.md):
-//   node smoke/make-book-vault.mjs <dir>
+//   node smoke/make-book-vault.mjs <dir> [export]
 // <dir>/vault — the demo vault's Books/ (Signals: a master and three
 // chapters; its first link given an alias HERE, which a reorder must keep),
 // plus Course.md, a second book that shares Conventions and names a chapter
 // that does not exist, and Notes/Alone.md, in no book.
 // <dir>/plain — a vault with no book (the control: no Book tab, no status
-// item), though its Reading Note.md says `book: true` with no `chapters:`. <dir>/ud — a fresh userData.
+// item), though its Reading Note.md says `book: true` with no `chapters:`.
+// `export` (book-export-scenario.js): Deception.md gains a second # heading
+// — the engine warns at that chapter's line — and book-case.txt says export. <dir>/ud — a fresh userData.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const [dir] = process.argv.slice(2);
+const [dir, mode = 'book'] = process.argv.slice(2);
 if (!dir) throw new Error('usage: node smoke/make-book-vault.mjs <dir>');
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 fs.rmSync(dir, { recursive: true, force: true });
@@ -33,7 +35,10 @@ A second book, sharing a chapter with Signals.
 `);
 fs.mkdirSync(path.join(vault, 'Notes'), { recursive: true });
 fs.writeFileSync(path.join(vault, 'Notes', 'Alone.md'), '# Alone\n\nA note in no book, until it is added to one.\n');
-fs.writeFileSync(path.join(vault, 'book-case.txt'), 'book\n');
+fs.writeFileSync(path.join(vault, 'book-case.txt'), `${mode}\n`);
+if (mode === 'export') {
+	fs.appendFileSync(path.join(vault, 'Books', 'Signals', 'Deception.md'), '\n# A Second Heading\n\nIn a book this starts a chapter of its own.\n');
+}
 const plain = path.join(dir, 'plain');
 fs.mkdirSync(plain, { recursive: true });
 fs.writeFileSync(path.join(plain, 'Note.md'), '# A note\n\nNo book here.\n');

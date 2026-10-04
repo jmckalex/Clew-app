@@ -25,6 +25,7 @@ import { appMenu } from './menu.js';
 import { allSessions, sessionFor } from './session.js';
 import { openVaultAnywhere, openVaultDialog, createVaultDialog, openDemoVault } from './main.js';
 import { propagateRename } from './rename-links.js';
+import { exportBook } from './export-book.js';
 import { exportNote } from './export.js';
 import { exportSite } from './export-site.js';
 import { parseBib, bibFilePath } from '../shared/bib.js';
@@ -674,6 +675,14 @@ export function registerIpc() {
 	// the watcher may never report it — a vault whose budget is spent).
 	handle(CH.EXPORT_NOTE, async (s, { path, format, outFile }) => {
 		const result = await exportNote({ win: s.win, vaults: s.vaults, sessionId: s.id, callerToken: s.callerToken, relPath: path, format, outFile, trusted: s.trusted });
+		if (result?.output) s.vaults.refreshIfInside(result.output);
+		return result;
+	});
+
+	// A book (book-mode.md §5): its master and chapters as one document, into
+	// build/ beside the master.
+	handle(CH.EXPORT_BOOK, async (s, { master, format }) => {
+		const result = await exportBook({ vaults: s.vaults, indexer: s.indexer, masterRel: master, format, trusted: s.trusted });
 		if (result?.output) s.vaults.refreshIfInside(result.output);
 		return result;
 	});

@@ -18,7 +18,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {
 	readMaster, laterNotice, masterIndexEntry, chapterTitle, countWords, chapterStatus,
-	booksOf, mastersOf, currentBook, moveChapter, withChapters, chapterLink,
+	booksOf, mastersOf, currentBook, moveChapter, withChapters, chapterLink, placeWarnings,
 } from '../src/shared/book.js';
 import { extractNoteMetadata } from '../src/shared/note-metadata.js';
 import { Indexer } from '../src/main/indexer.js';
@@ -189,4 +189,26 @@ test('a renamed chapter is renamed in its master’s front matter', () => {
 	} finally {
 		indexer.closeVault();
 	}
+});
+
+test('a book build’s warnings placed in their chapters, at their lines', () => {
+	const chapters = new Map([
+		['Senders and Receivers.md', 'Books/Signals/Senders and Receivers.md'],
+		['../Shared/Intro.md', 'Books/Shared/Intro.md'],
+		['Intro.md', 'Books/Signals/Intro.md'],
+	]);
+	assert.deepEqual(placeWarnings([
+		'Senders and Receivers.md:12: book: a second # heading starts a new chapter',
+		'../Shared/Intro.md: book: front matter key "Bibliography style" is not applied in a book',
+		'Intro.md:3: latex-export [unicode]: “x” needs a Unicode engine',
+		'book: the master\'s `@chapter+` lines are ignored — the chapters were given by the host',
+		'Elsewhere.md:4: not one of ours',
+	], chapters, 'Books/Signals/Signals.md'), [
+		{ path: 'Books/Signals/Senders and Receivers.md', line: 12, text: 'book: a second # heading starts a new chapter' },
+		{ path: 'Books/Shared/Intro.md', line: null, text: 'book: front matter key "Bibliography style" is not applied in a book' },
+		{ path: 'Books/Signals/Intro.md', line: 3, text: 'latex-export [unicode]: “x” needs a Unicode engine' },
+		{ path: 'Books/Signals/Signals.md', line: null, text: 'book: the master\'s `@chapter+` lines are ignored — the chapters were given by the host' },
+		{ path: 'Books/Signals/Signals.md', line: null, text: 'Elsewhere.md:4: not one of ours' },
+	]);
+	assert.deepEqual(placeWarnings(undefined, chapters, 'M.md'), []);
 });
