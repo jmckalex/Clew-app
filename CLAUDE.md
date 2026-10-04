@@ -516,9 +516,9 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   `properties.set` (note.write: the embedding note; notes.write: any),
   `editor.insert` and `find.show`, answering `{ perform, path }`, and the
   HOST performs them through the editor pool (§10) — a transaction on the
-  editor the user is EDITING the note in (`app-host.js#editorFor`: a tab in
+  editor the user is EDITING the note in (`editor/note-edit.js#editorFor`: a tab in
   source/live mode, the active one first; a reading-mode tab's pooled entry
-  does not count), else a headless pool entry (`app-write:<n>`, skipped by
+  does not count), else a headless pool entry (`headless-write:<n>`, skipped by
   `reap`) that saves at once and closes — so undo, the dirty dot, auto-save,
   the conflict banner (`conflict` to the app) and history treat an app's
   edit as the user's own. `notes.create` is main's, `wx` — never
