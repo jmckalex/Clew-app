@@ -9,6 +9,8 @@
 // (the unknown vault: asked, cancelled), `smoke-link-done: …`; this logs
 // what the window shows:
 //   `dl: tabs=… active=… cursor-line=… heading-line=… fresh=… daily=… notices=…`
+// Without CLEW_SMOKE_VAULT (a fresh profile: the welcome window) the links
+// must land in THAT window — `smoke: 1 screenshot(s) written` (README).
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const { workspaceStore, editorPool, vaultStore } = window.__clew;
 const log = (s) => console.log('smoke-dl: ' + s);

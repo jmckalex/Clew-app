@@ -136,7 +136,14 @@ async function sessionFor(vaultPath) {
 	// A command that arrives while the restored windows are still opening.
 	for (let i = 0; i < 300 && !openVault; i++) await new Promise((r) => setTimeout(r, 100));
 	if (!openVault) throw new Error('Clew is still starting');
-	const s = openVault(vaultPath);
+	// A window showing the welcome screen (no vault) takes the vault, rather
+	// than a new window opening beside it and leaving it behind — a cold
+	// start with nothing restored (Clew-docs, 2026-10-04). The focused one if
+	// it is empty, else any; with none, openVaultAnywhere's own rules.
+	const empty = (x) => x && !x.vaults.root && x.win && !x.win.isDestroyed();
+	const focused = focusedSession();
+	const spare = empty(focused) ? focused : (allSessions().find(empty) ?? null);
+	const s = openVault(vaultPath, { preferSession: spare });
 	await s.opened;
 	for (let i = 0; i < 100 && s.vaults.root !== path.resolve(vaultPath); i++) await new Promise((r) => setTimeout(r, 100));
 	return s;
