@@ -138,6 +138,8 @@ export const CH = {
 
 	// events: main → renderer
 	EV_VAULT_OPENED: 'clew:ev-vault-opened',
+	// Something main has to say in a window, quietly: { text, ms }.
+	EV_NOTICE: 'clew:ev-notice',
 	// clew:// links and the `clew` command (main/deep-link-host.js): main has
 	// something for this window to show (or a refusal to say, `notice`).
 	EV_DEEP_LINK: 'clew:ev-deep-link',

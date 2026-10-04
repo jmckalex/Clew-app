@@ -106,6 +106,10 @@ function watchCapNotice({ watched, skipped, first }) {
 		+ (first ? ` (from ${first})` : '') + '. Changes there will not refresh on their own.', 9000));
 }
 ipc.on(CH.EV_WATCH_CAPPED, watchCapNotice);
+// Something main has to say here, quietly (the demo vault's new notes, …).
+ipc.on(CH.EV_NOTICE, ({ text, ms } = {}) => {
+	if (text) import('./plugins.js').then(({ notice }) => notice(String(text), ms ?? 8000));
+});
 ipc.on(CH.EV_FILE_CHANGED, ({ path }) => editorPool.externalChange(path));
 ipc.on(CH.EV_INDEX_SNAPSHOT, (snapshot) => vaultStore.setIndex(snapshot));
 ipc.on(CH.EV_INDEX_PATCH, ({ path, entry }) => vaultStore.patchIndex(path, entry));

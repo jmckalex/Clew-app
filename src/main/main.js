@@ -31,6 +31,7 @@ import { prepareNoteFonts } from './note-fonts.js';
 import { assetStamp, stampChanged } from './asset-stamp.js';
 import { staleSources } from './build-stamp.js';
 import { listenForLinks, onSecondInstance, startDeepLinks } from './deep-link-host.js';
+import { syncDemoVault, demoSyncNotice } from './demo-sync.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.dirname(__dirname); // dist/
@@ -322,19 +323,40 @@ export async function createVaultDialog(fromSession = null) {
 export function openDemoVault(fromSession = null) {
 	let target = paths.demoVault;
 	let fresh = false;
-	if (app.isPackaged) {
-		target = path.join(app.getPath('documents'), 'Clew Demo Vault');
+	// A scenario's own copy takes the packaged path from a dev build
+	// (smoke/demo-sync-scenario.js); never outside the harness.
+	const smokeTarget = process.env.CLEW_SMOKE ? process.env.CLEW_SMOKE_DEMO_TARGET || null : null;
+	const copying = app.isPackaged || Boolean(smokeTarget);
+	if (copying) {
+		target = smokeTarget ?? path.join(app.getPath('documents'), 'Clew Demo Vault');
 		if (!fs.existsSync(target)) {
 			fs.cpSync(paths.demoVault, target, { recursive: true });
 			fresh = true;
 		}
 	}
 	if (!fs.existsSync(target)) return null;
+	// The demo files added since this copy was made (demo-sync.js): never
+	// over a file, never into .clew, never one it was given before. A fresh
+	// copy only records what it holds.
+	let added = [];
+	if (copying) {
+		try { added = syncDemoVault(paths.demoVault, target); } catch (err) { console.warn(`[clew] demo vault update: ${err.message}`); }
+		if (process.env.CLEW_SMOKE) console.log(`smoke-demo-sync: fresh=${fresh} added=${added.length} ${JSON.stringify(added.slice(0, 12))}`);
+	}
 	// Clew's own vault (§4.8) is trusted by construction: a copy made just
 	// now from the bundle, or one this device has never decided about. A
 	// decision already recorded — a revoke — stands.
 	if (fresh || !trust.entries()[fs.realpathSync(target)]) trust.trust(target, 'demo', readVaultRequests(target)?.enable ?? null);
-	return openVaultAnywhere(target, { preferSession: fromSession }).vaults.info;
+	const session = openVaultAnywhere(target, { preferSession: fromSession });
+	const text = demoSyncNotice(added);
+	if (text) {
+		if (session.vaults.root) session.vaults.refreshTree?.();
+		Promise.resolve(session.opened).then(() => setTimeout(() => {
+			if (process.env.CLEW_SMOKE) console.log(`smoke-demo-sync: notice ${JSON.stringify(text)}`);
+			session.send(CH.EV_NOTICE, { text, ms: 12000 });
+		}, 1500));
+	}
+	return session.vaults.info;
 }
 
 // Dev mode: reload every window whenever esbuild rewrites the renderer
