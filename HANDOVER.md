@@ -1,4 +1,4 @@
-# Handover — 2026-10-04 small hours (origin/main f3a7d5b; tonight's items LOCAL: bd17b1d … 0710c6a; dev.5 = 0710c6a, boot-tested)
+# Handover — 2026-10-04 morning (origin/main f3a7d5b; LOCAL bd17b1d … fe4071d; dev.5 = 0710c6a, boot-tested; 4 fixes since, in no package)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it); the live edit design AS BUILT is
@@ -70,6 +70,24 @@ commit, NOT pushed:**
   7/7). Before it: npm test 1125/1125; the live sweep at 51615b9
   identical to 4ddda35's but for keystroke timings. `out-dev/` keeps
   dev.3–dev.5; dev.1 and dev.2 (DMGs + blockmaps) moved to the Trash.
+
+**After dev.5 (2026-10-04 morning, via Clew-boss; LOCAL, in NO package):**
+- `038ec6f` — a notice never covers a PDF viewer's status chip
+  (`renderer/lib/notice-lift.js`; tab: notice ends y 780, chip from 795).
+- `52ba4ae` — a clew:// link from a COLD start fills the welcome window
+  (was: three windows, the welcome one empty).
+- `a374b99` — `clew export` builds a PDF in a temp folder and writes ONLY
+  the PDF/.tex/.html; `--out <file|folder>`. ◆ The MENU's PDF export still
+  leaves .tex .aux .bbl .blg .fdb_latexmk .fls .log .out beside its output
+  (measured) — one argument (`buildApart: true`, ipc.js EXPORT_NOTE) if the
+  owner wants it. ◆ Unrelated, seen there: a LaTeX export prints a wikilink
+  image `![[x.png]]` literally (the user's config cascade has no wikilinks
+  extension) — predates tonight.
+- `fe4071d` — demo vault: Live Edit.md describes the Edit source icon, its
+  @cref resolves ("equation (1)"), Math and Theorems loads amssymb; BOTH demo
+  vaults now build with NO warnings. The render dump lists warning notes
+  (`smoke-rdw:`) and masks app frame keys (Apps in Notes differed per dump
+  folder).
 - the untitled ```ad-type fence (Clew-boss approved it as consistency with
   the owner's callout rule): it drew NO heading — the engine heads an
   untitled callout with `untitledCalloutTitle(token.written)`, and an
