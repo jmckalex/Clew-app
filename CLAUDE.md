@@ -149,7 +149,9 @@ note API, plugins, and every settings key.
   code "KeyQ"; `frameClick` clicks the centre of an element INSIDE a preview
   frame whose URL contains `match` — cross-origin, so the scenario cannot
   measure it — resolved at dispatch time, open shadow roots searched too:
-  the PDF viewer draws its UI in one), dispatched over CDP
+  the PDF viewer draws its UI in one; when no page-level preview frame
+  matches, a frame at ANY depth — an app's `clew-frame://` inside a note's
+  frame — placed by adding each ancestor iframe's box), dispatched over CDP
   `Input.dispatch*` — `webContents.sendInputEvent` NEVER reaches OOPIFs
   (i.e. every preview iframe), and combos need real modifier keydowns
   around the letter. Each key carries a REAL `keyCode`, because xterm —
@@ -508,7 +510,14 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   live-embed arrangement): an app's own insert above it re-created the
   `<clew-app-embed>` and restarted the app until it was. Settings →
   This vault → Apps (a subsection of its own) lists them with their live
-  embeds and Revoke. **Events** (§8, 2026-10-03): `note-changed` when the
+  embeds and Revoke. Live edit draws an `@app` alone on its line as a block
+  frame like `@reveal` (`live/model.js`; until 2026-10-04 a chip, and the
+  app never ran there). Both modal prompts — this one and the vault-trust
+  prompt — FOCUS THE QUESTION, never Allow/Trust: a prompt can appear while
+  you type (an app's frame renders a moment after its line) and a focused
+  Allow took the next Space as the answer (measured 2026-10-04). The demo
+  vault's six sample apps (`Features/App Gallery.md`, `Apps/*`) are the
+  worked examples, `smoke/app-gallery-scenario.js` their proof. **Events** (§8, 2026-10-03): `note-changed` when the
   embedding note changes on disk (to ports that may read it), and
   `grant-changed` when an answer ADDS capabilities — delivered live, no
   reload; anything removed (and Revoke) closes the ports and reloads. While

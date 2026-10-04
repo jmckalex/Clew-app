@@ -10,7 +10,9 @@ embedded with one line:
 @app+[Apps/Flashcards]{height=300}
 
 That is a real app: it reads the questions and answers at the bottom of
-this note, and keeps its best score.
+this note, and keeps its best score. Six more — a stock ticker, a
+replicator-dynamics lab, a seminar picker, a lecture timer, a word count and
+a reading list — are in the [[App Gallery]], each with what it asks for.
 
 ## The embed
 
