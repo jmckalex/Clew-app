@@ -1,4 +1,4 @@
-# Handover — 2026-10-04 night (origin/main 917303b; LOCAL 5a99c9e, 6d64822, eb501e4 + this; dev.7 = 5a99c9e)
+# Handover — 2026-10-04 night (origin/main 917303b; LOCAL 5a99c9e … eeb7371 + this; dev.7 = 5a99c9e; book mode phase 1 under way)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it); the live edit design AS BUILT is
@@ -11,8 +11,9 @@ prefer deleting a settled item to explaining it again.
 **Where the code is.** `origin/main` = `917303b`, pushed 2026-10-04 on the
 owner's word via Clew-boss ("Do everything you say that is waiting on me"):
 35 commits `f3a7d5b..917303b`, a fast-forward. Local since: `5a99c9e` (demo
-updates), `6d64822` + `eb501e4` (book-mode decisions), the HANDOVER after
-them. `git fetch` before counting.
+updates), `6d64822` + `eb501e4` (book-mode decisions), `96ad97a` HANDOVER,
+then book mode (below), NONE pushed — the rule tonight is NO PUSH. `git
+fetch` before counting.
 
 **Tonight (2026-10-03 evening, the owner's plan via Clew-boss).** Pushed
 first: origin/main = `f3a7d5b` (13 commits). Then, each its own commit,
@@ -182,8 +183,46 @@ commit, NOT pushed:**
   "Decisions (the owner, 2026-10-04)", §2–§8 revised to them. Phase 1 is now
   mostly ENGINE work (per-chapter pages from the start = option A plus a
   split after the one post-pass — confirmed by the engine owner in jmarkdown
-  62ae133). Verified by Clew-boss. NO book code until Clew-boss relays the
-  owner's build go.
+  62ae133). Verified by Clew-boss.
+
+**Book mode phase 1, Clew's half (the owner's GO 2026-10-04 night, via
+Clew-boss; each commit verified by Clew-boss unless noted; CLAUDE.md
+"Books" is the as-built):**
+- `8a7f173` — `shared/book.js` (the master reader, chapter title/words/
+  status, which books a note is in and shows), the index's `book` entry on
+  MASTERS only (CACHE_VERSION 4; demo/study index snapshots byte-identical),
+  renames of chapter links.
+- `3fe8aa1` — `editor/note-edit.js`: app-host's editNote/editorFor moved
+  (prefix `headless-write:`); app-bridge `writes`/`headless` identical.
+- `b788cbc` — the harness's `{drag:{from,to}}`.
+- `4bc9c04` — the Book panel (tab only in a vault with a master), the
+  status bar's "Ch. 2 of Book · also in …", next/previous chapter, demo
+  `Books/Signals` + `Guide/Books.md`; `smoke/book-panel-scenario.js`.
+- `2c6a6a8` — `book: true` with no `chapters:` key is no master (Clew-boss's
+  edge; CACHE_VERSION 5).
+- `ab8b993` — engine at-migration@0372f23 (book piece 1: processFile's
+  `chapters`), verified by Clew-boss; render dump unchanged.
+- `eeb7371` — Build: `main/export-book.js` → `build/<master>.{pdf,tex,html}`
+  beside the master; warnings placed by chapter:line, opened from the panel;
+  File → Export → Book as …; single-note exports byte-identical;
+  `smoke/book-export-scenario.js`. Awaiting Clew-boss's verification.
+- Waiting on jmarkdown's next pieces (each verified by Clew-boss before a
+  re-vendor): per-chapter numbering, the whitelisted chapter keys APPLIED,
+  per-chapter footnote ids, the post-pass warnings' places, split HTML
+  (`htmlLayout: 'pages'`). Each should need only its option and docs here.
+- ◆ Reported from the built PDF (to Clew-boss, for jmarkdown): the book .tex
+  emits `\crefname` without loading cleveref (stray "equationequation…" on
+  page 1); a chapter repeating `Resolve citations`/`Bibliography style` for
+  its own preview is warned in every build (D3-correct; the owner may want
+  no warning when the value equals the master's); every PDF export prints
+  inline code as `<MINTED>` (no -shell-escape — a security choice, not
+  changed).
+- A scratch worktree `$SP/wt-export` vendors jmarkdown's UNVERIFIED `book`
+  branch for local runs only (its node_modules links main's, `jmarkdown` →
+  its own vendor/); never commit from it.
+- At the night's end: package **0.12.1-dev.8** (out-dev, mirrors pinned;
+  keep dev.6–dev.8, dev.5 to the Trash with mv) — only after Clew-boss has
+  verified the night's last commit.
 
 **After dev.3 (local, NOT pushed, NOT in any package):** `3031a15` — the
 live preview pane never covers the block being edited, takes no pointer
@@ -259,8 +298,7 @@ Then (C): apps get `note-changed` and `grant-changed` (live, no reload), a
 "✎ … can edit notes" status-bar indicator while a write-granted app is live,
 and Settings lists each app's live embeds (frame-bridge.md §9b).
 
-**Queued by Clew-boss:** the owner's build go for book mode (phase 1 as
-revised in `6d64822`); nothing else. The test fixtures are tidy: every test
+**Queued by Clew-boss:** book mode phase 1 (above) to its end, then dev.8. The test fixtures are tidy: every test
 file keeps its fixtures under one temp root removed after it (`9d4adb2`,
 app-calls' before it), and the old ones are gone (Clew-boss, 2026-10-04).
 
