@@ -23,6 +23,10 @@ chapters:
 ---
 ```
 
+It is the `chapters:` key that makes a note a master: a note that says
+`book: true` with no `chapters:` at all — notes ABOUT a book — is just a
+note.
+
 The master's own text is what comes before the first chapter — a
 dedication, an epigraph, or nothing. `numbering` is `per chapter` (Figure
 2.3, Theorem 4.1) unless it says `continuous`.

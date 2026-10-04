@@ -570,7 +570,9 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   `CLEW_SMOKE_WEBRTC_POLICY`.
 - **Books** (`docs/dev/book-mode.md`; phase 1 under way 2026-10-04 on the
   owner's go): a book is a MASTER note whose front matter says `book: true`
-  and lists `chapters:` as wikilinks; every chapter stays an ordinary note.
+  and lists `chapters:` as wikilinks (the KEY is required, empty or not:
+  `book: true` alone may be a reading note's, and is no master — no tab, no
+  item, no warning); every chapter stays an ordinary note.
   `shared/book.js` (pure, tested) reads a master (`readMaster`: title,
   numbering, the chapter links AS WRITTEN, `later` — parts and front/back
   matter, named and not built — and `problems` by name), a chapter's title
@@ -579,7 +581,7 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   code, maths and comments masked — the status bar still counts the whole
   text) and its `status:` (draft/revised/done). The indexer adds `book:
   {title, chapters: [{target, resolved}]}` to a MASTER's entry only — every
-  other entry is unchanged (CACHE_VERSION 4) — resolved with the links, and
+  other entry is unchanged (CACHE_VERSION 5) — resolved with the links, and
   `rename-links.js` rewrites a master's chapter links like any other (front
   matter is not in `links`). Renderer: `renderer/books.js` — the book a
   chapter shows (`workspaceStore.recentBook`, the master opened or built

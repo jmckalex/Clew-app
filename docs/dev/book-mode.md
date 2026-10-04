@@ -60,6 +60,10 @@ The master's body is what goes before chapter 1 in the book's own pages:
 a dedication, an epigraph — or nothing.
 ```
 
+A note that says `book: true` with no `chapters:` key at all is NOT a master
+— it may be someone's notes about a book — so it gets no Book tab, no status
+item and no warning; `chapters:` present, even empty, makes it one.
+
 **Chapters first** (§9 D7): phase 1 reads `chapters:` only. `parts:` and
 front/back matter (`frontmatter:`, `appendices:`) come later; until then a
 master that names them builds WITHOUT them and says so by name ("parts: are

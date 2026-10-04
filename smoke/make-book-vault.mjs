@@ -5,7 +5,7 @@
 // plus Course.md, a second book that shares Conventions and names a chapter
 // that does not exist, and Notes/Alone.md, in no book.
 // <dir>/plain — a vault with no book (the control: no Book tab, no status
-// item). <dir>/ud — a fresh userData.
+// item), though its Reading Note.md says `book: true` with no `chapters:`. <dir>/ud — a fresh userData.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -37,6 +37,8 @@ fs.writeFileSync(path.join(vault, 'book-case.txt'), 'book\n');
 const plain = path.join(dir, 'plain');
 fs.mkdirSync(plain, { recursive: true });
 fs.writeFileSync(path.join(plain, 'Note.md'), '# A note\n\nNo book here.\n');
+// `book: true` with no `chapters:` key — a reading note about a book, not a master.
+fs.writeFileSync(path.join(plain, 'Reading Note.md'), '---\nbook: true\nauthor: Jane Austen\n---\n# Emma\n\nNotes on the novel.\n');
 fs.writeFileSync(path.join(plain, 'book-case.txt'), 'plain\n');
 fs.mkdirSync(path.join(dir, 'ud'), { recursive: true });
 console.log(`book fixture: ${vault} and ${plain}`);

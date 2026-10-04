@@ -3,7 +3,8 @@
 // `node smoke/make-book-vault.mjs <dir>`: CLEW_SMOKE_VAULT=<dir>/vault (or
 // <dir>/plain, the control) CLEW_USER_DATA=<dir>/ud.
 //
-// plain: `case=plain tabs=[…no Book…] book-item=none masters=0`.
+// plain: `case=plain tabs=[…no Book…] book-item=none masters=0` — with
+// Reading Note.md (`book: true`, no `chapters:`) the active note.
 // book: the right sidebar's tabs (Book among them), then EVERY CHANGE of
 // state as one `smoke-book: state …` line — the active note, the status
 // bar's book item, the panel's rows (`n:title/words/status`, `!` for a
@@ -33,7 +34,7 @@ await sleep(800);
 const tabs = () => [...document.querySelectorAll('.tool-tabs[data-side="right"] .tool-tab')].map((t) => t.textContent);
 
 if (kind === 'plain') {
-	workspaceStore.openNote('Note.md');
+	workspaceStore.openNote('Reading Note.md');
 	await sleep(1200);
 	log(`case=plain tabs=${JSON.stringify(tabs())} book-item=${document.querySelector('.clew-book-indicator')?.textContent ?? 'none'} masters=${vaultStore.masters().length}`);
 	window.__clewSmokeInput = [{ wait: 300 }];

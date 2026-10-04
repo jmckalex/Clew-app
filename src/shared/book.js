@@ -37,7 +37,8 @@ const keyOf = (entries, name) => entries.find((e) => e.key.toLowerCase() === nam
 const baseName = (rel) => rel.split('/').pop().replace(/\.(md|jmd)$/i, '');
 
 /**
- * What a master note says, or null when the note is not a master.
+ * What a master note says, or null when the note is not a master: a master's
+ * front matter says `book: true` AND has a `chapters:` key.
  *
  * @returns {null | {
  *   title: string|null,
@@ -51,6 +52,10 @@ const baseName = (rel) => rel.split('/').pop().replace(/\.(md|jmd)$/i, '');
 export function readMaster(text) {
 	const { present, entries, clean } = parseProperties(String(text ?? ''));
 	if (!present || keyOf(entries, 'book')?.value !== true) return null;
+	// `book: true` alone may be someone's reading note saying what it is
+	// about: only a note that also has a `chapters:` key (empty or not) is a
+	// master — no Book tab, no status item, no warning otherwise.
+	if (!keyOf(entries, 'chapters')) return null;
 	const problems = [];
 	const title = keyOf(entries, 'title')?.value;
 	let numbering = 'per chapter';
