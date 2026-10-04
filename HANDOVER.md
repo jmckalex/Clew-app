@@ -1,4 +1,4 @@
-# Handover — 2026-10-04 evening (origin/main f3a7d5b; LOCAL bd17b1d … 7bbfdb1; dev.6 = 77b0bea, boot-tested; 2619e1c + 7bbfdb1 in no package)
+# Handover — 2026-10-04 night (origin/main 917303b; LOCAL 5a99c9e, 6d64822, eb501e4 + this; dev.7 = 5a99c9e)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it); the live edit design AS BUILT is
@@ -8,9 +8,11 @@ prefer deleting a settled item to explaining it again.
 
 ## Read this first
 
-**Where the code is.** `origin/main` = `9349a48`, pushed 2026-10-03 on the
-owner's word: 23 commits `67311b6..9349a48`, a fast-forward. Anything after
-it is local; `git fetch` before counting.
+**Where the code is.** `origin/main` = `917303b`, pushed 2026-10-04 on the
+owner's word via Clew-boss ("Do everything you say that is waiting on me"):
+35 commits `f3a7d5b..917303b`, a fast-forward. Local since: `5a99c9e` (demo
+updates), `6d64822` + `eb501e4` (book-mode decisions), the HANDOVER after
+them. `git fetch` before counting.
 
 **Tonight (2026-10-03 evening, the owner's plan via Clew-boss).** Pushed
 first: origin/main = `f3a7d5b` (13 commits). Then, each its own commit,
@@ -30,19 +32,16 @@ NOT pushed:
 - dev.4 (0.12.1-dev.4) from `4ddda35` (`out-dev/`): notarized, stapled,
   signature, version, `clew://` in Info.plist and the shipped CLI checked;
   the BOOT TEST NEVER RAN — `boot-test.sh` aborted, load 26 after its
-  20-minute wait (Kaspersky's kavd + CrashPlan at ~45% each). Superseded by
-  dev.5, whose packaging replaces `out-dev/mac-arm64/Clew.app`: to test
-  dev.4 later, mount its DMG and run `BOOT_TEST_ALLOW_STALE=1
-  smoke/boot-test.sh /Volumes/<its volume>/Clew.app/Contents/MacOS/Clew`.
+  20-minute wait (Kaspersky's kavd + CrashPlan at ~45% each). Superseded;
+  its DMG and blockmap moved to the Trash at dev.7.
 
 **Then the owner's "smaller build" (2026-10-04, via Clew-boss), each its own
 commit, NOT pushed:**
 - `9d4adb2` — tests: 17 files' fixtures under ONE mkdtemp root each,
   removed in `after`; a full `npm test` leaves nothing in $TMPDIR. The
-  one-time cleanup of the 8,343 old fixture folders (prefixes clew-grants-,
-  clew-atomic-, clew-history-, clew-trust-, clew-remote-, clew-kv-, …; all
-  real dirs, none newer than 5 min, oldest 2026-09-30) was REFUSED by the
-  session's permission check — left for the owner to approve or do.
+  one-time cleanup of the old fixture folders was done by Clew-boss on the
+  owner's instruction (2026-10-04: 8,906 folders, links removed first, none
+  pointing outside; TMPDIR 11,233 → 2,327 entries).
 - `17a06c5` — `main/callout-types.js` is shareable (no Node built-in, no
   `process`, the icon table handed in or loaded lazily; `hasCustomCallouts`
   for a host that fetches it); the disk side is `main/callout-files.js`.
@@ -120,15 +119,13 @@ commit, NOT pushed:**
 - `2619e1c` — the demo vault's new files reach an EXISTING copy (main/
   demo-sync.js; never over a file, never into .clew, a deleted one stays
   deleted). The owner's 1-October copy (no Apps/) was moved to the Trash at
-  their word. ◆ An UPDATED demo file never reaches an old copy.
+  their word. (Updated files too since `5a99c9e`, below.)
 - `7bbfdb1` — Stock Ticker /Live stocks/ (Finnhub): the key in the app
   frame's own localStorage, never app.kv; the `token` query parameter
   (Finnhub's preflight allows no headers — measured). Tested against
-  smoke/finnhub-stub.mjs; the real-key check is the owner's. ◆ The owner's
-  dev.6 demo copy keeps the OLD ticker (the sync never overwrites): a fresh
-  copy after the next build. ◆ Platform finding (reported, not changed): a
-  `network` grant does not record origins, so in a TRUSTED vault a manifest
-  edit widens an app's hosts without asking.
+  smoke/finnhub-stub.mjs; the real-key check is the owner's (dev.7). Its two
+  findings are fixed: the old ticker in the owner's copy (`5a99c9e`) and a
+  `network` grant that recorded no origins (`917303b`).
 - the untitled ```ad-type fence (Clew-boss approved it as consistency with
   the owner's callout rule): it drew NO heading — the engine heads an
   untitled callout with `untitledCalloutTitle(token.written)`, and an
@@ -139,6 +136,55 @@ commit, NOT pushed:**
   bytes; optional PDF output, lazier auto.js, Node workers; engines and SVG
   unchanged). NOT re-pinned — Clew-boss's call.
 
+**Then (2026-10-04 night, via Clew-boss; each its own commit):**
+- `917303b` (PUSHED) — a `network` grant is bound to its ORIGINS
+  (`app-grants.js` `networkOrigins`; CLAUDE.md "Apps in notes"): the app CSP
+  is the granted hosts the current manifest still names; a new host is asked
+  for ALONE and reaches nothing meanwhile; a dropped host is gone at once (the
+  registry re-reads a changed manifest, main reloads the app's frames); a
+  bare `network` is its own grant, worded "send data to any host on the
+  internet"; a grant from before origins were recorded is asked ONCE more,
+  because it cannot say what it covered. Measured
+  (`smoke/app-origins-scenario.js`): trusted history `A=blocked B=blocked` →
+  `A=reached B=blocked` → `A=reached B=reached` → `A=blocked B=reached`, the
+  second prompt naming B only, the stubs' log showing B's first request only
+  after that Allow; restricted: choice C re-asks everything.
+- `5a99c9e` — the demo copy's UNTOUCHED files are updated, not only new ones
+  added: `.clew/demo-files.json` v2 records each file's sha256; a file still
+  holding the given hash, or ANY version Clew ever shipped
+  (`src/main/demo-history.json`, every committed version of every demo file
+  — `npm run gen-demo-history`; `scripts/package.js` refuses a stale one), is
+  replaced; a changed one is never touched; a deleted one stays deleted. The
+  notice lists added AND updated. Measured over demo-vault exactly as 77b0bea
+  (dev.6) shipped it, Welcome.md edited: `added=1 updated=4` (the ticker's
+  app.js, clew-app.json, index.html and the App Gallery note), the edit
+  kept, a second opening quiet. A dry run of the plan against the OWNER'S
+  real copy (`~/Documents/Clew Demo Vault`, made by dev.6, no record) gives
+  the same five files: dev.7's Help → Clew Documentation brings its ticker
+  up to date by itself — and then, the manifest having changed (a new host),
+  the ticker asks once for finnhub.io + api.frankfurter.dev.
+- **dev.7 (0.12.1-dev.7) from `5a99c9e`** — `out-dev/Clew-0.12.1-dev.7-
+  arm64.dmg` (231,051,017 bytes), committed mirrors. Notarized, stapled
+  (DMG and app), spctl "Notarized Developer ID" both, codesign clean,
+  0.12.1-dev.7 + `clew`, stale-check matches. Packaged runs: demo/Flashcards,
+  the trust prompt, packaged admonitions, the App Gallery (six prompts, six
+  apps; the ticker's prompt now names finnhub.io), the pinned ticker
+  (bottom-off=0, same frame, loads=0), the demo sync over a dev.6 copy
+  (`added=1 updated=4`, then quiet; Welcome's edit kept), and Live stocks
+  against the Finnhub stub (badges sim,none,open,closed,none; requests=6;
+  backoff 3000; the key in no vault file and not in the run log).
+  BOOT TEST PASSED (load 5.93 after a 1,240 s wait — mediaanalysisd,
+  contactsd and kavd; figures 13 mpw-ok, cache-probe engine→cache; live
+  edit 7/7). out-dev keeps dev.5–dev.7; dev.4 (+ blockmap) in
+  the Trash. The real Finnhub key is the owner's to paste (Live stocks →
+  Key…).
+- `6d64822` — docs/dev/book-mode.md: the owner's thirteen answers as §9
+  "Decisions (the owner, 2026-10-04)", §2–§8 revised to them. Phase 1 is now
+  mostly ENGINE work (per-chapter pages from the start = option A plus a
+  split after the one post-pass — confirmed by the engine owner in jmarkdown
+  62ae133). Verified by Clew-boss. NO book code until Clew-boss relays the
+  owner's build go.
+
 **After dev.3 (local, NOT pushed, NOT in any package):** `3031a15` — the
 live preview pane never covers the block being edited, takes no pointer
 events, and a failed figure shows its first error mapped to the fence line
@@ -148,42 +194,6 @@ source" icon on every rendered block in live edit, the thin bar gone
 returns after its block scrolled away is appended hidden at the iframe
 default 150 px until drawn again (live-blocks `content=79 frame=150` on
 far-down mermaid frames, when timings shift; reproduced without 4a5a60a).
-
-**Mac Silicon dev build 0.12.1-dev.3** (2026-10-03, the owner's ask in this
-window), built from `bebc385` by the same recipe (committed mirrors):
-`out-dev/Clew-0.12.1-dev.3-arm64.dmg`, 230,993,896 bytes. It carries the
-printed page (d358d18, a956fed), the PDF link fix (18023d5) and the quiet
-page navigator (bebc385). notarytool Accepted; stapler valid and spctl
-accepted on DMG and app; hardened runtime, four entitlements, arm64,
-version 0.12.1-dev.3, opentype bundle present. boot-test PASSED (stamp
-matches; 13 figures mpw-ok; every live-edit line). Packaged checks: the
-page is clew-app://app/index.html; the bundled demo opens trusted and
-Flashcards prompts then runs; an untrusted fixture shows the trust prompt;
-zero network requests; pdf-nav-scenario against the packaged binary reads
-as in dev. out-dev holds dev.1–dev.3 (three, nothing trashed).
-
-**Mac Silicon dev build 0.12.1-dev.2** (2026-10-03; the owner's yes in this
-window), built from `9349a48` by the dev.1 recipe with the committed
-mirrors: `out-dev/Clew-0.12.1-dev.2-arm64.dmg`, 230,993,209 bytes, beside
-dev.1's.
-- Signed and notarised: notarytool Accepted; stapler valid on the DMG and
-  the app; `spctl` accepts both (Notarized Developer ID).
-- The app: hardened runtime, the four entitlements, arm64,
-  CFBundleShortVersionString/CFBundleVersion 0.12.1-dev.2,
-  `mptikz/bundles/opentype` present, `dist/build-stamp.json` in the asar.
-- **boot-test PASSED** with no ALLOW_STALE: the stamp matches these
-  sources; 13 figures mpw-ok, cache-probe engine→cache; every live-edit
-  line.
-- In the PACKAGED app (invisible, scratch userData), all four of Clew-boss's
-  checks passed:
-  - the page is `clew-app://app/index.html`;
-  - a copy of the bundled demo vault opens trusted, and its Flashcards app
-    prompts, then runs (first card shown);
-  - an untrusted fixture shows the trust prompt (Keep restricted / Trust on
-    this Mac);
-  - zero network requests over 44 s (the update check stays silent under
-    the harness).
-- Not published anywhere; `out-dev/` is gitignored.
 
 **Since the push (local, NOT pushed):** `4bbee43` HANDOVER; `5f870b2` the
 engine re-vendored at `at-migration@a7de8c6`; then **Clew switched to the
@@ -249,19 +259,10 @@ Then (C): apps get `note-changed` and `grant-changed` (live, no reload), a
 "✎ … can edit notes" status-bar indicator while a write-granted app is live,
 and Settings lists each app's live embeds (frame-bridge.md §9b).
 
-**Queued by Clew-boss:** nothing (2026-10-03, after the flaky-test fix —
-the morning brief carries the rest for the owner). The app-calls hang was
-never reproduced (16 parallel runs: ~250 ms each); its fixtures now live
-under one temp root removed after the file, its link out no longer names
-the whole system temp folder, and `npm test` has a 60 s per-test timeout.
-Leftovers: 285 old `clew-calls-*` fixtures removed from $TMPDIR (links
-unlinked first, nothing followed); 144 made at 02:51–02:53 by a concurrent
-run of the OLD file were left — the same command clears them later
-(`find "$TMPDIR" -maxdepth 1 -name 'clew-calls-*' -type d -mmin +5`, then
-`find <dir> -type l -delete`, then `rm -rf <dir>`). Other test files still
-leave fixtures behind (clew-history, -trust, -atomic, -remote, -kv,
--symlinks …: thousands), none linking outside its own root — tidy them the
-same way when next in those files.
+**Queued by Clew-boss:** the owner's build go for book mode (phase 1 as
+revised in `6d64822`); nothing else. The test fixtures are tidy: every test
+file keeps its fixtures under one temp root removed after it (`9d4adb2`,
+app-calls' before it), and the old ones are gone (Clew-boss, 2026-10-04).
 
 **The rules this session works under** (the owner's, relayed by the
 coordinating session "Clew-boss", uds `/tmp/cc-socks/6958.sock` at the
