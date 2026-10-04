@@ -1,4 +1,4 @@
-# Handover — 2026-10-04 evening (origin/main f3a7d5b; LOCAL bd17b1d … 77b0bea; dev.6 = 77b0bea, boot-tested)
+# Handover — 2026-10-04 evening (origin/main f3a7d5b; LOCAL bd17b1d … 7bbfdb1; dev.6 = 77b0bea, boot-tested; 2619e1c + 7bbfdb1 in no package)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it); the live edit design AS BUILT is
@@ -117,6 +117,18 @@ commit, NOT pushed:**
   along the bottom (bottom-off=0 at the top and middle, in place at the
   end, same frame, loads=0). BOOT TEST PASSED (load 5.75; figures 13 ok,
   live edit 7/7). out-dev keeps dev.4–dev.6; dev.3 (+ blockmap) in the Trash.
+- `2619e1c` — the demo vault's new files reach an EXISTING copy (main/
+  demo-sync.js; never over a file, never into .clew, a deleted one stays
+  deleted). The owner's 1-October copy (no Apps/) was moved to the Trash at
+  their word. ◆ An UPDATED demo file never reaches an old copy.
+- `7bbfdb1` — Stock Ticker /Live stocks/ (Finnhub): the key in the app
+  frame's own localStorage, never app.kv; the `token` query parameter
+  (Finnhub's preflight allows no headers — measured). Tested against
+  smoke/finnhub-stub.mjs; the real-key check is the owner's. ◆ The owner's
+  dev.6 demo copy keeps the OLD ticker (the sync never overwrites): a fresh
+  copy after the next build. ◆ Platform finding (reported, not changed): a
+  `network` grant does not record origins, so in a TRUSTED vault a manifest
+  edit widens an app's hosts without asking.
 - the untitled ```ad-type fence (Clew-boss approved it as consistency with
   the owner's callout rule): it drew NO heading — the engine heads an
   untitled callout with `untitledCalloutTitle(token.written)`, and an
