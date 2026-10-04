@@ -221,6 +221,7 @@ async function onHello(event) {
 	if (!ports.has(key)) ports.set(key, new Set());
 	ports.get(key).add(record);
 	channel.port1.onmessage = (e) => onRequest(record, e.data);
+	starts.set(key, (starts.get(key) ?? 0) + 1);
 	event.source.postMessage({ source: 'clew-app-host', type: 'welcome', v: 1, granted: st.granted, tier2: false }, event.origin, [channel.port2]);
 	livePortsChanged();
 }
@@ -437,6 +438,12 @@ const WRITE_CAPS = ['note.write', 'notes.write', 'notes.create', 'editor.insert'
 let indicator = null;
 
 /** Every live embed: { key, name, notePath, writes } — Settings lists them. */
+/** key → how many times an app frame of it was welcomed: a frame that
+ *  reloads (moved in the DOM, re-created) says hello again — scenarios
+ *  assert a pinned app's scroll never does (smoke/app-pin-scenario.js). */
+const starts = new Map();
+export const appStarts = () => Object.fromEntries(starts);
+
 export function liveEmbeds() {
 	const out = [];
 	for (const set of ports.values()) {

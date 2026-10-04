@@ -908,7 +908,11 @@ machine itself (malware already running).
 
   The target is a vault FOLDER holding `clew-app.json` (the manifest: `id`,
   `name`, `version`, `entry`, `capabilities`) and the app's files. Options:
-  `width`, `height` (a bare number is px), `aspect`, `style`, `class`. The
+  `width`, `height` (a bare number is px), `aspect`, `style`, `class`, and
+  `pin=top|bottom` (2026-10-04, `shared/app-pin.js`: held at that edge of
+  the pane while its place is out of view there — `position: sticky`'s
+  rule, done by style on the HOISTED holder in reading view and on the
+  frame in live edit, so the frame never moves or reloads). The
   engine's attribute grammar severs unquoted units and throws on a bare
   slash, so the handler reuses reveal-embed's repair (units glued back;
   anything with a slash quoted — `aspect="16/9"`, and the manual says so).

@@ -85,7 +85,7 @@ note API, plugins, and every settings key.
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
   dialect scanner's constructs and grammar, live edit's model, reveal rule,
-  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band, figure errors, the PDF save guard, deep links and the clew command, the shareable callout resolver, the device word, where notices sit — 1129 tests. DOM/UI work is
+  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band, figure errors, the PDF save guard, deep links and the clew command, the shareable callout resolver, the device word, where notices sit, pinned apps — 1133 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
@@ -510,9 +510,19 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   live-embed arrangement): an app's own insert above it re-created the
   `<clew-app-embed>` and restarted the app until it was. Settings →
   This vault → Apps (a subsection of its own) lists them with their live
-  embeds and Revoke. Live edit draws an `@app` alone on its line as a block
-  frame like `@reveal` (`live/model.js`; until 2026-10-04 a chip, and the
-  app never ran there). Both modal prompts — this one and the vault-trust
+  embeds and Revoke. Live edit draws an `@app` alone on its line and the
+  `@begin(app)` form as block frames, like `@reveal` (`live/model.js`,
+  `rich-fences.js#RICH_ENVIRONMENTS`; until 2026-10-04 a chip, and the app
+  never ran there); an inline `@app[…]` in a sentence stays a chip.
+  **`pin=top|bottom`** (the owner's ask 2026-10-04) holds an app at that edge
+  of its pane while its place is out of view there — CSS sticky's rule, in
+  `shared/app-pin.js`, done by STYLE alone so the frame never moves or
+  reloads: reading view makes the hoisted holder `fixed`
+  (`preview-client/app-embed.js`; never inside a live-edit block document,
+  `data-clew-block`), live edit sets the block frame's `top` from the
+  height map even when CodeMirror has not drawn its block, keeps it from
+  eviction, and gives `EditorView.scrollMargins` its band so the caret is
+  scrolled clear (`live/frame-layer.js`). `smoke/app-pin-scenario.js`. Both modal prompts — this one and the vault-trust
   prompt — FOCUS THE QUESTION, never Allow/Trust: a prompt can appear while
   you type (an app's frame renders a moment after its line) and a focused
   Allow took the next Space as the answer (measured 2026-10-04). The demo
