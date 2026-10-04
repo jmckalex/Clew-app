@@ -1,4 +1,4 @@
-# Handover — 2026-10-04 morning (origin/main f3a7d5b; LOCAL bd17b1d … fe4071d; dev.5 = 0710c6a, boot-tested; 4 fixes since, in no package)
+# Handover — 2026-10-04 (origin/main f3a7d5b; LOCAL bd17b1d … 79fc986; dev.5 = 0710c6a, boot-tested; everything after it in NO package)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it); the live edit design AS BUILT is
@@ -88,6 +88,26 @@ commit, NOT pushed:**
   vaults now build with NO warnings. The render dump lists warning notes
   (`smoke-rdw:`) and masks app frame keys (Apps in Notes differed per dump
   folder).
+- `1b3f321`, `cddeba9` — jmarkdown 1bb6c8e (alts/attributes escaped) and
+  0b506dc (a `<script>` in INLINE code no longer cuts the paragraph and RUNS
+  — found by `ef8577e`'s smoke/code-lt-scenario.js; it ran in a trusted
+  vault). The mirror's index.js still carries the master's June uncommitted
+  change (Sublime inverse search off).
+- `bbd2b8e` frameClick reaches app frames at any depth; `562bcb0` + `c892339`
+  live edit RUNS `@app+[…]` and `@begin(app)` (it drew a chip and never ran
+  an app); `bfb5208` both modal prompts focus the QUESTION — a focused Allow
+  took a typed Space as the answer (measured).
+- `8173392` — six sample apps in demo-vault/Apps + Features/App Gallery.md
+  (+ Reading/ fixtures): Stock Ticker (network = api.frankfurter.dev ONLY —
+  .app now 301s there), Replicator Dynamics Lab, Seminar Picker, Lecture
+  Timer, Writing Progress, Reading List. smoke/app-gallery-scenario.js.
+  ◆ Platform limit: the app prompt is all-or-nothing (no optional caps).
+- `190d6e5`, `79fc986` — `pin=top|bottom` (shared/app-pin.js): sticky's rule,
+  by style only (reading: the hoisted holder goes fixed; live: the frame's
+  top, from the height map when undrawn; scrollMargins keep the caret
+  clear). The gallery's ticker rides along the bottom.
+  smoke/app-pin-scenario.js (incl. a `control` without pins: CodeMirror's
+  own first-pass settling is identical).
 - the untitled ```ad-type fence (Clew-boss approved it as consistency with
   the owner's callout rule): it drew NO heading — the engine heads an
   untitled callout with `untitledCalloutTitle(token.written)`, and an
