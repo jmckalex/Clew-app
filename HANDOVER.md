@@ -1,4 +1,4 @@
-# Handover — 2026-10-04 night (origin/main 917303b; LOCAL 5a99c9e … eeb7371 + this; dev.7 = 5a99c9e; book mode phase 1 under way)
+# Handover — 2026-10-04 night (origin/main 917303b; LOCAL 5a99c9e … 70aa64a + this; dev.7 = 5a99c9e; book mode phase 1 under way)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it); the live edit design AS BUILT is
@@ -205,18 +205,32 @@ Clew-boss; each commit verified by Clew-boss unless noted; CLAUDE.md
 - `eeb7371` — Build: `main/export-book.js` → `build/<master>.{pdf,tex,html}`
   beside the master; warnings placed by chapter:line, opened from the panel;
   File → Export → Book as …; single-note exports byte-identical;
-  `smoke/book-export-scenario.js`. Awaiting Clew-boss's verification.
+  `smoke/book-export-scenario.js`. Verified.
+- `5a59a4d` — engine at-migration@8b5a1db (book piece 2, numbering),
+  verified; `70aa64a` — numbering ALWAYS passed from Clew's reading (the
+  engine's `Numbering:` key is case-sensitive — measured), readMaster takes
+  the engine's values, an empty `chapters:` is no problem. Verified.
 - Waiting on jmarkdown's next pieces (each verified by Clew-boss before a
-  re-vendor): per-chapter numbering, the whitelisted chapter keys APPLIED,
+  re-vendor): the cleveref fix, "silent if same as master", the whitelisted
+  chapter keys APPLIED,
   per-chapter footnote ids, the post-pass warnings' places, split HTML
   (`htmlLayout: 'pages'`). Each should need only its option and docs here.
 - ◆ Reported from the built PDF (to Clew-boss, for jmarkdown): the book .tex
   emits `\crefname` without loading cleveref (stray "equationequation…" on
   page 1); a chapter repeating `Resolve citations`/`Bibliography style` for
-  its own preview is warned in every build (D3-correct; the owner may want
-  no warning when the value equals the master's); every PDF export prints
-  inline code as `<MINTED>` (no -shell-escape — a security choice, not
-  changed).
+  its own preview is warned in every build — the owner: "Silent if same as
+  master" (jmarkdown to do; then set Signals' `Resolve citations` /
+  `Bibliography style` to Conventions' and make the demo book build with NO
+  warnings).
+- ◆ `<MINTED>` in a PDF: NOT shell escape (latexminted runs in restricted
+  mode). minted 3 typesets highlighted code on a LATER pass, and latexmk
+  stops after a first pass with a LaTeX error. Books: the cleveref bug
+  (jmarkdown's fix cures it — measured: cleveref added, 3 runs, no
+  `<MINTED>`). Single notes: e.g. Guide/Editing.md, a literal
+  `[[Welcome#The guide]]` in the .tex (the wikilinks-in-LaTeX gap). Remedies
+  (a) wikilinks in LaTeX note exports, (b) `latexmk -f` — both change
+  existing exports: with the owner via Clew-boss, NOT to be done until
+  relayed.
 - A scratch worktree `$SP/wt-export` vendors jmarkdown's UNVERIFIED `book`
   branch for local runs only (its node_modules links main's, `jmarkdown` →
   its own vendor/); never commit from it.
