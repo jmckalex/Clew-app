@@ -10,7 +10,11 @@
 //   mine:   `pc: mine disk=mine copy=none`, then `pc: after saves-again=true conflict-again=false`
 //   theirs: `pc: theirs disk=theirs viewer-has-mine=false`, then the same `after` line
 //   both:   `pc: both disk=theirs copy=mine side-by-side=true`
-//   later:  `pc: later notice=true disk=theirs held=true` (an edit while held saves nothing)
+//   later:  `pc: later notice=true disk=theirs held=true` (an edit while held saves nothing),
+//           then `pc: later-geometry notice=l,t,r,b frame=l,t,r,b`; with
+//           FRAME_SCRIPT pdf-conflict-frame.js (FRAME_MATCH pdf-page.html for
+//           a tab, Embed.md for the embed) the chip's rect in its frame —
+//           placed by the frame's, it must not meet the notice's.
 // `embed`: the viewer is Embed.md's `![[Paper.pdf]]` in reading view (inside
 // the note's frame) — the same lines. `gone`: the tab is closed after the
 // refusal, before the choice — the versions in history do it (`mine` →
@@ -88,6 +92,10 @@ window.__clewSmokeInput = [{ click: { selector: choiceSel } }, { wait: 6000 }, {
 		await annotate('MINE-AGAIN');
 		await sleep(4000);
 		log(`later notice=${noticed} disk=${hasMark(await diskBytes()) ? 'theirs' : 'mine'} held=${hasMark(await diskBytes())}`);
+		// Where the notice sits against the viewer: pdf-conflict-frame.js
+		// logs the chip's rect in its frame, which this frame's rect places.
+		const rect = (el) => { const r = el?.getBoundingClientRect(); return r ? [r.left, r.top, r.right, r.bottom].map(Math.round).join(',') : 'none'; };
+		log(`later-geometry notice=${rect(document.querySelector('.clew-conflict-notice'))} frame=${rect(frameOf('Paper.pdf'))}`);
 		return;
 	}
 	const disk = hasMark(await diskBytes()) ? 'theirs' : 'mine';
