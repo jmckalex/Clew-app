@@ -32,6 +32,7 @@ import { assetStamp, stampChanged } from './asset-stamp.js';
 import { staleSources } from './build-stamp.js';
 import { listenForLinks, onSecondInstance, startDeepLinks } from './deep-link-host.js';
 import { syncDemoVault, demoSyncNotice } from './demo-sync.js';
+import demoHistory from './demo-history.json';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.dirname(__dirname); // dist/
@@ -335,20 +336,21 @@ export function openDemoVault(fromSession = null) {
 		}
 	}
 	if (!fs.existsSync(target)) return null;
-	// The demo files added since this copy was made (demo-sync.js): never
-	// over a file, never into .clew, never one it was given before. A fresh
-	// copy only records what it holds.
-	let added = [];
+	// The demo brought up to date in this copy (demo-sync.js): new files
+	// added, untouched old ones updated (by the hash given, or a version Clew
+	// ever shipped — demo-history.json), the user's own changes and
+	// deletions left alone, never into .clew. A fresh copy only records.
+	let synced = { added: [], updated: [] };
 	if (copying) {
-		try { added = syncDemoVault(paths.demoVault, target); } catch (err) { console.warn(`[clew] demo vault update: ${err.message}`); }
-		if (process.env.CLEW_SMOKE) console.log(`smoke-demo-sync: fresh=${fresh} added=${added.length} ${JSON.stringify(added.slice(0, 12))}`);
+		try { synced = syncDemoVault(paths.demoVault, target, { history: demoHistory }); } catch (err) { console.warn(`[clew] demo vault update: ${err.message}`); }
+		if (process.env.CLEW_SMOKE) console.log(`smoke-demo-sync: fresh=${fresh} added=${synced.added.length} updated=${synced.updated.length} ${JSON.stringify(synced.updated.slice(0, 12))}`);
 	}
 	// Clew's own vault (§4.8) is trusted by construction: a copy made just
 	// now from the bundle, or one this device has never decided about. A
 	// decision already recorded — a revoke — stands.
 	if (fresh || !trust.entries()[fs.realpathSync(target)]) trust.trust(target, 'demo', readVaultRequests(target)?.enable ?? null);
 	const session = openVaultAnywhere(target, { preferSession: fromSession });
-	const text = demoSyncNotice(added);
+	const text = demoSyncNotice(synced);
 	if (text) {
 		if (session.vaults.root) session.vaults.refreshTree?.();
 		Promise.resolve(session.opened).then(() => setTimeout(() => {

@@ -60,12 +60,19 @@ note API, plugins, and every settings key.
   vault-settings + plugins); `main.js#openDemoVault` copies it to
   `~/Documents/Clew Demo Vault` on first use (bundle is read-only payload)
   and the welcome screen / Help menu route through it. Every later opening
-  ADDS the bundled files that copy has never been given
-  (`main/demo-sync.js`, `.clew/demo-files.json`; never over a file, never
-  into `.clew/`, a deleted demo note stays deleted) and says so in the
-  window (`EV_NOTICE`) — until 2026-10-04 an old copy never saw a new demo
-  note (the owner's dev.6: no App Gallery). `CLEW_SMOKE_DEMO_TARGET`
-  (scenarios only) gives a dev build that path (`smoke/demo-sync-scenario.js`). Dev-vs-packaged
+  brings that copy up to date (`main/demo-sync.js`) and says so in the
+  window (`EV_NOTICE`, added and updated): it ADDS the bundled files the
+  copy was never given and UPDATES a file the user never changed — its
+  content still the sha256 `.clew/demo-files.json` records as given, or
+  any version Clew ever SHIPPED (`src/main/demo-history.json`, every
+  committed version of every demo file, written by `npm run
+  gen-demo-history` and checked by `scripts/package.js`, which refuses a
+  stale one) — which is how a copy made before the record existed is told
+  from an edited one. A changed file is never touched, a deleted demo note
+  stays deleted, nothing goes into `.clew/`. Until 2026-10-04 an old copy
+  never saw a new or improved demo note (the owner's dev.6: no App Gallery,
+  then the old ticker). `CLEW_SMOKE_DEMO_TARGET` (scenarios only) gives a
+  dev build that path (`smoke/demo-sync-scenario.js`). Dev-vs-packaged
   locations are decided ONCE in `src/main/paths.js`; new main-process file
   dependencies must go through it. `CLEW_USER_DATA` (honored at the top of
   paths.js, the only import-time userData reader) points the app at an
@@ -91,7 +98,7 @@ note API, plugins, and every settings key.
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
   dialect scanner's constructs and grammar, live edit's model, reveal rule,
-  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band, figure errors, the PDF save guard, deep links and the clew command, the shareable callout resolver, the device word, where notices sit, pinned apps, the demo vault's updates, the ticker's live rules, origin-bound network grants — 1148 tests. DOM/UI work is
+  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band, figure errors, the PDF save guard, deep links and the clew command, the shareable callout resolver, the device word, where notices sit, pinned apps, the demo vault's updates (untouched files by hash and by shipped history), the ticker's live rules, origin-bound network grants — 1148 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]

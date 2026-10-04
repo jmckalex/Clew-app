@@ -128,6 +128,9 @@ run('node scripts/vendor-embedpdf.js');
 // The wasm TikZ/MetaPost engines (74 MB, extraResources → Resources/mptikz).
 // --require: fail here rather than ship an app whose figures cannot render.
 run('node scripts/stage-mptikz.js --require');
+// The demo vault's update recognises an untouched old file by this list
+// (main/demo-sync.js): a build must ship the history of the demo it ships.
+run('node scripts/gen-demo-history.mjs --check');
 run('node scripts/build.js');
 
 // Stage the engine: mirror + production node_modules, resolvable by the

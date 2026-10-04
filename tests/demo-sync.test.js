@@ -9,14 +9,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // The bundled demo vault brought up to date in the user's copy
-// (main/demo-sync.js): new files added, nothing overwritten, no code slipped
-// into .clew, a deleted demo note left deleted.
+// (main/demo-sync.js): new files added, untouched old ones updated, the
+// user's changes and deletions left alone, no code slipped into .clew.
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { listFiles, demoFilesToAdd, syncDemoVault, demoSyncNotice } from '../src/main/demo-sync.js';
+import { listFiles, planDemoSync, syncDemoVault, demoSyncNotice, readRecord } from '../src/main/demo-sync.js';
 
 const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'clew-demo-sync-'));
 after(() => fs.rmSync(tmpRoot, { recursive: true, force: true }));
@@ -27,64 +28,81 @@ const put = (root, rel, text) => {
 };
 const read = (root, rel) => fs.readFileSync(path.join(root, rel), 'utf8');
 const has = (root, rel) => fs.existsSync(path.join(root, rel));
+const h = (text) => crypto.createHash('sha256').update(text).digest('hex');
+const map = (o) => new Map(Object.entries(o));
 
-test('the plan: a copy from before the list counts what it holds as given', () => {
-	const bundled = ['Apps/Ticker/app.js', 'Features/App Gallery.md', 'Welcome.md'];
-	assert.deepEqual(demoFilesToAdd({ bundled, existing: new Set(['Welcome.md']), delivered: null }),
-		{ add: ['Apps/Ticker/app.js', 'Features/App Gallery.md'], delivered: ['Apps/Ticker/app.js', 'Features/App Gallery.md', 'Welcome.md'] });
-	// With the list: what was given before is not given again, though missing.
-	assert.deepEqual(demoFilesToAdd({ bundled, existing: new Set(['Welcome.md']), delivered: new Set(['Welcome.md', 'Features/App Gallery.md']) }).add,
-		['Apps/Ticker/app.js']);
+test('the plan, with a record of hashes: untouched updated, edited kept, deleted left deleted, new added', () => {
+	const plan = planDemoSync({
+		bundled: map({ 'Apps/Ticker/app.js': h('new ticker'), 'Welcome.md': h('welcome v2'), 'Old.md': h('old'), 'New.md': h('new') }),
+		current: map({ 'Apps/Ticker/app.js': h('old ticker'), 'Welcome.md': h('welcome, my edit') }),
+		record: map({ 'Apps/Ticker/app.js': h('old ticker'), 'Welcome.md': h('welcome v1'), 'Old.md': h('old') }),
+	});
+	assert.deepEqual([plan.add, plan.update], [['New.md'], ['Apps/Ticker/app.js']]);
+	assert.equal(plan.record.get('Welcome.md'), h('welcome v1'), 'the user’s edit keeps the hash we gave');
+	assert.equal(plan.record.get('Apps/Ticker/app.js'), h('new ticker'));
 });
 
-test('an old copy gets the new files; nothing it has is touched; .clew is never written into', () => {
-	const source = path.join(tmpRoot, 'bundle-1');
-	const target = path.join(tmpRoot, 'copy-1');
-	put(source, 'Welcome.md', 'Welcome, from the bundle.\n');
-	put(source, 'Features/App Gallery.md', '# App Gallery\n');
-	put(source, 'Apps/Ticker/app.js', '// ticker\n');
-	put(source, '.clew/plugins/p/main.js', '// a plugin: code\n');
-	put(source, '.clew/vault-settings.json', '{}');
-	put(target, 'Welcome.md', 'Welcome — and my own edit.\n');
-	put(target, 'Mine.md', 'A note of my own.\n');
-	assert.deepEqual(listFiles(source), ['Apps/Ticker/app.js', 'Features/App Gallery.md', 'Welcome.md']);
-	const added = syncDemoVault(source, target);
-	assert.deepEqual(added, ['Apps/Ticker/app.js', 'Features/App Gallery.md']);
-	assert.equal(read(target, 'Welcome.md'), 'Welcome — and my own edit.\n', 'never over a file');
-	assert.equal(read(target, 'Mine.md'), 'A note of my own.\n');
-	assert.equal(has(target, '.clew/plugins/p/main.js'), false, 'no code slipped into .clew');
-	assert.equal(has(target, '.clew/vault-settings.json'), false);
-	assert.deepEqual(JSON.parse(read(target, '.clew/demo-files.json')).files,
-		['Apps/Ticker/app.js', 'Features/App Gallery.md', 'Mine.md', 'Welcome.md']);
-	// Opened again: nothing new.
-	assert.deepEqual(syncDemoVault(source, target), []);
+test('a copy with no record (dev.6’s): a version Clew shipped is updated; anything else is the user’s', () => {
+	const history = { 'Apps/Ticker/app.js': [h('old ticker')], 'Welcome.md': [h('welcome v1')] };
+	const plan = planDemoSync({
+		bundled: map({ 'Apps/Ticker/app.js': h('new ticker'), 'Welcome.md': h('welcome v2'), 'Features/App Gallery.md': h('g') }),
+		current: map({ 'Apps/Ticker/app.js': h('old ticker'), 'Welcome.md': h('welcome, my edit') }),
+		record: null,
+		history,
+	});
+	assert.deepEqual([plan.add, plan.update], [['Features/App Gallery.md'], ['Apps/Ticker/app.js']]);
+	assert.equal(plan.record.get('Welcome.md'), null, 'given, hash unknown');
 });
 
-test('a demo note deleted stays deleted; a file new in the bundle arrives', () => {
-	const source = path.join(tmpRoot, 'bundle-2');
-	const target = path.join(tmpRoot, 'copy-2');
-	put(source, 'Welcome.md', 'w\n');
+test('2619e1c’s record (a list, no hashes) counts as given; the history still recognises a shipped version', () => {
+	const dir = path.join(tmpRoot, 'legacy');
+	put(dir, '.clew/demo-files.json', JSON.stringify({ files: ['Welcome.md', 'Gone.md'] }));
+	const record = readRecord(dir);
+	assert.deepEqual([...record], [['Welcome.md', null], ['Gone.md', null]]);
+	const plan = planDemoSync({
+		bundled: map({ 'Welcome.md': h('v2'), 'Gone.md': h('g') }),
+		current: map({ 'Welcome.md': h('v1') }),
+		record,
+		history: { 'Welcome.md': [h('v1')] },
+	});
+	assert.deepEqual([plan.add, plan.update], [[], ['Welcome.md']]);
+});
+
+test('on disk: the old ticker updated, Welcome’s edit kept, a deleted note left deleted, .clew untouched', () => {
+	const source = path.join(tmpRoot, 'bundle');
+	const target = path.join(tmpRoot, 'copy');
+	put(source, 'Apps/Ticker/app.js', 'new ticker\n');
+	put(source, 'Welcome.md', 'Welcome, v2.\n');
 	put(source, 'Guide/Old.md', 'old\n');
-	fs.cpSync(source, target, { recursive: true });
-	assert.deepEqual(syncDemoVault(source, target), [], 'a fresh copy only records what it holds');
+	put(source, 'Features/App Gallery.md', '# App Gallery\n');
+	put(source, '.clew/plugins/p/main.js', '// code\n');
+	// A copy as dev.6 made it: no record; the ticker as shipped, Welcome
+	// edited, Guide/Old.md deleted by the user… which, with no record, comes back.
+	put(target, 'Apps/Ticker/app.js', 'old ticker\n');
+	put(target, 'Welcome.md', 'Welcome, v1 — and my own edit.\n');
+	const history = { 'Apps/Ticker/app.js': [h('old ticker\n')], 'Welcome.md': [h('Welcome, v1.\n')] };
+	const first = syncDemoVault(source, target, { history });
+	assert.deepEqual(first, { added: ['Features/App Gallery.md', 'Guide/Old.md'], updated: ['Apps/Ticker/app.js'] });
+	assert.equal(read(target, 'Apps/Ticker/app.js'), 'new ticker\n');
+	assert.equal(read(target, 'Welcome.md'), 'Welcome, v1 — and my own edit.\n');
+	assert.equal(has(target, '.clew/plugins/p/main.js'), false);
+	assert.equal(JSON.parse(read(target, '.clew/demo-files.json')).version, 2);
+	// Now with a record: deleting a demo note sticks; a second opening is quiet.
 	fs.rmSync(path.join(target, 'Guide/Old.md'));
-	put(source, 'Guide/New.md', 'new\n');
-	assert.deepEqual(syncDemoVault(source, target), ['Guide/New.md']);
+	assert.deepEqual(syncDemoVault(source, target, { history }), { added: [], updated: [] });
 	assert.equal(has(target, 'Guide/Old.md'), false);
+	// A newer bundle: the untouched ticker follows it, the edited Welcome does not.
+	put(source, 'Apps/Ticker/app.js', 'newer ticker\n');
+	put(source, 'Welcome.md', 'Welcome, v3.\n');
+	assert.deepEqual(syncDemoVault(source, target, { history }), { added: [], updated: ['Apps/Ticker/app.js'] });
+	assert.equal(read(target, 'Welcome.md'), 'Welcome, v1 — and my own edit.\n');
+	assert.deepEqual(listFiles(target), ['Apps/Ticker/app.js', 'Features/App Gallery.md', 'Welcome.md']);
 });
 
-test('never over a folder of that name', () => {
-	const source = path.join(tmpRoot, 'bundle-3');
-	const target = path.join(tmpRoot, 'copy-3');
-	put(source, 'Notes', 'a file in the bundle\n');
-	fs.mkdirSync(path.join(target, 'Notes'), { recursive: true });
-	assert.deepEqual(syncDemoVault(source, target), []);
-	assert.equal(fs.statSync(path.join(target, 'Notes')).isDirectory(), true);
-});
-
-test('the notice names the notes first', () => {
-	assert.equal(demoSyncNotice([]), null);
-	assert.equal(demoSyncNotice(['Apps/Ticker/app.js', 'Apps/Ticker/index.html', 'Features/App Gallery.md', 'Reading/A.md']),
-		'The demo vault has new things from this version of Clew: Features/App Gallery, Reading/A, and 2 more files.');
-	assert.equal(demoSyncNotice(['Apps/T/app.js']), 'The demo vault has new things from this version of Clew: 1 file.');
+test('the notice names notes and apps, then counts', () => {
+	assert.equal(demoSyncNotice({}), null);
+	assert.equal(demoSyncNotice({ added: ['Apps/Ticker/app.js', 'Apps/Ticker/live.js', 'Features/App Gallery.md', 'Reading/A.md'], updated: ['Apps/Ticker/index.html'] }),
+		'The demo vault is up to date with this version of Clew: added Features/App Gallery, Reading/A, Apps/Ticker; updated Apps/Ticker. Notes you changed were left as they are.');
+	assert.equal(demoSyncNotice({ added: ['Attachments/x.png'] }),
+		'The demo vault is up to date with this version of Clew: added 1 file. Notes you changed were left as they are.');
 });

@@ -13,19 +13,23 @@
 // A packaged Clew copies Resources/demo-vault to ~/Documents/Clew Demo Vault
 // the first time it is opened (main.js#openDemoVault), and nothing touched
 // that copy again — so whoever opened the demo once never saw a demo note
-// added later (the owner, 2026-10-04: no App Gallery in dev.6, whose copy
-// dated from 1 October). Now each opening ADDS the bundled files the copy
-// lacks, and says so:
-//   - never over a file: a note you changed stays yours (an updated demo
-//     note does not reach an old copy — only new ones do);
-//   - never into `.clew/`, nor any dot path: a vault's plugins and scripts
-//     are code, and nothing slips code into a vault behind your back;
-//   - never a file it delivered before: `.clew/demo-files.json` lists what
-//     has been offered, so a demo note you deleted stays deleted. A copy from
-//     before the list counts what it holds as delivered.
+// added or improved later (the owner, 2026-10-04: no App Gallery in dev.6,
+// then no live ticker). Now each opening, and it says what it did:
+//   - ADDS the bundled files the copy was never given;
+//   - UPDATES a file the user never changed: its content is still exactly
+//     what Clew gave (the hash `.clew/demo-files.json` records) or a version
+//     Clew ever shipped (src/main/demo-history.json, every committed version
+//     by sha256 — how a copy from before the record, which says nothing, is
+//     told from an edited one);
+//   - never touches a file the user changed, never brings back one they
+//     deleted (a file given before and missing now), and never writes into
+//     `.clew/` or any dot path: a vault's plugins and scripts are code.
+// A record from 2619e1c (a list, no hashes) counts as given with no hash.
 // Electron-free (tests/demo-sync.test.js).
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { writeFileAtomic } from './fs-utils.js';
 
 const MANIFEST = path.join('.clew', 'demo-files.json');
 
@@ -46,28 +50,59 @@ export function listFiles(root) {
 	return out.sort();
 }
 
-/**
- * What to add, and what will then have been delivered.
- *
- * @param {{ bundled: string[], existing: Set<string>, delivered: Set<string>|null }} at
- * @returns {{ add: string[], delivered: string[] }}
- */
-export function demoFilesToAdd({ bundled, existing, delivered }) {
-	const known = delivered ?? existing;
-	const add = bundled.filter((f) => !known.has(f) && !existing.has(f));
-	return { add, delivered: [...new Set([...known, ...bundled])].sort() };
+const sha256 = (file) => crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+const hashes = (root) => new Map(listFiles(root).map((rel) => [rel, sha256(path.join(root, ...rel.split('/')))]));
+
+/** The record in a copy: rel → the hash given (null: given, hash unknown), or null. */
+export function readRecord(target) {
+	let json;
+	try { json = JSON.parse(fs.readFileSync(path.join(target, MANIFEST), 'utf8')); } catch { return null; }
+	if (Array.isArray(json?.files)) return new Map(json.files.map((rel) => [rel, null]));
+	if (json?.files && typeof json.files === 'object') return new Map(Object.entries(json.files));
+	return null;
 }
 
 /**
- * Add to `target` (the user's copy) the files of `source` (the bundle) it
- * has never been given. Returns the relative paths added.
+ * What to do, and the record after it. Pure.
+ *
+ * @param {{ bundled: Map<string,string>, current: Map<string,string>,
+ *   record: Map<string,string|null>|null, history?: Record<string,string[]> }} at
+ *   hashes of the bundle's files and the copy's; the copy's record; every
+ *   version Clew ever shipped, by file
+ * @returns {{ add: string[], update: string[], record: Map<string,string|null> }}
  */
-export function syncDemoVault(source, target) {
-	const manifest = path.join(target, MANIFEST);
-	let delivered = null;
-	try { delivered = new Set(JSON.parse(fs.readFileSync(manifest, 'utf8')).files ?? []); } catch { /* none yet */ }
-	const plan = demoFilesToAdd({ bundled: listFiles(source), existing: new Set(listFiles(target)), delivered });
+export function planDemoSync({ bundled, current, record, history = {} }) {
+	const add = [];
+	const update = [];
+	const next = new Map();
+	for (const [rel, want] of bundled) {
+		const have = current.get(rel);
+		const given = record?.get(rel);           // undefined: never given
+		if (have === undefined) {
+			// Missing: given before means deleted by the user — it stays so.
+			// A copy with no record counts what it lacks as never given.
+			if (record?.has(rel)) next.set(rel, given);
+			else { add.push(rel); next.set(rel, want); }
+			continue;
+		}
+		if (have === want) { next.set(rel, want); continue; }
+		const untouched = (given && have === given) || (history[rel] ?? []).includes(have);
+		if (untouched) { update.push(rel); next.set(rel, want); }
+		else next.set(rel, given ?? null);        // the user's: never touched
+	}
+	for (const [rel, h] of record ?? []) if (!next.has(rel)) next.set(rel, h);
+	return { add, update, record: next };
+}
+
+/**
+ * Bring `target` (the user's copy) up to date with `source` (the bundle).
+ * Returns what it added and what it updated (relative paths).
+ */
+export function syncDemoVault(source, target, { history = {} } = {}) {
+	const plan = planDemoSync({ bundled: hashes(source), current: hashes(target), record: readRecord(target), history });
 	const added = [];
+	const updated = [];
+	const bytes = (rel) => fs.readFileSync(path.join(source, ...rel.split('/')));
 	for (const rel of plan.add) {
 		const to = path.join(target, ...rel.split('/'));
 		if (fs.existsSync(to)) continue;   // a folder or link of that name
@@ -75,22 +110,37 @@ export function syncDemoVault(source, target) {
 		fs.copyFileSync(path.join(source, ...rel.split('/')), to, fs.constants.COPYFILE_EXCL);
 		added.push(rel);
 	}
-	const next = JSON.stringify({ files: plan.delivered }, null, '\t');
+	for (const rel of plan.update) {
+		const to = path.join(target, ...rel.split('/'));
+		if (!fs.lstatSync(to).isFile()) continue;   // never through a link
+		writeFileAtomic(to, bytes(rel));
+		updated.push(rel);
+	}
+	const manifest = path.join(target, MANIFEST);
+	const next = JSON.stringify({ version: 2, files: Object.fromEntries([...plan.record].sort(([a], [b]) => a.localeCompare(b))) }, null, '\t');
 	let before = null;
 	try { before = fs.readFileSync(manifest, 'utf8'); } catch { /* none */ }
 	if (before !== next) {
 		fs.mkdirSync(path.dirname(manifest), { recursive: true });
 		fs.writeFileSync(manifest, next);
 	}
-	return added;
+	return { added, updated };
 }
 
-/** The notice for `added`: its notes by name first, then a count. */
-export function demoSyncNotice(added) {
-	if (!added.length) return null;
-	const notes = added.filter((f) => /\.(md|jmd)$/i.test(f)).map((f) => f.replace(/\.(md|jmd)$/i, ''));
-	const named = notes.slice(0, 3).join(', ');
-	const more = added.length - Math.min(notes.length, 3);
-	return `The demo vault has new things from this version of Clew: ${named || `${added.length} file${added.length === 1 ? '' : 's'}`}`
-		+ (named && more > 0 ? `, and ${more} more file${more === 1 ? '' : 's'}` : '') + '.';
+/** The notice: notes by name first, then a count — added and updated. */
+export function demoSyncNotice({ added = [], updated = [] } = {}) {
+	// Named as a note ("Features/App Gallery") or an app ("Apps/Ticker"),
+	// notes first; anything else only counted.
+	const label = (f) => (/\.(md|jmd)$/i.test(f) ? f.replace(/\.(md|jmd)$/i, '') : f.startsWith('Apps/') ? f.split('/').slice(0, 2).join('/') : null);
+	const part = (verb, files) => {
+		if (!files.length) return null;
+		const named = [...new Set(files.map(label).filter(Boolean))].sort((a, b) => a.startsWith('Apps/') - b.startsWith('Apps/'));
+		const shown = named.slice(0, 3);
+		const rest = files.filter((f) => !shown.includes(label(f))).length;
+		if (!shown.length) return `${verb} ${files.length} file${files.length === 1 ? '' : 's'}`;
+		return `${verb} ${shown.join(', ')}${rest > 0 ? `, and ${rest} more file${rest === 1 ? '' : 's'}` : ''}`;
+	};
+	const parts = [part('added', added), part('updated', updated)].filter(Boolean);
+	if (!parts.length) return null;
+	return `The demo vault is up to date with this version of Clew: ${parts.join('; ')}. Notes you changed were left as they are.`;
 }
