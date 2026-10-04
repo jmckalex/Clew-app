@@ -225,8 +225,9 @@ The split, at chapter boundaries the line map already knows (G4):
   `[[wikilinks]]`, which in a book build emit an in-book `#anchor` (G9) and
   are then rewritten like any other.
 
-This is MY reading of the engine note; the engine owner confirms it before
-the engine work starts.
+Confirmed by the engine owner: jmarkdown 62ae133 (`docs/dev/book-mode-engine.md`,
+its decisions table, "HTML shape": "option A plus a split at chapter
+boundaries, in phase 1. Option C is not needed for it").
 
 | Target | Phase 1 (engine option A + the split) | Later (engine option C) |
 |---|---|---|
@@ -370,7 +371,7 @@ sections above cite them as D1 … D13.
    chapter sets is warned by name. *Was: none.* (§4)
 4. **HTML shape:** PER-CHAPTER PAGES from phase 1. *Was: one page first.*
    Done as option A plus a split after the one post-pass, not option C
-   sooner (§5's reasoning; the engine owner to confirm). (§5, §7)
+   sooner (§5's reasoning; confirmed in jmarkdown 62ae133). (§5, §7)
 5. **Footnotes in HTML:** at the end of each chapter (each chapter's page).
    (§5)
 6. **Where the order lives:** a master note. (§2)
