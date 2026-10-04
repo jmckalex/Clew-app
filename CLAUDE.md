@@ -150,11 +150,15 @@ note API, plugins, and every settings key.
   a scenario queues `window.__clewSmokeInput =
   [{click:{x,y}} | {tripleClick:{x,y}} | {move:{x,y}} | {text:'abc'} |
   {combo:{key,modifiers,text?}} | {wait:ms} | {frameClick:{match,selector}}
+  | {drag:{from, to, steps?}}
   | {click:{selector}} | {move:{selector}}]` (the last two resolve an
   app-page element when their turn comes — a popover's button, a pill after
   a re-layout; resolved points are never written back into the queued
   event, which a scenario may queue more than once)
-  (`move` is a bare pointer move — hover; `modifiers` on it makes a
+  (`drag` presses at `from`, moves with the button held and releases at
+  `to` — each end `{x,y}` or `{selector, dx?, dy?}`, found when its turn
+  comes: the Book panel's grip;
+  `move` is a bare pointer move — hover; `modifiers` on it makes a
   ⌘-hover; a combo's `text` makes the key TYPE, as a real one does — a real
   Enter carries `"\r"`, which is what puts a newline in a textarea, and the
   default, text-less key inserts nothing; a combo's `code` names the

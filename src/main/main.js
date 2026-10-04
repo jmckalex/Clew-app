@@ -684,6 +684,39 @@ if (process.env.CLEW_SMOKE) {
 							await dbg.sendCommand('Input.dispatchMouseEvent', { type: 'mouseWheel', x, y, deltaX, deltaY });
 							continue;
 						}
+						if (ev.drag) {
+							// {drag:{from, to, steps?}}: press at `from`, move to `to`
+							// with the button held (in `steps`, default 8), release —
+							// a pointer drag (the Book panel's grip). Each end is
+							// {x,y} or {selector, dx?, dy?}: the centre of that app-page
+							// element, offset, found when its turn comes.
+							const end = async (point) => {
+								if (!point?.selector) return point;
+								const found = await primary.webContents.executeJavaScript(`(() => {
+									const r = document.querySelector(${JSON.stringify(point.selector)})?.getBoundingClientRect();
+									return r && r.width ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null; })()`);
+								return found && { x: Math.round(found.x + (point.dx ?? 0)), y: Math.round(found.y + (point.dy ?? 0)) };
+							};
+							const from = await end(ev.drag.from);
+							const to = await end(ev.drag.to);
+							if (!from || !to) {
+								console.log(`smoke: drag found no ${!from ? ev.drag.from?.selector : ev.drag.to?.selector}`);
+								continue;
+							}
+							const steps = ev.drag.steps ?? 8;
+							const base = { pointerType: 'mouse', modifiers: ev.modifiers ?? 0 };
+							await dbg.sendCommand('Input.dispatchMouseEvent', { type: 'mouseMoved', button: 'none', ...from, ...base });
+							await dbg.sendCommand('Input.dispatchMouseEvent', { type: 'mousePressed', button: 'left', buttons: 1, clickCount: 1, ...from, ...base });
+							for (let i = 1; i <= steps; i++) {
+								const x = Math.round(from.x + ((to.x - from.x) * i) / steps);
+								const y = Math.round(from.y + ((to.y - from.y) * i) / steps);
+								await dbg.sendCommand('Input.dispatchMouseEvent', { type: 'mouseMoved', button: 'left', buttons: 1, x, y, ...base });
+								await sleep(16);
+							}
+							await dbg.sendCommand('Input.dispatchMouseEvent', { type: 'mouseReleased', button: 'left', buttons: 0, clickCount: 1, ...to, ...base });
+							await sleep(ev.delay ?? 30);
+							continue;
+						}
 						if (ev.move) {
 							// {move:{x,y}, modifiers?}: the pointer to a point, nothing
 							// pressed — hover (link previews). `modifiers` (the CDP
