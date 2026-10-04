@@ -91,7 +91,7 @@ note API, plugins, and every settings key.
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
   dialect scanner's constructs and grammar, live edit's model, reveal rule,
-  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band, figure errors, the PDF save guard, deep links and the clew command, the shareable callout resolver, the device word, where notices sit, pinned apps, the demo vault's updates — 1138 tests. DOM/UI work is
+  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band, figure errors, the PDF save guard, deep links and the clew command, the shareable callout resolver, the device word, where notices sit, pinned apps, the demo vault's updates, the ticker's live rules — 1143 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
@@ -533,7 +533,13 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   you type (an app's frame renders a moment after its line) and a focused
   Allow took the next Space as the answer (measured 2026-10-04). The demo
   vault's six sample apps (`Features/App Gallery.md`, `Apps/*`) are the
-  worked examples, `smoke/app-gallery-scenario.js` their proof. **Events** (§8, 2026-10-03): `note-changed` when the
+  worked examples, `smoke/app-gallery-scenario.js` their proof. The Stock
+  Ticker's /Live stocks/ (Finnhub, 2026-10-04) is the example of a SECRET an
+  app keeps: the user's key lives in the app frame's own `localStorage`
+  (its clew-frame:// origin, this device), never `app.kv` (clewdata.json
+  travels with the vault); Finnhub's preflight allows no request headers,
+  so the key goes as the `token` query parameter (measured);
+  `smoke/ticker-live-scenario.js` runs it against `smoke/finnhub-stub.mjs`. **Events** (§8, 2026-10-03): `note-changed` when the
   embedding note changes on disk (to ports that may read it), and
   `grant-changed` when an answer ADDS capabilities — delivered live, no
   reload; anything removed (and Revoke) closes the ports and reloads. While
