@@ -8,12 +8,17 @@ it. How apps work, and the whole list of what they can ask for, is in
 
 ## Stock Ticker
 
-@app+[Apps/Ticker]{height=150}
+It is the band along the bottom of this page: a ticker tape, scrolling
+right to left as in the films. It is *pinned* there — its embed, at the very
+end of this note, says `{pin=bottom}`, so it stays at the bottom edge while
+you read above its place and settles into that place when you reach it.
+(`pin=top` is the other way round: at the top edge once you have scrolled
+past it. Either works in reading view and in Live edit, and only within
+its note.)
 
-A ticker-tape band, scrolling right to left as in the films. Its symbols and
-opening prices are the table just below — invented, all of them — and the
-prices drift by a seeded random walk, so it needs no network. Which symbols
-show is your watchlist.
+Its symbols and opening prices are the table just below — invented, all of
+them — and the prices drift by a seeded random walk, so it needs no network.
+Which symbols show is your watchlist.
 
 It asks to *read this note* (the table), to *keep a little data of its
 own* (the watchlist) and to *send data to the internet — to
@@ -99,9 +104,13 @@ links*. It changes nothing.
 
 A countdown with a progress ring and the lengths a lecture uses — 5, 10, 15
 and 50 minutes, or any other. When one runs out it chimes and adds a dated
-line to the end of this note, just below, through the note's own editor:
-⌘Z takes it back like your own typing.
+line to the end of this note — the Lecture log below — through the note's
+own editor: ⌘Z takes it back like your own typing.
 
 It asks for one thing: to *edit this note*. It reads nothing of it.
 
-Runs it has logged:
+@app+[Apps/Ticker]{height=150 pin=bottom}
+
+## Lecture log
+
+The timer's runs, as it adds them:
