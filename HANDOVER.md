@@ -1,4 +1,4 @@
-# Handover — 2026-10-04 small hours (origin/main f3a7d5b; tonight's items LOCAL: bd17b1d … 636c165; dev.4 built, dev.5 from the final commit)
+# Handover — 2026-10-04 small hours (origin/main f3a7d5b; tonight's items LOCAL: bd17b1d … 0710c6a; dev.5 = 0710c6a, boot-tested)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it); the live edit design AS BUILT is
@@ -55,6 +55,21 @@ commit, NOT pushed:**
   one is THERE; else `#jmarkdown/callout-table.js` (iOS can drop its
   admonitions.js build patch). `smoke/admonition-alias-scenario.js`.
 - `636c165` — trust-guard-scenario logs the prompt's buttons.
+- `042a05d` — an untitled ```ad- fence headed by its type as written
+  (below); `0710c6a` — CLAUDE.md's test count (1125).
+- **dev.5 (0.12.1-dev.5) from `0710c6a`**:
+  `out-dev/Clew-0.12.1-dev.5-arm64.dmg` (231,030,643 bytes), committed
+  mirrors only. Notarized (Accepted) and stapled — DMG and app; spctl
+  "Notarized Developer ID" both; codesign --verify clean; Info.plist
+  0.12.1-dev.5 + `clew` scheme; stale-check matches 0710c6a. Packaged
+  runs: demo vault trusted, Flashcards live (card + score); an untrusted
+  vault's prompt "Keep restricted | Trust on this Mac"; ```ad-rem →
+  remark (custom, #2e8b57, "Rem") in the PACKAGED worker (engine-assets/
+  has no package.json — the worker's own table). BOOT TEST PASSED (load
+  5.95 after 60 s; figures 13 mpw-ok, cache-probe engine→cache; live edit
+  7/7). Before it: npm test 1125/1125; the live sweep at 51615b9
+  identical to 4ddda35's but for keystroke timings. `out-dev/` keeps
+  dev.3–dev.5; dev.1 and dev.2 (DMGs + blockmaps) moved to the Trash.
 - the untitled ```ad-type fence (Clew-boss approved it as consistency with
   the owner's callout rule): it drew NO heading — the engine heads an
   untitled callout with `untitledCalloutTitle(token.written)`, and an
