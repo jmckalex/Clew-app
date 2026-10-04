@@ -1,4 +1,4 @@
-# Handover — 2026-10-04 (origin/main f3a7d5b; LOCAL bd17b1d … 79fc986; dev.5 = 0710c6a, boot-tested; everything after it in NO package)
+# Handover — 2026-10-04 evening (origin/main f3a7d5b; LOCAL bd17b1d … 77b0bea; dev.6 = 77b0bea, boot-tested)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it); the live edit design AS BUILT is
@@ -108,6 +108,15 @@ commit, NOT pushed:**
   clear). The gallery's ticker rides along the bottom.
   smoke/app-pin-scenario.js (incl. a `control` without pins: CodeMirror's
   own first-pass settling is identical).
+- **dev.6 (0.12.1-dev.6) from `77b0bea`** — the owner's "so I can try the
+  apps": `out-dev/Clew-0.12.1-dev.6-arm64.dmg`. Notarized (Accepted),
+  stapled, spctl both, codesign clean, 0.12.1-dev.6 + `clew`, stale-check
+  matches; the dev.5 packaged checks again (demo/Flashcards, trust prompt,
+  packaged admonitions) plus the App Gallery in a COPY of the bundled demo
+  vault: six prompts, six apps live, Space does not answer, the ticker held
+  along the bottom (bottom-off=0 at the top and middle, in place at the
+  end, same frame, loads=0). BOOT TEST PASSED (load 5.75; figures 13 ok,
+  live edit 7/7). out-dev keeps dev.4–dev.6; dev.3 (+ blockmap) in the Trash.
 - the untitled ```ad-type fence (Clew-boss approved it as consistency with
   the owner's callout rule): it drew NO heading — the engine heads an
   untitled callout with `untitledCalloutTitle(token.written)`, and an
