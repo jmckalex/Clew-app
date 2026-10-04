@@ -127,7 +127,12 @@ function drawPrompt(status, done) {
 	card.append(title, p1, p2, buttons);
 	sheet.append(card);
 	document.body.append(sheet);
-	yes.focus();
+	// Focus the QUESTION, never a button: the prompt can appear while you
+	// type — an app's frame renders a moment after its line — and a focused
+	// Allow took the next Space as the answer (measured 2026-10-04). Space and
+	// Enter do nothing here; a click or Tab picks.
+	card.tabIndex = -1;
+	card.focus();
 }
 
 function nextPrompt() {

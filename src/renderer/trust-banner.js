@@ -199,7 +199,10 @@ function drawPrompt(s) {
 		}
 	});
 	document.body.append(sheet);
-	yes.focus();
+	// The question has focus, not "Trust": a key typed as it appears must
+	// not answer it (app-host.js#drawPrompt, measured 2026-10-04).
+	card.tabIndex = -1;
+	card.focus();
 }
 
 async function openPrompt() {
