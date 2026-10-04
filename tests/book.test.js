@@ -50,6 +50,7 @@ test('a master: title, numbering, chapters as written; anything else is not a ma
 	assert.equal(readMaster('# Just a note\n'), null);
 	assert.equal(readMaster('---\nbook: yes\nchapters: ["[[A]]"]\n---\n'), null, 'book must be true');
 	assert.equal(readMaster('---\ntitle: x\n---\n'), null);
+	assert.deepEqual(readMaster('---\nbook: true\nchapters:\n---\n').problems, [], 'a master with no chapters yet: an empty key is no problem');
 	assert.equal(readMaster('---\nbook: true\nchapters:\n---\n').chapters.length, 0, 'a master with no chapters yet');
 	assert.equal(readMaster('---\nbook: true\nauthor: Austen\n---\nMy notes on a novel.\n'), null, 'book: true with no chapters key is not a master');
 	assert.equal(masterIndexEntry('---\nbook: true\n---\n'), null);
@@ -69,6 +70,11 @@ test('a master read by name: continuous numbering, problems and what comes later
 	assert.equal(laterNotice(['parts']), 'Parts are not supported yet — the book is built from its chapters.');
 	assert.equal(laterNotice([]), null);
 	assert.match(readMaster('---\nbook: true\nnumbering: by part\nchapters:\n---\n').problems[0], /numbering "by part" is not/);
+	// The engine's values (jmarkdown book.js#numberingPolicy), its key in any case.
+	for (const [said, policy] of [['per_chapter', 'per chapter'], ['By Chapter', 'per chapter'], ['chapter', 'per chapter'], ['CONTINUOUS', 'continuous']]) {
+		const m = readMaster(`---\nbook: true\nNumbering: ${said}\nchapters:\n---\n`);
+		assert.deepEqual([m.numbering, m.problems], [policy, []], said);
+	}
 });
 
 test('the index keeps a master’s title and chapters — and nothing new for any other note', () => {

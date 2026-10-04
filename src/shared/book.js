@@ -61,12 +61,14 @@ export function readMaster(text) {
 	let numbering = 'per chapter';
 	const asked = keyOf(entries, 'numbering')?.value;
 	if (asked !== undefined && asked !== '') {
-		const said = String(asked).trim().toLowerCase().replace(/[-_]+/g, ' ');
+		// The engine's own reading (jmarkdown book.js#numberingPolicy): case,
+		// spaces, `-` and `_` aside; "chapter" and "by chapter" mean per chapter.
+		const said = String(asked).trim().toLowerCase().replace(/[\s_-]+/g, ' ');
 		if (said === 'continuous') numbering = 'continuous';
-		else if (said !== 'per chapter') problems.push(`numbering "${asked}" is not "per chapter" or "continuous" — per chapter is used`);
+		else if (!['per chapter', 'chapter', 'by chapter'].includes(said)) problems.push(`numbering "${asked}" is not "per chapter" or "continuous" — per chapter is used`);
 	}
 	const listed = keyOf(entries, 'chapters')?.value;
-	const items = listed === undefined || listed === '' ? [] : Array.isArray(listed) ? listed : [listed];
+	const items = listed == null || listed === '' ? [] : Array.isArray(listed) ? listed : [listed];
 	const chapters = [];
 	const seen = new Set();
 	for (const item of items) {

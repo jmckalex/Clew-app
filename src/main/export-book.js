@@ -66,6 +66,11 @@ export async function exportBook({ vaults, indexer, masterRel, format, trusted =
 	const callouts = calloutsEnv(settings.get('callouts'), vaultSettings.callouts, () => iconTable(paths.faIcons));
 	const vaultBibName = String(vaultSettings.bibliography ?? '').trim();
 	const bibliography = vaultBibName ? [path.resolve(vaults.root, vaultBibName)] : [];
+	// `numbering` is passed, never left to the master's header: the engine's
+	// header key is case-sensitive (`Numbering:`; measured with 8b5a1db, a
+	// lowercase `numbering: continuous` built per chapter), while Clew reads
+	// it in any case — and a user's own config may set it. One policy for the
+	// panel, the live numbers to come, and the built book.
 	const options = { chapters: names, numbering: master.numbering, normalSyntax, bibliography };
 
 	const place = (raw) => {

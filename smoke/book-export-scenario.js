@@ -8,7 +8,10 @@
 // LaTeX, then PDF — each logging `smoke-book-export: last=…` as the panel
 // reports it. Then, from the files in build/ beside the master: the HTML's
 // chapter sections and headings, no chapter's front matter as content; the
-// .tex's \chapter lines; the PDF's presence. Then the panel's ⚠ clicked and
+// .tex's \chapter lines; the PDF's presence; the numbers (`numbers html=
+// ["Proposition 1.1","Theorem 2.1"] tex-within=true` per chapter, the
+// master's own policy — `numbering: continuous` gives 1 and 2 and
+// \counterwithout). Then the panel's ⚠ clicked and
 // the list logged (`warnings=[…]`, each with its chapter:line), filtered by
 // typing "level-1" and its first row clicked → `opened=<chapter> line=<n>
 // text=<that line>` — the chapter at the line the warning names.
@@ -38,6 +41,7 @@ log(`panel=${!!document.querySelector('clew-book .book-build')} buttons=${JSON.s
 	const html = await read('Books/Signals/build/Signals.html');
 	const tex = await read('Books/Signals/build/Signals.tex');
 	log(`html sections=${(html.match(/<section class="jmd-chapter"/g) ?? []).length} h1=${JSON.stringify([...html.matchAll(/<h1[^>]*>([\s\S]*?)<\/h1>/g)].map((m) => m[1].replace(/<[^>]+>/g, '').trim()))} front-matter-as-content=${/status: (done|revised|draft)/.test(html)}`);
+	log(`numbers html=${JSON.stringify([...new Set(html.match(/(?:Proposition|Theorem) [0-9.]+/g) ?? [])])} tex-within=${/numberwithin=chapter/.test(tex)} tex-without=${/\\counterwithout\{equation\}\{chapter\}/.test(tex)}`);
 	log(`tex chapters=${JSON.stringify([...tex.matchAll(/\\chapter\*?\{([^}]*)\}/g)].map((m) => m[1]))} front-matter-as-content=${/status: (done|revised|draft)/.test(tex)}`);
 	const tree = vaultStore.allPaths?.() ?? [];
 	log(`build-files=${JSON.stringify(tree.filter((p) => p.startsWith('Books/Signals/build/') && /\.(html|tex|pdf)$/.test(p)).sort())}`);

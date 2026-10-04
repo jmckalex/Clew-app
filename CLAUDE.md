@@ -613,9 +613,15 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   its chapter at its line (`openNoteAtLine`). File → Export → Book as …
   (`needs: 'book'`, `bookActive` pushed by menu-bridge only when it flips),
   `export:book-{pdf,latex,html}`, the panel's Build row; a build makes its
-  book the recent one. Per-chapter numbering, the whitelisted chapter keys
-  APPLIED, scoped footnote ids and split HTML are the engine's pieces to
-  come — each drops in with no change here but its option. Demo:
+  book the recent one. Numbering (engine piece 2, jmarkdown 8b5a1db: per
+  chapter — Theorem 2.1, (2.1), theorems too — or continuous) is ALWAYS
+  passed as processFile's `numbering`, never left to the master's header:
+  the engine's header key is case-sensitive (`Numbering:`; a lowercase
+  `numbering: continuous` built per chapter — measured), Clew reads it in
+  any case and with the engine's values (`chapter`, `by chapter` too), and
+  a user's own config may set it. The whitelisted chapter keys APPLIED,
+  scoped footnote ids and split HTML are the engine's pieces to come — each
+  drops in with no change here but its option. Demo:
   `Books/Signals/` + `Guide/Books.md`; proof: `smoke/book-panel-scenario.js`,
   `smoke/book-export-scenario.js`.
 - **Obsidian's own query formats** — for opening other people's vaults,

@@ -84,7 +84,10 @@ They have no keys of their own; give them some in *Settings → Hotkeys*.
 as …* makes the whole book ONE document: the master's text, then each
 chapter in order, every chapter's front matter left out and its `#`
 heading made a chapter (a chapter with no `#` heading gets one from its
-title). It goes into a `build/` folder beside the master, named after it —
+title). Figures, equations and theorems are numbered by chapter — Theorem
+2.1, equation (2.1) — or straight through the book when the master says
+`numbering: continuous`. It goes into a `build/` folder beside the master,
+named after it —
 `build/Signals.pdf` — and a rebuild replaces it. LaTeX's own files (`.aux`,
 `.log` …) stay in `build/` too, so nothing lands beside a chapter.
 
@@ -95,6 +98,5 @@ line, and choosing it opens the chapter there. A chapter that sets its own
 `Resolve citations` or `Bibliography style`, as Conventions does for its
 own reading view, is told that a book takes those from its master.
 
-Still to come: numbering by chapter (Figure 2.3), each chapter's own
-bibliography, language and macros applied, and the HTML as one page per
-chapter.
+Still to come: each chapter's own bibliography, language and macros
+applied, and the HTML as one page per chapter.
