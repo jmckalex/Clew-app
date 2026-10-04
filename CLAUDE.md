@@ -1066,14 +1066,11 @@ except where the selection touches a construct. The durable design is
 - Morphdom never re-executes scripts: note scripts run once per load and
   re-bind on the `clew:render` DOM event / `clew.on('render')`.
 - Markup inside code is TEXT — code spans and fences escape `<` (jmarkdown
-  verified at 1bb6c8e; `smoke/code-lt-scenario.js` measures reading view,
-  live edit's table cells, fences, callouts and embed frames). The one
-  hole (found 2026-10-04, reported upstream): the engine's `javascript`
-  block extension (script-blocks.js) has a `start()` that finds
-  `<script>…</script>` ANYWHERE, so a paragraph holding it in INLINE code is
-  cut there and the script emitted verbatim — it RUNS in a trusted vault
-  (the CSP refuses it in a restricted one). Until the engine fix, write
-  `<script>` in prose code as a fence.
+  1bb6c8e), and a `<script>` in INLINE code stays code since jmarkdown
+  0b506dc (script blocks start only at a line start; before, the paragraph
+  was cut there and the script RAN in a trusted vault). `smoke/
+  code-lt-scenario.js` measures reading view, live edit's table cells,
+  fences, callouts and embed frames.
 
 ### Rendering (the part that is easy to get wrong)
 
