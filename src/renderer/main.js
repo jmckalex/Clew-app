@@ -35,6 +35,7 @@ import { installDeepLinks, vaultShownForLinks } from './deep-link.js';
 import { installBuildWarnings } from './build-warnings.js';
 import { installConflictScans } from './conflicts.js';
 import { installCalloutSync } from './callouts.js';
+import { installBooks } from './books.js';
 import './components/chrome/clew-app.js';
 import './editor/toolbar/clew-selection-bubble.js';
 import { linkPreview } from './editor/link-preview.js';
@@ -152,6 +153,7 @@ installTrustBanner();
 installAppHost();
 installUpdateNotice();
 installCalloutSync();
+installBooks();
 officeDock.init();
 
 // ---- dev hook -------------------------------------------------------------

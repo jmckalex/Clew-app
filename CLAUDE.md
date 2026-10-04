@@ -568,6 +568,37 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   fixture; `smoke/app-bridge-scenario.js` the proof. Under CLEW_SMOKE the
   grant store writes nothing. WebRTC (choice D) is measured, not set:
   `CLEW_SMOKE_WEBRTC_POLICY`.
+- **Books** (`docs/dev/book-mode.md`; phase 1 under way 2026-10-04 on the
+  owner's go): a book is a MASTER note whose front matter says `book: true`
+  and lists `chapters:` as wikilinks; every chapter stays an ordinary note.
+  `shared/book.js` (pure, tested) reads a master (`readMaster`: title,
+  numbering, the chapter links AS WRITTEN, `later` — parts and front/back
+  matter, named and not built — and `problems` by name), a chapter's title
+  (first `#` heading, else its front-matter `title`, else the file name),
+  its words (the status bar's word rule over the BODY with front matter,
+  code, maths and comments masked — the status bar still counts the whole
+  text) and its `status:` (draft/revised/done). The indexer adds `book:
+  {title, chapters: [{target, resolved}]}` to a MASTER's entry only — every
+  other entry is unchanged (CACHE_VERSION 4) — resolved with the links, and
+  `rename-links.js` rewrites a master's chapter links like any other (front
+  matter is not in `links`). Renderer: `renderer/books.js` — the book a
+  chapter shows (`workspaceStore.recentBook`, the master opened or built
+  last, per vault in workspace.json, absent until used), the status bar's
+  "Ch. 2 of Book · also in …" (a click switches, or opens the panel), and
+  `book:next-chapter` / `book:previous-chapter` / `book:show-panel` (no
+  default keys) — and the Book panel (`components/panels/clew-book.js`), a
+  right-sidebar tab that exists only in a vault with a master: rows dragged
+  by their grip or moved with Alt+↑/↓, × to remove, "Add …" for the active
+  note, a status chip on Clew's own menu (a native `<select>` popup is out
+  of the harness's reach), totals, a chapter that is no note in the danger
+  colour. Every change is an EDIT of a note through `editor/note-edit.js`
+  (moved out of app-host.js: the editor the note is open in takes it, else
+  a `headless-write:` pool entry saves at once), rebuilt from the links as
+  written (aliases kept) and refused when the master's front matter is
+  unclean, its list holds entries the reader could not take, or the list
+  changed under the panel. Building a book (File → Export → Book as …)
+  waits on the engine's `chapters` (jmarkdown, upstream). Demo:
+  `Books/Signals/` + `Guide/Books.md`; proof: `smoke/book-panel-scenario.js`.
 - **Obsidian's own query formats** — for opening other people's vaults,
   alongside (not replacing) Clew's `query`/`tasks`/`kanban` fences:
   `vault-model.js` (the vault as pages: `file.*`, the link graph,

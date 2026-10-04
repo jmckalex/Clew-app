@@ -107,9 +107,11 @@ reorder (which rewrites the list), "Add the active note to this book",
 remove, open, and Build. A chapter whose link resolves to nothing is drawn
 in the danger colour and stops a build by name. The panel writes the master
 note through the normal guarded write (2f5d80d), so a conflict on the master
-is handled like any other note's. The word count is NEW (Clew counts none
-today): prose words of the chapter, not its front matter, code, maths or
-comments — one pure counter (`shared/`, tested), shared with iOS.
+is handled like any other note's. The status bar already counts a note's
+words, over its whole text; the panel counts PROSE — not front matter,
+code, maths or comments — with the same idea of a word, in one pure counter
+(`shared/book.js`, tested), shared with iOS. The status is a chip on Clew's
+own menu.
 
 ---
 
@@ -180,15 +182,16 @@ headings with the active chapter expanded.
 - ONE References list, at the end of the book (D11) — in split HTML its own
   page, which every citation links to.
 
-**What a chapter may set** (D3 — a short whitelist, not "none"). Only the
+**What a chapter may set** (D3 — a short whitelist, not "none"; key names as
+the engine's note has them, jmarkdown 62ae133 §6). Only the
 master's header configures the book, except these, which a chapter may set
 for itself — in its front matter, or, for styles, its own `<style>` elements:
 
 | Key | In LaTeX | In HTML |
 |---|---|---|
 | `Bibliography` | its entries join the book's `.bib` input; the scoping above is the engine's | the same |
-| `LaTeX preamble` (packages and preamble) | LaTeX has ONE preamble, so a chapter's lines join the book's, after the master's, in chapter order; a package loaded twice with different options is warned by name (LaTeX would stop on the clash) | no effect, as for a note |
-| `Lang` (language: hyphenation, quotation marks) | `\selectlanguage` at the chapter's start (babel/polyglossia: the master's language main, the chapters' loaded too) | `lang` on the chapter's page, so the browser hyphenates by it; quotation marks by language — NEW engine work (Smart typography's quotes are one style today) |
+| `Packages`, `LaTeX preamble` | LaTeX has ONE preamble, so a chapter's lines join the book's, after the master's, in chapter order; a package loaded twice with different options is warned by name (LaTeX would stop on the clash) | no effect, as for a note |
+| `Language` (hyphenation, quotation marks) | `otherlanguage` around the chapter (babel/polyglossia: the master's language main, the chapters' loaded too) | `lang` on the chapter's page, so the browser hyphenates by it; quotation marks by language — NEW engine work (Smart typography's quotes are one style today) |
 | `Math macros` | issued at the chapter's start (`\providecommand` + `\renewcommand`), so the chapter's definition holds in that chapter even if another chapter defines the name differently — warned | that chapter's page's MathJax configuration: the book's macros plus the chapter's |
 | `<style>` elements, "for chapter specific content" (the owner's words) | no effect | on that chapter's page only; in any one-document output (the print PDF, later) scoped to the chapter with CSS `@scope` |
 
@@ -299,7 +302,7 @@ single-note build ignoring all of it):**
   `numberwithin=chapter`) `| continuous`, in both outputs (G3, D1);
 - per-chapter footnote lists in HTML (G7, D5);
 - the per-chapter whitelist: scoped bibliographies with their two warnings,
-  preambles joined, `Lang` switched (with per-language quotation marks —
+  preambles joined, `Language` switched (with per-language quotation marks —
   new), macros issued per chapter, styles per page;
 - `htmlLayout: 'split'` — contents, chapter pages, References, links
   rewritten across pages (§5, D4, D11);
@@ -342,7 +345,7 @@ PDF, and the engine's book map checked against Clew's.
   without.
 - **A bigger phase 1.** Split pages (D4) and the per-chapter whitelist (D3)
   move engine work into phase 1 that the first draft left for later: the
-  split and its link rewriting, scoped bibliographies, per-chapter `Lang`
+  split and its link rewriting, scoped bibliographies, per-chapter `Language`
   (per-language quotes are new to the engine), macros and styles. Each is
   small and testable alone, but phase 1 is now mostly ENGINE work, and Clew's
   half can only be finished against it.
