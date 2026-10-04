@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { createGrantStore, grantState } from '../src/main/app-grants.js';
+import { createGrantStore, grantState, mergeOrigins } from '../src/main/app-grants.js';
 
 // One temp root for this file, removed when it is done: fixtures used to
 // be left in the system's temp folder, thousands of them over the runs.
@@ -40,7 +40,7 @@ test('a restricted vault: the app waits for its run approval (choice B), and a D
 
 test('choice C: pinned code that changed asks again, for everything', () => {
 	const store = createGrantStore({ file: file() });
-	store.answer('/V', 'timer', { run: true, granted: ['note.read', 'network'], code: 'h1' });
+	store.answer('/V', 'timer', { run: true, granted: ['note.read', 'network'], code: 'h1', networkOrigins: '*' });
 	const same = grantState(store.get('/V', 'timer'), m(['note.read', 'network']), { restricted: true, code: () => 'h1' });
 	assert.deepEqual([same.changed, same.mayRun, same.granted], [false, true, ['note.read', 'network']]);
 	const moved = grantState(store.get('/V', 'timer'), m(['note.read', 'network']), { restricted: true, code: () => 'h2' });
@@ -55,4 +55,62 @@ test('revoke forgets the app here', () => {
 	assert.equal(store.revoke('/V', 'timer'), true);
 	assert.equal(store.get('/V', 'timer'), null);
 	assert.equal(store.revoke('/V', 'timer'), false);
+});
+
+// `network` is bound to its ORIGINS (2026-10-04): the CSP is the granted
+// hosts the manifest still names, and a manifest naming a new host asks
+// again — for that host only — in trusted and restricted vaults alike.
+const net = (network) => ({ id: 'ticker', capabilities: ['note.read', 'network'], network });
+const A = 'https://api.frankfurter.dev';
+const B = 'https://finnhub.io';
+const trusted = { restricted: false, code: () => 'h' };
+
+test('a granted manifest that adds a host asks for the new host only; the old one keeps working', () => {
+	const store = createGrantStore({ file: file() });
+	store.answer('/V', 'ticker', { granted: ['note.read', 'network'], networkOrigins: [A] });
+	const st = grantState(store.get('/V', 'ticker'), net([A, B]), trusted);
+	assert.deepEqual([st.ask, st.askNetwork, st.network, st.granted], [['network'], [B], [A], ['note.read', 'network']]);
+	// Allowed: both.
+	store.answer('/V', 'ticker', { granted: ['network'], networkOrigins: mergeOrigins([A], [B]) });
+	const after = grantState(store.get('/V', 'ticker'), net([A, B]), trusted);
+	assert.deepEqual([after.ask, after.network], [[], [A, B]]);
+});
+
+test('removing a host narrows at once; a host never granted is never reached', () => {
+	const store = createGrantStore({ file: file() });
+	store.answer('/V', 'ticker', { granted: ['note.read', 'network'], networkOrigins: [A, B] });
+	assert.deepEqual(grantState(store.get('/V', 'ticker'), net([B]), trusted).network, [B]);
+	// Every granted host gone from the manifest: no network at all.
+	const none = grantState(store.get('/V', 'ticker'), net(['https://other.example']), trusted);
+	assert.deepEqual([none.network, none.granted.includes('network'), none.askNetwork], [null, false, ['https://other.example']]);
+});
+
+test('a refused addition is not asked again, and what was granted before keeps working', () => {
+	const store = createGrantStore({ file: file() });
+	store.answer('/V', 'ticker', { granted: ['note.read', 'network'], networkOrigins: [A] });
+	store.answer('/V', 'ticker', { declineOrigins: [B] });
+	const st = grantState(store.get('/V', 'ticker'), net([A, B]), trusted);
+	assert.deepEqual([st.ask, st.network, st.granted.includes('network')], [[], [A], true]);
+});
+
+test('a grant from before origins were recorded is asked once more, and reaches nothing meanwhile', () => {
+	const store = createGrantStore({ file: file() });
+	store.answer('/V', 'ticker', { granted: ['note.read', 'network'] });
+	const st = grantState(store.get('/V', 'ticker'), net([A, B]), trusted);
+	assert.deepEqual([st.ask, st.askNetwork, st.network, st.granted], [['network'], [A, B], null, ['note.read']]);
+});
+
+test('bare `network` is any host — its own grant — and a list does not cover it', () => {
+	const store = createGrantStore({ file: file() });
+	store.answer('/V', 'ticker', { granted: ['network'], networkOrigins: [A] });
+	const st = grantState(store.get('/V', 'ticker'), { id: 'ticker', capabilities: ['network'], network: '*' }, trusted);
+	assert.deepEqual([st.askNetwork, st.network], ['*', [A]]);
+	assert.equal(mergeOrigins([A], '*'), '*');
+	assert.deepEqual(mergeOrigins(undefined, [B]), [B]);
+	// A '*' grant covers a later list, which then narrows it.
+	store.answer('/V', 'ticker', { networkOrigins: '*' });
+	assert.deepEqual(grantState(store.get('/V', 'ticker'), net([B]), trusted).network, [B]);
+	// Denying network forgets its hosts.
+	store.answer('/V', 'ticker', { denied: ['network'] });
+	assert.equal(store.get('/V', 'ticker').networkOrigins, undefined);
 });

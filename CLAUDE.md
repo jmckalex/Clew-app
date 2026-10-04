@@ -91,7 +91,7 @@ note API, plugins, and every settings key.
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
   dialect scanner's constructs and grammar, live edit's model, reveal rule,
-  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band, figure errors, the PDF save guard, deep links and the clew command, the shareable callout resolver, the device word, where notices sit, pinned apps, the demo vault's updates, the ticker's live rules — 1143 tests. DOM/UI work is
+  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band, figure errors, the PDF save guard, deep links and the clew command, the shareable callout resolver, the device word, where notices sit, pinned apps, the demo vault's updates, the ticker's live rules, origin-bound network grants — 1148 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
@@ -492,7 +492,14 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   method names its capability, checked at call time against
   `<userData>/app-grants.json` (`main/app-grants.js`, keyed by vault
   identity + id; grantState: restricted apps wait for a run approval, and
-  one holding `network` is pinned to its approved code — choice C); paths
+  one holding `network` is pinned to its approved code — choice C; a
+  `network` grant is bound to its ORIGINS, `networkOrigins`, 2026-10-04: the
+  app CSP is the granted hosts the CURRENT manifest still names, never the
+  manifest alone; a manifest naming a new host asks for that host only and
+  reaches nothing new meanwhile, a dropped host is gone at once — the
+  registry re-reads a changed manifest and main reloads the app's frames
+  when they no longer match, `EV_APP_GRANTS_CHANGED`; a grant from before
+  origins were recorded is asked once more; `smoke/app-origins-scenario.js`); paths
   are text types only, never hidden or `.clew/`, and in a RESTRICTED vault
   every read AND every index answer (list, search, index, backlinks) is
   clamped to the vault root by realpath — the index follows symlinks;

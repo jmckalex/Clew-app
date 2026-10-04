@@ -157,7 +157,9 @@ function ensurePrompt(status) {
 			// A frame already running (a trusted vault's starts before the
 			// answer) has its CSP from before it: a `network` grant reaches it
 			// only through a reload.
-			if (after?.granted?.includes('network') && !status.granted.includes('network')) tellEmbedders(status.key, 'app-reload');
+			// A frame's hosts are its CSP, fixed when it loaded: an answer that
+			// changes them (a new host allowed) reloads it.
+			if (JSON.stringify(after?.networkNow ?? null) !== JSON.stringify(status.networkNow ?? null)) tellEmbedders(status.key, 'app-reload');
 			// Frames already holding a port (an app asking for more later):
 			// what was granted reaches them live.
 			else refreshGrants(status.key);

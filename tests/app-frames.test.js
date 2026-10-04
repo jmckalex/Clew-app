@@ -110,5 +110,5 @@ test('codeHash: the code, not the data', () => {
 
 test('describeCapabilities says scoped network by host', () => {
 	assert.deepEqual(describeCapabilities(['note.read', 'network'], ['https://api.example.com']), ['read this note', 'send data to api.example.com']);
-	assert.deepEqual(describeCapabilities(['network'], '*'), ['send data to the internet']);
+	assert.deepEqual(describeCapabilities(['network'], '*'), ['send data to any host on the internet']);
 });
