@@ -68,7 +68,11 @@ test('the command line', () => {
 	assert.deepEqual(parseCliArgs(['new', '--daily']), { cmd: 'new', daily: true, vault: null });
 	assert.deepEqual(parseCliArgs(['new', '--daily', '--vault', 'ph226-426']), { cmd: 'new', daily: true, vault: 'ph226-426' });
 	assert.deepEqual(parseCliArgs(['new', 'Ideas/Fresh']), { cmd: 'new', note: 'Ideas/Fresh', vault: null });
-	assert.deepEqual(parseCliArgs(['export', '--pdf', 'a.md']), { cmd: 'export', format: 'pdf', path: 'a.md' });
+	assert.deepEqual(parseCliArgs(['export', '--pdf', 'a.md']), { cmd: 'export', format: 'pdf', path: 'a.md', out: null });
+	assert.deepEqual(parseCliArgs(['export', '--pdf', 'a.md', '--out', '~/Desktop/']), { cmd: 'export', format: 'pdf', path: 'a.md', out: '~/Desktop/' });
+	// A value equal to the note's path is still the value, by position.
+	assert.deepEqual(parseCliArgs(['export', '--latex', '--out', 'a.md', 'a.md']), { cmd: 'export', format: 'latex', path: 'a.md', out: 'a.md' });
+	assert.match(parseCliArgs(['export', '--pdf', 'a.md', '--out']).error, /--out where/);
 	assert.match(parseCliArgs(['export', 'a.md']).error, /--latex, --pdf or --html/);
 	assert.match(parseCliArgs(['rm', '-rf']).error, /unknown command "rm"/);
 	assert.equal(parseCliArgs([]).usage, true);

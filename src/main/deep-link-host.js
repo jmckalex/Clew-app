@@ -240,6 +240,20 @@ function locate(cwd, given) {
 	return { vault, note: path.relative(vault, abs).split(path.sep).join('/'), abs };
 }
 
+/**
+ * Where `clew export` writes: beside the note by default; `--out` names a
+ * file, or a folder (one that exists, or written with a trailing slash) to
+ * put `<note>.<ext>` in — relative to the command's own working folder, a
+ * leading `~` meaning home.
+ */
+function exportTarget(cwd, noteAbs, format, out) {
+	const name = path.basename(noteAbs).replace(/\.(md|jmd)$/i, '') + (format === 'latex' ? '.tex' : `.${format}`);
+	if (!out) return path.join(path.dirname(noteAbs), name);
+	const given = String(out).replace(/^~(?=$|[\\/])/, os.homedir());
+	const abs = path.resolve(cwd, given);
+	return isDir(abs) || /[\\/]$/.test(given) ? path.join(abs, name) : abs;
+}
+
 async function cliRequest(req) {
 	const cwd = typeof req?.cwd === 'string' ? req.cwd : os.homedir();
 	if (smoke) console.log(`smoke-cli: ${req?.cmd}`);
@@ -263,12 +277,15 @@ async function cliRequest(req) {
 		const format = ['latex', 'pdf', 'html'].includes(req.format) ? req.format : null;
 		if (!format) return { ok: false, error: 'export as latex, pdf or html' };
 		const s = await sessionFor(at.vault);
-		const outFile = at.abs.replace(/\.(md|jmd)$/i, '') + (format === 'latex' ? '.tex' : `.${format}`);
-		// Under the vault's trust, as Export in the menu (export.js).
+		const outFile = exportTarget(cwd, at.abs, format, req.out);
+		// Under the vault's trust, as Export in the menu (export.js) — but a
+		// PDF is built apart, so only the PDF is left where it goes.
 		const result = await exportNote({
 			win: s.win, vaults: s.vaults, sessionId: s.id, callerToken: s.callerToken,
-			relPath: at.note, format, outFile, trusted: s.trusted,
+			relPath: at.note, format, outFile, trusted: s.trusted, buildApart: true,
 		});
+		// Into the vault, it shows in the explorer at once (as the menu's).
+		if (result?.output) s.vaults.refreshIfInside(result.output);
 		const warnings = result?.warnings?.length ? ` (${result.warnings.length} warning${result.warnings.length === 1 ? '' : 's'})` : '';
 		return { ok: true, message: `exported ${result?.output ?? outFile}${warnings}` };
 	}

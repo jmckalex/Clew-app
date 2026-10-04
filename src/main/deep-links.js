@@ -109,10 +109,16 @@ export function vaultForFile(file, { isVault, knownPaths = [] }) {
 export function parseCliArgs(argv) {
 	const [cmd, ...rest] = argv;
 	const flags = new Set(rest.filter((a) => a.startsWith('--')));
-	const args = rest.filter((a) => !a.startsWith('--'));
-	const vaultAt = rest.indexOf('--vault');
-	const vault = vaultAt >= 0 ? rest[vaultAt + 1] ?? null : null;
-	const positional = args.filter((a) => a !== vault);
+	// An option's value is taken by POSITION, so a value equal to the note's
+	// own path is never mistaken for it.
+	const valueOf = (name) => {
+		const at = rest.indexOf(name);
+		return at >= 0 && rest[at + 1] != null && !rest[at + 1].startsWith('--') ? { at: at + 1, value: rest[at + 1] } : null;
+	};
+	const vaultOpt = valueOf('--vault');
+	const outOpt = valueOf('--out');
+	const vault = vaultOpt?.value ?? null;
+	const positional = rest.filter((a, i) => !a.startsWith('--') && i !== vaultOpt?.at && i !== outOpt?.at);
 	if (cmd === 'open') {
 		if (!positional[0]) return { error: 'open what?', usage: true };
 		return { cmd: 'open', path: positional[0] };
@@ -126,7 +132,8 @@ export function parseCliArgs(argv) {
 		const format = ['latex', 'pdf', 'html'].find((f) => flags.has(`--${f}`));
 		if (!format) return { error: 'export as what? (--latex, --pdf or --html)', usage: true };
 		if (!positional[0]) return { error: 'export which note?', usage: true };
-		return { cmd: 'export', format, path: positional[0] };
+		if (flags.has('--out') && !outOpt) return { error: 'export --out where? (a file or a folder)', usage: true };
+		return { cmd: 'export', format, path: positional[0], out: outOpt?.value ?? null };
 	}
 	return { error: cmd ? `unknown command "${cmd}"` : 'no command', usage: true };
 }
@@ -135,4 +142,6 @@ export const USAGE = `usage:
   clew open <file or folder>            open a vault, or a note in its vault
   clew new --daily [--vault <v>]        today's diary entry (created if missing)
   clew new <note> [--vault <v>]         a new, empty note (never over a file)
-  clew export --latex|--pdf|--html <note>   export a note beside it`;
+  clew export --latex|--pdf|--html <note> [--out <file or folder>]
+                                        export a note — beside it, or at --out;
+                                        only the .pdf/.tex/.html is written`;

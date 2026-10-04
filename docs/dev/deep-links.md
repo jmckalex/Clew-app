@@ -11,7 +11,8 @@ clew://new?vault=<name|path>&note=<path>
 clew open <file or folder>               a vault, or a note in its vault
 clew new --daily [--vault <v>]           today's diary entry (created if missing)
 clew new <note> [--vault <v>]            a new, empty note (never over a file)
-clew export --latex|--pdf|--html <note>  export a note beside it
+clew export --latex|--pdf|--html <note> [--out <file or folder>]
+                                         export a note beside it, or at --out
 ```
 
 ## What may be done (the owner's rule)
@@ -31,7 +32,17 @@ clew export --latex|--pdf|--html <note>  export a note beside it
 - The **command** is the user's own, typed in their terminal: it opens what
   it names without asking; `export` runs under the vault's trust exactly as
   Export in the menu does (`exportNote({ trusted })` — a restricted vault's
-  export has `Run note code` off).
+  export has `Run note code` off). It writes ONLY the artefact asked for
+  (2026-10-04, Clew-docs): a PDF is built in a temporary folder
+  (`exportNote({ buildApart })` — the note's folder on TEXINPUTS, every
+  bibliography's on BIBINPUTS, as always) that is removed afterwards, so no
+  .tex/.aux/.log/.fls/.out/.fdb_latexmk/.bbl/.blg lands beside the note;
+  `--latex` writes the .tex alone. `--out` names a file, or a folder (one
+  that exists, or written with a trailing `/`), relative to the command's
+  working folder, `~` meaning home; without it, beside the note. A failure
+  still names the engine and the log's first error (read before the folder
+  goes). The MENU's PDF export is unchanged and still leaves those eight
+  build files beside its output (measured).
 - What a link or command opens goes into a TAB OF ITS OWN (or the tab
   already showing it) — never over the note being worked on, the PDF-link
   rule (18023d5).
