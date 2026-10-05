@@ -601,9 +601,14 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   changed under the panel. **Building** (`main/export-book.js`, 2026-10-04,
   engine piece 1 = jmarkdown 0372f23): the master and its chapters are ONE
   document made by the ENGINE — processFile's `chapters`, each chapter
-  handed relative to the master — never assembled here; HTML, LaTeX or PDF
-  via LaTeX into `build/` beside the master, named by it, LaTeX's
-  intermediates there too; a chapter that is no note stops it by name. It
+  handed relative to the master — never assembled here; LaTeX or PDF via
+  LaTeX into `build/` beside the master, named by it, LaTeX's intermediates
+  there too, and HTML as PAGES (D4; `htmlLayout: 'split'`, jmarkdown
+  2ac7048): asked for `build/<master>.html`, the engine writes
+  `build/<master>/` — index.html, a page per chapter, references.html — and
+  Clew opens the index in the browser (SHELL_OPEN_PATH, so main clamps it;
+  `smoke-open-path:` under the harness); a fallback to one page is the
+  engine's, with a warning. A chapter that is no note stops it by name. It
   reuses export.js's worker, working folder (the vault's trust), vault
   bibliography, callouts and `compilePdf` (exported for it; the note path
   is unchanged), with every bibliography's folder on BIBINPUTS. The engine
@@ -619,9 +624,15 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   the engine's header key is case-sensitive (`Numbering:`; a lowercase
   `numbering: continuous` built per chapter — measured), Clew reads it in
   any case and with the engine's values (`chapter`, `by chapter` too), and
-  a user's own config may set it. The whitelisted chapter keys APPLIED,
-  scoped footnote ids and split HTML are the engine's pieces to come — each
-  drops in with no change here but its option. Demo:
+  a user's own config may set it. The engine half of phase 1 is complete at
+  jmarkdown c9644b0 (vendored at 5a69dcd, which adds `<style>` printing
+  nothing in LaTeX): chapter keys equal to the book's are silent, footnotes
+  per chapter (`ch<N>-` ids), a chapter's Bibliography joining the book's,
+  one preamble, math macros, `Lang`, scoped `<style>`, located post-pass
+  warnings. A master places its References with `@bibliography`, but with
+  host-given chapters the master's whole body precedes chapter 1, so the
+  list prints at the FRONT (reported upstream) — the demo master places
+  none, and its PDF's citations read "?" until that is settled. Demo:
   `Books/Signals/` + `Guide/Books.md`; proof: `smoke/book-panel-scenario.js`,
   `smoke/book-export-scenario.js`.
 - **Obsidian's own query formats** — for opening other people's vaults,

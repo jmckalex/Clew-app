@@ -10,9 +10,10 @@
 
 // Building a book (docs/dev/book-mode.md §5, phase 1): a master and its
 // chapters made ONE document by the engine — processFile's `chapters`
-// (jmarkdown book.js), never assembled here — as HTML, LaTeX, or PDF via
-// LaTeX, into a `build/` folder beside the master (D12), named by the master
-// so two books in one folder never collide. LaTeX's intermediates stay in
+// (jmarkdown book.js), never assembled here — as LaTeX, PDF via LaTeX, or
+// HTML pages (one per chapter, cut from that one document after it is
+// numbered), into a `build/` folder beside the master (D12), named by the
+// master so two books in one folder never collide. LaTeX's intermediates stay in
 // build/ too, so a rebuild is latexmk's quick rerun and nothing lands beside
 // a chapter.
 //
@@ -84,9 +85,18 @@ export async function exportBook({ vaults, indexer, masterRel, format, trusted =
 	};
 
 	if (format === 'html') {
+		// One page per chapter (D4, engine piece 2ac7048): asked for
+		// `build/<master>.html`, the engine writes the folder `build/<master>/`
+		// — index.html (the master's text and the contents), a page per
+		// chapter, references.html — and says so with a warning when it has to
+		// fall back to the one page instead.
 		const output = path.join(outDir, `${base}.html`);
-		const { warnings } = await runWorker({ file: masterAbs, options: { ...options, to: 'html', output }, cwd, callouts });
-		return { output, outputRel: rel(output), warnings: place(warnings) };
+		const started = Date.now();
+		const { warnings } = await runWorker({ file: masterAbs, options: { ...options, to: 'html', output, htmlLayout: 'split' }, cwd, callouts });
+		const index = path.join(outDir, base, 'index.html');
+		const split = fs.existsSync(index) && fs.statSync(index).mtimeMs >= started - 1000;
+		const built = split ? index : output;
+		return { output: built, outputRel: rel(built), pages: split, warnings: place(warnings) };
 	}
 	const tex = path.join(outDir, `${base}.tex`);
 	const { warnings } = await runWorker({ file: masterAbs, options: { ...options, to: 'latex', output: tex }, cwd, callouts });

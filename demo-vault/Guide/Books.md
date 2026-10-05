@@ -88,15 +88,24 @@ title). Figures, equations and theorems are numbered by chapter — Theorem
 2.1, equation (2.1) — or straight through the book when the master says
 `numbering: continuous`. It goes into a `build/` folder beside the master,
 named after it —
-`build/Signals.pdf` — and a rebuild replaces it. LaTeX's own files (`.aux`,
-`.log` …) stay in `build/` too, so nothing lands beside a chapter.
+`build/Signals.pdf`, `build/Signals.tex` — and a rebuild replaces it.
+LaTeX's own files (`.aux`, `.log` …) stay in `build/` too, so nothing lands
+beside a chapter. HTML is a small website, one page per chapter: the folder
+`build/Signals/` holds `index.html` (the master's text and the contents)
+and a page for each chapter, with previous, contents and next links on
+each; Clew opens it in your browser when the build is done.
 
 A chapter that links to no note stops the build, by name. What the build
 had to say is listed under the panel's *Last build* — click the ⚠ — and a
 chapter's row carries its own count: each warning names its chapter and
-line, and choosing it opens the chapter there. A chapter that sets its own
-`Resolve citations` or `Bibliography style`, as Conventions does for its
-own reading view, is told that a book takes those from its master.
+line, and choosing it opens the chapter there.
 
-Still to come: each chapter's own bibliography, language and macros
-applied, and the HTML as one page per chapter.
+A chapter may set a few things for itself in its front matter: its own
+`Bibliography` (it joins the book's — Conventions cites from
+`Features/refs.bib` this way), `Packages` and `LaTeX preamble` (they join
+the book's one preamble), `Lang` or `Language` (hyphenation and quotation marks), `Math
+macros`, and its own `<style>` (on its own page only). Anything else a
+chapter sets is the master's to decide, and the build says so by name —
+unless the chapter sets it to the very value the book uses, which is why
+Conventions can keep `Resolve citations` for its own reading view and the
+master says the same.

@@ -133,6 +133,13 @@ export async function buildBook(master, format) {
 		const warnings = Array.isArray(result?.warnings) ? result.warnings : [];
 		bookBuilds.set(master, { format, output: result.outputRel ?? result.output, warnings, at: Date.now() });
 		const where = result.outputRel ?? result.output;
+		// The pages are a website: their index opens in the browser, where the
+		// chapters' links to each other work as written (main clamps the path
+		// to the vault; a smoke run logs it instead of launching).
+		if (format === 'html' && result.outputRel) {
+			ipc.invoke(CH.SHELL_OPEN_PATH, { path: result.outputRel })
+				.then((opened) => { if (opened && !opened.ok) notice(opened.reason); }).catch(() => {});
+		}
 		notice(warnings.length
 			? `Built ${name} → ${where} — ${warnings.length} warning${warnings.length === 1 ? '' : 's'} (the Book panel lists them)`
 			: `Built ${name} → ${where}`, 6000);
