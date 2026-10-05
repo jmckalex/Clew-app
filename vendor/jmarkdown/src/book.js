@@ -54,6 +54,7 @@
 
 import fs from 'fs';
 import path from 'path';
+import { isDeepStrictEqual } from 'util';
 import { marked } from 'marked';
 import { configManager, DEFAULT_CONFIG } from './config-manager.js';
 import { addWarning, setWarningLocation, getWarningLocation } from './warnings.js';
@@ -79,12 +80,46 @@ export function numberWithinChapter() { return !!book && book.numbering === 'per
 // too) or 'continuous' (Figure 17).
 function numberingPolicy(value) {
 	const raw = Array.isArray(value) ? value.join(' ') : value;
+	const policy = parseNumbering(raw);
+	if (policy) return policy;
+	addWarning(`book: \`Numbering: ${String(raw).trim()}\` is neither "per chapter" nor "continuous" — numbering per chapter`);
+	return 'per chapter';
+}
+
+// `HTML layout:` (the master's header) or processFile's `htmlLayout` option:
+// 'single' (one page, the default) or 'split' (book-pages.js; 'pages' too, the
+// plan's first name for it).
+function layoutPolicy(value) {
+	const raw = Array.isArray(value) ? value.join(' ') : value;
+	if (raw == null || String(raw).trim() === '') return 'single';
+	const v = norm(raw);
+	if (v === 'split' || v === 'pages') return 'split';
+	if (v === 'single') return 'single';
+	addWarning(`book: \`HTML layout: ${String(raw).trim()}\` is neither "single" nor "split" — one page`);
+	return 'single';
+}
+
+/** 'split' when a book is to be written as pages (book-pages.js), else 'single'. */
+export function bookLayout() { return book ? book.layout : 'single'; }
+
+// A `Numbering` value read, or null when it is neither policy. Unset is the default.
+function parseNumbering(raw) {
 	if (raw == null || String(raw).trim() === '') return 'per chapter';
 	const v = norm(raw);
 	if (v === 'continuous') return 'continuous';
 	if (v === 'per chapter' || v === 'chapter' || v === 'by chapter') return 'per chapter';
-	addWarning(`book: \`Numbering: ${String(raw).trim()}\` is neither "per chapter" nor "continuous" — numbering per chapter`);
-	return 'per chapter';
+	return null;
+}
+
+// A setting of the master's, however its key is written. A header's keys are
+// merged as written, so `numbering:` (as YAML and Clew write keys) lands under
+// its own spelling where the engine reads `Numbering`; a book's own keys are
+// matched as loosely as a chapter's whitelist. Single files are untouched.
+function masterSetting(name) {
+	const exact = configManager.get(name);
+	if (exact != null) return exact;
+	const key = Object.keys(configManager.config || {}).find((k) => norm(k) === norm(name));
+	return key === undefined ? undefined : configManager.config[key];
 }
 
 export function resetBook() { book = null; }
@@ -93,6 +128,22 @@ const START = (n) => `<!-- jmd:chapter ${n} -->`;
 const END = '<!-- jmd:end-chapter -->';
 const MARKERS = /^<!-- jmd:(chapter \d+|end-chapter) -->$/m;
 const MARKERS_SPLIT = /^<!-- jmd:(chapter \d+|end-chapter) -->$/gm;
+
+/**
+ * Whether `text` holds a chapter boundary — for a pass over the assembled
+ * stream that must not carry state from one chapter into the next
+ * (inline-footnotes.js's ambient groups and multi-paragraph notes).
+ */
+export function hasChapterMarker(text) { return MARKERS.test(text); }
+
+/**
+ * Where a chapter's inline `[fn: …]` notes are listed: the HTML renderer puts
+ * this placeholder just before a chapter's `</section>`, and
+ * inline-footnotes.js's fillEndnotes replaces it with that chapter's list (or
+ * nothing). The `@endnotes` / `@bibliography` placeholder pattern.
+ */
+export const chapterNotesPlaceholder = (n) => `<div class="jmd-chapter-notes" data-chapter="${n}"></div>`;
+export const CHAPTER_NOTES = /<div class="jmd-chapter-notes" data-chapter="(\d+)"><\/div>/g;
 
 /* --- a chapter's header ------------------------------------------------------------- */
 
@@ -116,16 +167,55 @@ const HEADER_KEYS = [
 	'Biblify defer', 'Headings', 'Numbering', 'Load extensions', 'Load directives',
 	'Load javascript', 'Load environments', 'Optionals', 'Inline comment', 'Custom element',
 	'Smart typography', 'Pandoc citations', 'Block elements', 'Silence warnings',
-	'Document class', 'Class options', 'Heading base', 'Chapters', 'Book',
+	'Document class', 'Class options', 'Heading base', 'Chapters', 'Book', 'HTML layout',
 ];
 // Built on first use, not at load: theorems.js and numbered-environments.js
 // import this module from inside config-manager's own import graph, so
 // DEFAULT_CONFIG is not yet initialised while this module loads.
 let engineKeys = null;
-const isEngineKey = (key) => {
-	engineKeys ??= new Set([...Object.keys(DEFAULT_CONFIG), ...HEADER_KEYS].map(norm));
-	return engineKeys.has(norm(key)) || /^extension\b/i.test(String(key).trim());
+// A key in the engine's own spelling (`resolve citations` → `Resolve
+// citations`), or null when the engine has no such key.
+const engineKey = (key) => {
+	engineKeys ??= new Map([...Object.keys(DEFAULT_CONFIG), ...HEADER_KEYS].map((k) => [norm(k), k]));
+	if (engineKeys.has(norm(key))) return engineKeys.get(norm(key));
+	return /^extension\b/i.test(String(key).trim()) ? String(key).trim() : null;
 };
+const isEngineKey = (key) => engineKey(key) !== null;
+
+/**
+ * Whether a chapter's `key: value` is what the book already uses — the
+ * master's setting, else the engine's default — so a chapter that only
+ * repeats it (for its own reading view, say) is not warned. Read as the engine
+ * reads it: mergeMetadata itself merges the key, in its engine spelling, into
+ * a copy of the book's configuration, so `True` and `true` agree exactly where
+ * the engine reads them alike, and nothing is applied. A key the copy gains
+ * (one the book leaves unset) must equal the value the engine reads in its
+ * place: a header's `Document_class` overrides DEFAULT_CONFIG's spaced
+ * `Document class` (configManager.getMeta).
+ */
+function sameAsBook(key, value) {
+	const canonical = engineKey(key);
+	if (norm(canonical) === 'numbering') return parseNumbering(value) === book.numbering;
+	const before = configManager.config;
+	let after;
+	try {
+		const trial = Object.create(configManager);
+		trial.config = structuredClone(before);
+		trial.loaded = true;
+		trial.mergeMetadata({ [canonical]: [value] });
+		after = trial.config;
+	} catch {
+		return false;
+	}
+	for (const k of new Set([...Object.keys(before), ...Object.keys(after)])) {
+		if (isDeepStrictEqual(before[k], after[k])) continue;
+		if (k in before) return false;
+		const twin = Object.keys(before).find((b) => norm(b) === norm(k));
+		const word = (v) => norm(Array.isArray(v) ? v.join(' ') : String(v));
+		if (twin === undefined || word(after[k]) !== word(before[twin])) return false;
+	}
+	return true;
+}
 
 /**
  * A chapter's leading header — a `---`-fenced block, or JMarkdown's bare
@@ -169,7 +259,7 @@ function chapterSettings(data, name) {
 	for (const [key, value] of Object.entries(data)) {
 		const n = norm(key);
 		if (WHITELIST.has(n)) settings[WHITELIST.get(n)] = value;
-		else if (!CHAPTER_DATA.has(n) && isEngineKey(key)) {
+		else if (!CHAPTER_DATA.has(n) && isEngineKey(key) && !sameAsBook(key, value)) {
 			addWarning(`book: this chapter sets \`${key}\` — a book takes that from its master, so it is not applied`);
 		}
 	}
@@ -230,7 +320,7 @@ function chapterLines(body) {
  * is processFile's option (a host's list); otherwise the body's
  * `@chapter+(path)` lines name them.
  */
-export function prepareBook(body, { chapters: hostChapters = null, masterDir, isLatex = false, numbering = null } = {}) {
+export function prepareBook(body, { chapters: hostChapters = null, masterDir, isLatex = false, numbering = null, htmlLayout = null } = {}) {
 	book = null;
 	const fromHost = Array.isArray(hostChapters) && hostChapters.length > 0;
 	let pieces = chapterLines(body);
@@ -243,12 +333,19 @@ export function prepareBook(body, { chapters: hostChapters = null, masterDir, is
 		return null;
 	}
 
-	book = { masterDir, chapters: [], isLatex, numbering: numberingPolicy(numbering ?? configManager.get('Numbering')) };
+	book = { masterDir, chapters: [], isLatex, numbering: numberingPolicy(numbering ?? masterSetting('Numbering')),
+		lang: languageTag(configManager.get('Lang')) || 'en',
+		layout: layoutPolicy(htmlLayout ?? masterSetting('HTML layout')) };
+	// A book's # headings are its chapters: a master naming no class is a book.
+	// Set before the chapters are read, which compare their own settings with it.
+	if (configManager.get('Document_class') == null) configManager.set('Document class', 'book');
 	const out = [];
 	for (const piece of pieces) {
 		if (piece.text != null) { out.push(piece.text); continue; }
 		const chapter = readChapter(piece.chapter, book.chapters.length + 1, masterDir);
 		if (!chapter) continue;
+		chapter.macros = chapterMacros(chapter);
+		chapter.lang = languageTag(chapter.settings.lang);
 		book.chapters.push(chapter);
 		out.push(`\n\n${START(chapter.index)}\n${chapter.text}\n\n${END}\n\n`);
 	}
@@ -327,6 +424,12 @@ function settleFootnotes(tokens) {
 		const { _jmdLoc, ...copy } = first;
 		tokens.push({ ...copy, rawItems: first.rawItems.slice(), items: first.items.slice() });
 	}
+	// marked hands a one-newline space token to the token before it, and this
+	// one is marked-footnote's own, reused by every chapter: a chapter that
+	// opens with a blank line left its newline in `raw`, and every later
+	// chapter counted it — its lines one too many. Its raw is only the list's
+	// heading text (the renderer trims it), so the newline goes.
+	first.raw = String(first.raw).replace(/\s+$/, '');
 }
 
 // Every token array inside a top-level token, mapped to its line.
@@ -404,6 +507,202 @@ function lexBook(src, options) {
 	return tokens;
 }
 
+/* --- the book's one preamble: the chapters' Packages and LaTeX preamble ------------------------------ */
+
+// A chapter's list or lines as written in front matter, with YAML's dressing
+// (`[…]`, `- `, quotes, a lone `|`) taken off.
+function settingLines(value, split) {
+	if (value == null) return [];
+	return (Array.isArray(value) ? value : [value])
+		.flatMap((v) => String(v).split(split))
+		.map((line) => line.trim().replace(/^\[|\]$/g, '').trim().replace(/^-\s+/, '').replace(/^(["'])(.*)\1$/, '$2').trim())
+		.filter((line) => line && line !== '|' && line !== '>');
+}
+
+// The command or environment a preamble line defines (`\R`, `environment
+// proof`), when the line holds the whole definition: its braces balance. A
+// definition over several lines is kept as written, unchecked.
+function definedName(line) {
+	let depth = 0;
+	for (const c of line.replace(/\\[{}]/g, '')) {
+		if (c === '{') depth++;
+		else if (c === '}' && --depth < 0) return null;
+	}
+	if (depth !== 0) return null;
+	const command = /^\\(?:(?:new|renew|provide)command|DeclareMathOperator|DeclareRobustCommand)\*?\s*\{?\s*(\\[A-Za-z@]+)/.exec(line)
+		|| /^\\def\s*(\\[A-Za-z@]+)/.exec(line);
+	if (command) return command[1];
+	const env = /^\\(?:(?:new|renew)environment|newtheorem|declaretheorem)\*?\s*(?:\[[^\]]*\])?\s*\{([^}]+)\}/.exec(line);
+	return env ? `environment ${env[1].trim()}` : null;
+}
+
+/**
+ * What the chapters add to the book's one preamble: `packages` they name that
+ * the master does not, and `preamble` lines it lacks, in book order. A line
+ * already present goes in once. A chapter line that defines what the master
+ * or an earlier chapter defines differently is left out and listed in
+ * `clashes` ({ chapter, message }): LaTeX has one preamble, where a second
+ * \newcommand of a name stops the build. Outside a book, nothing. Computed
+ * once a build; latex-template.js warns the clashes, latex-lint.js counts the
+ * rest as loaded.
+ */
+export function bookPreamble() {
+	if (!book) return { packages: [], preamble: [], clashes: [] };
+	if (book.preambleJoin) return book.preambleJoin;
+	const meta = (key) => configManager.getMeta(key);
+	const packages = [];
+	const have = new Set(settingLines(meta('Packages'), /[,\n]/));
+	const preamble = [];
+	const master = settingLines(meta('LaTeX preamble'), '\n');
+	const seen = new Set(master.map((line) => line.replace(/\s+/g, ' ')));
+	const defined = new Map();
+	for (const line of master) {
+		const name = definedName(line);
+		if (name && !defined.has(name)) defined.set(name, null);
+	}
+	const clashes = [];
+	for (const chapter of book.chapters) {
+		for (const name of settingLines(chapter.settings.packages, /[,\n]/)) {
+			if (!have.has(name)) { have.add(name); packages.push(name); }
+		}
+		for (const line of settingLines(chapter.settings.preamble, '\n')) {
+			const squashed = line.replace(/\s+/g, ' ');
+			if (seen.has(squashed)) continue;
+			const name = definedName(line);
+			if (name && defined.has(name)) {
+				const by = defined.get(name);
+				const owner = by ? by.name : 'the master';
+				clashes.push({ chapter, message: `book: this chapter's \`LaTeX preamble\` defines ${name} differently from ${owner} — a book has one preamble, so ${by ? `${by.name}'s` : "the master's"} is used` });
+				continue;
+			}
+			if (name) defined.set(name, chapter);
+			seen.add(squashed);
+			preamble.push(line);
+		}
+	}
+	book.preambleJoin = { packages, preamble, clashes };
+	return book.preambleJoin;
+}
+
+/* --- languages --------------------------------------------------------------------------------- */
+
+// A `Lang` value as a BCP 47 tag (`de`, `en-GB`), or null.
+function languageTag(value) {
+	return settingLines(value, /[,\n\s]/)[0] || null;
+}
+
+const sameLanguage = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
+
+/**
+ * The language the walk is in: in a book, the chapter's own `Lang`, else the
+ * master's; null outside a book. Smart typography's quotation marks follow it.
+ */
+export function currentLanguage() {
+	if (!book) return null;
+	return currentWalkChapter()?.lang || book.lang;
+}
+
+// BCP 47 → babel. The Cyrillic and Greek ones need a Unicode engine's fonts.
+const BABEL = {
+	en: 'english', 'en-us': 'american', 'en-gb': 'british', 'en-au': 'australian', 'en-ca': 'canadian',
+	'en-nz': 'newzealand', de: 'ngerman', 'de-at': 'naustrian', 'de-ch': 'nswissgerman', fr: 'french',
+	es: 'spanish', it: 'italian', pt: 'portuguese', 'pt-br': 'brazilian', nl: 'dutch', sv: 'swedish',
+	da: 'danish', nb: 'norsk', no: 'norsk', nn: 'nynorsk', fi: 'finnish', is: 'icelandic', pl: 'polish',
+	cs: 'czech', sk: 'slovak', hu: 'magyar', ro: 'romanian', hr: 'croatian', sl: 'slovenian', tr: 'turkish',
+	ca: 'catalan', gl: 'galician', eu: 'basque', ga: 'irish', cy: 'welsh', et: 'estonian', lv: 'latvian',
+	lt: 'lithuanian', la: 'latin', ru: 'russian', uk: 'ukrainian', el: 'greek',
+};
+const NEEDS_UNICODE = new Set(['russian', 'ukrainian', 'greek']);
+
+/**
+ * The book's babel, once a build, when its languages need one: the chapters'
+ * that differ from the master's, then the master's last (babel's main
+ * language). A book wholly in English loads none, as one document does not.
+ * A tag babel does not know, or a Cyrillic or Greek one under pdfLaTeX, is
+ * warned at its chapter and printed as the book's language. Each chapter's
+ * own babel name is left on it (`chapter.babel`), for otherlanguage*.
+ */
+function bookBabel() {
+	if (book.babel !== undefined) return book.babel;
+	const engine = String(configManager.getMeta('LaTeX engine') ?? '').trim().toLowerCase();
+	const unicode = engine === 'lualatex' || engine === 'xelatex';
+	const was = getWarningLocation();
+	const usable = (tag, chapter) => {
+		setWarningLocation(chapter ? { file: chapter.name } : null);
+		const t = tag.toLowerCase();
+		const name = BABEL[t] ?? BABEL[t.split('-')[0]];
+		const whose = chapter ? 'this chapter' : 'the book';
+		if (!name) addWarning(`book: \`Lang: ${tag}\` is not a language babel knows — in print ${whose} is hyphenated as ${chapter ? "the book's" : 'English'}`);
+		else if (NEEDS_UNICODE.has(name) && !unicode) addWarning(`book: babel's ${name} needs a Unicode engine (\`LaTeX engine: lualatex\`) — in print ${whose} is hyphenated as ${chapter ? "the book's" : 'English'}`);
+		else return name;
+		return null;
+	};
+	const main = usable(book.lang, null) || 'english';
+	for (const chapter of book.chapters) {
+		chapter.babel = chapter.lang && !sameLanguage(chapter.lang, book.lang) ? usable(chapter.lang, chapter) : null;
+		if (chapter.babel === main) chapter.babel = null;
+	}
+	setWarningLocation(was);
+	// The main language last; no chapter's is the main one (nulled above).
+	const names = [...new Set([...book.chapters.map((c) => c.babel).filter(Boolean), main])];
+	book.babel = names.length === 1 && main === 'english' ? null : names.join(',');
+	return book.babel;
+}
+
+/* --- a chapter's math macros ------------------------------------------------------------------------ */
+
+/**
+ * A chapter's `Math macros`, less any line the master's already holds: they
+ * are defined at the chapter's start (chapterToken). LaTeX and MathJax each
+ * keep one set of macros for the whole book, so a chapter that defines a name
+ * differently from the master or an earlier chapter is warned — its
+ * definition carries on into the chapters after it (§6). Called as each
+ * chapter is read, before the next.
+ */
+function chapterMacros(chapter) {
+	const master = (configManager.get('Math macros') || []).map((line) => String(line).trim());
+	const earlier = [...master.map((line) => ({ line, by: null })),
+		...book.chapters.flatMap((c) => c.macros.map((line) => ({ line, by: c })))];
+	const own = settingLines(chapter.settings.mathMacros, '\n').filter((line) => !master.includes(line));
+	const was = getWarningLocation();
+	setWarningLocation({ file: chapter.name });
+	for (const line of own) {
+		const name = definedName(line);
+		const other = name && [...earlier].reverse().find((e) => definedName(e.line) === name);
+		if (other && other.line !== line) {
+			addWarning(`book: this chapter's \`Math macros\` define ${name} differently from ${other.by ? `${other.by.name}'s` : "the master's"} — a book has one set of macros, so the chapters after this one get this chapter's`);
+		}
+	}
+	setWarningLocation(was);
+	return own;
+}
+
+// A macro line as LaTeX defines it mid-document: whether or not the name
+// exists yet (a \newcommand of a defined name stops the build), so \provide
+// then \renew. MathJax takes the lines as written, redefining as it goes.
+function latexMacro(line) {
+	const m = /^\\(newcommand|renewcommand|providecommand|DeclareMathOperator)(\*?)\s*\{?\s*(\\[A-Za-z@]+)\s*\}?([\s\S]*)$/.exec(line);
+	if (!m) return line;
+	const [, command, star, name, rest] = m;
+	if (command === 'DeclareMathOperator') return `\\providecommand{${name}}{}\\renewcommand{${name}}{\\operatorname${star}${rest.trim()}}`;
+	return `\\providecommand{${name}}{}\\renewcommand${star}{${name}}${rest}`;
+}
+
+/** Every chapter's own macro lines, for the LaTeX-export lint. */
+export function bookMathMacros() {
+	return (book?.chapters || []).flatMap((chapter) => chapter.macros || []);
+}
+
+/** Warn, each at its chapter, what bookPreamble left out. */
+export function warnPreambleClashes() {
+	const was = getWarningLocation();
+	for (const { chapter, message } of bookPreamble().clashes) {
+		setWarningLocation({ file: chapter.name });
+		addWarning(message);
+	}
+	setWarningLocation(was);
+}
+
 /* --- rendering --------------------------------------------------------------------------- */
 
 const escapeAttr = (s) => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
@@ -411,20 +710,30 @@ const escapeAttr = (s) => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;
 // One top-level block at a time, with its place set; in HTML each block's
 // first tag carries its chapter line (data-source-line), which the post-pass
 // reads to place its own warnings, and a host can use to jump to the source.
+let renderChapter = null;
+
+/** The chapter being rendered, or null (outside a chapter, or not a book). */
+export function currentRenderChapter() { return renderChapter; }
+
 function parseBook(tokens, options) {
 	let out = '';
 	for (const token of tokens) {
 		if (token._jmdLoc) setWarningLocation(token._jmdLoc);
-		else if (token.type === 'jmdChapter') setWarningLocation(token.edge === 'start' && token.chapter ? { file: token.chapter.name } : null);
+		else if (token.type === 'jmdChapter') {
+			renderChapter = token.edge === 'start' ? token.chapter : null;
+			setWarningLocation(renderChapter ? { file: renderChapter.name } : null);
+		}
 		let html = marked.Parser.parse([token], options);
 		if (token._jmdLoc && !book.isLatex && !/^\s*<[a-zA-Z][^>]*\bdata-source-line=/.test(html)) {
 			html = html.replace(/^(\s*<[a-zA-Z][a-zA-Z0-9-]*)/, `$1 data-source-line="${token._jmdLoc.line}"`);
 		}
 		out += html;
 	}
+	renderChapter = null;
 	setWarningLocation(null);
 	return out;
 }
+
 
 // A link to another chapter. In HTML an ordinary link to the chapter's anchor;
 // in LaTeX \hyperref to its label — an \href to `#…` goes nowhere in a PDF.
@@ -442,16 +751,153 @@ const chapterToken = {
 	renderer(token) {
 		const c = token.chapter;
 		if (!c) return '';
+		const macros = c.macros || [];
 		if (global.isLatex) {
-			// An anchor at the chapter's start, for links to it (jmdChapterLink).
-			if (token.edge === 'end') return '';
+			// The chapter's language, for hyphenation: otherlanguage*, whose star
+			// leaves headings ("Chapter 3") in the book's language.
+			const babel = bookBabel();
+			if (token.edge === 'end') return c.babel ? '\\end{otherlanguage*}\n' : '';
+			if (babel) requirePackage('babel', babel);
+			const language = c.babel ? `\\begin{otherlanguage*}{${c.babel}}\n` : '';
+			// Its macros (MathJax's vocabulary, as the master's have), then an
+			// anchor at its start for links to it (jmdChapterLink).
+			if (macros.length) { requirePackage('amsmath'); requirePackage('amssymb'); }
+			const defined = macros.map((line) => `${latexMacro(line)}\n`).join('');
 			requirePackage('hyperref');
-			return `\\phantomsection\\label{jmd-chapter-${c.index}}\n`;
+			return `${defined}\\phantomsection\\label{jmd-chapter-${c.index}}\n${language}`;
 		}
-		if (token.edge === 'end') return '</section>\n';
-		return `<section class="jmd-chapter" id="jmd-chapter-${c.index}" data-chapter="${c.index}" data-file="${escapeAttr(c.name)}">\n`;
+		if (token.edge === 'end') return `${chapterNotesPlaceholder(c.index)}\n</section>\n`;
+		// The chapter's macros, hidden, before any of its maths (as index.js
+		// puts the master's at the top of the body).
+		const defined = macros.length
+			? `<div class="math-macros" style="display:none">\\(\n${macros.map((l) => l.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')).join('\n')}\n\\)</div>\n`
+			: '';
+		// Its own language, where it differs from the book's (<html lang>).
+		const lang = c.lang && !sameLanguage(c.lang, book.lang) ? ` lang="${escapeAttr(c.lang)}"` : '';
+		return `<section class="jmd-chapter" id="jmd-chapter-${c.index}" data-chapter="${c.index}" data-file="${escapeAttr(c.name)}"${lang}>\n${defined}`;
 	},
 };
+
+/**
+ * Footnote ids made unique per chapter (HTML). Each chapter is lexed on its
+ * own, so its notes number from 1, and marked-footnote's `footnote-1` and
+ * `footnote-label`, or a labelled inline note's `fn-<label>`, would repeat
+ * from chapter to chapter. A note listed in its chapter, and referred to only
+ * from there, gains a `ch<N>-` prefix with its references, and whatever points
+ * at them there follows: refs, backrefs, aria-describedby, an author's own
+ * `#footnote-1` link. A note an `@endnotes` placement lists elsewhere keeps its
+ * ids, which that list's backrefs name. Called last by the post-processor,
+ * which finds marked-footnote's heading (`#footnote-label`) and a note's list
+ * item (`li#footnote-…`, `li#fn-…`) by their ids.
+ */
+export function scopeChapterFootnotes($) {
+	const REFS = 'a[data-footnote-ref], sup.footnote-ref > a';
+	const NOTES = 'section.footnotes > ol > li[id]';
+	const chapterOf = (el) => $(el).closest('section.jmd-chapter').get(0) || null;
+	// The notes listed in each chapter (null: outside every chapter).
+	const listed = new Map();
+	$(NOTES).each((i, el) => {
+		const c = chapterOf(el);
+		if (!listed.has(c)) listed.set(c, new Set());
+		listed.get(c).add($(el).attr('id'));
+	});
+	// A reference resolves to its own chapter's note; one whose note is listed
+	// elsewhere reaches out, and that note keeps its ids.
+	const reachedFromOutside = new Set();
+	$(REFS).each((i, el) => {
+		const to = ($(el).attr('href') || '').slice(1);
+		if (!listed.get(chapterOf(el))?.has(to)) reachedFromOutside.add(to);
+	});
+	$('section.jmd-chapter').each((i, section) => {
+		const $section = $(section);
+		const prefix = `ch${$section.attr('data-chapter')}-`;
+		const ids = new Map();
+		const scope = (el) => {
+			const id = $(el).attr('id');
+			if (!id) return;
+			ids.set(id, prefix + id);
+			$(el).attr('id', prefix + id);
+		};
+		const own = [...(listed.get(section) || [])].filter((id) => !reachedFromOutside.has(id));
+		if (!own.length) return;
+		$section.find(NOTES).each((j, el) => { if (own.includes($(el).attr('id'))) scope(el); });
+		$section.find(REFS).each((j, el) => { if (own.includes(($(el).attr('href') || '').slice(1))) scope(el); });
+		$section.find('section[data-footnotes] > h2[id]').each((j, el) => scope(el));
+		$section.find('a[href^="#"]').each((j, el) => {
+			const to = ids.get($(el).attr('href').slice(1));
+			if (to) $(el).attr('href', `#${to}`);
+		});
+		$section.find('[aria-describedby]').each((j, el) => {
+			const refs = $(el).attr('aria-describedby').split(/\s+/);
+			$(el).attr('aria-describedby', refs.map((id) => ids.get(id) || id).join(' '));
+		});
+	});
+}
+
+/* --- a chapter's <style> --------------------------------------------------------------------------- */
+
+// At-rules that hold no style rules, or are global by nature: they cannot be
+// nested in a scope, and stay outside it.
+const GLOBAL_AT_RULES = /^@(?:import|charset|namespace|font-face|(?:-[a-z]+-)?keyframes|page|property|counter-style|font-feature-values|font-palette-values)\b/i;
+
+/**
+ * A chapter's CSS confined to its section with CSS nesting: `h1 { … }` becomes
+ * `#jmd-chapter-2 { h1 { … } }`, and a rule for the page itself (`body`,
+ * `html`, `:root`) becomes one for the section (`&`). Global at-rules
+ * (@font-face, @keyframes, @import, …) cannot nest and are kept outside it.
+ */
+export function scopeCss(css, scope) {
+	const source = css.replace(/\/\*[\s\S]*?\*\//g, '');
+	const outside = [];
+	const inside = [];
+	let i = 0;
+	while (i < source.length) {
+		while (i < source.length && /\s/.test(source[i])) i++;
+		if (i >= source.length) break;
+		// The statement's end: a `;` before any block, or its block's closing brace.
+		let j = i;
+		let depth = 0;
+		let quote = null;
+		for (; j < source.length; j++) {
+			const c = source[j];
+			if (quote) { if (c === '\\') j++; else if (c === quote) quote = null; continue; }
+			if (c === '"' || c === "'") quote = c;
+			else if (c === '{') depth++;
+			else if (c === '}') { if (--depth <= 0) { j++; break; } }
+			else if (c === ';' && depth === 0) { j++; break; }
+		}
+		const statement = source.slice(i, j).trim();
+		i = j;
+		if (!statement) continue;
+		if (statement.startsWith('@')) {
+			(GLOBAL_AT_RULES.test(statement) || !statement.includes('{') ? outside : inside).push(statement);
+			continue;
+		}
+		const brace = statement.indexOf('{');
+		const selectors = statement.slice(0, brace).split(',')
+			.map((selector) => selector.trim().replace(/^(?:html|body|:root)(?![\w-])/i, '&'))
+			.join(', ');
+		inside.push(`${selectors} ${statement.slice(brace)}`);
+	}
+	if (inside.length) outside.push(`${scope} {\n${inside.join('\n')}\n}`);
+	return `\n${outside.join('\n')}\n`;
+}
+
+/**
+ * Each chapter's `<style>` elements, scoped to its section (HTML), so one
+ * chapter's CSS does not restyle the book: the post-processor then hoists
+ * them into the head with every other. Called before that hoisting.
+ */
+export function scopeChapterStyles($) {
+	$('section.jmd-chapter').each((i, section) => {
+		const scope = `#${$(section).attr('id')}`;
+		$(section).find('style').not('svg style').each((j, style) => {
+			$(style).text(scopeCss($(style).text(), scope));
+			// Its chapter's, for a split book's pages (book-pages.js).
+			$(style).attr('data-jmd-chapter', $(section).attr('data-chapter'));
+		});
+	});
+}
 
 /* --- the walk: chapter context and paths ---------------------------------------------------- */
 
@@ -492,6 +938,22 @@ function bookWalk(token) {
 		const to = rebase(token.arg.trim(), walkChapter);
 		if (typeof to === 'string') token.arg = to;
 	}
+}
+
+/**
+ * Place the warnings a post-pass raises about an element — an unresolved
+ * @ref, a duplicate label, a citation key no bibliography holds — at its
+ * chapter and line: the chapter's file, and the nearest block parseBook
+ * stamped. An element outside every chapter, or null, places nothing; not a
+ * book, nothing at all.
+ */
+export function placeWarningsAt($, el) {
+	if (!book) return;
+	const $section = el ? $(el).closest('section.jmd-chapter') : null;
+	if (!$section || !$section.length) { setWarningLocation(null); return; }
+	const chapter = book.chapters.find((c) => c.index === Number($section.attr('data-chapter')));
+	const line = Number($(el).closest('[data-source-line]').attr('data-source-line')) || null;
+	setWarningLocation({ file: chapter ? chapter.name : $section.attr('data-file'), line });
 }
 
 /** The chapter a walkTokens hook is in, as it runs (smart typography's quotes). */
