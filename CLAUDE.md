@@ -69,7 +69,11 @@ note API, plugins, and every settings key.
   gen-demo-history` and checked by `scripts/package.js`, which refuses a
   stale one) — which is how a copy made before the record existed is told
   from an edited one. A changed file is never touched, a deleted demo note
-  stays deleted, nothing goes into `.clew/`. Until 2026-10-04 an old copy
+  stays deleted, nothing goes into `.clew/`. A copy with NO record is dated
+  by its untouched files — the history says when each version first shipped
+  (its commit's position), and a demo file shipped by then and missing now
+  was deleted by the user, not added (`demo-sync.js#shippedSince`; until
+  2026-10-05 it came back, Clew-docs' dev.6 copy). Until 2026-10-04 an old copy
   never saw a new or improved demo note (the owner's dev.6: no App Gallery,
   then the old ticker). `CLEW_SMOKE_DEMO_TARGET` (scenarios only) gives a
   dev build that path (`smoke/demo-sync-scenario.js`). Dev-vs-packaged
@@ -98,7 +102,7 @@ note API, plugins, and every settings key.
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
   dialect scanner's constructs and grammar, live edit's model, reveal rule,
-  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band, figure errors, the PDF save guard, deep links and the clew command, the shareable callout resolver, the device word, where notices sit, pinned apps, the demo vault's updates (untouched files by hash and by shipped history), the ticker's live rules, origin-bound network grants, books (the master reader, chapter titles, words and status, the index's chapter lists and their renames, a build's warnings placed) — 1160 tests. DOM/UI work is
+  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band, figure errors, the PDF save guard, deep links and the clew command, the shareable callout resolver, the device word, where notices sit, pinned apps, the demo vault's updates (untouched files by hash and by shipped history, a record-less copy dated by its files), the ticker's live rules, origin-bound network grants, books (the master reader, chapter titles, words and status, the index's chapter lists and their renames, a build's warnings placed) — 1163 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]

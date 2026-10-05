@@ -24,6 +24,13 @@
 //   - never touches a file the user changed, never brings back one they
 //     deleted (a file given before and missing now), and never writes into
 //     `.clew/` or any dot path: a vault's plugins and scripts are code.
+// A copy with no record (every 0.12.0 copy, dev.6's) is dated by its own
+// untouched files: the history says when each version first shipped, and the
+// newest among them is the oldest Clew the copy can have come from — a demo
+// file shipped by then and missing now was deleted by the user and stays so
+// (until 2026-10-05 it came back: Clew-docs' dev.6 copy), one first shipped
+// later was never given and is added. A copy with nothing recognisable gets
+// everything it lacks.
 // A record from 2619e1c (a list, no hashes) counts as given with no hash.
 // Electron-free (tests/demo-sync.test.js).
 import crypto from 'node:crypto';
@@ -62,31 +69,58 @@ export function readRecord(target) {
 	return null;
 }
 
+/** When a version of a file first shipped (the history's position), or undefined. */
+const shippedAt = (history, rel, hash) => {
+	const versions = history[rel];
+	return versions && Object.hasOwn(versions, hash) ? versions[hash] : undefined;
+};
+
+/**
+ * The oldest Clew a copy with no record can have come from: the newest
+ * first-shipped position among its files that are a version Clew shipped.
+ * Null when none is.
+ */
+export function shippedSince(current, history) {
+	let newest = null;
+	for (const [rel, have] of current) {
+		const at = shippedAt(history, rel, have);
+		if (Number.isInteger(at) && (newest === null || at > newest)) newest = at;
+	}
+	return newest;
+}
+
 /**
  * What to do, and the record after it. Pure.
  *
  * @param {{ bundled: Map<string,string>, current: Map<string,string>,
- *   record: Map<string,string|null>|null, history?: Record<string,string[]> }} at
+ *   record: Map<string,string|null>|null,
+ *   history?: Record<string, Record<string, number>> }} at
  *   hashes of the bundle's files and the copy's; the copy's record; every
- *   version Clew ever shipped, by file
+ *   version Clew ever shipped, by file, with when it first shipped
+ *   (scripts/gen-demo-history.mjs)
  * @returns {{ add: string[], update: string[], record: Map<string,string|null> }}
  */
 export function planDemoSync({ bundled, current, record, history = {} }) {
 	const add = [];
 	const update = [];
 	const next = new Map();
+	// No record: what the copy was given is what Clew had shipped by the date
+	// its files give it (null: nothing recognisable, so nothing known given).
+	const since = record ? null : shippedSince(current, history);
+	const firstShipped = (rel) => Math.min(...Object.values(history[rel] ?? {}).filter(Number.isInteger));
 	for (const [rel, want] of bundled) {
 		const have = current.get(rel);
 		const given = record?.get(rel);           // undefined: never given
 		if (have === undefined) {
 			// Missing: given before means deleted by the user — it stays so.
-			// A copy with no record counts what it lacks as never given.
+			// With no record, given is what had shipped by the copy's date.
 			if (record?.has(rel)) next.set(rel, given);
+			else if (since !== null && firstShipped(rel) <= since) next.set(rel, null);
 			else { add.push(rel); next.set(rel, want); }
 			continue;
 		}
 		if (have === want) { next.set(rel, want); continue; }
-		const untouched = (given && have === given) || (history[rel] ?? []).includes(have);
+		const untouched = (given && have === given) || shippedAt(history, rel, have) !== undefined;
 		if (untouched) { update.push(rel); next.set(rel, want); }
 		else next.set(rel, given ?? null);        // the user's: never touched
 	}
