@@ -133,8 +133,13 @@ export function compilePdf(texFile, noteDir, bibDirs = [noteDir]) {
 	const latexmk = findTex('latexmk');
 	const tex = latexmk ?? findTex(engine);
 	if (!tex) throw new Error(`No TeX toolchain found (latexmk or ${engine}). Install MacTeX for PDF export.`);
+	// `-g`: latexmk always runs. An unchanged note re-exported to the same
+	// place otherwise found its rewritten .tex up to date, ran nothing, and
+	// left the last PDF — which the freshness check below rightly refused
+	// ("no PDF was produced", measured 2026-10-05). One extra pass, no
+	// parsing of latexmk's messages.
 	const args = latexmk
-		? [latexmkFlag(engine), '-interaction=nonstopmode', '-quiet', path.basename(texFile)]
+		? [latexmkFlag(engine), '-g', '-interaction=nonstopmode', '-quiet', path.basename(texFile)]
 		: ['-interaction=nonstopmode', path.basename(texFile)];
 	const pdf = texFile.replace(/\.tex$/, '.pdf');
 	const started = Date.now();
