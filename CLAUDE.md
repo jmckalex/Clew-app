@@ -1405,9 +1405,10 @@ except where the selection touches a construct. The durable design is
   export writes — never absolute, which put the user's home folder into a
   .tex or .html they share; not relative to the note either, which works
   only for an export saved beside it (TeX never searches TEXINPUTS for a
-  `../` name). For LaTeX that folder's REALPATH: TeX climbs `..`
-  physically, and `clew export`'s build folder sits under macOS's /var →
-  /private/var link. A BOOK's embeds stay absolute until jmarkdown passes
+  `../` name). For LaTeX both ends by REALPATH — the folder and the image:
+  TeX climbs `..` physically, `clew export`'s build folder sits under
+  macOS's /var → /private/var link, and a vault reached through a link
+  otherwise climbed out to the link's own path (the clamp runs first). A BOOK's embeds stay absolute until jmarkdown passes
   `resolveEmbed(name, { file })` and rebases a book's LaTeX paths onto its
   output (asked for); `resolveLink` gives
   nothing, so a link prints as its text ("Note > Heading"; in a book a

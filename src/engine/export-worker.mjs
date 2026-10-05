@@ -26,7 +26,7 @@
 //     and not relative to the note, which only works for an export saved
 //     beside the note (TeX never searches TEXINPUTS for a `../` path, and the
 //     engine copies an image path into HTML as written — measured). For LaTeX
-//     the folder's realpath (TeX's `..` is physical). A BOOK's
+//     both the folder and the image by realpath (TeX's `..` is physical). A BOOK's
 //     embeds stay absolute for now: the engine rebases a chapter's relative
 //     path onto the master's folder, which its .tex in build/ is not.
 //     Nothing found: the name stays as written, relative to the note.
@@ -55,11 +55,16 @@ const resolveEmbed = (name) => {
 	// TeX climbs `..` from its REAL working folder, a browser from the URL it
 	// was given: under a symlinked folder (macOS's /var → /private/var holds
 	// every temp folder — `clew export`'s build) the two count differently.
+	// For LaTeX both ends are real paths, so a vault reached through a link
+	// (a linked folder, an external volume) gives `../Attachments/…`, not a
+	// climb out to the link's own path. The clamp has already run.
 	let from = path.dirname(path.resolve(output));
+	let to = abs;
 	if (building.options?.to === 'latex') {
 		try { from = fs.realpathSync(from); } catch { /* not there yet: as given */ }
+		try { to = fs.realpathSync(abs); } catch { /* as resolved */ }
 	}
-	return path.relative(from, abs).split(path.sep).join('/');
+	return path.relative(from, to).split(path.sep).join('/');
 };
 
 if (process.send) process.send({ type: 'ready' });
