@@ -73,6 +73,10 @@ export async function exportBook({ vaults, indexer, masterRel, format, trusted =
 	// it in any case — and a user's own config may set it. One policy for the
 	// panel, the live numbers to come, and the built book.
 	const options = { chapters: names, numbering: master.numbering, normalSyntax, bibliography };
+	// The engine's Obsidian links on (export.js#runWorker): a [[link]] to a
+	// chapter becomes a chapter link, others print as text, ![[image]]s resolve
+	// across the vault.
+	const vault = { root: vaults.root, restricted: !trusted };
 
 	const place = (raw) => {
 		const placed = placeWarnings(raw, new Map(names.map((name, i) => [name, chapters[i].resolved])), masterRel);
@@ -99,14 +103,14 @@ export async function exportBook({ vaults, indexer, masterRel, format, trusted =
 			await vaults.trash(pagesRel);
 		}
 		const started = Date.now();
-		const { warnings } = await runWorker({ file: masterAbs, options: { ...options, to: 'html', output, htmlLayout: 'split' }, cwd, callouts });
+		const { warnings } = await runWorker({ file: masterAbs, options: { ...options, to: 'html', output, htmlLayout: 'split' }, cwd, callouts, vault });
 		const index = path.join(outDir, base, 'index.html');
 		const split = fs.existsSync(index) && fs.statSync(index).mtimeMs >= started - 1000;
 		const built = split ? index : output;
 		return { output: built, outputRel: rel(built), pages: split, warnings: place(warnings) };
 	}
 	const tex = path.join(outDir, `${base}.tex`);
-	const { warnings } = await runWorker({ file: masterAbs, options: { ...options, to: 'latex', output: tex }, cwd, callouts });
+	const { warnings } = await runWorker({ file: masterAbs, options: { ...options, to: 'latex', output: tex }, cwd, callouts, vault });
 	if (format === 'latex') return { output: tex, outputRel: rel(tex), warnings: place(warnings) };
 	// BibTeX looks in every folder a bibliography names: the master's, each
 	// chapter's own (it ADDS for that chapter, D3), the configured ones.

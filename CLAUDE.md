@@ -1387,6 +1387,24 @@ except where the selection touches a construct. The durable design is
   side by side (the copy "x (conflict YYYY-MM-DD).pdf", `create` — never
   over a file) / Later. The viewer carries the choice out; one that has gone
   leaves it to the versions in history (`PDF_VERSION_RESTORE`).
+- **Exports turn on the engine's Obsidian links** (jmarkdown 3d9e65d,
+  `obsidian-links.js`; the owner, 2026-10-05: "teach it, Clew switches it
+  on"): Clew's own wikilink handling (`engine/wikilinks.js`) serves the
+  preview, live edit's blocks, the print PDF and the site export — never a
+  note or book EXPORT, which runs the user's config cascade, so its `[[…]]`
+  used to print literally (and a `#` in one stopped TeX's first pass, which
+  is how minted's `<MINTED>` reached a PDF). Every note and book export (HTML,
+  LaTeX, PDF; `clew export` too) now runs through `engine/export-worker.mjs`
+  (`export.js#runWorker` with `vault`), which does exactly what the engine's
+  watch-worker does but hands `processFile` `obsidianLinks` resolvers — the
+  IPC to the engine's own worker carries no functions: `resolveEmbed` is the
+  preview's own resolution (`engine/vault-files.js#resolveFileTarget`, moved
+  out of wikilinks.js so the worker never loads its chain — query-fences.js
+  sets the `vault` global), as an absolute path, clamped in a restricted
+  vault (CLEW_VAULT_ROOT / CLEW_VAULT_RESTRICTED); `resolveLink` gives
+  nothing, so a link prints as its text ("Note > Heading"; in a book a
+  chapter link). A note without `[[ ]]` exports byte-identically
+  (`smoke/export-links-scenario.js`).
 - Exports (`export.js`) use the note's own directory as cwd — the user's
   normal jmarkdown config cascade, NOT the Clew preview config — except
   for a vault this device does not trust (below), whose exports run from
