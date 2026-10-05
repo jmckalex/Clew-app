@@ -16,6 +16,23 @@ stamp (exit 4; `BOOT_TEST_ALLOW_STALE=1` tests an older build anyway).
 log. Content, not mtimes: `git stash pop` rewrites sources in the same second
 as a build, and a commit changes no file time.
 
+**Every runner uses profiles of its own, and a run that never started FAILS
+it** (2026-10-05, `smoke/sweep-lib.sh`, sourced by live-sweep.sh,
+pdf-sweep.sh, pdf-baseline.sh, protocol-tour.sh, render-dump.sh and
+boot-test.sh): each run gets a fresh `CLEW_USER_DATA` in one `mkdtemp` root,
+removed when the runner exits, and never the dev profile or the caller's. A
+run without one takes `~/Library/Application Support/clew`, which on a
+case-insensitive disk is the packaged app's `Clew`: with Clew.app open,
+Electron's single-instance lock loses and it exits 0 having run nothing, and
+live-sweep.sh printed "0 lines" for every scenario and passed. A run whose
+log gains no `smoke-boot:` line prints `!!! <name>: NEVER RAN …` and the
+runner ends `<runner>: FAILED — <names>`, exit 1 (boot-test.sh: `FAIL never
+ran: …`, exit 1); a nested runner's failure fails its parent by name.
+Measured with Clew.app open: every scenario ran, and a broken launch
+(`ELECTRON_RUN_AS_NODE=1`) failed every runner, naming each run. A
+single scenario run by hand still needs `CLEW_USER_DATA=<dir>` while Clew.app
+is open, or it exits silently.
+
 Scenarios for the harness documented in CLAUDE.md (`CLEW_SMOKE=/out.png
 CLEW_SMOKE_SCRIPT=<scenario> CLEW_SMOKE_VAULT=<vault> electron .`) —
 committed so sessions stop rewriting them. Always pass

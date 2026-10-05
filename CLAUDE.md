@@ -184,7 +184,13 @@ note API, plugins, and every settings key.
   through to `key`. Use it for every UI change. Reusable scenarios and
   the big-vault generator live in `smoke/` (its README has the recipes
   and the 5k-note baseline numbers) — extend that folder instead of
-  rewriting scenarios in session scratchpads.
+  rewriting scenarios in session scratchpads. Every runner there
+  (`smoke/sweep-lib.sh`, 2026-10-05) gives each run a fresh
+  `CLEW_USER_DATA` in a temporary root and FAILS, by name, a run whose log
+  has no `smoke-boot:` line: with Clew.app open, a run on the dev profile
+  (`clew`, the packaged app's `Clew` on a case-insensitive disk) loses the
+  single-instance lock and exits 0 having run nothing — live-sweep.sh
+  passed that way. A scenario run by hand needs `CLEW_USER_DATA` too.
 
 ## Architecture (three processes + render workers)
 

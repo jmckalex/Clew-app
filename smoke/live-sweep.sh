@@ -6,13 +6,17 @@
 #
 # Each block is one scenario's README recipe; logs and screenshots land in
 # out-dir (default /tmp/clew-sweep). Compare the lines with smoke/README.md.
+# Each scenario runs on a fresh profile of its own, and one that never
+# started fails the sweep by name, exit 1 (smoke/sweep-lib.sh: until
+# 2026-10-05 an open Clew.app made every run exit at once, "0 lines", exit 0).
 cd "$(dirname "$0")/.."
 node scripts/stale-check.mjs || { echo "live-sweep: dist/ is not built from these sources — nothing was run" >&2; exit 3; }
+. smoke/sweep-lib.sh
 S=${1:-/tmp/clew-sweep}
 case "$S" in /|"$HOME"|"$HOME/"|.|..) echo "live-sweep: refusing to clear $S" >&2; exit 1;; esac
 E=node_modules/electron/dist/Electron.app/Contents/MacOS/Electron
 rm -rf $S; mkdir -p $S
-run() { local n=$1 v=$2; shift 2; env CLEW_SMOKE_LOG=1 CLEW_SMOKE=$S/$n.png CLEW_SMOKE_SCRIPT=smoke/$n-scenario.js CLEW_SMOKE_VAULT=$v "$@" perl -e 'alarm shift; exec @ARGV' 240 $E . 2>&1 | grep -E "smoke-[a-z-]+:|smoke-[a-z]+-frame|ERROR|smoke failed" | grep -v smoke-asset > $S/$n.log; echo "=== $n: $(wc -l < $S/$n.log) lines"; cat $S/$n.log; }
+run() { local n=$1 v=$2; shift 2; env CLEW_SMOKE_LOG=1 CLEW_USER_DATA="$(sweep_ud "$n")" CLEW_SMOKE=$S/$n.png CLEW_SMOKE_SCRIPT=smoke/$n-scenario.js CLEW_SMOKE_VAULT=$v "$@" perl -e 'alarm shift; exec @ARGV' 240 $E . 2>&1 | grep -E "smoke-[a-z-]+:|smoke-[a-z]+-frame|ERROR|smoke failed" | grep -v smoke-asset > $S/$n.log; echo "=== $n: $(wc -l < $S/$n.log) lines"; cat $S/$n.log; sweep_booted "$n" "$S/$n.log"; }
 rsync -a --exclude .clew demo-vault/ $S/v-le/; run live-edit $S/v-le
 node smoke/make-live-vault.mjs $S/v-ll >/dev/null; run live-lines $S/v-ll
 node smoke/make-live-vault.mjs $S/v-te >/dev/null; run live-table-edit $S/v-te
@@ -36,3 +40,4 @@ mkdir -p $S/v-tb && printf '%s\n' '# Toolbar' '' 'alpha beta gamma' '' 'delta ep
 rsync -a --exclude .clew demo-vault/ $S/v-pf/ && node -e "const f=require('fs');const s=f.readFileSync('$S/v-pf/Features/Diagrams.md','utf8');f.writeFileSync('$S/v-pf/Big.md', s.repeat(17))"; run live-perf $S/v-pf
 c=$(grep -o 'clew-refs=.*' $S/crossref.log | cut -d= -f2-); e=$(grep -o 'engine-refs=.*' $S/crossref.log | cut -d= -f2-); ct=$(grep -o 'clew-targets=.*' $S/crossref.log | cut -d= -f2-); et=$(grep -o 'engine-targets=.*' $S/crossref.log | cut -d= -f2-)
 [ -n "$c" ] && [ "$c" = "$e" ] && [ "$ct" = "$et" ] && echo "crossref numbers-match=true" || echo "crossref numbers-match=false"
+sweep_verdict live-sweep

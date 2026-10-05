@@ -10,38 +10,43 @@
 # embed, object), each ending in a loaded EmbedPDF.
 #
 #   node scripts/build.js && smoke/pdf-sweep.sh <out-dir>   (~25 minutes)
+#
+# Profiles are named in smoke/sweep-lib.sh's temporary root; a run that never
+# started, or a nested runner that failed, fails the sweep by name (exit 1).
 set -u
 R=$(cd "$(dirname "$0")/.." && pwd); O=${1:?usage: pdf-sweep.sh <out-dir>}
 (cd "$R" && node scripts/stale-check.mjs) || { echo "pdf-sweep: dist/ is not built from these sources — nothing was run" >&2; exit 3; }
 case "$O" in /|"$HOME"|"$HOME/"|.|..) echo "pdf-sweep: refusing to clear $O" >&2; exit 1;; esac
 rm -rf "$O"; mkdir -p "$O"; cd "$R"
+. smoke/sweep-lib.sh
 E=node_modules/electron/dist/Electron.app/Contents/MacOS/Electron
-run() { local n=$1 v=$2 ud=$3; shift 3; env CLEW_SMOKE_LOG=1 CLEW_USER_DATA=$ud CLEW_SMOKE=$O/$n.png CLEW_SMOKE_SCRIPT=$R/smoke/$n-scenario.js CLEW_SMOKE_VAULT=$v "$@" perl -e 'alarm shift; exec @ARGV' 300 $E . >> $O/$n.log 2>&1; grep -hE "smoke-[a-z-]+:|smoke-[a-z]+-frame|smoke failed" $O/$n.log | grep -v "smoke-asset\|smoke-boot" | sed -E "s/^\[smoke:[a-z]+\] //; s/^/$n: /" | cut -c1-200; }
+# A log this appends to: the run must ADD a boot line.
+run() { local n=$1 v=$2 ud before; ud=$(sweep_ud "$3"); shift 3; before=$(grep -c 'smoke-boot:' $O/$n.log 2>/dev/null); env CLEW_SMOKE_LOG=1 CLEW_USER_DATA=$ud CLEW_SMOKE=$O/$n.png CLEW_SMOKE_SCRIPT=$R/smoke/$n-scenario.js CLEW_SMOKE_VAULT=$v "$@" perl -e 'alarm shift; exec @ARGV' 300 $E . >> $O/$n.log 2>&1; grep -hE "smoke-[a-z-]+:|smoke-[a-z]+-frame|smoke failed" $O/$n.log | grep -v "smoke-asset\|smoke-boot" | sed -E "s/^\[smoke:[a-z]+\] //; s/^/$n: /" | cut -c1-200; sweep_booted "$n" "$O/$n.log" "${before:-0}"; }
 
-echo "=== baseline"; smoke/pdf-baseline.sh $O/baseline > $O/baseline.txt 2>&1; grep -v "^===" $O/baseline.txt | wc -l
+echo "=== baseline"; smoke/pdf-baseline.sh $O/baseline > $O/baseline.txt 2>&1 || { sweep_failed pdf-baseline; grep -h '^!!!\|FAILED' $O/baseline.txt; }; grep -v "^===" $O/baseline.txt | wc -l
 
 echo "=== rewrite"
 node smoke/make-pdf-vault.mjs $O/v-pr >/dev/null && mkdir -p "$O/v-pr/Notes/Week 1" && cp $O/v-pr/Paper.pdf "$O/v-pr/Notes/Week 1/local.pdf" && printf 'plain\n' > "$O/v-pr/Notes/Week 1/notes.txt" && cp smoke/pdf-rewrite-note.md "$O/v-pr/Notes/Week 1/Reading.md"
-run pdf-rewrite $O/v-pr $O/ud-pr CLEW_SMOKE_FRAME_SCRIPT=$R/smoke/pdf-rewrite-frame.js CLEW_SMOKE_FRAME_MATCH=vault/
+run pdf-rewrite $O/v-pr ud-pr CLEW_SMOKE_FRAME_SCRIPT=$R/smoke/pdf-rewrite-frame.js CLEW_SMOKE_FRAME_MATCH=vault/
 
 echo "=== remote"
-node smoke/make-remote-pdf-vault.mjs $O/v-rp $O/ud-rp >/dev/null
-run pdf-remote $O/v-rp $O/ud-rp CLEW_SMOKE_FRAME_SCRIPT=$R/smoke/pdf-remote-frame.js CLEW_SMOKE_FRAME_MATCH=pdf-page
+node smoke/make-remote-pdf-vault.mjs $O/v-rp "$(sweep_ud ud-rp)" >/dev/null
+run pdf-remote $O/v-rp ud-rp CLEW_SMOKE_FRAME_SCRIPT=$R/smoke/pdf-remote-frame.js CLEW_SMOKE_FRAME_MATCH=pdf-page
 
 echo "=== portal"
 node smoke/make-pdf-vault.mjs $O/v-po >/dev/null && node -e "const fs=require('fs');
 fs.writeFileSync('$O/v-po/Board.canvas', JSON.stringify({nodes:[{id:'p',type:'file',file:'Paper.pdf',x:0,y:0,width:400,height:520}],edges:[]}));
 fs.writeFileSync('$O/v-po/Wall.canvas', JSON.stringify({nodes:[{id:'w',type:'file',file:'Board.canvas',x:0,y:0,width:600,height:700}],edges:[]}))"
-run pdf-portal $O/v-po $O/ud-po; rm -f $O/v-po/.clew/workspace.json; run pdf-portal $O/v-po $O/ud-po
+run pdf-portal $O/v-po ud-po; rm -f $O/v-po/.clew/workspace.json; run pdf-portal $O/v-po ud-po
 
-echo "=== live"; smoke/live-sweep.sh $O/live > $O/live.txt 2>&1; grep -c "^===" $O/live.txt
+echo "=== live"; smoke/live-sweep.sh $O/live > $O/live.txt 2>&1 || { sweep_failed live-sweep; grep -h '^!!!\|FAILED' $O/live.txt; }; grep -c "^===" $O/live.txt
 
 echo "=== leak"
 # The leak is made by the note's OWN script, which runs only in a vault the
 # device trusts (frame-bridge.md §4): the fixture opens as a KNOWN vault.
 node smoke/make-pdf-vault.mjs $O/v-lk >/dev/null && cp smoke/pdf-leak-note.md $O/v-lk/Leak.md
-mkdir -p $O/ud-lk; printf '{ "recentVaults": ["%s"] }\n' "$O/v-lk" > $O/ud-lk/clew-settings.json
-run pdf-leak $O/v-lk $O/ud-lk CLEW_SMOKE_FRAME_SCRIPT=$R/smoke/pdf-leak-frame.js CLEW_SMOKE_FRAME_MATCH=clewpdf/pdf-page
+printf '{ "recentVaults": ["%s"] }\n' "$O/v-lk" > "$(sweep_ud ud-lk)/clew-settings.json"
+run pdf-leak $O/v-lk ud-lk CLEW_SMOKE_FRAME_SCRIPT=$R/smoke/pdf-leak-frame.js CLEW_SMOKE_FRAME_MATCH=clewpdf/pdf-page
 
 echo "=== verdict"
 stray=$(grep -rh "smoke-pdf-leak" $O --include='*.log' --include='*.txt' --exclude=pdf-leak.log | grep -v "^pdf-leak: " | sort -u)
@@ -49,3 +54,4 @@ caught=$(grep -c "smoke-pdf-leak" $O/pdf-leak.log)
 viewers=$(grep -c "smoke-leak-frame: .*loaded=true" $O/pdf-leak.log)
 echo "stray leaks: $(printf '%s' "$stray" | grep -c .)"; [ -n "$stray" ] && printf '%s\n' "$stray" | head -5
 echo "deliberate: caught=$caught viewers=$viewers (want 3 and 3)"
+sweep_verdict pdf-sweep

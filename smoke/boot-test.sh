@@ -3,7 +3,8 @@
 # not that the app runs: the hardened runtime is what breaks the forked render
 # worker and the wasm TeX (HANDOVER §6, CLAUDE.md "Packaging"). This boots the
 # PACKAGED binary under the smoke harness, each run with a fresh
-# CLEW_USER_DATA, on the fixture its smoke/README.md row names:
+# CLEW_USER_DATA (smoke/sweep-lib.sh: a temporary root, removed after), on
+# the fixture its smoke/README.md row names:
 #
 #   figures-scenario    make-figures-vault.mjs; every figure `mpw-ok` with
 #                       paths > 0, `pending=0`, `cache-probe first=engine
@@ -33,10 +34,12 @@
 # BOOT_TEST_ALLOW_STALE=1 tests an older build anyway (a release DMG after
 # main moved on), and says so in every run.
 #
-# Exit: 0 both passed · 1 an assertion failed · 2 bad arguments ·
+# Exit: 0 both passed · 1 an assertion failed, or a run never started (named:
+#       no `smoke-boot:` line) · 2 bad arguments ·
 #       3 the machine never went quiet (nothing was run) ·
 #       4 the app was not built from this checkout (nothing was run).
 cd "$(dirname "$0")/.." || exit 2
+. smoke/sweep-lib.sh
 BIN=${1:-out/mac-arm64/Clew.app/Contents/MacOS/Clew}
 S=${2:-/tmp/clew-boot-test}
 MAX=${BOOT_TEST_MAX_LOAD:-6}
@@ -75,11 +78,12 @@ check() { # label, then a command that must succeed
 }
 run() { # scenario, vault, extra env...
 	local n=$1 v=$2; shift 2
-	env CLEW_SMOKE_LOG=1 CLEW_SMOKE_SOURCES="$PWD" ${STALE_ENV[@]+"${STALE_ENV[@]}"} CLEW_USER_DATA="$S/ud-$n" CLEW_SMOKE="$S/$n.png" \
+	env CLEW_SMOKE_LOG=1 CLEW_SMOKE_SOURCES="$PWD" ${STALE_ENV[@]+"${STALE_ENV[@]}"} CLEW_USER_DATA="$(sweep_ud "$n")" CLEW_SMOKE="$S/$n.png" \
 		CLEW_SMOKE_SCRIPT="$PWD/smoke/$n-scenario.js" CLEW_SMOKE_VAULT="$v" "$@" \
 		perl -e 'alarm shift; exec @ARGV' 300 "$BIN" > "$S/$n.log" 2>&1
 	grep -E 'smoke-[a-z-]+:|smoke failed' "$S/$n.log" | grep -v smoke-asset > "$S/$n.lines"
 	echo "== $n (load $(load1)): $(wc -l < "$S/$n.lines") lines, full log $S/$n.log"
+	sweep_booted "$n" "$S/$n.log"
 	! grep -q 'smoke failed' "$S/$n.log" || { echo "  FAIL smoke failed: $(grep -m1 'smoke failed' "$S/$n.log")"; fail=1; }
 }
 
@@ -104,5 +108,6 @@ check "line-height-stable=true" grep -q 'line-height-stable=true' "$L"
 check "after-arrows concealed=true" grep -q 'after-arrows concealed=true' "$L"
 check "followed path=Welcome.md" grep -q 'followed path=Welcome.md' "$L"
 
+[ -n "$SWEEP_FAILED" ] && { echo "  FAIL never ran:$SWEEP_FAILED"; fail=1; }
 [ "$fail" -eq 0 ] && echo "boot-test: PASSED" || echo "boot-test: FAILED — read $S/*.lines against smoke/README.md"
 exit "$fail"
