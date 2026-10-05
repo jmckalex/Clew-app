@@ -93,7 +93,10 @@ LaTeX's own files (`.aux`, `.log` …) stay in `build/` too, so nothing lands
 beside a chapter. HTML is a small website, one page per chapter: the folder
 `build/Signals/` holds `index.html` (the master's text and the contents)
 and a page for each chapter, with previous, contents and next links on
-each; Clew opens it in your browser when the build is done.
+each; Clew opens it in your browser when the build is done — except in a
+vault you haven't trusted, whose pages could carry its notes' own scripts:
+those are shown in Finder instead, and the notice says why. Each HTML build
+replaces the folder, the old one going to the Trash.
 
 A chapter that links to no note stops the build, by name. What the build
 had to say is listed under the panel's *Last build* — click the ⚠ — and a

@@ -91,6 +91,13 @@ export async function exportBook({ vaults, indexer, masterRel, format, trusted =
 		// chapter, references.html — and says so with a warning when it has to
 		// fall back to the one page instead.
 		const output = path.join(outDir, `${base}.html`);
+		// Clew owns build/<master>/: the previous pages go to the Trash —
+		// never deleted — so a chapter removed from the book leaves no page
+		// behind (vault.js#trash; a scenario's go to its own userData).
+		const pagesRel = rel(path.join(outDir, base));
+		if (pagesRel && fs.existsSync(path.join(outDir, base)) && fs.statSync(path.join(outDir, base)).isDirectory()) {
+			await vaults.trash(pagesRel);
+		}
 		const started = Date.now();
 		const { warnings } = await runWorker({ file: masterAbs, options: { ...options, to: 'html', output, htmlLayout: 'split' }, cwd, callouts });
 		const index = path.join(outDir, base, 'index.html');

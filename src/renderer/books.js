@@ -135,14 +135,23 @@ export async function buildBook(master, format) {
 		const where = result.outputRel ?? result.output;
 		// The pages are a website: their index opens in the browser, where the
 		// chapters' links to each other work as written (main clamps the path
-		// to the vault; a smoke run logs it instead of launching).
-		if (format === 'html' && result.outputRel) {
+		// to the vault; a smoke run logs it instead of launching) — but only
+		// in a vault this device trusts. A browser runs the notes' own
+		// <script>s with none of Clew's CSP, so a restricted vault's pages are
+		// shown in Finder instead, and the notice says why.
+		const restrictedPages = format === 'html' && result.outputRel && result.restricted;
+		if (format === 'html' && result.outputRel && !result.restricted) {
 			ipc.invoke(CH.SHELL_OPEN_PATH, { path: result.outputRel })
 				.then((opened) => { if (opened && !opened.ok) notice(opened.reason); }).catch(() => {});
+		} else if (restrictedPages) {
+			ipc.invoke(CH.FS_REVEAL, { path: result.outputRel }).catch(() => {});
 		}
-		notice(warnings.length
-			? `Built ${name} → ${where} — ${warnings.length} warning${warnings.length === 1 ? '' : 's'} (the Book panel lists them)`
-			: `Built ${name} → ${where}`, 6000);
+		const restrictedNote = restrictedPages
+			? ' Not opened in your browser: this vault is restricted, and the pages may carry its notes\' own scripts — they are shown in Finder.'
+			: '';
+		notice((warnings.length
+			? `Built ${name} → ${where} — ${warnings.length} warning${warnings.length === 1 ? '' : 's'} (the Book panel lists them).`
+			: `Built ${name} → ${where}.`) + restrictedNote, restrictedNote ? 12000 : 6000);
 		return result;
 	} catch (err) {
 		const message = String(err?.message ?? err).replace(/^Error invoking remote method '[^']+': (Error: )?/, '');

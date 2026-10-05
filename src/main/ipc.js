@@ -684,7 +684,10 @@ export function registerIpc() {
 	handle(CH.EXPORT_BOOK, async (s, { master, format }) => {
 		const result = await exportBook({ vaults: s.vaults, indexer: s.indexer, masterRel: master, format, trusted: s.trusted });
 		if (result?.output) s.vaults.refreshIfInside(result.output);
-		return result;
+		// The renderer opens built pages in the browser only for a vault this
+		// device trusts: they carry the notes' own <script>s, which a browser
+		// runs outside Clew's CSP.
+		return { ...result, restricted: !s.trusted };
 	});
 
 	// The whole vault as a static website. `outDir` (smoke tests) skips the

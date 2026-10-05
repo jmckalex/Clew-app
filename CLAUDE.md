@@ -605,10 +605,19 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   LaTeX into `build/` beside the master, named by it, LaTeX's intermediates
   there too, and HTML as PAGES (D4; `htmlLayout: 'split'`, jmarkdown
   2ac7048): asked for `build/<master>.html`, the engine writes
-  `build/<master>/` — index.html, a page per chapter, references.html — and
-  Clew opens the index in the browser (SHELL_OPEN_PATH, so main clamps it;
-  `smoke-open-path:` under the harness); a fallback to one page is the
-  engine's, with a warning. A chapter that is no note stops it by name. It
+  `build/<master>/` — index.html, a page per chapter, references.html. Clew
+  OWNS that folder: the previous one goes to the Trash before each build
+  (`vaults.trash`, never a delete; a scenario's to its own `smoke-trash/`),
+  so no removed chapter's page lingers. In a TRUSTED vault Clew opens the
+  index in the browser (SHELL_OPEN_PATH, main clamps it;
+  `smoke-open-path:`); in a RESTRICTED one it shows the pages in Finder
+  instead (FS_REVEAL; `smoke-reveal:` under the harness — vault.js#reveal
+  never opens Finder in a scenario), and the notice says why: a book build
+  refuses the engine-run code a single note's export refuses (the same
+  `restrictedExport` folder), but the notes' own `<script>`s pass through to
+  the HTML (jmarkdown note-code.js: "the host's business"), and a browser
+  runs them outside Clew's CSP (`smoke/book-trust-scenario.js`). A fallback
+  to one page is the engine's, with a warning. A chapter that is no note stops it by name. It
   reuses export.js's worker, working folder (the vault's trust), vault
   bibliography, callouts and `compilePdf` (exported for it; the note path
   is unchanged), with every bibliography's folder on BIBINPUTS. The engine
