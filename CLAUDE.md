@@ -633,15 +633,15 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   the engine's header key is case-sensitive (`Numbering:`; a lowercase
   `numbering: continuous` built per chapter — measured), Clew reads it in
   any case and with the engine's values (`chapter`, `by chapter` too), and
-  a user's own config may set it. The engine half of phase 1 is complete at
-  jmarkdown c9644b0 (vendored at 5a69dcd, which adds `<style>` printing
-  nothing in LaTeX): chapter keys equal to the book's are silent, footnotes
-  per chapter (`ch<N>-` ids), a chapter's Bibliography joining the book's,
-  one preamble, math macros, `Lang`, scoped `<style>`, located post-pass
-  warnings. A master places its References with `@bibliography`, but with
-  host-given chapters the master's whole body precedes chapter 1, so the
-  list prints at the FRONT (reported upstream) — the demo master places
-  none, and its PDF's citations read "?" until that is settled. Demo:
+  a user's own config may set it. The engine half of phase 1 is complete
+  (vendored at jmarkdown cf998a0, which holds 5a69dcd — `<style>` prints
+  nothing in LaTeX — and the Obsidian links of 3d9e65d): chapter keys equal
+  to the book's are silent, footnotes per chapter (`ch<N>-` ids), a
+  chapter's Bibliography joining the book's, one preamble, math macros,
+  `Lang`, scoped `<style>`, located post-pass warnings, and the master's
+  `@bibliography` / `@index` rendered AFTER the last chapter however the
+  chapters are given (D11; references.html among the pages). The demo
+  master ends with `@bibliography`. Demo:
   `Books/Signals/` + `Guide/Books.md`; proof: `smoke/book-panel-scenario.js`,
   `smoke/book-export-scenario.js`.
 - **Obsidian's own query formats** — for opening other people's vaults,

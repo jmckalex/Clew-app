@@ -12,3 +12,5 @@ chapters:
 ---
 
 *For everyone who has ever said something and been understood.*
+
+@bibliography

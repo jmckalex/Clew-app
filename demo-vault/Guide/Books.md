@@ -28,7 +28,9 @@ It is the `chapters:` key that makes a note a master: a note that says
 note.
 
 The master's own text is what comes before the first chapter — a
-dedication, an epigraph, or nothing. `numbering` is `per chapter` (Figure
+dedication, an epigraph, or nothing — except its `@bibliography` (and an
+`@index`), which go after the last chapter: the book's one list of
+references, as Signals' master has it. `numbering` is `per chapter` (Figure
 2.3, Theorem 4.1) unless it says `continuous`.
 
 A chapter's *title* is its first `#` heading; failing that, the `title` in
