@@ -16,16 +16,25 @@
 // exactly what that worker does: import the engine, say ready, run ONE
 // build, report its output and warnings, exit.
 //
-//   resolveEmbed(name) — an image embed resolved as the preview resolves one
-//     (vault-files.js#resolveFileTarget, wikilinks.js's own: by name across
-//     the vault, the shortest path first, clamped by realpath in a vault this
-//     device does not trust:
-//     CLEW_VAULT_ROOT, CLEW_VAULT_RESTRICTED), as an absolute path, or
-//     nothing — the name then stays as written, relative to the note.
+//   resolveEmbed(name, { file }) — an image embed resolved as the preview
+//     resolves one (vault-files.js#resolveFileTarget, wikilinks.js's own: by
+//     name across the vault, the shortest path first, clamped by realpath in
+//     a vault this device does not trust: CLEW_VAULT_ROOT,
+//     CLEW_VAULT_RESTRICTED), written RELATIVE to the folder of the file the
+//     export WRITES (processFile's `output`) — never absolute, which would put
+//     the user's home folder and vault layout into a .tex or .html they share,
+//     and not relative to the note, which only works for an export saved
+//     beside the note (TeX never searches TEXINPUTS for a `../` path, and the
+//     engine copies an image path into HTML as written — measured). For LaTeX
+//     the folder's realpath (TeX's `..` is physical). A BOOK's
+//     embeds stay absolute for now: the engine rebases a chapter's relative
+//     path onto the master's folder, which its .tex in build/ is not.
+//     Nothing found: the name stays as written, relative to the note.
 //   resolveLink() — nothing: an export has no page to point a note's link at,
 //     so a [[link]] prints as its text (the alias, or "Note > Heading").
 //
 // argv[2] is the engine's watch-worker.js; its folder holds index.js.
+import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { resolveFileTarget } from './vault-files.js';
@@ -35,15 +44,29 @@ const load = (name) => import(pathToFileURL(path.join(engineDir, name)).href);
 const { processFile } = await load('index.js');
 const { getWarnings } = await load('warnings.js');
 
+let building = null;   // the build's message: its file and options
+
 const resolveEmbed = (name) => {
 	const rel = resolveFileTarget(String(name));
-	return rel ? path.join(process.env.CLEW_VAULT_ROOT, rel) : null;
+	if (!rel) return null;
+	const abs = path.join(process.env.CLEW_VAULT_ROOT, rel);
+	const output = building.options?.output;
+	if (building.options?.chapters?.length || !output) return abs;
+	// TeX climbs `..` from its REAL working folder, a browser from the URL it
+	// was given: under a symlinked folder (macOS's /var → /private/var holds
+	// every temp folder — `clew export`'s build) the two count differently.
+	let from = path.dirname(path.resolve(output));
+	if (building.options?.to === 'latex') {
+		try { from = fs.realpathSync(from); } catch { /* not there yet: as given */ }
+	}
+	return path.relative(from, abs).split(path.sep).join('/');
 };
 
 if (process.send) process.send({ type: 'ready' });
 
 process.once('message', async (msg) => {
 	if (!msg || msg.type !== 'build') return;
+	building = msg;
 	try {
 		const options = { ...msg.options, obsidianLinks: { resolveEmbed, resolveLink: () => null } };
 		const { outFile } = await processFile(msg.file, options);

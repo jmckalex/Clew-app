@@ -1400,8 +1400,16 @@ except where the selection touches a construct. The durable design is
   IPC to the engine's own worker carries no functions: `resolveEmbed` is the
   preview's own resolution (`engine/vault-files.js#resolveFileTarget`, moved
   out of wikilinks.js so the worker never loads its chain — query-fences.js
-  sets the `vault` global), as an absolute path, clamped in a restricted
-  vault (CLEW_VAULT_ROOT / CLEW_VAULT_RESTRICTED); `resolveLink` gives
+  sets the `vault` global), clamped in a restricted vault (CLEW_VAULT_ROOT /
+  CLEW_VAULT_RESTRICTED), and written RELATIVE to the folder of the file the
+  export writes — never absolute, which put the user's home folder into a
+  .tex or .html they share; not relative to the note either, which works
+  only for an export saved beside it (TeX never searches TEXINPUTS for a
+  `../` name). For LaTeX that folder's REALPATH: TeX climbs `..`
+  physically, and `clew export`'s build folder sits under macOS's /var →
+  /private/var link. A BOOK's embeds stay absolute until jmarkdown passes
+  `resolveEmbed(name, { file })` and rebases a book's LaTeX paths onto its
+  output (asked for); `resolveLink` gives
   nothing, so a link prints as its text ("Note > Heading"; in a book a
   chapter link). A note without `[[ ]]` exports byte-identically
   (`smoke/export-links-scenario.js`).
