@@ -219,3 +219,41 @@ writeFileSync(join(dir, 'Cells.md'), `# Cells
 
 Last line.
 `);
+
+// Lists.md (live-list-paragraphs-scenario.js): list items that go on past
+// their first line — a hard break (two spaces, a backslash), a lazy line, a
+// second and third paragraph, nested, numbered, a task, in a quote.
+writeFileSync(join(dir, 'Lists.md'), `# Lists
+
+- First item, a hard break  
+  after the two spaces
+- Second item, a backslash\\
+  after the backslash
+- Third item
+lazily continued
+- Fourth item
+
+  Its second paragraph, *with* emphasis.
+
+  And a third.
+- Fifth
+  - nested item  
+    nested continuation
+1. Numbered item  
+   numbered continuation
+- [ ] a task  
+  task continuation
+> - quoted item  
+>   quoted continuation
+- Sixth, with display maths
+  \\[
+  x^2 + y^2
+  \\]
+  and a fence:
+
+  \`\`\`js
+  let x = 1;
+  \`\`\`
+
+Last line.
+`);

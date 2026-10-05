@@ -100,6 +100,35 @@ test('lists and tasks: per-item line constructs with depth', () => {
 	assert.equal(m[2].checked, true);
 });
 
+test('an item past its first line: each line of its own paragraphs is its text', () => {
+	const src = [
+		'- a hard break  ', '  after it',
+		'- lazy', 'continued',
+		'- two paragraphs', '', '  the second', '\t\tand a tab',
+		'  - nested  ', '    nested line',
+		'1. one  ', '   one more',
+		'- [ ] task  ', '  task line',
+		'> - quoted  ', '>   quoted line',
+		'- fenced', '', '  ```', '  code', '  ```',
+	].join('\n') + '\n';
+	const m = model(src);
+	const cut = (r) => src.slice(r.from, r.to);
+	assert.deepEqual(m.filter((c) => c.kind === 'listText').map((c) => [c.text, c.depth, cut(c.indent), cut(c.listMark)]), [
+		['  after it', 1, '  ', '-'],
+		['continued', 1, '', '-'],
+		['  the second', 1, '  ', '-'],
+		['\t\tand a tab', 1, '\t\t', '-'],
+		['    nested line', 2, '    ', '-'],
+		['   one more', 1, '   ', '1.'],
+		['  task line', 1, '  ', '-'],
+		// After the `>` and the one space the quote conceals with it.
+		['>   quoted line', 1, '  ', '-'],
+	]);
+	// The blank line and the fence are not text lines; the number's width
+	// covers the number and its space.
+	assert.equal(cut(m.find((c) => c.kind === 'numbered').numberMark), '1. ');
+});
+
 test('quotes: one construct per line, depth from the markers', () => {
 	const m = model('> a\n> > b\n').filter((c) => c.kind === 'quote');
 	assert.deepEqual(m.map((c) => [c.text, c.depth, c.hiddenText]), [
