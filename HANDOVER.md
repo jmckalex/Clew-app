@@ -1,4 +1,4 @@
-# Handover — 2026-10-04 night (origin/main 917303b; LOCAL 5a99c9e … 70aa64a + this; dev.7 = 5a99c9e; book mode phase 1 under way)
+# Handover — 2026-10-05 morning (origin/main 917303b; LOCAL 5a99c9e … cc12894 + this, NONE pushed; dev.8 = abca0bf, boot-tested; book mode phase 1 built)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it); the live edit design AS BUILT is
@@ -210,33 +210,60 @@ Clew-boss; each commit verified by Clew-boss unless noted; CLAUDE.md
   verified; `70aa64a` — numbering ALWAYS passed from Clew's reading (the
   engine's `Numbering:` key is case-sensitive — measured), readMaster takes
   the engine's values, an empty `chapters:` is no problem. Verified.
-- Waiting on jmarkdown's next pieces (each verified by Clew-boss before a
-  re-vendor): the cleveref fix, "silent if same as master", the whitelisted
-  chapter keys APPLIED,
-  per-chapter footnote ids, the post-pass warnings' places, split HTML
-  (`htmlLayout: 'pages'`). Each should need only its option and docs here.
-- ◆ Reported from the built PDF (to Clew-boss, for jmarkdown): the book .tex
-  emits `\crefname` without loading cleveref (stray "equationequation…" on
-  page 1); a chapter repeating `Resolve citations`/`Bibliography style` for
-  its own preview is warned in every build — the owner: "Silent if same as
-  master" (jmarkdown to do; then set Signals' `Resolve citations` /
-  `Bibliography style` to Conventions' and make the demo book build with NO
-  warnings).
-- ◆ `<MINTED>` in a PDF: NOT shell escape (latexminted runs in restricted
-  mode). minted 3 typesets highlighted code on a LATER pass, and latexmk
-  stops after a first pass with a LaTeX error. Books: the cleveref bug
-  (jmarkdown's fix cures it — measured: cleveref added, 3 runs, no
-  `<MINTED>`). Single notes: e.g. Guide/Editing.md, a literal
-  `[[Welcome#The guide]]` in the .tex (the wikilinks-in-LaTeX gap). Remedies
-  (a) wikilinks in LaTeX note exports, (b) `latexmk -f` — both change
-  existing exports: with the owner via Clew-boss, NOT to be done until
-  relayed.
-- A scratch worktree `$SP/wt-export` vendors jmarkdown's UNVERIFIED `book`
-  branch for local runs only (its node_modules links main's, `jmarkdown` →
-  its own vendor/); never commit from it.
-- At the night's end: package **0.12.1-dev.8** (out-dev, mirrors pinned;
-  keep dev.6–dev.8, dev.5 to the Trash with mv) — only after Clew-boss has
-  verified the night's last commit.
+- `a6c44d6` HANDOVER. Then the engine half landed piece by piece, each
+  re-vendor from a commit Clew-boss verified, measured by the render dump and
+  the single-note export byte checks:
+  - `d8e0579` — engine at-migration@5a69dcd (the engine half of phase 1:
+    silent equal keys, footnotes per chapter, chapter bibliographies, one
+    preamble, macros, Lang, scoped <style>, split HTML, located warnings,
+    the cleveref fix; and `<style>` prints nothing in LaTeX — the five demo
+    notes with one lose only CSS-as-text from their .tex).
+  - `1f960e0` — book HTML as PAGES (`build/<master>/`), the demo master's
+    citation keys matching Conventions' (silent), the fixture carrying
+    Features/refs.bib: the demo book builds with warnings=0.
+  - `a146a98` — the previous pages folder to the Trash before each build
+    (Clew owns it; the engine never deletes); in a RESTRICTED vault the pages
+    are shown in Finder, not opened (a note's own <script> passes through to
+    the HTML — measured; `smoke/book-trust-scenario.js`).
+  - `aa63a27` — engine at-migration@cf998a0 (Obsidian links 3d9e65d; the
+    master's @bibliography after the last chapter).
+  - `be46044` — EXPORTS with the engine's Obsidian links ON via
+    `engine/export-worker.mjs` (resolvers the IPC to the engine's worker
+    cannot carry); `engine/vault-files.js` holds the preview's own
+    resolution, moved out of wikilinks.js (no `vault` global). On for every
+    note and book export; NOT for preview, live edit, print PDF, site (Clew's
+    wikilinks.js covers those). Guide/Editing.md's PDF compiles (no
+    <MINTED>); `smoke/export-links-scenario.js`.
+  - `abca0bf` — the demo master ends with `@bibliography`: its PDF reads
+    "Lewis [1969]", references.html among the pages.
+- **dev.8 (0.12.1-dev.8) from `abca0bf`**: `out-dev/Clew-0.12.1-dev.8-
+  arm64.dmg` (231,095,944 bytes signed and stapled). package.js stopped at
+  the DMG signature ("The timestamp service is not available" — Apple's);
+  its remaining steps were run by hand on the same image: codesign
+  --timestamp, notarytool Accepted (08645c70-…), staple DMG + app, validate,
+  spctl Notarized Developer ID. Packaged checks (pkgcheck8): dev.7's, plus
+  the Book panel, the book build (warnings=0, pages=5 with references.html,
+  "Lewis [1969]", no <MINTED>) and the export links (Editing MINTED=0,
+  Math's image) — all IN the packaged app. BOOT TEST PASSED (load 5.77;
+  figures 13 ok; live edit 7/7). out-dev keeps dev.6–dev.8; dev.5 in the
+  Trash. Accepted by Clew-boss; in the owner's morning brief.
+- After dev.8 (verified unless noted): `16f4b7c` — an embedded image's
+  path RELATIVE to the file written, never absolute (it leaked the home
+  folder); `6ab62ae` — `latexmk -g`, so an unchanged note re-exports (it
+  failed "no PDF was produced" in a later session — pre-existing, found
+  measuring 16f4b7c; approved fix); `cc12894` — for LaTeX the image's real
+  path too (a vault through a link). The last two await verification.
+- ◆ OPEN: BOOK embeds stay absolute until jmarkdown passes
+  `resolveEmbed(name, { file })` AND rebases a book's LaTeX paths onto its
+  output (option (a), asked for; jmarkdown paused until the owner is back).
+  **`be46044` must NOT be pushed before that lands** (Clew-boss). Then the
+  worker returns chapter-relative paths for books; measure: no absolute
+  path in any book .tex/.html (pages included), images in the book PDF.
+- ◆ With the owner (via Clew-boss): single-note `<MINTED>` remedies are
+  moot for wikilinks now (links on), but plain Markdown `../` images in an
+  export saved away from the note still miss (logged by Clew-boss as an
+  existing limit); inline code `#` prints as `\#` (for jmarkdown).
+- Scratch worktrees: none left (`wt-export`, `wt-rel` removed).
 
 **After dev.3 (local, NOT pushed, NOT in any package):** `3031a15` — the
 live preview pane never covers the block being edited, takes no pointer
@@ -312,7 +339,8 @@ Then (C): apps get `note-changed` and `grant-changed` (live, no reload), a
 "✎ … can edit notes" status-bar indicator while a write-granted app is live,
 and Settings lists each app's live embeds (frame-bridge.md §9b).
 
-**Queued by Clew-boss:** book mode phase 1 (above) to its end, then dev.8. The test fixtures are tidy: every test
+**Queued by Clew-boss:** the books' relative embed paths once jmarkdown's
+`{ file }` + LaTeX rebasing is verified; NO push until then. The test fixtures are tidy: every test
 file keeps its fixtures under one temp root removed after it (`9d4adb2`,
 app-calls' before it), and the old ones are gone (Clew-boss, 2026-10-04).
 
