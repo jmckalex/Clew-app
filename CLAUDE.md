@@ -644,10 +644,11 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   `numbering: continuous` built per chapter — measured), Clew reads it in
   any case and with the engine's values (`chapter`, `by chapter` too), and
   a user's own config may set it. The engine half of phase 1 is complete
-  (vendored at jmarkdown ff87858, which holds 5a69dcd — `<style>` prints
+  (vendored at jmarkdown dc36e9b, which holds 5a69dcd — `<style>` prints
   nothing in LaTeX — the Obsidian links of 3d9e65d, 283cd30's
   `resolveEmbed(name, { file })` with a book's LaTeX paths rebased onto its
-  .tex, and ff87858's cached diagrams included relative to the .tex):
+  .tex, ff87858's cached diagrams included relative to the .tex, and
+  dc36e9b's .tex-relative paths counted between REAL folders):
   chapter keys equal
   to the book's are silent, footnotes per chapter (`ch<N>-` ids), a
   chapter's Bibliography joining the book's, one preamble, math macros,
@@ -1427,11 +1428,12 @@ except where the selection touches a construct. The durable design is
   macOS's /var → /private/var link, and a vault reached through a link
   otherwise climbed out to the link's own path (the clamp runs first). A
   BOOK's embeds are relative to the CHAPTER they are written in (the
-  engine's `file`, jmarkdown 283cd30), which the engine rebases itself —
-  onto the master, then each page's folder or the .tex's — so the worker
-  re-expresses the path it wants from the output's folder from the
-  chapter's, real paths and all (`smoke/book-export-scenario.js`, `export`:
-  `embeds … absolute=false`); `resolveLink` gives
+  engine's `file`, jmarkdown 283cd30) and nothing more: the engine rebases
+  it — onto the master, then each page's folder or the .tex's, the last
+  between REAL paths (dc36e9b) — and one correction is enough
+  (`smoke/book-export-scenario.js`, `export`: `embeds … absolute=false`); a
+  single note's are the worker's, because the engine prints them as given;
+  `resolveLink` gives
   nothing, so a link prints as its text ("Note > Heading"; in a book a
   chapter link). A note without `[[ ]]` exports byte-identically
   (`smoke/export-links-scenario.js`).
