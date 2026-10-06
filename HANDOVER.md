@@ -265,8 +265,11 @@ Clew-boss; each commit verified by Clew-boss unless noted; CLAUDE.md
   .fdb_latexmk name it); a book folder reached through a symlink gives the
   physically right count (4 `..`, not 3) in the .tex. 3d9e65d STAYS (the
   owner, 2026-10-06: optional rules off by default are fine).
-- ◆ Reported to Clew-boss, not fixed (its call whether it blocks
-  `be46044`): the engine names `:::mermaid`, `@begin(mermaid)` and
+- ◆ Reported to Clew-boss 2026-10-06; it does NOT block `be46044` (main
+  waits only on the owner's push word). The engine fixes — relative cached
+  diagram paths in LaTeX, a build warning when mmdc fails — are with
+  jmarkdown; WHERE the caches are created is a design question with the
+  owner: change nothing for it yet. The engine names `:::mermaid`, `@begin(mermaid)` and
   `@begin(metapost)` PDFs by ABSOLUTE path in a LaTeX export — its cache
   is `<note's folder>/mermaid/` and `…/MetaPost/` (a book's: the master's),
   INSIDE the vault, created by the export. Under pdfLaTeX the PDF carries
