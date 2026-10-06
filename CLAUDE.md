@@ -357,7 +357,7 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   build's `bundles/index.json` lists the bundle (a findable luaotfload
   costs every LuaTeX run ~180 ms; asking for a bundle that is not there
   fails the whole engine — 0.2.1 had none, so a build staged from it
-  refuses marked figures BY NAME; the pinned 0.3.0 has it). The list is read once by auto.js, so a marked
+  refuses marked figures BY NAME; 0.3.0 and the pinned 0.3.1 have it). The list is read once by auto.js, so a marked
   figure arriving later reloads the preview once. The faces come from
   `main/note-fonts.js`: extracted at app start from the machine's own font
   folder (`Avenir Next.ttc` is a COLLECTION, and a collection is garbled
@@ -368,10 +368,11 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   addFiles` BEFORE the loader is injected, and named to the render worker
   through `CLEW_NOTE_FONTS`. A site export bakes such figures as OUTLINES
   (`figure-bake.js`), never embedding Apple's or Microsoft's face in a
-  published page. The manifest pins mp-tikz-wasm 0.3.0 (2026-09-28), the
-  first release carrying the `opentype` bundle, so the feature is live on
-  every machine that stages from the pin, not only where the master is
-  built. The
+  published page. The manifest pins mp-tikz-wasm 0.3.1 (2026-10-03; 0.3.0,
+  2026-09-28, was the first release carrying the `opentype` bundle), so the
+  feature is live on every machine that stages from the pin, not only where
+  the master is built — and staging prefers the master wherever it exists,
+  so a build meant to carry the PIN sets `MPTIKZ_SRC=/nonexistent`. The
   mptikz root is served IMMUTABLE for a year (protocol.js) and its URLs
   carry no version, so a restaged or upgraded build would be served
   stale: `main/asset-stamp.js` stamps the engines + bundle indexes + app

@@ -133,9 +133,18 @@ commit, NOT pushed:**
   admonition token carried no `written`. Now it does: `ad-hint` → Hint,
   `ad-rem` → Rem (as written, as `[!CAUTION]` → Caution). See the commit
   after 51615b9.
-- ◆ mp-tikz-wasm 0.3.1 is published (52b7bbc, sha256 24b0cd29…, 44,239,255
-  bytes; optional PDF output, lazier auto.js, Node workers; engines and SVG
-  unchanged). NOT re-pinned — Clew-boss's call.
+- mp-tikz-wasm RE-PINNED to v0.3.1 (2026-10-06, Clew-boss for the owner's
+  iOS sync): sha256 24b0cd29… (GitHub's own digest), 44,239,255 bytes,
+  confirmed by stage-mptikz's download-and-verify with `MPTIKZ_SRC=
+  /nonexistent` — the master (6d89954, 0.3.1+8) would otherwise win, in
+  staging AND in packaging, which runs the same script. Against 0.3.0's
+  staged tree: 4 files added (latex-extra: epstopdf.sty, epstopdf-base.sty,
+  grfext.sty, supp-pdf.mkii), none removed, 13 changed (auto.js, index.js,
+  core.js, worker.js, cli.js, index.d.ts, types.d.ts, bundles/index.json,
+  bundles/hot.json, latex-extra and luatex manifests, dvilualatex.fmt,
+  dviluatex.fmt) — no .wasm. auto.js still reads `data-base` and
+  `data-bundles="+opentype"` off a `script[src*="auto.js"]`, all
+  figures.js#ensureLoader sets.
 
 **Then (2026-10-04 night, via Clew-boss; each its own commit):**
 - `917303b` (PUSHED) — a `network` grant is bound to its ORIGINS
