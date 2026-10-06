@@ -644,10 +644,11 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   `numbering: continuous` built per chapter — measured), Clew reads it in
   any case and with the engine's values (`chapter`, `by chapter` too), and
   a user's own config may set it. The engine half of phase 1 is complete
-  (vendored at jmarkdown ad0f0d4, which holds 5a69dcd — `<style>` prints
-  nothing in LaTeX — the Obsidian links of 3d9e65d, and 283cd30's
+  (vendored at jmarkdown ff87858, which holds 5a69dcd — `<style>` prints
+  nothing in LaTeX — the Obsidian links of 3d9e65d, 283cd30's
   `resolveEmbed(name, { file })` with a book's LaTeX paths rebased onto its
-  .tex): chapter keys equal
+  .tex, and ff87858's cached diagrams included relative to the .tex):
+  chapter keys equal
   to the book's are silent, footnotes per chapter (`ch<N>-` ids), a
   chapter's Bibliography joining the book's, one preamble, math macros,
   `Lang`, scoped `<style>`, located post-pass warnings, and the master's

@@ -269,7 +269,16 @@ Clew-boss; each commit verified by Clew-boss unless noted; CLAUDE.md
   waits only on the owner's push word). The engine fixes — relative cached
   diagram paths in LaTeX, a build warning when mmdc fails — are with
   jmarkdown; WHERE the caches are created is a design question with the
-  owner: change nothing for it yet. The engine names `:::mermaid`, `@begin(mermaid)` and
+  owner: change nothing for it yet. FIXED in the engine by jmarkdown
+  ff87858 (vendored 2026-10-06): cached diagrams relative to the .tex, a
+  failed mmdc a build warning, adjustbox `export` (`max width` stopped every
+  diagram export). Measured: Diagrams.md exports and compiles from the
+  menu, no vault path in .tex or PDF. ◆ OPEN, reported to Clew-boss: `clew
+  export --pdf` builds in os.tmpdir() (/var → /private/var), and the
+  engine's LEXICAL relative path climbs out to /private — both diagrams
+  "not found: using draft setting". Fix: realpath the .tex's folder (the
+  engine's texCachePath/texPath, or Clew's worker). Before ff87858: the
+  engine named `:::mermaid`, `@begin(mermaid)` and
   `@begin(metapost)` PDFs by ABSOLUTE path in a LaTeX export — its cache
   is `<note's folder>/mermaid/` and `…/MetaPost/` (a book's: the master's),
   INSIDE the vault, created by the export. Under pdfLaTeX the PDF carries
