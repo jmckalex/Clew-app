@@ -253,12 +253,27 @@ Clew-boss; each commit verified by Clew-boss unless noted; CLAUDE.md
   failed "no PDF was produced" in a later session — pre-existing, found
   measuring 16f4b7c; approved fix); `cc12894` — for LaTeX the image's real
   path too (a vault through a link). The last two await verification.
-- ◆ OPEN: BOOK embeds stay absolute until jmarkdown passes
-  `resolveEmbed(name, { file })` AND rebases a book's LaTeX paths onto its
-  output (option (a), asked for; jmarkdown paused until the owner is back).
-  **`be46044` must NOT be pushed before that lands** (Clew-boss). Then the
-  worker returns chapter-relative paths for books; measure: no absolute
-  path in any book .tex/.html (pages included), images in the book PDF.
+- BOOK embeds chapter-relative (2026-10-06): engine at-migration@ad0f0d4
+  (283cd30's `resolveEmbed(name, { file })` and a book's LaTeX paths
+  rebased onto its .tex; 60d8b95/7aa59b0/ad0f0d4's `&`/`#` escaped once in
+  list items and the blocks nested in them), and the worker answers a
+  book relative to the chapter. Measured: the `export` fixture (Conventions
+  moved to Essays/More/, two chapters embedding one image) → `embeds
+  html=["../../../../Attachments/NASA%20-%20Earthrise.jpg"] tex=["../../../
+  Attachments/NASA - Earthrise.jpg"] absolute=false`, two images in the
+  PDF, no vault path in the PDF even uncompressed (only latexmk's .fls and
+  .fdb_latexmk name it); a book folder reached through a symlink gives the
+  physically right count (4 `..`, not 3) in the .tex. 3d9e65d STAYS (the
+  owner, 2026-10-06: optional rules off by default are fine).
+- ◆ Reported to Clew-boss, not fixed (its call whether it blocks
+  `be46044`): the engine names `:::mermaid`, `@begin(mermaid)` and
+  `@begin(metapost)` PDFs by ABSOLUTE path in a LaTeX export — its cache
+  is `<note's folder>/mermaid/` and `…/MetaPost/` (a book's: the master's),
+  INSIDE the vault, created by the export. Under pdfLaTeX the PDF carries
+  it too (`/PTEX.FileName`); under LuaLaTeX only the .tex. Clew's ```mermaid
+  and ```metapost fences never reach it (preview-only: they export as code).
+  The demo's Features/Diagrams.md hits it (lines 18, 122). Pre-dates
+  3d9e65d.
 - ◆ With the owner (via Clew-boss): single-note `<MINTED>` remedies are
   moot for wikilinks now (links on), but plain Markdown `../` images in an
   export saved away from the note still miss (logged by Clew-boss as an

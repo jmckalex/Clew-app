@@ -52,6 +52,14 @@ log(`case=${kind} panel=${!!document.querySelector('clew-book .book-build')} but
 	log(`html pages=${pages.length} sections=${(html.match(/<section class="jmd-chapter"/g) ?? []).length} h1=${JSON.stringify([...new Set([...html.matchAll(/<h1[^>]*>([\s\S]*?)<\/h1>/g)].map((m) => m[1].replace(/<[^>]+>/g, '').trim()))])} front-matter-as-content=${/status: (done|revised|draft)/.test(html)}`);
 	log(`numbers html=${JSON.stringify([...new Set(html.match(/(?:Proposition|Theorem) [0-9.]+/g) ?? [])])} tex-within=${/numberwithin=chapter/.test(tex)} tex-without=${/\\counterwithout\{equation\}\{chapter\}/.test(tex)}`);
 	log(`tex chapters=${JSON.stringify([...tex.matchAll(/\\chapter\*?\{([^}]*)\}/g)].map((m) => m[1]))} front-matter-as-content=${/status: (done|revised|draft)/.test(tex)} cleveref=${/\\usepackage(\[[^\]]*\])?\{cleveref\}/.test(tex)}`);
+	// Embeds (the `export` case): each path as the build prints it, and whether
+	// any page or the .tex names the vault's absolute path (either spelling of
+	// macOS's /tmp → /private/tmp).
+	const root = vaultStore.vault.path ?? vaultStore.vault.root ?? '';
+	const spellings = root ? [root, root.startsWith('/private/') ? root.slice(8) : `/private${root}`] : [];
+	const absolute = (text) => spellings.some((s) => text.includes(s));
+	const uniq = (matches) => JSON.stringify([...new Set([...matches].map((m) => m[1]))]);
+	log(`embeds html=${uniq(html.matchAll(/<img[^>]*\ssrc="([^"]+)"/g))} tex=${uniq(tex.matchAll(/\\includegraphics(?:\[[^\]]*\])?\{([^}]+)\}/g))} absolute=${absolute(html) || absolute(tex)}`);
 	const warnButton = document.querySelector('.book-build-last .book-warn');
 	if (kind !== 'export') {
 		log(`warnings=${warnButton ? warnButton.textContent : 0}`);

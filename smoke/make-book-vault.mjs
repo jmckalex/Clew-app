@@ -10,7 +10,11 @@
 // `export` (book-export-scenario.js): Deception.md gains a second # heading
 // — the engine warns at that chapter's line — Senders and Receivers opens
 // with a blank line (a chapter AFTER such a one was placed a line too high
-// until jmarkdown 53e0ade), and book-case.txt says export.
+// until jmarkdown 53e0ade), and book-case.txt says export; Conventions moves
+// to Essays/More/ (a chapter in another folder, at the same depth, so its
+// `../../Features/refs.bib` still resolves) and it and Deception embed
+// Attachments/NASA - Earthrise.jpg — a book's embeds are chapter-relative
+// (jmarkdown 283cd30), and no build file names the vault's absolute path.
 // `trust` (book-trust-scenario.js): a fourth chapter, Code.md, holds code the
 // ENGINE runs (a jmarkdown script block, Math.max/calc/math.sqrt in prose)
 // and an inline <script> it passes through; <dir>/ud-trusted lists the vault
@@ -65,7 +69,13 @@ Prose with Math.max(1, 41) inline and a calc("40+2") call, and a mathjs math.sqr
 if (mode === 'export') {
 	const first = path.join(vault, 'Books', 'Signals', 'Senders and Receivers.md');
 	fs.writeFileSync(first, fs.readFileSync(first, 'utf8').replace(/^(---\n[\s\S]*?\n---\n)/, '$1\n'));
-	fs.appendFileSync(path.join(vault, 'Books', 'Signals', 'Deception.md'), '\n# A Second Heading\n\nIn a book this starts a chapter of its own.\n');
+	fs.appendFileSync(path.join(vault, 'Books', 'Signals', 'Deception.md'), '\n# A Second Heading\n\nIn a book this starts a chapter of its own.\n\n![[NASA - Earthrise.jpg|300]]\n');
+	fs.mkdirSync(path.join(vault, 'Attachments'), { recursive: true });
+	fs.copyFileSync(path.join(repo, 'demo-vault', 'Attachments', 'NASA - Earthrise.jpg'), path.join(vault, 'Attachments', 'NASA - Earthrise.jpg'));
+	const essays = path.join(vault, 'Essays', 'More');
+	fs.mkdirSync(essays, { recursive: true });
+	fs.renameSync(path.join(vault, 'Books', 'Signals', 'Conventions.md'), path.join(essays, 'Conventions.md'));
+	fs.appendFileSync(path.join(essays, 'Conventions.md'), '\n![[NASA - Earthrise.jpg]]\n');
 }
 const plain = path.join(dir, 'plain');
 fs.mkdirSync(plain, { recursive: true });

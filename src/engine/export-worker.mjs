@@ -26,9 +26,13 @@
 //     and not relative to the note, which only works for an export saved
 //     beside the note (TeX never searches TEXINPUTS for a `../` path, and the
 //     engine copies an image path into HTML as written — measured). For LaTeX
-//     both the folder and the image by realpath (TeX's `..` is physical). A BOOK's
-//     embeds stay absolute for now: the engine rebases a chapter's relative
-//     path onto the master's folder, which its .tex in build/ is not.
+//     both the folder and the image by realpath (TeX's `..` is physical). In a
+//     BOOK the answer is relative to the CHAPTER the embed is written in (the
+//     engine's `file`, jmarkdown 283cd30): the engine reads it as a Markdown
+//     image written there and rebases it itself — onto the master's folder,
+//     then onto each page's folder (split HTML) or the .tex's (LaTeX) — so the
+//     answer is the path wanted from the output's folder, re-expressed from the
+//     chapter's, and arrives there unchanged.
 //     Nothing found: the name stays as written, relative to the note.
 //   resolveLink() — nothing: an export has no page to point a note's link at,
 //     so a [[link]] prints as its text (the alias, or "Note > Heading").
@@ -46,25 +50,34 @@ const { getWarnings } = await load('warnings.js');
 
 let building = null;   // the build's message: its file and options
 
-const resolveEmbed = (name) => {
+const resolveEmbed = (name, { file } = {}) => {
 	const rel = resolveFileTarget(String(name));
 	if (!rel) return null;
 	const abs = path.join(process.env.CLEW_VAULT_ROOT, rel);
 	const output = building.options?.output;
-	if (building.options?.chapters?.length || !output) return abs;
+	if (!output) return abs;
 	// TeX climbs `..` from its REAL working folder, a browser from the URL it
 	// was given: under a symlinked folder (macOS's /var → /private/var holds
 	// every temp folder — `clew export`'s build) the two count differently.
 	// For LaTeX both ends are real paths, so a vault reached through a link
 	// (a linked folder, an external volume) gives `../Attachments/…`, not a
 	// climb out to the link's own path. The clamp has already run.
-	let from = path.dirname(path.resolve(output));
-	let to = abs;
+	const from = path.dirname(path.resolve(output));
+	let wanted = path.relative(from, abs);
 	if (building.options?.to === 'latex') {
-		try { from = fs.realpathSync(from); } catch { /* not there yet: as given */ }
-		try { to = fs.realpathSync(abs); } catch { /* as resolved */ }
+		let realFrom = from, realTo = abs;
+		try { realFrom = fs.realpathSync(from); } catch { /* not there yet: as given */ }
+		try { realTo = fs.realpathSync(abs); } catch { /* as resolved */ }
+		wanted = path.relative(realFrom, realTo);
 	}
-	return path.relative(from, to).split(path.sep).join('/');
+	// A book: the engine rebases from the chapter onto the output's folder by
+	// lexical arithmetic, so hand it the path that arithmetic turns into
+	// `wanted` (for HTML, simply the image's own path).
+	if (building.options?.chapters?.length) {
+		if (!file) return abs;   // the engine names no file: nothing to be relative to
+		wanted = path.relative(path.dirname(file), path.resolve(from, wanted));
+	}
+	return wanted.split(path.sep).join('/');
 };
 
 if (process.send) process.send({ type: 'ready' });
