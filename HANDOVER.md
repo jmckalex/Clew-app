@@ -552,11 +552,11 @@ owner's word.
   pdf"`, e.g. arXiv's `/pdf/…`) still open in Chromium's own viewer: in
   Electron 43 there is no switch that retires it (pdf-unification "As
   built").
-- **Engine bug, for the jmarkdown master**: an `@label` reference inside a
-  footnote prints `??` (the footnote branch looks for `[id^="footnote-"]`,
-  endnotes carry `id="fn-…"`); Clew mirrors it and the crossref fixture
-  asserts it, so an upstream fix shows as that assertion failing. Also,
-  under `Headings: numeric` the generated Endnotes `<h1>` is numbered.
+- An `@label` reference inside a footnote is NUMBERED since jmarkdown
+  4ab3d6a (vendored 4aeca69): crossref-scenario reads "1" for it, engine
+  and Clew alike (2026-10-06); and the Endnotes heading is unnumbered under
+  `Headings: numeric` since jmarkdown b212e82 (the same run: prefixes
+  1., 1.1., 1.2. and no endnotes target, engine and Clew alike).
 - **Not investigated, older than live edit**: `figures-edit-scenario`
   phase 3 — an edited ```tikz in READING mode keeps its old picture. Re-run
   at `ed2aabc` vs `main` on a quiet machine before believing machine or

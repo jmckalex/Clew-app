@@ -36,6 +36,7 @@ import { splitRow, alignmentOf } from '../tables.js';
 import { cellRanges, isExtendedTable, CELL_EDIT_LIMITS } from './table-cell-model.js';
 import { activeCellOf } from './active-cell.js';
 import { numberDocument } from './numbering.js';
+import { mathEnvironmentTex } from '../jmd/math-segments.js';
 import { ChipWidget } from './widgets/chip.js';
 
 /** Toggle a foldable callout: `{ id, folded }`. */
@@ -134,7 +135,7 @@ function build(state) {
 			case 'math': {
 				if (!config.renderMath) break;
 				const tex = c.environment
-					? `\\begin{${c.env}}\n${text(c.body.start ?? c.body.from, c.body.end ?? c.body.to)}\n\\end{${c.env}}`
+					? mathEnvironmentTex(c.env, text(c.body.start ?? c.body.from, c.body.end ?? c.body.to))
 					: text(c.body.from, c.body.to);
 				// `@begin(equation)` is numbered; `$$…$$` is not (numbering.js).
 				const tag = c.env === 'equation' && c.environment
