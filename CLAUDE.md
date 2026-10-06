@@ -1694,7 +1694,7 @@ except where the selection touches a construct. The durable design is
   trust change re-walks (session.refreshAccess). The owner's vaults depend
   on outside links (bibliographies, slide libraries, PDFs) and are trusted:
   unchanged.
-- Engine changes belong upstream in the jmarkdown repo, additive and
-  config-gated, coordinated with its own conventions (read its CLAUDE.md +
-  HANDOVER.md first; stage by explicit path — its working tree deliberately
-  carries uncommitted files).
+- Some engine changes may belong upstream in the jmarkdown repo, but not
+  all: syntax Clew needs (wikilinks, `![[Note]]` embeds, …) stays a Clew
+  extension in `src/engine/`, and whether a change goes upstream is the
+  owner's call, case by case.
