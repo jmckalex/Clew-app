@@ -90,16 +90,25 @@ export function noteServed(app, network) {
 }
 
 /**
- * A vault file changed (session.js): the keys of this window's apps whose
- * manifest it is and whose running frames now differ from the grant — hosts
- * narrowed or widened, or something new to ask. Their frames must reload.
+ * A vault file changed (session.js): what each of this window's apps whose
+ * manifest it is needs now, as `{ key, reload }`.
+ *   reload: true — its running frames differ from the grant in what only a
+ *     load fixes: hosts narrowed or widened (the CSP is fixed at load), a new
+ *     host to ask about (it reaches nothing new meanwhile), or an app that may
+ *     no longer run or must be approved again (a restricted vault's pinned
+ *     code). Its ports close and its frames reload.
+ *   reload: false — something else new to ask (§9b): the prompt is shown at
+ *     once, and its answer reaches the RUNNING frames as `grant-changed`.
+ *     Until 2026-10-07 this reloaded too, so no app ever got a grant live.
  */
 export function manifestTouched(sessionId, rel, restricted) {
 	const out = [];
 	for (const [key, app] of byKey) {
 		if (app.sessionId !== sessionId || `${app.folder}/${MANIFEST}` !== rel) continue;
 		const st = stateOf(app, restricted);
-		if (st.ask.length || (app.served !== null && JSON.stringify(st.network ?? null) !== app.served)) out.push(key);
+		const hosts = app.served !== null && JSON.stringify(st.network ?? null) !== app.served;
+		if (hosts || !st.mayRun || st.askRun || st.ask.includes('network')) out.push({ key, reload: true });
+		else if (st.ask.length) out.push({ key, reload: false });
 	}
 	return out;
 }

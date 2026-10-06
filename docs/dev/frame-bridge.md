@@ -1159,7 +1159,14 @@ rules, Node.
 - **`grant-changed`** (§8): an app asking for more later, answered Allow,
   gets the new set on its LIVE ports — `{event: 'grant-changed', payload:
   {granted}}`, and the client's `clew.can()` follows — with no reload
-  (`refreshGrants`). Anything taken away (a capability, the run, `network`
+  (`refreshGrants`). "Asking for more later" is its manifest edited: main
+  sends `EV_APP_ASK` (`app-registry.js#manifestTouched`, `reload: false`) and
+  the host shows the prompt at once. Only a change the frame's load fixed —
+  its hosts (the CSP), a new host to ask about, a run approval — reloads it
+  (`EV_APP_GRANTS_CHANGED`). From 917303b until 2026-10-07 every manifest
+  that asked for more reloaded the frames first, so this event never
+  reached a running app; a first prompt never could (a port exists only
+  after the answer, in a trusted vault too — measured). Anything taken away (a capability, the run, `network`
   either way — the CSP is fixed at load) closes the ports and reloads, as
   before; Settings → Revoke always does (it forgets the app).
 - **The indicator** (§9): while an app holding `note.write`, `notes.write`,

@@ -35,6 +35,13 @@ fetch` before counting.
   `.jmarkdown-figures` marker; PDF exports leave only the PDF). Waits for
   jmarkdown at-migration `d134995` (cacheDir/copyFigures); tell Clew-boss
   before any stopgap.
+- A manifest that only asks for MORE is asked without a reload again
+  (`EV_APP_ASK`), so §9b's live `grant-changed` reaches a running app — lost
+  since 917303b (found by the app sweep, fixed as Clew-boss's approved small
+  fix). `bridge-events` reads as its README row again.
+- Known smoke imprecision, not chased (Clew-boss): `app-pin` mode `control`,
+  pass 2 at the end asks y=5465 and gets scrollTop 5440 (README: exact).
+  Identical at 3d39952; that mode has no pins.
 - Standing rules added: Clew syntax stays a Clew extension (jmarkdown
   proposals are the owner's call); every final post to the owner ends with
   an executive summary.

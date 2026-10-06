@@ -520,7 +520,11 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   manifest alone; a manifest naming a new host asks for that host only and
   reaches nothing new meanwhile, a dropped host is gone at once — the
   registry re-reads a changed manifest and main reloads the app's frames
-  when they no longer match, `EV_APP_GRANTS_CHANGED`; a grant from before
+  when their HOSTS no longer match (or a new host, or a run approval, must be
+  asked), `EV_APP_GRANTS_CHANGED`; a manifest that only asks for MORE is
+  asked at once WITHOUT a reload (`EV_APP_ASK`) and the answer reaches the
+  running frames as `grant-changed` (§9b — until 2026-10-07 that reloaded
+  too, and no app ever got a grant live); a grant from before
   origins were recorded is asked once more; `smoke/app-origins-scenario.js`); paths
   are text types only, never hidden or `.clew/`, and in a RESTRICTED vault
   every read AND every index answer (list, search, index, backlinks) is

@@ -491,6 +491,12 @@ export function installAppHost() {
 		closePorts(key);
 		tellEmbedders(key, 'app-reload');
 	});
+	// Its manifest asks for more and nothing it runs with changed: the prompt
+	// now, its answer to the LIVE ports (ensurePrompt → refreshGrants).
+	ipc.on(CH.EV_APP_ASK, async ({ key }) => {
+		const st = await status(key);
+		if (needsAnswer(st)) ensurePrompt(st);
+	});
 	ipc.on(CH.EV_FILE_CHANGED, ({ path } = {}) => { if (path) noteChanged(path); });
 	setInterval(sweep, 2000);
 	settingsStore.on('settings-changed', (k) => {

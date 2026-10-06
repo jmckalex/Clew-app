@@ -73,8 +73,8 @@ done
 
 # A network grant bound to its origins, against two loopback stubs.
 A=48761 B=48762
-node smoke/probe-stub.mjs $A "$S/probe-stubs.log" > /dev/null 2>&1 & STUBS+=($!)
-node smoke/probe-stub.mjs $B "$S/probe-stubs.log" > /dev/null 2>&1 & STUBS+=($!)
+node smoke/probe-stub.mjs $A "$S/probe-stubs.log" > /dev/null 2>&1 & STUBS+=($!); disown
+node smoke/probe-stub.mjs $B "$S/probe-stubs.log" > /dev/null 2>&1 & STUBS+=($!); disown
 sleep 1
 for ud in trusted restricted; do
 	node smoke/make-app-origins-vault.mjs "$S/v-origins-$ud" $A $B > /dev/null
@@ -84,7 +84,7 @@ done
 
 # The Ticker's Live stocks against a Finnhub stub; the key a secret (app.secrets).
 F=48763
-node smoke/finnhub-stub.mjs $F test-key-123 "$S/finnhub-stub.log" > /dev/null 2>&1 & STUBS+=($!)
+node smoke/finnhub-stub.mjs $F test-key-123 "$S/finnhub-stub.log" > /dev/null 2>&1 & STUBS+=($!); disown
 sleep 1
 node smoke/make-ticker-live-vault.mjs "$S/v-ticker" stub $F > /dev/null
 run ticker-live ticker-live "$S/v-ticker/vault" "$S/v-ticker/ud" \
