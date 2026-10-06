@@ -2,10 +2,15 @@
 // own state at the end, its storage, and Finnhub's two ways of taking a key.
 if (location.protocol === 'clew-frame:') {
 	const d = document.body.dataset;
+	// The key is the app's SECRET now (app.secrets, kept by Clew on this
+	// device): present or not, never its value. `legacy` is the old
+	// localStorage copy, which the Ticker moves across and removes.
 	let stored = 'unreadable';
-	try { stored = localStorage.getItem('finnhub-key') === null ? 'none' : 'present'; } catch { /* storage refused */ }
+	try { stored = (await clew.secrets.get('finnhub-key')) === null ? 'none' : 'present'; } catch (e) { stored = e?.code ?? 'error'; }
+	let legacy = 'unreadable';
+	try { legacy = localStorage.getItem('finnhub-key') === null ? 'none' : 'present'; } catch { /* storage refused */ }
 	const items = [...document.querySelectorAll('#track .item')].slice(0, 3).map((i) => i.textContent);
-	console.log(`smoke-tl-app: mode=${d.mode} badges=${d.badgeLog} badge=${JSON.stringify(d.badge)} requests=${d.requests ?? 0} backoff=${d.backoff ?? '-'} refused=${d.refused ?? '-'} has-key=${d.hasKey} stored=${stored}`);
+	console.log(`smoke-tl-app: mode=${d.mode} badges=${d.badgeLog} badge=${JSON.stringify(d.badge)} requests=${d.requests ?? 0} backoff=${d.backoff ?? '-'} refused=${d.refused ?? '-'} has-key=${d.hasKey} stored=${stored} legacy=${legacy}`);
 	console.log(`smoke-tl-app: status=${JSON.stringify(document.getElementById('status').textContent)} items=${JSON.stringify(items)}`);
 	// Only where the manifest allows the real finnhub.io (not the stub's test
 	// copy): the header route against its real CORS, and the query route (no

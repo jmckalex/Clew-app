@@ -11,7 +11,7 @@
 //   timer     `ag: timer logged=true line="- <date>: ran a 3-second exercise at …"`
 //   picker    the frame's `picked=… copied=… clipboard=…` (clipboard)
 //   progress  `ag: progress typed=true words=<n>`, the frame's `events>=1 words=<n>`
-//   ticker    `ag: ticker phase=…` markers around the click on Live (with
+//   ticker    `ag: ticker phase=…` markers around the click on ECB rates (with
 //             CLEW_SMOKE_NET_LOG=1: no `smoke-net:` before, only
 //             api.frankfurter.dev after)
 //   reading   `ag: reading active=Reading/…` (a click opened the note)
@@ -97,12 +97,14 @@ if (kase === 'gallery') {
 		log(`progress typed=${doc().includes(typed.trim())} saved=${(await disk('Tests/Progress.md')).includes(typed.trim())} words=${words}`);
 	})();
 } else if (kase === 'ticker') {
-	window.__clewSmokeInput = [...allow, { wait: 8000 }, app('#live'), { wait: 10000 }];
+	// ECB rates (#modeEcb; the one-button #live went with the Finnhub mode,
+	// 7bbfdb1): api.frankfurter.dev, the only host it may reach here.
+	window.__clewSmokeInput = [...allow, { wait: 8000 }, app('#modeEcb'), { wait: 10000 }];
 	(async () => {
 		await sleep(10200);
 		log('ticker phase=allowed (simulated; no network expected)');
 		await sleep(7300);
-		log('ticker phase=clicking-live');
+		log('ticker phase=clicking-ecb');
 	})();
 } else if (kase === 'reading') {
 	window.__clewSmokeInput = [...allow, { wait: 6000 }, app('li:first-child button'), { wait: 8000 }];

@@ -1,4 +1,4 @@
-# Handover — 2026-10-05 morning (origin/main 917303b; LOCAL 5a99c9e … cc12894 + this, NONE pushed; dev.8 = abca0bf, boot-tested; book mode phase 1 built)
+# Handover — 2026-10-07 night (origin/main 3d39952, pushed; LOCAL: app.secrets, NOT pushed; dev.9 = 3d39952, boot-tested; the diagram cache waits for jmarkdown)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it); the live edit design AS BUILT is
@@ -8,12 +8,36 @@ prefer deleting a settled item to explaining it again.
 
 ## Read this first
 
-**Where the code is.** `origin/main` = `917303b`, pushed 2026-10-04 on the
-owner's word via Clew-boss ("Do everything you say that is waiting on me"):
-35 commits `f3a7d5b..917303b`, a fast-forward. Local since: `5a99c9e` (demo
-updates), `6d64822` + `eb501e4` (book-mode decisions), `96ad97a` HANDOVER,
-then book mode (below), NONE pushed — the rule tonight is NO PUSH. `git
+**Where the code is.** `origin/main` = `3d39952`, pushed 2026-10-06 on the
+owner's word via Clew-boss (`917303b..cbfa692`, then `3d39952`). Local
+since: the app.secrets commits (below), NOT pushed — the owner decides. `git
 fetch` before counting.
+
+**2026-10-06/07 (via Clew-boss; owner's decisions in quotes).**
+- Engine re-vendored to at-migration `dc36e9b` (283cd30 resolveEmbed's
+  file, ff87858 cached diagrams relative to the .tex, dc36e9b real-path
+  counting); book embeds chapter-relative; mp-tikz re-pinned to v0.3.1
+  RELEASE (`cbfa692`; staging prefers the master — `MPTIKZ_SRC=/nonexistent`
+  for the pin); live edit's @begin(equation) number once (`3d39952`).
+- dev.9 (0.12.1-dev.9) from `3d39952`: `out-dev/Clew-0.12.1-dev.9-arm64.dmg`
+  231,129,197 bytes, notarised (daaac35c…), stapled, spctl both; packaged
+  mptikz = release 0.3.1; BOOT TEST PASSED (figures 13, live edit 7/7).
+  out-dev keeps dev.7–dev.9.
+- **app.secrets** ("stored securely on the iPad"; frame-bridge.md §9c,
+  CLAUDE.md "Apps in notes"): `clew.secrets.get/set/delete`, desktop under
+  safeStorage (`main/app-secrets.js`), `callApp` async, the Ticker 1.2.0
+  keeps its key there (denied → the session only). Clew-iOS implements the
+  Keychain half at its next sync; Clew-docs gets the manual notice from
+  Clew-boss. `smoke/app-sweep.sh` runs every app scenario.
+- ◆ NEXT: the diagram cache "Outside" — APPROVED plan (trusted:
+  <userData>/export-cache/<vault id>, capped; restricted: a per-export temp
+  folder; copyFigures on; Trash only a `-figures/` folder carrying the
+  `.jmarkdown-figures` marker; PDF exports leave only the PDF). Waits for
+  jmarkdown at-migration `d134995` (cacheDir/copyFigures); tell Clew-boss
+  before any stopgap.
+- Standing rules added: Clew syntax stays a Clew extension (jmarkdown
+  proposals are the owner's call); every final post to the owner ends with
+  an executive summary.
 
 **Tonight (2026-10-03 evening, the owner's plan via Clew-boss).** Pushed
 first: origin/main = `f3a7d5b` (13 commits). Then, each its own commit,

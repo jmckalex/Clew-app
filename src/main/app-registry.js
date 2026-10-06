@@ -13,16 +13,42 @@
 // the engine emitted — app-embeds-rewrite below), registered here by key,
 // and looked up by the clew-frame handler (which serves an app's files only
 // to a key some window registered) and by the IPC the app page's bridge host
-// uses. One grant store per process (app-grants.js), never written under
-// the smoke harness.
+// uses. One grant store and one secret store per process (app-grants.js,
+// app-secrets.js), neither written under the smoke harness.
 import fs from 'node:fs';
 import path from 'node:path';
+import { safeStorage } from 'electron';
 import { paths } from './paths.js';
 import { identityKey } from './vault-trust.js';
 import { createGrantStore, grantState } from './app-grants.js';
+import { createSecretStore } from './app-secrets.js';
 import { appKey, resolveApp, codeHash, parseManifest, MANIFEST } from './app-frames.js';
 
 export const grants = createGrantStore({ file: paths.appGrants, persist: !process.env.CLEW_SMOKE });
+
+/**
+ * The OS's encryption (Electron safeStorage). Linux with no keyring has only
+ * `basic_text` — a fixed key, i.e. plaintext in all but name — which counts
+ * as none: a secret is refused rather than kept so. A smoke run keeps its
+ * secrets in memory, unencrypted and never written: safeStorage would reach
+ * into the user's own Keychain, and may ask them about it.
+ */
+const osCipher = {
+	available: () => safeStorage.isEncryptionAvailable()
+		&& (process.platform !== 'linux' || safeStorage.getSelectedStorageBackend?.() !== 'basic_text'),
+	encrypt: (text) => safeStorage.encryptString(text),
+	decrypt: (buf) => safeStorage.decryptString(buf),
+};
+const memoryCipher = {
+	available: () => true,
+	encrypt: (text) => Buffer.from(text, 'utf8'),
+	decrypt: (buf) => buf.toString('utf8'),
+};
+export const secrets = createSecretStore({
+	file: paths.appSecrets,
+	cipher: process.env.CLEW_SMOKE ? memoryCipher : osCipher,
+	persist: !process.env.CLEW_SMOKE,
+});
 
 /** key → { sessionId, vault, folder, abs, manifest } */
 const byKey = new Map();

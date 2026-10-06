@@ -18,5 +18,5 @@ if (location.protocol === 'clew-frame:') {
 	} else if (name === 'Lecture Timer') more = `logged=${JSON.stringify(d.logged ?? null)} time=${text('time')}`;
 	else if (name === 'Writing Progress') more = `words=${d.words} events=${d.events}`;
 	else if (name === 'Reading List') more = `count=${d.count} items=${JSON.stringify([...document.querySelectorAll('li .title')].map((t) => t.textContent))}`;
-	console.log(`smoke-ag-app: ${name} theme=${d.theme} granted=${JSON.stringify(window.clew ? ['note.read', 'notes.read', 'query', 'app.kv', 'clipboard', 'note.write', 'editor.insert', 'links.open', 'network'].filter((c) => window.clew.can(c)) : null)} status=${text('status')} ${more}`);
+	console.log(`smoke-ag-app: ${name} theme=${d.theme} granted=${JSON.stringify(window.clew ? ['note.read', 'notes.read', 'query', 'app.kv', 'app.secrets', 'clipboard', 'note.write', 'editor.insert', 'links.open', 'network'].filter((c) => window.clew.can(c)) : null)} status=${text('status')} ${more}`);
 }

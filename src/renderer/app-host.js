@@ -49,7 +49,7 @@ const MAX_IN_FLIGHT = 32;
 const RATE = 50;     // requests per second, refilled continuously
 const BURST = 200;
 const WRITE_RATE = 5; // writes per second (§8)
-const WRITES = new Set(['notes.write', 'notes.append', 'properties.set', 'notes.create', 'editor.insert', 'files.write', 'files.delete', 'kv.set']);
+const WRITES = new Set(['notes.write', 'notes.append', 'properties.set', 'notes.create', 'editor.insert', 'files.write', 'files.delete', 'kv.set', 'secrets.set', 'secrets.delete']);
 
 /** key → Set<WindowProxy> of the documents embedding it */
 const embedders = new Map();

@@ -1030,7 +1030,8 @@ machine itself (malware already running).
   false|<plugin ids>` — capability detection, so an app degrades rather
   than failing (and iOS answers `tier2: false`).
 - Error codes: `denied` (not granted, or revoked), `unknown-method`,
-  `bad-params`, `too-large`, `rate-limited`, `not-found`, `conflict` (an
+  `bad-params`, `too-large`, `too-many` (a 33rd secret), `rate-limited`,
+  `not-found`, `conflict` (an
   editor conflict the user must resolve), `unavailable` (e.g. Tier 2 on
   iOS), `internal`.
 - Limits, per port: a request of at most 1 MB serialised (a note larger
@@ -1056,6 +1057,7 @@ method names the capability it needs):
 | `query` | `notes.list`, `search`, `index.get`, `index.backlinks` | |
 | `app.kv` | `kv.*` in the app's OWN namespace (`apps/<id>/…` in `clewdata.json`) — small state | travels with the vault, visibly |
 | `app.files` | `files.list/read/write/delete/mkdir` inside the app's OWN data folder — below | binary allowed |
+| `app.secrets` | `secrets.get/set/delete`: small strings kept on THIS DEVICE only, encrypted by the OS — §9c | never in the vault; Revoke and Forget clear them |
 | `note.write` | edits to the embedding note, through the editor pool | §10 |
 | `notes.write` | the same on other notes | |
 | `notes.create` | new notes; never overwrites | |
@@ -1172,6 +1174,55 @@ rules, Node.
   frame welcomed with `note.read` gets `grant-changed` `app.kv,note.read`
   and `clew.can('app.kv')` true without reloading; `note-changed` once for a
   save; the indicator for Writer only, gone on close.
+
+### 9c. Secrets (`app.secrets`, desktop and iOS, 2026-10-07)
+
+The owner's "stored securely on the iPad" (2026-10-06): the Stock Ticker's
+Finnhub key lived in its frame's localStorage, which WebKit keeps in memory
+for a nested cross-origin frame, so the iPad asked for it at every launch.
+An app now keeps small strings by name through Clew:
+
+- `await clew.secrets.get(name)` → string | null; `set(name, value)` →
+  true; `delete(name)` → whether there was one. Names
+  `/^[A-Za-z0-9._-]{1,64}$/`, values strings of at most 8 KB of UTF-8, at
+  most 32 an app (`bad-params`, `too-large`, `too-many`). `secrets.set` and
+  `secrets.delete` count as writes (5 a second, `app-host.js`).
+- The grant `app.secrets` ("keep secrets, such as an API key, on this device
+  only (never in the vault)"), asked and checked like any other; without it
+  every method answers `denied`, never a value.
+- SCOPE: the app on this device, in this vault: vault identity × manifest
+  id, bound by the HOST from the port, never from the message (the store
+  `app-calls.js` gets as `ctx.secrets` is already scoped). The same scope
+  the frame's localStorage had: a moved folder keeps it (R3), the same id in
+  another vault sees nothing. Revoke (Settings → Apps) clears the app's;
+  Forget (Settings → Trusted vaults) clears every app's in the vault.
+  `APPS_LIST` carries each app's `secrets` count.
+- Desktop: `main/app-secrets.js` (electron-free; the cipher handed in) keeps
+  ciphertext in `<userData>/app-secrets.json` (0600), keyed vault identity →
+  app id → name, under Electron safeStorage — a Keychain-held key on macOS,
+  DPAPI on Windows, a real keyring on Linux (`basic_text`, a fixed key, is
+  refused: `unavailable`, never plaintext). A value that will not decrypt
+  (another build's Keychain access: dev and packaged share one profile on a
+  case-insensitive disk) reads as absent and is not deleted. Under
+  CLEW_SMOKE the store is in memory and never written.
+- iOS (Clew-iOS): the Keychain itself — `kSecClassGenericPassword`, service
+  `org.jmckalex.clew.ios.app-secrets`, `AfterFirstUnlockThisDeviceOnly`, not
+  synchronizable (never iCloud Keychain, never restored onto another
+  device), the vault identity on each item so Forget can clear; a sweep at
+  the first launch after an install, because Keychain items outlive an
+  uninstall and grants do not. Reached through the shim's FSBridge on its
+  io queue.
+- `callApp` is ASYNC (a Keychain call is), and both hosts await it.
+- A value is never in a log, an error message, `clewdata.json`,
+  `app-grants.json` or any other file but the store.
+- Measured: `tests/app-secrets.test.js` (on-disk ciphertext, scope, Revoke,
+  Forget, undecryptable, unavailable, memory), `tests/app-calls.test.js`
+  (`denied` both ways with no value in the refusal, limits), and
+  `smoke/app-secrets-scenario.js`: kept across new frames, `denied` for an
+  app without the grant, Revoke → none, Forget → none, the value in no log,
+  vault or profile file. The Stock Ticker (1.2.0) keeps its key this way:
+  `smoke/ticker-live-scenario.js` `kept-as-secret=1`; without the grant the
+  key lasts the session only (as the iPad always did).
 
 ## 10. Writes
 

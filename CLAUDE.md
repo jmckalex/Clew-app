@@ -102,7 +102,7 @@ note API, plugins, and every settings key.
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
   dialect scanner's constructs and grammar, live edit's model, reveal rule,
-  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band, figure errors, the PDF save guard, deep links and the clew command, the shareable callout resolver, the device word, where notices sit, pinned apps, the demo vault's updates (untouched files by hash and by shipped history, a record-less copy dated by its files), the ticker's live rules, origin-bound network grants, books (the master reader, chapter titles, words and status, the index's chapter lists and their renames, a build's warnings placed) — 1163 tests. DOM/UI work is
+  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band, figure errors, the PDF save guard, deep links and the clew command, the shareable callout resolver, the device word, where notices sit, pinned apps, the demo vault's updates (untouched files by hash and by shipped history, a record-less copy dated by its files), the ticker's live rules, origin-bound network grants, books (the master reader, chapter titles, words and status, the index's chapter lists and their renames, a build's warnings placed), an app's secrets (the store, the methods) — 1171 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
@@ -564,11 +564,21 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   vault's six sample apps (`Features/App Gallery.md`, `Apps/*`) are the
   worked examples, `smoke/app-gallery-scenario.js` their proof. The Stock
   Ticker's /Live stocks/ (Finnhub, 2026-10-04) is the example of a SECRET an
-  app keeps: the user's key lives in the app frame's own `localStorage`
-  (its clew-frame:// origin, this device), never `app.kv` (clewdata.json
-  travels with the vault); Finnhub's preflight allows no request headers,
-  so the key goes as the `token` query parameter (measured);
-  `smoke/ticker-live-scenario.js` runs it against `smoke/finnhub-stub.mjs`. **Events** (§8, 2026-10-03): `note-changed` when the
+  app keeps — through **`app.secrets`** (2026-10-07, the owner's "stored
+  securely on the iPad", frame-bridge.md §9c): `clew.secrets.get/set/delete`,
+  small strings on THIS DEVICE only, never `app.kv` (clewdata.json travels
+  with the vault). Desktop: `main/app-secrets.js` (electron-free, cipher
+  handed in) under Electron safeStorage in `<userData>/app-secrets.json`,
+  Linux `basic_text` refused; Clew-iOS: the Keychain. The HOST scopes the
+  store (vault identity × app id) from the port; Revoke and Forget-vault
+  clear it; no grant → `denied`, never a value; a value is never logged.
+  `callApp` is ASYNC for it — every host awaits. Without the grant the
+  Ticker's key lasts the session only (until 1.2.0 it was the frame's
+  localStorage, which an iPad dropped at every launch). Finnhub's preflight
+  allows no request headers, so the key goes as the `token` query parameter
+  (measured); `smoke/ticker-live-scenario.js` runs it against
+  `smoke/finnhub-stub.mjs` (`kept-as-secret=1`), `smoke/app-secrets-
+  scenario.js` the rules, `smoke/app-sweep.sh` every app scenario. **Events** (§8, 2026-10-03): `note-changed` when the
   embedding note changes on disk (to ports that may read it), and
   `grant-changed` when an answer ADDS capabilities — delivered live, no
   reload; anything removed (and Revoke) closes the ports and reloads. While

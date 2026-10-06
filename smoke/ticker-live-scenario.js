@@ -35,5 +35,8 @@ log(`kind=${kind} phase=start (no Live yet: nothing may be requested)`);
 	log('phase=clicking-live-stocks');
 	await sleep(kind === 'stub' ? 44000 : 10000);
 	const clewdata = String(await ipc.invoke('clew:note-read', { path: 'clewdata.json' }).then((r) => r?.content ?? r).catch(() => ''));
-	log(`vault-has-key=${clewdata.includes(KEY)} clewdata=${JSON.stringify(clewdata.slice(0, 160))}`);
+	// Kept as the app's SECRET on this device (app.secrets), not for the
+	// session only: Clew's own count, before Forget key empties it.
+	const kept = (await ipc.invoke('clew:apps-list')).find((a) => a.id === 'stock-ticker')?.secrets;
+	log(`vault-has-key=${clewdata.includes(KEY)} kept-as-secret=${kept} clewdata=${JSON.stringify(clewdata.slice(0, 160))}`);
 })();
