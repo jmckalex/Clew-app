@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { createGrantStore, grantState, mergeOrigins } from '../src/main/app-grants.js';
+import { createGrantStore, grantState, mergeOrigins, manifestNeed } from '../src/main/app-grants.js';
 
 // One temp root for this file, removed when it is done: fixtures used to
 // be left in the system's temp folder, thousands of them over the runs.
@@ -113,4 +113,50 @@ test('bare `network` is any host — its own grant — and a list does not cover
 	// Denying network forgets its hosts.
 	store.answer('/V', 'ticker', { denied: ['network'] });
 	assert.equal(store.get('/V', 'ticker').networkOrigins, undefined);
+});
+
+// A manifest edited on disk (app-registry.js#manifestTouched): what the
+// app's RUNNING frames need. `served` is the JSON of the hosts they were
+// served with ('null' for an app without `network`).
+test('a manifest that only asks for more is asked without a reload (§9b)', () => {
+	const store = createGrantStore({ file: file() });
+	store.answer('/V', 'timer', { granted: ['note.read'] });
+	const st = grantState(store.get('/V', 'timer'), m(['note.read', 'app.kv']), trusted);
+	assert.deepEqual([st.ask, st.mayRun], [['app.kv'], true]);
+	assert.equal(manifestNeed(st, 'null'), 'ask');
+	// Nothing new, nothing changed: nothing to do.
+	assert.equal(manifestNeed(grantState(store.get('/V', 'timer'), m(['note.read']), trusted), 'null'), null);
+});
+
+test('a new host to ask about reloads (it reaches nothing new meanwhile)', () => {
+	const store = createGrantStore({ file: file() });
+	store.answer('/V', 'ticker', { granted: ['note.read', 'network'], networkOrigins: [A] });
+	const st = grantState(store.get('/V', 'ticker'), net([A, B]), trusted);
+	assert.deepEqual([st.ask, st.network], [['network'], [A]]);
+	assert.equal(manifestNeed(st, JSON.stringify([A])), 'reload');
+});
+
+test('hosts narrowed reload at once (the CSP is fixed at load)', () => {
+	const store = createGrantStore({ file: file() });
+	store.answer('/V', 'ticker', { granted: ['note.read', 'network'], networkOrigins: [A, B] });
+	const st = grantState(store.get('/V', 'ticker'), net([B]), trusted);
+	assert.deepEqual([st.ask, st.network], [[], [B]]);
+	assert.equal(manifestNeed(st, JSON.stringify([A, B])), 'reload');
+	assert.equal(manifestNeed(st, null), null, 'frames never served: nothing to reload');
+});
+
+test('an app that may not run reloads when its manifest asks for more', () => {
+	const store = createGrantStore({ file: file() });
+	store.answer('/V', 'timer', { run: false });
+	const st = grantState(store.get('/V', 'timer'), m(['note.read']), { restricted: true, code: () => 'h' });
+	assert.deepEqual([st.mayRun, st.askRun, st.ask], [false, false, ['note.read']]);
+	assert.equal(manifestNeed(st, 'null'), 'reload');
+});
+
+test('a run to approve again (restricted, pinned code changed) reloads', () => {
+	const store = createGrantStore({ file: file() });
+	store.answer('/V', 'ticker', { run: true, granted: ['note.read', 'network'], code: 'h1', networkOrigins: [A] });
+	const st = grantState(store.get('/V', 'ticker'), net([A]), { restricted: true, code: () => 'h2' });
+	assert.equal(st.askRun, true);
+	assert.equal(manifestNeed(st, JSON.stringify([A])), 'reload');
 });

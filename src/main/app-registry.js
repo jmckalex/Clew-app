@@ -20,7 +20,7 @@ import path from 'node:path';
 import { safeStorage } from 'electron';
 import { paths } from './paths.js';
 import { identityKey } from './vault-trust.js';
-import { createGrantStore, grantState } from './app-grants.js';
+import { createGrantStore, grantState, manifestNeed } from './app-grants.js';
 import { createSecretStore } from './app-secrets.js';
 import { appKey, resolveApp, codeHash, parseManifest, MANIFEST } from './app-frames.js';
 
@@ -91,24 +91,15 @@ export function noteServed(app, network) {
 
 /**
  * A vault file changed (session.js): what each of this window's apps whose
- * manifest it is needs now, as `{ key, reload }`.
- *   reload: true — its running frames differ from the grant in what only a
- *     load fixes: hosts narrowed or widened (the CSP is fixed at load), a new
- *     host to ask about (it reaches nothing new meanwhile), or an app that may
- *     no longer run or must be approved again (a restricted vault's pinned
- *     code). Its ports close and its frames reload.
- *   reload: false — something else new to ask (§9b): the prompt is shown at
- *     once, and its answer reaches the RUNNING frames as `grant-changed`.
- *     Until 2026-10-07 this reloaded too, so no app ever got a grant live.
+ * manifest it is needs now, as `{ key, reload }` — app-grants.js#
+ * manifestNeed decides (reload, or ask without one).
  */
 export function manifestTouched(sessionId, rel, restricted) {
 	const out = [];
 	for (const [key, app] of byKey) {
 		if (app.sessionId !== sessionId || `${app.folder}/${MANIFEST}` !== rel) continue;
-		const st = stateOf(app, restricted);
-		const hosts = app.served !== null && JSON.stringify(st.network ?? null) !== app.served;
-		if (hosts || !st.mayRun || st.askRun || st.ask.includes('network')) out.push({ key, reload: true });
-		else if (st.ask.length) out.push({ key, reload: false });
+		const need = manifestNeed(stateOf(app, restricted), app.served);
+		if (need) out.push({ key, reload: need === 'reload' });
 	}
 	return out;
 }
