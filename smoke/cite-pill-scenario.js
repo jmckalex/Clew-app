@@ -15,7 +15,11 @@
 // or `[undefined]` (vancouver, an engine quirk). Then
 // refs.bib is edited (lewis1969 → 1970) with Cites.md open: its four
 // Lewis pills follow (`followed=true`), the local labels standing in between
-// rather than bare keys.
+// rather than bare keys. Last, Cites.md's OWN `Bibliography style` changed in
+// its editor (chicago → vancouver, a note in no book): its pills follow and
+// equal reading mode again (`own-style followed=true`, every pill
+// `equal=true` but the unknown key) — until cite-text.js waited for the
+// header's auto-save, the ask raced it and the old style stayed (2026-10-10).
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const { workspaceStore, vaultStore } = window.__clew;
 for (let i = 0; i < 150 && !vaultStore.vault?.sessionId; i++) await sleep(100);
@@ -70,3 +74,18 @@ await watch('Cites.md');
 // pills are checked for the new year rather than against it.
 const after = pills().map((p) => p.textContent);
 console.log(`smoke-ct: after-edit lewis=${JSON.stringify(after.filter((t) => /Lewis|^19/.test(t)))} followed=${after.filter((t) => /1970/.test(t)).length === 4 && !after.some((t) => /1969/.test(t))}`);
+
+// The note's own style, changed in its editor (cite-text.js#headerSaved).
+const { editorPool } = window.__clew;
+const citesTab = workspaceStore.activeTab();
+const view = editorPool.get(citesTab.id)?.view;
+const before = pills().map((p) => p.textContent);
+const at = view.state.doc.toString().indexOf('Bibliography style: chicago');
+view.dispatch({ changes: { from: at, to: at + 'Bibliography style: chicago'.length, insert: 'Bibliography style: vancouver' } });
+console.log('smoke-ct: own-style chicago → vancouver (in the editor)');
+const t0 = performance.now();
+for (let i = 0; i < 200 && JSON.stringify(pills().map((p) => p.textContent)) === JSON.stringify(before); i++) await sleep(50);
+await watch('Cites.md');
+const own = pills().map((p) => p.textContent);
+console.log(`smoke-ct: own-style after=${Math.round(performance.now() - t0)}ms followed=${own.some((t) => /^\[\d/.test(t)) && !own.some((t) => /\(\d{4}\)|\d{4}\)$/.test(t))}`);
+await compare('Cites.md');

@@ -1193,7 +1193,10 @@ except where the selection touches a construct. The durable design is
   `data-bibtex` (its class is the style's). Cached per note under its
   citation header plus an epoch a .bib edit or an engine-reconfiguring vault
   setting bumps; re-asked only when the list of citations changes, so typing
-  asks for nothing. Until then, or where the engine has none (no
+  asks for nothing. An ask waits (≤5 s) until the note's header AS SAVED is
+  the one it is for (`cite-text.js#headerSaved` — main renders from disk, and
+  an ask made between a header edit and its auto-save kept the old style for
+  good, 2026-10-10). Until then, or where the engine has none (no
   bibliography, an unknown key), `live/cite-label.js` (pure) shapes the local
   label by command; an unknown key is the key in the danger colour.
   **`\fullcite` is not a pill**: `widgets/fullcite.js` draws the engine's
