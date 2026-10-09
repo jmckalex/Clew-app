@@ -434,6 +434,7 @@ app.whenReady().then(async () => {
 		mptikzDir: paths.mptikzAssets,
 		zetaDir: paths.zetaAssets,
 		noteFontsDir: paths.noteFonts,
+		systemFontIndex: paths.systemFontIndex,
 		globalPluginsDir: paths.globalPlugins,
 	});
 	// No { role: 'close' } anywhere in the menu: Cmd+W belongs to the

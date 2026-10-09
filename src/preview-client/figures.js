@@ -37,6 +37,7 @@
 
 import { parseFigureError } from '../shared/figure-errors.js';
 import { parentOrigin, postTo } from '../shared/message-guard.js';
+import { namedFontFamilies } from '../engine/figure-fonts.js';
 
 // Assets root: the preview protocol in the app, ./assets on exported sites
 // (the exporter sets window.__clewAssetBase before this bundle loads).
@@ -114,6 +115,42 @@ async function noteFontFiles() {
 	} catch { return {}; }
 }
 
+// The machine's own font families handed over so far: a figure that names
+// one (`\setmainfont{Optima}`) gets its files from main/system-fonts.js.
+const handedFamilies = new Set();
+const FONTS_RELOAD_FLAG = 'clew-figures-reloaded-for-fonts';
+
+/** The families the page's OpenType figures name, in source or preamble. */
+function familiesOnPage() {
+	const out = new Set();
+	for (const el of document.querySelectorAll(OPENTYPE)) {
+		for (const family of namedFontFamilies(`${el.textContent}\n${el.dataset.preamble ?? ''}`)) out.add(family);
+	}
+	return [...out];
+}
+
+/**
+ * The files of these families on this machine (protocol.js serves only what
+ * the index maps a family to), as addFiles takes them — whole collections:
+ * mp-tikz-wasm finds every style of a supplied family by name. A family the
+ * machine lacks hands over nothing, and its figure says so in its own place.
+ */
+async function systemFontFiles(families) {
+	const files = {};
+	for (const family of families) {
+		handedFamilies.add(family);
+		try {
+			const name = encodeURIComponent(family);
+			const list = await fetch(`${ASSETS()}/systemfonts/family/${name}.json`).then((res) => (res.ok ? res.json() : null));
+			for (const [i, file] of (list?.files ?? []).entries()) {
+				const bytes = await fetch(`${ASSETS()}/systemfonts/file/${name}/${i}`).then((res) => (res.ok ? res.arrayBuffer() : null));
+				if (bytes) files[file] = new Uint8Array(bytes);
+			}
+		} catch { /* the figure reports the font it could not load */ }
+	}
+	return files;
+}
+
 /** An error figure in the element's own place, the way the library draws one. */
 function refuse(el, message) {
 	const kind = el.tagName === 'METAPOST-DIAGRAM' ? 'metapost' : 'tikz';
@@ -157,7 +194,7 @@ async function ensureLoader() {
 	// called before the engine finishes starting for the first figure's run
 	// to see them, and the library holds files handed over early until an
 	// engine exists.
-	const files = opentype ? await noteFontFiles() : null;
+	const files = opentype ? { ...(await noteFontFiles()), ...(await systemFontFiles(familiesOnPage())) } : null;
 	loaderState = opentype ? 'opentype' : 'plain';
 	try { if (opentype) sessionStorage.removeItem(RELOAD_FLAG); } catch { /* storage may be off */ }
 	const base = `${ASSETS()}/mptikz/`;
@@ -297,6 +334,24 @@ export function initFigures() {
 	}
 	stale.clear();
 	if (needsEngines()) ensureLoader();
+	// A figure naming a font family the running loader was not given (the
+	// author just wrote \setmainfont{Optima}): addFiles reaches a running
+	// engine, but not before the figure's first run, so — as for OpenType —
+	// the preview reloads once, and the loader starts with the files.
+	if (loaderState === 'opentype' && !reloading) {
+		const missing = familiesOnPage().filter((family) => !handedFamilies.has(family));
+		if (missing.length) {
+			const key = `${location.href}#${missing.sort().join('|')}`;
+			let already = false;
+			try { already = sessionStorage.getItem(FONTS_RELOAD_FLAG) === key; } catch { /* storage may be off */ }
+			if (!already) {
+				reloading = true;
+				try { sessionStorage.setItem(FONTS_RELOAD_FLAG, key); } catch { /* storage may be off */ }
+				location.reload();
+				return;
+			}
+		}
+	}
 	// A figure that needs OpenType, arriving after the loader went in
 	// without it (the author just wrote `font=note` into a note that had
 	// no such figure): the bundle list cannot be changed on a running

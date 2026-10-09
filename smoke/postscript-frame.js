@@ -3,14 +3,16 @@
 // picture with none of its colours), whether anything is turned, and the
 // faces it embeds (Families.md).
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const deadline = Date.now() + 60000;
+const deadline = Date.now() + 120000;
 let pending = -1;
 while (Date.now() < deadline) {
 	pending = window.__clewFiguresPending?.() ?? -1;
 	if (pending === 0) break;
-	await sleep(500);
+	await sleep(250);
 }
-console.log(`smoke-ps-frame: pending=${pending} waited=${Math.round((60000 - (deadline - Date.now())) / 100) / 10}s`);
+// When the last figure settled, counted from the preview's own load (a cold
+// page: the engines, Ghostscript, a named family's files and their parse).
+console.log(`smoke-ps-frame: pending=${pending} settled-at=${(performance.now() / 1000).toFixed(2)}s`);
 
 /** Every colour an SVG paints with, as rgb() strings, deduplicated. */
 function colours(svg) {

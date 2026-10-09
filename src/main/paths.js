@@ -47,6 +47,9 @@ function trustPaths() {
 		// frame-bridge.md §9c): ciphertext under an OS-held key — never in a
 		// vault, never synced.
 		appSecrets: path.join(app.getPath('userData'), 'app-secrets.json'),
+		// The machine's fonts by family (main/system-fonts.js), kept against
+		// the font folders' mtimes so a launch does not rescan them.
+		systemFontIndex: path.join(app.getPath('userData'), 'system-fonts.json'),
 		// A restricted vault's exports run from here, not from the note's
 		// folder: the engine's config cascade then sees the user's global
 		// ~/.jmarkdown and this directory's one key, never a vault's own

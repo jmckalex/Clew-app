@@ -53,6 +53,10 @@ fetch` before counting.
   Clew-boss) — then the manifest, `MPTIKZ_SRC=/nonexistent` staging, a
   packaged size check. Size over 0.3.1, measured: +23.5 MB in the app
   (module 12.6, ghostscript bundle 9.8, classico 1.0), ≈ +11.5 MB compressed.
+  On the same branch: the figure engines in THIRD-PARTY-NOTICES.md
+  (4fffe0e; the list itself NOT regenerated — EmbedPDF's bundled preact &
+  co. and the missing @xterm need a fix of their own), and the machine's
+  fonts by family for a figure that names one (main/system-fonts.js).
 - Standing rules added: Clew syntax stays a Clew extension (jmarkdown
   proposals are the owner's call); every final post to the owner ends with
   an executive summary.

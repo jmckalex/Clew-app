@@ -21,4 +21,6 @@ const named = await ipc.invoke('clew:note-read', { path: 'figure-note.txt' }).th
 const note = named || 'PostScript.md';
 workspaceStore.openNote(note, { defaultMode: 'reading' });
 console.log(`smoke-ps: note=${note}`);
-window.__clewSmokeInput = [{ wait: 45000 }];
+// Short: the frame script does the waiting (up to 120 s) and times it from
+// the preview's load, as fonts-frame.js does.
+window.__clewSmokeInput = [{ wait: 2000 }];
