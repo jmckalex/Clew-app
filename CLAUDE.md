@@ -372,7 +372,20 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   2026-09-28, was the first release carrying the `opentype` bundle), so the
   feature is live on every machine that stages from the pin, not only where
   the master is built — and staging prefers the master wherever it exists,
-  so a build meant to carry the PIN sets `MPTIKZ_SRC=/nonexistent`. The
+  so a build meant to carry the PIN sets `MPTIKZ_SRC=/nonexistent`.
+  **PostScript** (mp-tikz-wasm 0.4.0, 2026-10-09): PSTricks, EPS images,
+  graphicx's `\rotatebox`/`\scalebox` and raw `\special{ps:}` render through
+  Ghostscript — the `ghostscript` bundle (dvips headers, PSTricks; in the main
+  archive) plus an AGPL module, `ghostscript/gs.mjs` + `gs.wasm` (12.5 MB), in
+  an archive of its own (`manifest.ghostscript`, staged into the same tree).
+  `figures.js#stagedBuild` asks for `+ghostscript` whenever the build lists the
+  bundle AND its 774-byte `ghostscript/SOURCE.md` answers; the library fetches
+  gs.wasm only for a figure whose DVI carries such PostScript (measured: a note
+  without any never loads it). Leave the module out of a build (Clew-iOS's
+  App Store question) and nothing asks for it. `figure-bake.js` does the same
+  for site export; `asset-stamp.js` stamps gs.wasm (its URL has no version,
+  unlike a bundle file's `?v=<sha>`, which protocol.js never looks at —
+  `url.pathname` only). `smoke/postscript-scenario.js`. The
   mptikz root is served IMMUTABLE for a year (protocol.js) and its URLs
   carry no version, so a restaged or upgraded build would be served
   stale: `main/asset-stamp.js` stamps the engines + bundle indexes + app

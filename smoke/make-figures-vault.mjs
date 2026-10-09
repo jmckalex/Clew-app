@@ -255,8 +255,94 @@ Twelve point, \\textbf{bold}, in the note's face --- and the error-free kind.
 \`\`\`
 `;
 
+// PostScript.md (postscript-scenario.js; mp-tikz-wasm 0.4.0's Ghostscript):
+// three figures whose picture is PostScript — PSTricks, an EPS image (written
+// by filecontents, beside the job), graphicx's \rotatebox under the default
+// dvips driver — and a TikZ control that has none. Each colour is one the
+// frame looks for: PSTricks red and blue, the EPS box green, the turned text
+// in its rotate transform.
+const postscript = `# PostScript
+
+## PSTricks
+
+\`\`\`latex
+\\documentclass[border=2pt]{standalone}
+\\usepackage{pstricks}
+\\begin{document}
+\\begin{pspicture}(0,0)(3,2)
+\\psframe[linecolor=blue,linewidth=1pt](0,0)(3,2)
+\\pscircle[fillstyle=solid,fillcolor=red](1.5,1){0.6}
+\\end{pspicture}
+\\end{document}
+\`\`\`
+
+## An EPS image
+
+\`\`\`latex
+\\documentclass[border=2pt]{standalone}
+\\begin{filecontents*}[overwrite]{box.eps}
+%!PS-Adobe-3.0 EPSF-3.0
+%%BoundingBox: 0 0 72 36
+0 0.6 0 setrgbcolor
+0 0 72 36 rectfill
+showpage
+\\end{filecontents*}
+\\usepackage{graphicx}
+\\begin{document}
+\\includegraphics{box.eps}
+\\end{document}
+\`\`\`
+
+## Rotated text
+
+\`\`\`latex
+\\documentclass[border=2pt]{standalone}
+\\usepackage{graphicx}
+\\begin{document}
+\\rotatebox{30}{Turned text}
+\\end{document}
+\`\`\`
+
+## A control with no PostScript
+
+\`\`\`tikz
+\\draw[thick] (0,0) rectangle (2,1);
+\`\`\`
+`;
+
+// Families.md (postscript-scenario.js with figure-note.txt = Families.md):
+// a supplied face found by FAMILY name (mp-tikz-wasm 0.4.0's scan-local) —
+// Clew hands over the note's face as files (main/note-fonts.js), whose family
+// is Avenir Next on a Mac — and Optima, which Clew never hands over.
+const families = `# Families
+
+## The note's face by family name
+
+\`\`\`latex
+\\documentclass[border=2pt]{standalone}
+\\usepackage{fontspec}
+\\setmainfont{Avenir Next}
+\\begin{document}
+Regular, \\textbf{bold}, \\textit{italic}.
+\\end{document}
+\`\`\`
+
+## Optima, which Clew does not hand over
+
+\`\`\`latex
+\\documentclass[border=2pt]{standalone}
+\\usepackage{fontspec}
+\\setmainfont{Optima}
+\\begin{document}
+Optima, \\textbf{bold}.
+\\end{document}
+\`\`\`
+`;
+
 fs.writeFileSync(path.join(dir, 'Figures.md'), figures);
 fs.writeFileSync(path.join(dir, 'Edit.md'), edit);
 fs.writeFileSync(path.join(dir, 'Highlight.md'), highlight);
 fs.writeFileSync(path.join(dir, 'Fonts.md'), fonts);
-console.log(`figures fixture: ${dir} (Figures.md, Edit.md, Highlight.md, Fonts.md)`);
+fs.writeFileSync(path.join(dir, 'PostScript.md'), postscript);
+fs.writeFileSync(path.join(dir, 'Families.md'), families);
+console.log(`figures fixture: ${dir} (Figures.md, Edit.md, Highlight.md, Fonts.md, PostScript.md, Families.md)`);

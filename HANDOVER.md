@@ -42,6 +42,17 @@ fetch` before counting.
 - Known smoke imprecision, not chased (Clew-boss): `app-pin` mode `control`,
   pass 2 at the end asks y=5465 and gets scrollTop 5440 (README: exact).
   Identical at 3d39952; that mode has no pins.
+- **PostScript in figures** (branch `postscript`, LOCAL, 2026-10-09; the
+  owner's ask via mp-tikz-wasm): `+ghostscript` asked for when the staged
+  build has the bundle and the AGPL module (`figures.js#stagedBuild`, the
+  SOURCE.md probe), site export too (`figure-bake.js`), gs.wasm stamped,
+  `stage-mptikz.js` takes `manifest.ghostscript` (a second pinned archive,
+  verified, unpacked into the same tree — tested with a stand-in archive and a
+  bad digest). Built against the master's `next` (dev only, NOT pinned).
+  ◆ WAITS: the re-pin to 0.4.0 (both archives' real GitHub numbers, from
+  Clew-boss) — then the manifest, `MPTIKZ_SRC=/nonexistent` staging, a
+  packaged size check. Size over 0.3.1, measured: +23.5 MB in the app
+  (module 12.6, ghostscript bundle 9.8, classico 1.0), ≈ +11.5 MB compressed.
 - Standing rules added: Clew syntax stays a Clew extension (jmarkdown
   proposals are the owner's call); every final post to the owner ends with
   an executive summary.

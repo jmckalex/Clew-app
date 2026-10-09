@@ -65,21 +65,35 @@ const OPENTYPE = 'tikz-diagram[data-opentype], metapost-diagram[data-opentype]';
 // looped.
 let loaderState = null;
 let reloading = false;
-let openTypeAvailable = null;
+let stagedFeatures = null;
 const RELOAD_FLAG = 'clew-figures-reloaded-for-opentype';
 
 /**
- * Does the staged build carry the `opentype` bundle (fontspec, luaotfload,
- * fontspec's default faces)? mp-tikz-wasm 0.2.1 as pinned does not, and
- * asking for a bundle that is not there fails the whole engine, so this is
- * checked against the build's own index before anything is asked for.
+ * What the staged build can be asked for, checked against the build itself
+ * before anything is asked for — asking for a bundle that is not there fails
+ * the whole engine:
+ *   opentype     the `opentype` bundle (fontspec, luaotfload, fontspec's
+ *                default faces); mp-tikz-wasm 0.2.1 has none.
+ *   ghostscript  PostScript through Ghostscript (mp-tikz-wasm 0.4.0): the
+ *                `ghostscript` bundle (dvips headers, PSTricks) in the main
+ *                archive AND the AGPL module, `ghostscript/gs.mjs` +
+ *                `gs.wasm` (12.5 MB), which ships as an archive of its own and
+ *                may be missing. Its 774-byte SOURCE.md says it is there;
+ *                gs.wasm itself is fetched only by a note whose DVI carries
+ *                PostScript (the library loads it lazily).
  */
-function hasOpenTypeBundle() {
-	openTypeAvailable ??= fetch(`${ASSETS()}/mptikz/bundles/index.json`)
+function stagedBuild() {
+	const base = `${ASSETS()}/mptikz/`;
+	stagedFeatures ??= fetch(`${base}bundles/index.json`)
 		.then((res) => (res.ok ? res.json() : null))
-		.then((index) => !!index?.bundles?.some((b) => b.name === 'opentype'))
-		.catch(() => false);
-	return openTypeAvailable;
+		.then(async (index) => {
+			const listed = (name) => !!index?.bundles?.some((b) => b.name === name);
+			const module = listed('ghostscript')
+				&& await fetch(`${base}ghostscript/SOURCE.md`).then((res) => res.ok).catch(() => false);
+			return { opentype: listed('opentype'), ghostscript: module };
+		})
+		.catch(() => ({ opentype: false, ghostscript: false }));
+	return stagedFeatures;
 }
 
 /**
@@ -136,7 +150,8 @@ async function ensureLoader() {
 	// The OpenType decision, taken now because auto.js reads its bundle list
 	// once: wanted by a figure on the page, and there to be had.
 	const wanted = !!document.querySelector(OPENTYPE);
-	const opentype = wanted && await hasOpenTypeBundle();
+	const staged = await stagedBuild();
+	const opentype = wanted && staged.opentype;
 	if (wanted && !opentype) refuseOpenType();
 	// The faces are fetched BEFORE the loader goes in: addFiles must be
 	// called before the engine finishes starting for the first figure's run
@@ -155,7 +170,11 @@ async function ensureLoader() {
 	script.dataset.base = base;
 	// `+` adds to the library's default bundles rather than replacing them
 	// (a bare list would hard-code all ten names here and go stale).
-	if (opentype) script.dataset.bundles = '+opentype';
+	// Ghostscript whenever the build has it: it costs nothing until a figure's
+	// PostScript (PSTricks, an EPS image, \rotatebox, a raw \special) would
+	// otherwise be lost.
+	const extra = [opentype && '+opentype', staged.ghostscript && '+ghostscript'].filter(Boolean);
+	if (extra.length) script.dataset.bundles = extra.join(' ');
 	script.onload = () => {
 		if (files && Object.keys(files).length) window.mpTikzWasm?.addFiles(files);
 	};
@@ -287,7 +306,7 @@ export function initFigures() {
 	// never twice for one document (the sessionStorage flag): a second
 	// reload could only mean the decision came out the same way again.
 	if (loaderState === 'plain' && !reloading && document.querySelector(OPENTYPE)) {
-		hasOpenTypeBundle().then((ok) => {
+		stagedBuild().then(({ opentype: ok }) => {
 			let already = false;
 			try { already = sessionStorage.getItem(RELOAD_FLAG) === location.href; } catch { /* storage may be off */ }
 			if (!ok || already) return refuseOpenType();

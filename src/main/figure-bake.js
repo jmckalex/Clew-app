@@ -73,6 +73,17 @@ export function openTypeAvailable(assetsDir) {
 	return fs.existsSync(path.join(assetsDir, 'bundles', 'opentype', 'manifest.json'));
 }
 
+/**
+ * Does the staged build carry PostScript (mp-tikz-wasm 0.4.0): the
+ * `ghostscript` bundle AND the AGPL module beside it (an archive of its own,
+ * so it may be missing)? Asked for whenever it is there, as the preview does:
+ * the library loads gs.wasm only for a figure whose DVI carries PostScript.
+ */
+export function ghostscriptAvailable(assetsDir) {
+	return fs.existsSync(path.join(assetsDir, 'bundles', 'ghostscript', 'manifest.json'))
+		&& fs.existsSync(path.join(assetsDir, 'ghostscript', 'gs.wasm'));
+}
+
 const load = (assetsDir, name) => import(pathToFileURL(path.join(assetsDir, name)).href);
 
 /**
@@ -122,9 +133,10 @@ export async function bakeFigures(files, assetsDir, onProgress = () => {}, { not
 	let failed = 0;
 	const wantsOpenType = [...requests.values()].some((r) => r.opentype);
 	const opentype = wantsOpenType && openTypeAvailable(assetsDir);
+	const extra = [opentype && 'opentype', ghostscriptAvailable(assetsDir) && 'ghostscript'].filter(Boolean);
 	const mp = await MetaPost.create({
 		logLevel: 'warn',
-		...(opentype ? { bundles: [...DEFAULT_BUNDLES, 'opentype'] } : {}),
+		...(extra.length ? { bundles: [...DEFAULT_BUNDLES, ...extra] } : {}),
 	});
 	try {
 		if (opentype && noteFontsDir) {
