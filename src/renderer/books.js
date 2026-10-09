@@ -101,6 +101,31 @@ export function bookStatusItem(path) {
 	return el;
 }
 
+/**
+ * The quiet line above a chapter's reading view (book-mode.md §3): reading
+ * view renders a chapter ALONE, so its numbers are its own, counted from 1,
+ * and this says so, with the build that shows them as the book
+ * prints them. Null for a note in no book (and for a master, which is no
+ * chapter): such a view gets no element at all. `data-key` changes only when
+ * the text would, so a view redraws it only then.
+ */
+export function bookReadingBanner(path) {
+	const book = masterEntry(path) ? null : bookOfNote(path);
+	if (!book) return null;
+	const el = document.createElement('div');
+	el.className = 'book-reading-banner';
+	el.dataset.key = `${book.master}\u0000${book.number}\u0000${book.title}`;
+	const text = document.createElement('span');
+	text.textContent = `Chapter ${book.number} of ${book.title} · numbers as in the book:`;
+	text.title = `Reading view shows this chapter on its own, so its figures, theorems and equations are numbered from 1. Live edit and the built book number them as chapter ${book.number} of “${book.title}”.`;
+	const build = document.createElement('button');
+	build.textContent = 'Build';
+	build.title = `Build “${book.title}” as HTML pages`;
+	build.addEventListener('click', () => buildBook(book.master, 'html'));
+	el.append(text, build);
+	return el;
+}
+
 /** The master a build from `path` builds: the note itself, or its book. */
 export function bookToBuild(path) {
 	if (masterEntry(path)) return path;

@@ -696,7 +696,14 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   built book — per chapter and continuous, `mismatches=[]` both. Change a
   numbering rule only with that run green. It caught `:::figure`/`:::theorem`
   … numbered by Clew and not by the engine (the generic container
-  directive — only `@begin(…)` numbers).
+  directive — only `@begin(…)` numbers). **Reading view still renders a
+  chapter ALONE** (its own numbers, `??` for another chapter's label), so a
+  quiet line above a chapter's frame says "Chapter 2 of *Book* · numbers as
+  in the book: Build" (`books.js#bookReadingBanner`, an HTML build): app
+  chrome drawn by clew-preview-view.js as a SIBLING before the frame (never
+  in the note's document, never moving the frame), redrawn only when its
+  text would change (index, D10's book switch). A note in no book and a
+  master get no element. `smoke/book-banner-scenario.js`.
 - **Obsidian's own query formats** — for opening other people's vaults,
   alongside (not replacing) Clew's `query`/`tasks`/`kanban` fences:
   `vault-model.js` (the vault as pages: `file.*`, the link graph,
