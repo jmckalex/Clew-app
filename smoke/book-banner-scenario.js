@@ -16,7 +16,8 @@
 //            written; a restricted vault shows it in Finder: main logs
 //            `smoke-reveal:`)
 //   alone    Notes/Alone.md → `banner=none children=["IFRAME"]`
-//   master   Signals.md itself → `banner=none` (a master is no chapter)
+//   master   Signals.md itself → `banner="Master of Signals: A Short Book ·
+//            numbers as in the book:"` (its references to chapters print ??)
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const { workspaceStore, vaultStore, ipc } = window.__clew;
 const log = (s) => console.log('smoke-bb: ' + s);

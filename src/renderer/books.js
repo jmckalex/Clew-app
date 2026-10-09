@@ -102,22 +102,28 @@ export function bookStatusItem(path) {
 }
 
 /**
- * The quiet line above a chapter's reading view (book-mode.md §3): reading
- * view renders a chapter ALONE, so its numbers are its own, counted from 1,
- * and this says so, with the build that shows them as the book
- * prints them. Null for a note in no book (and for a master, which is no
- * chapter): such a view gets no element at all. `data-key` changes only when
- * the text would, so a view redraws it only then.
+ * The quiet line above a chapter's — or the master's — reading view
+ * (book-mode.md §3): reading view renders a piece ALONE, so a chapter's
+ * numbers are its own, counted from 1, and a reference to another chapter's
+ * label prints ??; this says so, with the build that shows them as the book
+ * prints them. Null for a note in no book: such a view gets no element at
+ * all. `data-key` changes only when the text would, so a view redraws it
+ * only then.
  */
 export function bookReadingBanner(path) {
-	const book = masterEntry(path) ? null : bookOfNote(path);
+	const master = masterEntry(path) ? path : null;
+	const book = master ? { master, title: bookTitle(master), number: 0 } : bookOfNote(path);
 	if (!book) return null;
 	const el = document.createElement('div');
 	el.className = 'book-reading-banner';
 	el.dataset.key = `${book.master}\u0000${book.number}\u0000${book.title}`;
 	const text = document.createElement('span');
-	text.textContent = `Chapter ${book.number} of ${book.title} · numbers as in the book:`;
-	text.title = `Reading view shows this chapter on its own, so its figures, theorems and equations are numbered from 1. Live edit and the built book number them as chapter ${book.number} of “${book.title}”.`;
+	text.textContent = master
+		? `Master of ${book.title} · numbers as in the book:`
+		: `Chapter ${book.number} of ${book.title} · numbers as in the book:`;
+	text.title = master
+		? `Reading view shows the master on its own, so a reference to a label in a chapter prints ??. Live edit and the built book resolve it across “${book.title}”.`
+		: `Reading view shows this chapter on its own, so its figures, theorems and equations are numbered from 1. Live edit and the built book number them as chapter ${book.number} of “${book.title}”.`;
 	const build = document.createElement('button');
 	build.textContent = 'Build';
 	build.title = `Build “${book.title}” as HTML pages`;

@@ -702,8 +702,9 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   in the book: Build" (`books.js#bookReadingBanner`, an HTML build): app
   chrome drawn by clew-preview-view.js as a SIBLING before the frame (never
   in the note's document, never moving the frame), redrawn only when its
-  text would change (index, D10's book switch). A note in no book and a
-  master get no element. `smoke/book-banner-scenario.js`. **A chapter's
+  text would change (index, D10's book switch). The master's says "Master
+  of *Book*" (its references to chapters print ??). A note in no book gets
+  no element. `smoke/book-banner-scenario.js`. **A chapter's
   citation pills read as the BOOK prints them** (§4): the engine builds a
   book as one document with ONE bibliography — the vault's, the master's,
   then each chapter's own files in book order — and the master's citation
