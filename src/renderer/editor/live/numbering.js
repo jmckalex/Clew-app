@@ -225,7 +225,14 @@ function compute(text, numbered, book = null) {
 		if (open) {
 			const name = open[1] ?? open[3];
 			const env = { name, colons: Boolean(open[2]), line: lineNo, title: (open[4] ?? '').trim(), numbered: false, pending: [] };
-			if (name === 'subfigure') {
+			if (env.colons) {
+				// `:::figure`, `:::theorem`, `:::equation` … are the engine's
+				// GENERIC container directive (extended-directives.js): a bare
+				// <figure id>, <theorem id>, numbered by nothing and counting
+				// nothing, so a reference to one prints ?? — only @begin(…) is
+				// the numbered environment (measured 2026-10-09; until then
+				// this numbered them, and the book parity scenario caught it).
+			} else if (name === 'subfigure') {
 				const parent = [...envs].reverse().find((e) => e.name === 'figure');
 				if (parent) {
 					parent.sub = (parent.sub ?? 0) + 1;
