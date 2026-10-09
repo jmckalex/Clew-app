@@ -138,7 +138,7 @@ export function bookToBuild(path) {
 	return bookOfNote(path)?.master ?? null;
 }
 
-const FORMAT_WORDS = { pdf: 'PDF', latex: 'LaTeX', html: 'HTML' };
+const FORMAT_WORDS = { pdf: 'PDF', latex: 'LaTeX', html: 'HTML', print: 'PDF (reading view)' };
 
 /** Each book's last build this session: master → { format, output, warnings, at }. */
 export const bookBuilds = new (class extends Emitter {
@@ -234,7 +234,7 @@ export function installBooks() {
 	vaultStore.on('vault-changed', () => { facts.clear(); bookBuilds.clear(); });
 	registerCommand({ id: 'book:next-chapter', name: 'Book: next chapter', when: inBook, run: () => stepChapter(1) });
 	registerCommand({ id: 'book:previous-chapter', name: 'Book: previous chapter', when: inBook, run: () => stepChapter(-1) });
-	for (const format of ['pdf', 'latex', 'html']) {
+	for (const format of ['pdf', 'latex', 'html', 'print']) {
 		registerCommand({
 			id: `export:book-${format}`,
 			name: `Export book as ${FORMAT_WORDS[format]}${format === 'pdf' ? ' (via LaTeX)' : ''}`,

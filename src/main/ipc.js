@@ -688,7 +688,10 @@ export function registerIpc() {
 	// A book (book-mode.md §5): its master and chapters as one document, into
 	// build/ beside the master.
 	handle(CH.EXPORT_BOOK, async (s, { master, format }) => {
-		const result = await exportBook({ vaults: s.vaults, indexer: s.indexer, masterRel: master, format, trusted: s.trusted });
+		const result = await exportBook({
+			vaults: s.vaults, indexer: s.indexer, masterRel: master, format, trusted: s.trusted,
+			renderService: s.renderService, sessionId: s.id, callerToken: s.callerToken,
+		});
 		if (result?.output) s.vaults.refreshIfInside(result.output);
 		// The renderer opens built pages in the browser only for a vault this
 		// device trusts: they carry the notes' own <script>s, which a browser

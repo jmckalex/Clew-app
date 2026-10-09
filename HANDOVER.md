@@ -1,4 +1,4 @@
-# Handover — 2026-10-09 night (origin/main e430bed, pushed; LOCAL: book mode phase 2, 6 commits, NOT pushed; the diagram cache waits for jmarkdown)
+# Handover — 2026-10-09 night (origin/main e430bed, pushed; LOCAL: book mode phase 2 + the whole-book print PDF, NOT pushed; the diagram cache waits for jmarkdown)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it); the live edit design AS BUILT is
@@ -27,7 +27,13 @@ Perf (40 chapters × 4.5k words): keystroke median 5.3 ms / p90 7.4 in-app
   the reading-view line, pills in book order, `:::` kinds unnumbered).
 - ◆ Clew-iOS: the block POST's optional `book` (ignoring it degrades to the
   note's own header); `bookCitationHeader` is pure, in main/citation-header.js.
-- Phase 3 (engine half with jmarkdown directly; Q1/Q2 to the owner) not begun.
+- Clew-boss checked phase 2 (6fc68ac, 1189/1189) and decided: the master's
+  reading view gets the line too (`76dd382`); the push waits on the owner.
+- Phase 3, the piece that needs no answer — the WHOLE-BOOK PRINT PDF (CLAUDE.md
+  "Books, phase 3"): built, `smoke/book-print-scenario.js`; a note's print
+  identical before/after (pages, pdftotext, pixels). Parts/matter (Q1) and the
+  site section (Q2) wait for the owner; "proof this chapter" waits for
+  jmarkdown's engine half.
 
 **2026-10-06/07 (via Clew-boss; owner's decisions in quotes).**
 - Engine re-vendored to at-migration `dc36e9b` (283cd30 resolveEmbed's

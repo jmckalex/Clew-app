@@ -718,6 +718,21 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   context (another chapter saved, the master's settings) re-asks
   (index-changed). A note in no book sends exactly what it did.
   `smoke/book-cites-scenario.js`.
+- **Books, phase 3 — the whole-book print PDF** (2026-10-09, Clew-boss's
+  go; parts/matter and the site section wait for the owner's Q1/Q2): the
+  reading view's PDF of a BOOK, no TeX. `render-service.js#renderBook`
+  builds the master with its chapters (`chapters`, `numbering` — as
+  export-book.js passes them) as ONE document under the PREVIEW
+  configuration, kept apart from the master's own render; protocol.js
+  serves it at the master's URL with `?book=1` (where the engine's
+  master-relative paths resolve); `print-pdf.js` prints it with `book: true`,
+  which adds — by `insertCSS`, past a restricted vault's CSP — a page break
+  before each `section.jmd-chapter`, a further numbered `#` in one, the
+  references and the index. Output `build/<master> (reading view).pdf`,
+  apart from the LaTeX `<master>.pdf`. File → Export → Book as PDF (reading
+  view), `export:book-print`, the panel's "Print PDF". A note's print is
+  unchanged (same pages, text and pixels as before).
+  `smoke/book-print-scenario.js`.
 - **Obsidian's own query formats** — for opening other people's vaults,
   alongside (not replacing) Clew's `query`/`tasks`/`kanban` fences:
   `vault-model.js` (the vault as pages: `file.*`, the link graph,

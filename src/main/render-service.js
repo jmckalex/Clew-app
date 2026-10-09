@@ -109,6 +109,7 @@ export class RenderService {
 	/** fragment cache: key → html string (canvas cards, live-edit blocks; bounded) */
 	#fragments = new Map();
 	#blockSources = new Map();   // block key → the note it was rendered for
+	#books = new Map();          // master → its whole-book document (renderBook)
 	#fragmentInflight = new Map();
 	/** Bumped on every file change: a DEPENDENT fragment's key carries it, so
 	 *  a cached render of `![[Note]]` is never served after Note changed. */
@@ -207,6 +208,7 @@ export class RenderService {
 		this.#standby?.child.kill();
 		this.#spawnStandby();
 		this.#notes.clear();
+		this.#books.clear();
 		this.#fragments.clear();
 		this.#fragmentEpoch++;
 		this.#configGeneration++;
@@ -221,6 +223,7 @@ export class RenderService {
 		this.vaultRoot = null;
 		this.#subscribed.clear();
 		this.#notes.clear();
+		this.#books.clear();
 		this.#fragments.clear();
 		this.#fragmentInflight.clear();
 		this.#refused.clear();
@@ -464,14 +467,11 @@ export class RenderService {
 		return entry.inflight;
 	}
 
-	async #build(relPath, entry) {
-		const generation = this.#generation;
-		const abs = path.join(this.vaultRoot, relPath);
-		const mtimeMs = fs.statSync(abs).mtimeMs;
+	/** One build on a warm worker: the worker's `done` or `error` message. */
+	async #workerBuild(file, options) {
 		const standby = this.#takeStandby();
 		const child = await standby.ready;
-
-		const result = await new Promise((resolve) => {
+		return new Promise((resolve) => {
 			const onMessage = (msg) => {
 				if (msg?.type === 'done' || msg?.type === 'error') resolve(msg);
 			};
@@ -479,17 +479,20 @@ export class RenderService {
 			child.once('exit', (code) => {
 				resolve({ type: 'error', message: `render worker exited (code ${code}) without a result` });
 			});
-			child.send({
-				type: 'build',
-				file: abs,
-				options: {
-					to: 'html',
-					output: entry.htmlFile,
-					// Standard-Markdown vaults: the engine keeps its extensions but
-					// reverts *em*/**strong** etc. to normal marked semantics.
-					normalSyntax: this.#vaultOptions.normalSyntax === true,
-				},
-			});
+			child.send({ type: 'build', file, options });
+		});
+	}
+
+	async #build(relPath, entry) {
+		const generation = this.#generation;
+		const abs = path.join(this.vaultRoot, relPath);
+		const mtimeMs = fs.statSync(abs).mtimeMs;
+		const result = await this.#workerBuild(abs, {
+			to: 'html',
+			output: entry.htmlFile,
+			// Standard-Markdown vaults: the engine keeps its extensions but
+			// reverts *em*/**strong** etc. to normal marked semantics.
+			normalSyntax: this.#vaultOptions.normalSyntax === true,
 		});
 
 		if (generation !== this.#generation) throw new Error('stale render (vault closed)');
@@ -514,6 +517,41 @@ export class RenderService {
 		}
 		this.send(CH.EV_RENDER_ERROR, { path: relPath, message: result.message, stack: result.stack });
 		throw new Error(result.message);
+	}
+
+	/**
+	 * A whole BOOK as ONE preview document (book-mode.md, phase 3's print
+	 * PDF): the master with its chapters handed to the engine
+	 * (processFile's `chapters`, relative to the master, and `numbering`, as
+	 * export-book.js hands them over), under the PREVIEW configuration, so it is what
+	 * reading view would draw, numbered as the book is. Kept beside the note
+	 * renders under its own name — the master's own render is untouched — and
+	 * served at the master's URL with `?book=1` (protocol.js), which is where
+	 * the engine's master-relative paths resolve.
+	 *
+	 * @returns {Promise<{ htmlFile: string, warnings: Array }>}
+	 */
+	async renderBook(masterRel, { chapters, numbering }) {
+		const generation = this.#generation;
+		const hash = crypto.createHash('sha1').update(`book\u0000${masterRel}`).digest('hex').slice(0, 16);
+		const htmlFile = path.join(this.cacheDir, `book-${hash}.html`);
+		const result = await this.#workerBuild(path.join(this.vaultRoot, masterRel), {
+			to: 'html',
+			output: htmlFile,
+			normalSyntax: this.#vaultOptions.normalSyntax === true,
+			chapters,
+			numbering,
+		});
+		if (generation !== this.#generation) throw new Error('stale render (vault closed)');
+		if (result.type !== 'done') throw new Error(result.message);
+		this.#books.set(masterRel, htmlFile);
+		return { htmlFile, warnings: Array.isArray(result.warnings) ? result.warnings : [] };
+	}
+
+	/** The last whole-book document built for `masterRel`, or null. */
+	bookHtmlFile(masterRel) {
+		const file = this.#books.get(masterRel);
+		return file && fs.existsSync(file) ? file : null;
 	}
 
 	/**

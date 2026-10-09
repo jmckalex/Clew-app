@@ -336,6 +336,14 @@ rebuilds, `parts:` and front/back matter (D7), the LaTeX `include` layout
 with `\includeonly` proofs, a book as a site section, the whole-book print
 PDF, and the engine's book map checked against Clew's.
 
+*As built (2026-10-09):* the whole-book print PDF — the engine's ONE
+document of the book under the preview configuration
+(`render-service.js#renderBook`), served at the master's URL with `?book=1`
+and printed by `print-pdf.js` with a page break before each chapter, the
+references and the index; `build/<master> (reading view).pdf`; File →
+Export → Book as PDF (reading view), the panel's "Print PDF".
+`smoke/book-print-scenario.js`.
+
 ---
 
 ## 8. Risks

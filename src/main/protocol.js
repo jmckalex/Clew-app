@@ -531,12 +531,17 @@ export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDi
 			}
 
 			// Rendered note: "<note path>.html" → render on demand, inject client.
+			// `?book=1` on a master's: its whole BOOK as one document, as the
+			// book print last built it (render-service.js#renderBook) — at the
+			// master's own URL, where the engine's master-relative paths resolve.
 			if (RENDERED_SUFFIX.test(rel)) {
 				const relPath = rel.replace(/\.html$/i, '');
 				vaults.resolve(relPath); // path-escape validation
+				const book = url.searchParams.get('book') === '1';
 				let html;
 				try {
-					const htmlFile = await renderService.ensureRendered(relPath);
+					const htmlFile = book ? renderService.bookHtmlFile(relPath) : await renderService.ensureRendered(relPath);
+					if (!htmlFile) throw new Error(`${relPath}: no book document has been built`);
 					html = fs.readFileSync(htmlFile, 'utf8');
 				} catch (err) {
 					// First render failed — an error document that still loads the
