@@ -59,6 +59,71 @@ fs.cpSync(sourceDist, path.join(dest, 'dist'), {
 const license = path.join(source, 'LICENSE');
 if (fs.existsSync(license)) fs.cpSync(license, path.join(dest, 'LICENSE'));
 
+// The licences of what the build BUNDLES — no longer npm dependencies of
+// Clew's, so scripts/gen-notices.js cannot find them in node_modules and
+// reads them here instead (vendor/embedpdf/licenses/<name>/: a small
+// package.json and the package's own licence text). Every npm package the
+// snippet depends on, walked through the monorepo's own packages —
+// `dependencies` only: `peerDependencies` are the framework adapters (React,
+// Vue, Svelte) a Preact build does not carry — and PDFium, compiled into
+// pdfium.wasm.
+const LICENCE_FILES = ['LICENSE', 'LICENSE.md', 'LICENSE.txt', 'LICENCE', 'LICENCE.md', 'license', 'license.md', 'COPYING'];
+const readJson = (file) => { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; } };
+const workspace = new Map();
+for (const group of ['packages', 'viewers']) {
+	const base = path.join(source, group);
+	for (const name of fs.existsSync(base) ? fs.readdirSync(base) : []) {
+		const pkg = readJson(path.join(base, name, 'package.json'));
+		if (pkg?.name) workspace.set(pkg.name, path.join(base, name));
+	}
+}
+/** The installed folder of `name` as seen from `from` (pnpm keeps it beside). */
+function installed(name, from) {
+	for (let dir = from; ; dir = path.dirname(dir)) {
+		const candidate = path.join(dir, 'node_modules', name);
+		if (fs.existsSync(path.join(candidate, 'package.json'))) return fs.realpathSync(candidate);
+		if (dir === path.dirname(dir)) return null;
+	}
+}
+const bundled = new Map();   // name → folder
+const visited = new Set();
+function walk(dir) {
+	const pkg = readJson(path.join(dir, 'package.json'));
+	for (const [name, spec] of Object.entries(pkg?.dependencies ?? {})) {
+		if (String(spec).startsWith('workspace:')) {
+			const own = workspace.get(name);
+			if (own && !visited.has(own)) { visited.add(own); walk(own); }
+			continue;
+		}
+		if (bundled.has(name)) continue;
+		const at = installed(name, dir);
+		if (!at) continue;
+		bundled.set(name, at);
+		walk(at);
+	}
+}
+walk(path.join(source, 'viewers', 'snippet'));
+const licences = path.join(dest, 'licenses');
+const keep = (folder, meta, text) => {
+	fs.mkdirSync(path.join(licences, folder), { recursive: true });
+	fs.writeFileSync(path.join(licences, folder, 'package.json'), JSON.stringify(meta, null, '\t') + '\n');
+	if (text) fs.writeFileSync(path.join(licences, folder, 'LICENSE'), text);
+};
+for (const [name, dir] of [...bundled].sort(([a], [b]) => a.localeCompare(b))) {
+	const pkg = readJson(path.join(dir, 'package.json')) ?? {};
+	const file = LICENCE_FILES.map((f) => path.join(dir, f)).find((f) => fs.existsSync(f));
+	keep(name.replace('/', '__'), {
+		name, version: pkg.version ?? '?',
+		license: typeof pkg.license === 'string' ? pkg.license : pkg.license?.type ?? '(not stated)',
+		homepage: pkg.homepage ?? null,
+	}, file ? fs.readFileSync(file, 'utf8') : null);
+}
+const pdfium = path.join(source, 'packages', 'pdfium', 'LICENSE.pdfium');
+if (fs.existsSync(pdfium)) {
+	keep('pdfium', { name: 'PDFium (in pdfium.wasm, with the OCG patches)', version: 'as built', license: 'BSD-3-Clause AND Apache-2.0', homepage: 'https://pdfium.googlesource.com/pdfium/' }, fs.readFileSync(pdfium, 'utf8'));
+}
+console.log(`vendor-embedpdf: licences of ${bundled.size} bundled package${bundled.size === 1 ? '' : 's'}${fs.existsSync(pdfium) ? ' and PDFium' : ''} → vendor/embedpdf/licenses`);
+
 fs.writeFileSync(path.join(dest, 'VENDOR.md'), `# Vendored EmbedPDF (OCG build) — DO NOT EDIT
 
 This directory is a dumb mirror of the built EmbedPDF snippet viewer from

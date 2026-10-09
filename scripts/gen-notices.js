@@ -100,6 +100,22 @@ function collect() {
 			text: licenceText(abs),
 		});
 	}
+	// What a vendored BUILD bundles (scripts/vendor-embedpdf.js writes it):
+	// vendor/<dir>/licenses/<name>/ — a package.json and its licence text.
+	for (const dir of VENDORED) {
+		const bundled = path.join(root, 'vendor', dir, 'licenses');
+		for (const name of fs.existsSync(bundled) ? fs.readdirSync(bundled) : []) {
+			const abs = path.join(bundled, name);
+			const pkg = readPkg(abs);
+			if (!pkg || found.has(pkg.name)) continue;
+			found.set(pkg.name, {
+				name: pkg.name, version: pkg.version ?? '?',
+				licence: spdx(pkg) ?? '(not stated)',
+				homepage: pkg.homepage ?? null,
+				text: licenceText(abs),
+			});
+		}
+	}
 	return [...found.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
