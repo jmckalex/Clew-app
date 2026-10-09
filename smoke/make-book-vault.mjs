@@ -1,5 +1,5 @@
 // Vaults for book-panel-scenario.js (book mode, docs/dev/book-mode.md):
-//   node smoke/make-book-vault.mjs <dir> [export|trust|numbers]
+//   node smoke/make-book-vault.mjs <dir> [export|trust|numbers|parity]
 // <dir>/vault — the demo vault's Books/ and the Features/refs.bib its
 // Conventions cites (Signals: a master and three
 // chapters; its first link given an alias HERE, which a reorder must keep),
@@ -82,6 +82,172 @@ if (mode === 'numbers') {
 	// proposition and equation; Notes/Alone.md, in no book, numbers its own.
 	fs.appendFileSync(path.join(vault, 'Books', 'Signals', 'Conventions.md'), '\nAs @cref[prop-perfect] showed, and by @ref[eq-chance], a convention can settle.\n');
 	fs.writeFileSync(path.join(vault, 'Notes', 'Alone.md'), '# Alone\n\n@begin(figure)[Lone]{#fig-lone}\nx\n@end(figure)\n\nSee @ref[fig-lone].\n');
+}
+if (mode === 'parity') {
+	// book-parity-scenario.js: Books/Parity, whose every label the master
+	// refers to (`R <key>: @ref[key] ; @cref[key]`), so the built book prints
+	// each number — per chapter, then continuous. Each chapter holds a case
+	// the numbering could get wrong: a figure in the master (chapter 0), a
+	// chapter with no # heading (the engine inserts one), text before a
+	// chapter's first # (the chapter before's), a `{-}` heading (no chapter),
+	// a second # in one file (a chapter of its own), subfigures, the shared
+	// theorem counter, a label inside a theorem, footnote labels of both
+	// kinds, numeric headings, a chapter's own header (ignored).
+	const book = path.join(vault, 'Books', 'Parity');
+	fs.mkdirSync(book, { recursive: true });
+	const chapters = {
+		Alpha: `---
+status: draft
+---
+# Alpha @label[ch-alpha]
+
+## Setting @label[sec-setting]
+
+@begin(figure)[A figure]{#fig-a1}
+a
+@end(figure)
+
+@begin(figure)[With parts]{#fig-a2}
+@begin(subfigure)[Left]{#sub-a2l}
+l
+@end(subfigure)
+@begin(subfigure)[Right]{#sub-a2r}
+r
+@end(subfigure)
+@end(figure)
+
+@begin(table)[A table]{#tab-a1}
+| x | y |
+|---|---|
+| 1 | 2 |
+@end(table)
+
+@begin(theorem)[Main]{#thm-a1}
+T, with a label inside @label[in-thm].
+@end(theorem)
+
+@begin(lemma){#lem-a1}
+L
+@end(lemma)
+
+@begin(equation){#eq-a1}
+a = b
+@end(equation)
+
+A note[fn: An inline note @label[fn-a].] in prose.
+
+### Deeper @label[sub-deeper]
+
+More prose.
+`,
+		Beta: `---
+title: Beta Title
+---
+Opening prose, under the title the engine inserts.
+
+@begin(proposition){#prop-b1}
+P
+@end(proposition)
+
+## A section @label[sec-beta]
+
+@begin(figure){#fig-b1}
+b
+@end(figure)
+
+@begin(listing)[Code]{#lst-b1}
+\`\`\`js
+const x = 1;
+\`\`\`
+@end(listing)
+`,
+		Gamma: `@begin(figure){#fig-g0}
+before the title: still the chapter before
+@end(figure)
+
+# Gamma
+
+@begin(figure){#fig-g1}
+g
+@end(figure)
+
+# Interlude {-}
+
+@begin(figure){#fig-g2}
+after an unnumbered heading
+@end(figure)
+
+@begin(corollary){#cor-g1}
+C
+@end(corollary)
+
+# Gamma Two @label[ch-gamma-two]
+
+@begin(equation){#eq-g1}
+x
+@end(equation)
+
+@begin(table){#tab-g1}
+| a |
+|---|
+| b |
+@end(table)
+`,
+		Delta: `---
+Headings: none
+---
+# Delta
+
+A classic note[^d] here.
+
+[^d]: A classic note @label[fn-d].
+
+@begin(definition){#def-d1}
+D
+@end(definition)
+
+@begin(example)
+unlabelled, still counted
+@end(example)
+
+@begin(remark){#rem-d1}
+R
+@end(remark)
+
+:::figure[In colons]{#fig-d1}
+d
+:::
+
+@begin(equation){#eq-d1}
+y
+@end(equation)
+
+$$
+z
+$$
+
+## Last @label[sec-last]
+`,
+	};
+	for (const [name, text] of Object.entries(chapters)) fs.writeFileSync(path.join(book, `${name}.md`), text);
+	const keys = ['fig-master', ...Object.values(chapters).flatMap((t) => [...t.matchAll(/\{#([\w-]+)\}|@label\[([\w-]+)\]/g)].map((m) => m[1] ?? m[2]))];
+	fs.writeFileSync(path.join(book, 'Parity.md'), `---
+book: true
+title: Parity
+numbering: per chapter
+Headings: numeric
+chapters:
+${Object.keys(chapters).map((n) => `  - "[[${n}]]"`).join('\n')}
+---
+
+A book whose master refers to every label it holds.
+
+@begin(figure)[Before any chapter]{#fig-master}
+m
+@end(figure)
+
+${keys.map((k) => `- R ${k}: @ref[${k}] ; @cref[${k}]`).join('\n')}
+`);
 }
 const plain = path.join(dir, 'plain');
 fs.mkdirSync(plain, { recursive: true });

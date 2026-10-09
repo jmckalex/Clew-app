@@ -102,7 +102,7 @@ note API, plugins, and every settings key.
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
   dialect scanner's constructs and grammar, live edit's model, reveal rule,
-  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band, figure errors, the PDF save guard, deep links and the clew command, the shareable callout resolver, the device word, where notices sit, pinned apps, the demo vault's updates (untouched files by hash and by shipped history, a record-less copy dated by its files), the ticker's live rules, origin-bound network grants, books (the master reader, chapter titles, words and status, the index's chapter lists and their renames, a build's warnings placed), an app's secrets (the store, the methods) — 1171 tests. DOM/UI work is
+  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band, figure errors, the PDF save guard, deep links and the clew command, the shareable callout resolver, the device word, where notices sit, pinned apps, the demo vault's updates (untouched files by hash and by shipped history, a record-less copy dated by its files), the ticker's live rules, origin-bound network grants, books (the master reader, chapter titles, words and status, the index's chapter lists and their renames, a build's warnings placed, a book's numbers), an app's secrets (the store, the methods) — 1186 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
@@ -689,7 +689,14 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   changes what a chapter starts from; installed into `editor/live/
   numbering-source.js#numberingFor`, which every consumer asks — a note in
   no book gets `numberDocument`, exactly (crossref-scenario identical before
-  and after). `smoke/book-numbers-scenario.js`.
+  and after). `smoke/book-numbers-scenario.js`. **The gate is
+  `smoke/book-parity-scenario.js`**: the master of Books/Parity refers to
+  every label in its book, and each number Clew shows (`numberingFor` +
+  `refDisplay`, as a chip draws it) must equal what the engine PRINTS in the
+  built book — per chapter and continuous, `mismatches=[]` both. Change a
+  numbering rule only with that run green. It caught `:::figure`/`:::theorem`
+  … numbered by Clew and not by the engine (the generic container
+  directive — only `@begin(…)` numbers).
 - **Obsidian's own query formats** — for opening other people's vaults,
   alongside (not replacing) Clew's `query`/`tasks`/`kanban` fences:
   `vault-model.js` (the vault as pages: `file.*`, the link graph,
