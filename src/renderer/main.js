@@ -36,6 +36,7 @@ import { installBuildWarnings } from './build-warnings.js';
 import { installConflictScans } from './conflicts.js';
 import { installCalloutSync } from './callouts.js';
 import { installBooks } from './books.js';
+import { installBookMap } from './book-map.js';
 import './components/chrome/clew-app.js';
 import './editor/toolbar/clew-selection-bubble.js';
 import { linkPreview } from './editor/link-preview.js';
@@ -154,6 +155,7 @@ installAppHost();
 installUpdateNotice();
 installCalloutSync();
 installBooks();
+installBookMap();
 officeDock.init();
 
 // ---- dev hook -------------------------------------------------------------

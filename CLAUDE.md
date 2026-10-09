@@ -673,6 +673,23 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   master ends with `@bibliography`. Demo:
   `Books/Signals/` + `Guide/Books.md`; proof: `smoke/book-panel-scenario.js`,
   `smoke/book-export-scenario.js`.
+- **Books, phase 2 — numbers while writing** (book-mode.md §3, D9; owner's
+  go 2026-10-09): a chapter (or the master) shows the BOOK's numbers —
+  "Figure 2.3", or continuous — in every chip, equation tag, heading prefix,
+  env head, completion (a label in another chapter names it), jump (opens
+  that chapter at its line) and hover (previews from that chapter's text).
+  `editor/live/book-numbering.js` runs numbering.js's pass — resumable since
+  phase 2: the master's header settings, per-chapter counters reset at each
+  numbered `#`, an inserted title for a chapter with none — over the master's
+  text then every chapter, as the engine assembles them; incremental (a
+  piece recounted only when its text or start state moved). `renderer/
+  book-map.js` feeds it texts (an open editor's, else the file's, re-read on
+  an index mtime change) and rebuilds the live editors (`liveRebuild`, which
+  the block field and the inline layer now both honour) when another piece
+  changes what a chapter starts from; installed into `editor/live/
+  numbering-source.js#numberingFor`, which every consumer asks — a note in
+  no book gets `numberDocument`, exactly (crossref-scenario identical before
+  and after). `smoke/book-numbers-scenario.js`.
 - **Obsidian's own query formats** — for opening other people's vaults,
   alongside (not replacing) Clew's `query`/`tasks`/`kanban` fences:
   `vault-model.js` (the vault as pages: `file.*`, the link graph,

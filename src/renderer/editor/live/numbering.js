@@ -352,7 +352,10 @@ export function numberPiece(text, { numbered = new Map(), book }) {
 export function refDisplay(numbering, key, form) {
 	const target = numbering.labels.get(key) ?? null;
 	// The engine prints `??` for an unknown key too; the key is in the tip.
-	if (!target) return { text: '??', state: 'missing', tip: `No label “${key}” in this note (a reference to another note's label is not resolved in v1)`, target };
+	if (!target) {
+		const where = numbering.book ? `in the book “${numbering.book.title}”` : 'in this note (a reference to another note\'s label is not resolved in v1)';
+		return { text: '??', state: 'missing', tip: `No label “${key}” ${where}`, target };
+	}
 	if (target.status === 'uncounted') {
 		return { text: '?', state: 'uncounted', tip: `Clew cannot number “${target.kind}”; the export will`, target };
 	}
@@ -364,7 +367,9 @@ export function refDisplay(numbering, key, form) {
 	}
 	const text = form === 'ref' ? target.number : typedRefText(target.type, target.number, form === 'Cref');
 	const twice = target.count > 1 ? ' (defined twice — the last one wins)' : '';
-	return { text, state: 'ok', tip: `${form}[${key}] → ${typedRefText(target.type, target.number, true)}${target.title ? ` — ${target.title}` : ''}${twice}. Numbered within this note.`, target };
+	const scope = !numbering.book ? 'Numbered within this note.'
+		: `Numbered as in the book “${numbering.book.title}”${target.path && target.path !== numbering.book.path ? ` — in ${target.path.split('/').pop().replace(/\.(md|jmd)$/i, '')}` : ''}.`;
+	return { text, state: 'ok', tip: `${form}[${key}] → ${typedRefText(target.type, target.number, true)}${target.title ? ` — ${target.title}` : ''}${twice}. ${scope}`, target };
 }
 
 /** The heading an environment's head widget shows: "Theorem 2", "Figure 1". */
@@ -385,15 +390,17 @@ const HIDE_FRAGMENT_NUMBERS = '<style>.theorem-label, .env-label, .eqn-number, .
  * belongs to, rendered through the block endpoint, and a header naming it
  * with the number this note gives it. A heading host previews its section.
  *
- * @param {import('@codemirror/state').Text} doc
+ * @param {import('@codemirror/state').Text} doc - the text the label is IN
  * @param {string} key
- * @param {string|null} notePath
+ * @param {string|null} notePath - that text's note
+ * @param {object} [numbering] - the numbers to show (a chapter's are its
+ *   book's — numbering-source.js); the doc's own when not given
  * @returns {{ text: string, label: string } | null}
  */
-export function labelPreview(doc, key, notePath) {
-	const target = numberDocument(doc).labels.get(key);
+export function labelPreview(doc, key, notePath, numbering = numberDocument(doc)) {
+	const target = numbering.labels.get(key);
 	if (!target) return null;
-	const shown = refDisplay(numberDocument(doc), key, 'Cref');
+	const shown = refDisplay(numbering, key, 'Cref');
 	const label = (shown.state === 'ok' ? shown.text : key) + (target.title ? ` — ${target.title}` : '');
 	if (target.kind === 'heading' && notePath) {
 		const heading = doc.line(target.line).text.replace(/^#{1,6}[ \t]+/, '').replace(/[@:]label\[[^\]]*\]/g, '').trim();

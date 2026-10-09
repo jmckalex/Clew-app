@@ -1,5 +1,5 @@
 // Vaults for book-panel-scenario.js (book mode, docs/dev/book-mode.md):
-//   node smoke/make-book-vault.mjs <dir> [export|trust]
+//   node smoke/make-book-vault.mjs <dir> [export|trust|numbers]
 // <dir>/vault — the demo vault's Books/ and the Features/refs.bib its
 // Conventions cites (Signals: a master and three
 // chapters; its first link given an alias HERE, which a reorder must keep),
@@ -76,6 +76,12 @@ if (mode === 'export') {
 	fs.mkdirSync(essays, { recursive: true });
 	fs.renameSync(path.join(vault, 'Books', 'Signals', 'Conventions.md'), path.join(essays, 'Conventions.md'));
 	fs.appendFileSync(path.join(essays, 'Conventions.md'), '\n![[NASA - Earthrise.jpg]]\n');
+}
+if (mode === 'numbers') {
+	// book-numbers-scenario.js: Conventions (chapter 2) refers to chapter 1's
+	// proposition and equation; Notes/Alone.md, in no book, numbers its own.
+	fs.appendFileSync(path.join(vault, 'Books', 'Signals', 'Conventions.md'), '\nAs @cref[prop-perfect] showed, and by @ref[eq-chance], a convention can settle.\n');
+	fs.writeFileSync(path.join(vault, 'Notes', 'Alone.md'), '# Alone\n\n@begin(figure)[Lone]{#fig-lone}\nx\n@end(figure)\n\nSee @ref[fig-lone].\n');
 }
 const plain = path.join(dir, 'plain');
 fs.mkdirSync(plain, { recursive: true });
