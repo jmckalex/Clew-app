@@ -59,6 +59,32 @@ SIL Open Font License. Reserved font names may not be reused, and the fonts
 may not be sold on their own. Bundling them in an application is expressly
 permitted.
 
+### The figure engines — mp-tikz-wasm (GPL, LGPL, AGPL)
+
+TikZ, MetaPost, LaTeX and plain-TeX figures are typeset by **mp-tikz-wasm**
+(https://github.com/jmckalex/mp-tikz-wasm): TeX Live's programs compiled to
+WebAssembly. It ships as an unpacked tree under `Resources/mptikz/` and runs
+inside the preview, a separate document Clew talks to over messages. Each
+part keeps its own licence:
+
+| Part | Licence | Source |
+| --- | --- | --- |
+| mp-tikz-wasm's own code (`index.js`, `auto.js`, the glue) | LGPL-3.0-or-later | the repository above |
+| MetaPost (`mplib.wasm`) | public domain; with `avl.c`, LGPL-3.0-or-later | TeX Live 2025; the build in the repository |
+| pdfTeX and kpathsea (`tex.wasm`) | GPL-2.0-or-later / LGPL-2.1-or-later | TeX Live 2025 (https://tug.org/texlive/) |
+| LuaTeX (`luatex.wasm`) | GPL-2.0-or-later (with Lua 5.3, MIT, and others) | TeX Live 2025 |
+| dvisvgm (`dvisvgm.wasm`) | GPL-3.0-or-later (with FreeType, potrace and others) | https://github.com/mgieseki/dvisvgm |
+| Ghostscript (`ghostscript/gs.mjs`, `gs.wasm`), when present | **GNU AGPL v3** (`ghostscript/COPYING`, `ghostscript/LICENSE`) | Ghostscript 10.08.0 (https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/tag/gs10080) and the port's build, as `ghostscript/SOURCE.md` pins them |
+| TeX macro packages and fonts (`bundles/`) | LPPL 1.3c and package-specific free licences; Knuth's, AMS and GUST font licences; dvips's headers GPL | TeX Live 2025 |
+
+**Where the source is offered.** The corresponding source of every engine —
+the upstream sources, the patches and a reproducible build — is in the
+mp-tikz-wasm repository and attached to the GitHub release Clew pins
+(`src/shared/mptikz-manifest.json`: the archive and its SHA-256), and
+Ghostscript's as `ghostscript/SOURCE.md` names it, beside the module in
+every copy of Clew that ships it. mp-tikz-wasm's own `NOTICE.md` has the
+full table.
+
 ### Components shipping no licence file
 
 These declare a licence in their manifest but ship no licence text. The

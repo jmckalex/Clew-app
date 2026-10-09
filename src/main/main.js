@@ -382,6 +382,12 @@ function watchRendererDist() {
 app.whenReady().then(async () => {
 	settings.load();
 	registerIpc();
+	// About Clew: where the figure engines' source is offered (GPL; Ghostscript
+	// AGPL) — THIRD-PARTY-NOTICES.md, "The figure engines".
+	app.setAboutPanelOptions({
+		credits: 'Figures are typeset by mp-tikz-wasm: TeX Live, dvisvgm and Ghostscript, '
+			+ 'under the GPL, LGPL and AGPL. Their source is offered as Help → Third-Party Notices says.',
+	});
 	// The TeX engines are served immutable (protocol.js), so a restaged or
 	// upgraded build would be answered from Chromium's HTTP cache for a
 	// year; clear it when the build's identity changes (asset-stamp.js),

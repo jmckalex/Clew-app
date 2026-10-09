@@ -56,8 +56,15 @@ const spdx = (pkg) => {
 /** vendor/ folders that ship as they are (no npm install). The stamp
  *  tool's default library (pdf-core.js) declares no licence field in its
  *  package.json; its LICENSE file is MIT. */
-const VENDORED = ['default-stamps'];
+const VENDORED = ['default-stamps', 'embedpdf'];
 const VENDORED_LICENCE = { 'default-stamps': 'MIT' };
+/** A vendored build with no package.json of its own: what to call it. The
+ *  PDF viewer is EmbedPDF built from the owner's OCG/layers fork
+ *  (vendor/embedpdf/VENDOR.md), no longer an npm dependency — so the
+ *  @embedpdf packages fell out of this list until it was named here. */
+const VENDORED_META = {
+	embedpdf: { name: 'EmbedPDF (OCG/layers fork)', version: '2.15.0', license: 'MIT', homepage: 'https://github.com/embedpdf/embed-pdf-viewer' },
+};
 
 /** Every runtime package reachable from `dependencies`, plus Electron. */
 function collect() {
@@ -84,7 +91,7 @@ function collect() {
 	// (vendor/<dir>, each with its own package.json and licence file).
 	for (const dir of VENDORED) {
 		const abs = path.join(root, 'vendor', dir);
-		const pkg = readPkg(abs);
+		const pkg = readPkg(abs) ?? VENDORED_META[dir] ?? null;
 		if (!pkg || found.has(pkg.name)) continue;
 		found.set(pkg.name, {
 			name: pkg.name, version: pkg.version ?? '?',
@@ -150,6 +157,35 @@ out();
 out('SIL Open Font License. Reserved font names may not be reused, and the fonts');
 out('may not be sold on their own. Bundling them in an application is expressly');
 out('permitted.');
+out();
+// The figure engines: not an npm dependency, so no manifest to read — the
+// staged tree (Resources/mptikz) is mp-tikz-wasm's release, and its own
+// NOTICE.md is the source of these rows.
+out('### The figure engines — mp-tikz-wasm (GPL, LGPL, AGPL)');
+out();
+out('TikZ, MetaPost, LaTeX and plain-TeX figures are typeset by **mp-tikz-wasm**');
+out('(https://github.com/jmckalex/mp-tikz-wasm): TeX Live\'s programs compiled to');
+out('WebAssembly. It ships as an unpacked tree under `Resources/mptikz/` and runs');
+out('inside the preview, a separate document Clew talks to over messages. Each');
+out('part keeps its own licence:');
+out();
+out('| Part | Licence | Source |');
+out('| --- | --- | --- |');
+out('| mp-tikz-wasm\'s own code (`index.js`, `auto.js`, the glue) | LGPL-3.0-or-later | the repository above |');
+out('| MetaPost (`mplib.wasm`) | public domain; with `avl.c`, LGPL-3.0-or-later | TeX Live 2025; the build in the repository |');
+out('| pdfTeX and kpathsea (`tex.wasm`) | GPL-2.0-or-later / LGPL-2.1-or-later | TeX Live 2025 (https://tug.org/texlive/) |');
+out('| LuaTeX (`luatex.wasm`) | GPL-2.0-or-later (with Lua 5.3, MIT, and others) | TeX Live 2025 |');
+out('| dvisvgm (`dvisvgm.wasm`) | GPL-3.0-or-later (with FreeType, potrace and others) | https://github.com/mgieseki/dvisvgm |');
+out('| Ghostscript (`ghostscript/gs.mjs`, `gs.wasm`), when present | **GNU AGPL v3** (`ghostscript/COPYING`, `ghostscript/LICENSE`) | Ghostscript 10.08.0 (https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/tag/gs10080) and the port\'s build, as `ghostscript/SOURCE.md` pins them |');
+out('| TeX macro packages and fonts (`bundles/`) | LPPL 1.3c and package-specific free licences; Knuth\'s, AMS and GUST font licences; dvips\'s headers GPL | TeX Live 2025 |');
+out();
+out('**Where the source is offered.** The corresponding source of every engine —');
+out('the upstream sources, the patches and a reproducible build — is in the');
+out('mp-tikz-wasm repository and attached to the GitHub release Clew pins');
+out('(`src/shared/mptikz-manifest.json`: the archive and its SHA-256), and');
+out('Ghostscript\'s as `ghostscript/SOURCE.md` names it, beside the module in');
+out('every copy of Clew that ships it. mp-tikz-wasm\'s own `NOTICE.md` has the');
+out('full table.');
 out();
 if (noText.length) {
 	out('### Components shipping no licence file');
