@@ -716,7 +716,10 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   (`caller-token.js#readRenderBody`, frame-bridge.md §1), which the block
   route renders under `citation-header.js#bookCitationHeader`. A changed
   context (another chapter saved, the master's settings) re-asks
-  (index-changed). A note in no book sends exactly what it did.
+  (index-changed) — keyed on each piece's header AS SAVED (`book-map.js#
+  diskHeaders`, re-read when the index says the file changed), because main
+  renders from disk: keyed on an editor's unsaved text, the re-ask raced the
+  auto-save and kept the old style (Clew-iOS, 2026-10-10). A note in no book sends exactly what it did.
   `smoke/book-cites-scenario.js`.
 - **Books, phase 3 — the whole-book print PDF** (2026-10-09, Clew-boss's
   go; parts/matter and the site section wait for the owner's Q1/Q2): the

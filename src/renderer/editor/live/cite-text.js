@@ -144,6 +144,8 @@ export function wantCiteTexts(notePath, sig, sources) {
 		notes.set(notePath, slot);
 	}
 	const context = bookCiteContext(notePath);
+	// A book's saved headers not read yet: asked once they are (book-map.js).
+	if (context && !context.ready) return;
 	const list = (context ? `${context.key}\u0001` : '') + sources.join('\n');
 	if (list === slot.asked || list === slot.wanted) return;
 	slot.wanted = list;
