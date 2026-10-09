@@ -1,4 +1,4 @@
-# Handover — 2026-10-07 night (origin/main 3d39952, pushed; LOCAL: app.secrets, NOT pushed; dev.9 = 3d39952, boot-tested; the diagram cache waits for jmarkdown)
+# Handover — 2026-10-09 night (origin/main e430bed, pushed; LOCAL: book mode phase 2, 6 commits, NOT pushed; the diagram cache waits for jmarkdown)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it); the live edit design AS BUILT is
@@ -8,10 +8,26 @@ prefer deleting a settled item to explaining it again.
 
 ## Read this first
 
-**Where the code is.** `origin/main` = `3d39952`, pushed 2026-10-06 on the
-owner's word via Clew-boss (`917303b..cbfa692`, then `3d39952`). Local
-since: the app.secrets commits (below), NOT pushed — the owner decides. `git
-fetch` before counting.
+**Where the code is.** `origin/main` = `e430bed` (app.secrets and the apps
+fixes pushed). Local since: book mode PHASE 2, six commits, NOT pushed — the
+owner decides. `git fetch` before counting.
+
+**2026-10-09: book mode phase 2 — DONE, reported to Clew-boss** (approved
+plan; CLAUDE.md "Books, phase 2" is the durable account):
+`fdac07a` (1) the book map · `8619a67` (2) every consumer shows the book's
+numbers · `d6c30cf` `:::figure`/`:::theorem` … unnumbered, as the engine
+draws them (the gate's find; changes a note in no book only there) ·
+`7f8681e` (3) THE GATE, `book-parity-scenario.js`: 31/31 labels equal the
+engine's, per chapter and continuous · `b729551` (4) the reading-view line
+"Chapter 2 of … · numbers as in the book: Build" · `886e2e5` (5) citation
+pills in book order (render body's optional `book`, frame-bridge.md §1).
+Perf (40 chapters × 4.5k words): keystroke median 5.3 ms / p90 7.4 in-app
+(a no-book note 4.5 / 6.9) — on the main thread, under the 16 ms line.
+- ◆ Clew-docs: the manual has none of phase 2 yet (numbers across chapters,
+  the reading-view line, pills in book order, `:::` kinds unnumbered).
+- ◆ Clew-iOS: the block POST's optional `book` (ignoring it degrades to the
+  note's own header); `bookCitationHeader` is pure, in main/citation-header.js.
+- Phase 3 (engine half with jmarkdown directly; Q1/Q2 to the owner) not begun.
 
 **2026-10-06/07 (via Clew-boss; owner's decisions in quotes).**
 - Engine re-vendored to at-migration `dc36e9b` (283cd30 resolveEmbed's
