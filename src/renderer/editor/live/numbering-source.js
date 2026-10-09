@@ -23,7 +23,8 @@ let provider = null;
  *   numbering(doc, notePath, options) → the book's numbers for that piece,
  *     or null (not a chapter, or the book's texts not read yet);
  *   text(path) → a piece's text as the book map has it, or null;
- *   describe(path) → { book: title, chapter: title } for the tips, or null.
+ *   describe(path) → { book: title, chapter: title } for the tips, or null;
+ *   citeContext(path) → what a chapter's citations render among, or null.
  */
 export function setBookNumbering(source) {
 	provider = source;
@@ -43,4 +44,10 @@ export function bookPieceText(path) {
 /** "Conventions, in Signals" — where a label in another chapter is. */
 export function bookPlace(path) {
 	return provider?.describe(path) ?? null;
+}
+
+/** A chapter's citation context (book-map.js#citeContext): the book's other
+ *  citations in order and its pieces, or null for a note in no book. */
+export function bookCiteContext(path) {
+	return (path && provider?.citeContext?.(path)) || null;
 }

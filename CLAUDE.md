@@ -102,7 +102,7 @@ note API, plugins, and every settings key.
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
   dialect scanner's constructs and grammar, live edit's model, reveal rule,
-  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band, figure errors, the PDF save guard, deep links and the clew command, the shareable callout resolver, the device word, where notices sit, pinned apps, the demo vault's updates (untouched files by hash and by shipped history, a record-less copy dated by its files), the ticker's live rules, origin-bound network grants, books (the master reader, chapter titles, words and status, the index's chapter lists and their renames, a build's warnings placed, a book's numbers), an app's secrets (the store, the methods) — 1186 tests. DOM/UI work is
+  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band, figure errors, the PDF save guard, deep links and the clew command, the shareable callout resolver, the device word, where notices sit, pinned apps, the demo vault's updates (untouched files by hash and by shipped history, a record-less copy dated by its files), the ticker's live rules, origin-bound network grants, books (the master reader, chapter titles, words and status, the index's chapter lists and their renames, a build's warnings placed, a book's numbers, a book's citation header), an app's secrets (the store, the methods) — 1189 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
@@ -703,7 +703,20 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   chrome drawn by clew-preview-view.js as a SIBLING before the frame (never
   in the note's document, never moving the frame), redrawn only when its
   text would change (index, D10's book switch). A note in no book and a
-  master get no element. `smoke/book-banner-scenario.js`.
+  master get no element. `smoke/book-banner-scenario.js`. **A chapter's
+  citation pills read as the BOOK prints them** (§4): the engine builds a
+  book as one document with ONE bibliography — the vault's, the master's,
+  then each chapter's own files in book order — and the master's citation
+  settings (a chapter's own style is warned and not applied), so a numeric
+  style numbers by first citation in the book. `cite-text.js` renders the
+  chapter's citations between the book's others (`book-map.js#
+  citeContext`: from the index, each key once — the render body's 100 KB
+  holds it) and sends the pieces as the render body's optional `book`
+  (`caller-token.js#readRenderBody`, frame-bridge.md §1), which the block
+  route renders under `citation-header.js#bookCitationHeader`. A changed
+  context (another chapter saved, the master's settings) re-asks
+  (index-changed). A note in no book sends exactly what it did.
+  `smoke/book-cites-scenario.js`.
 - **Obsidian's own query formats** — for opening other people's vaults,
   alongside (not replacing) Clew's `query`/`tasks`/`kanban` fences:
   `vault-model.js` (the vault as pages: `file.*`, the link graph,

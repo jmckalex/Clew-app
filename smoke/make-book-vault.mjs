@@ -1,5 +1,5 @@
 // Vaults for book-panel-scenario.js (book mode, docs/dev/book-mode.md):
-//   node smoke/make-book-vault.mjs <dir> [export|trust|numbers|parity]
+//   node smoke/make-book-vault.mjs <dir> [export|trust|numbers|parity|cites]
 // <dir>/vault — the demo vault's Books/ and the Features/refs.bib its
 // Conventions cites (Signals: a master and three
 // chapters; its first link given an alias HERE, which a reorder must keep),
@@ -82,6 +82,34 @@ if (mode === 'numbers') {
 	// proposition and equation; Notes/Alone.md, in no book, numbers its own.
 	fs.appendFileSync(path.join(vault, 'Books', 'Signals', 'Conventions.md'), '\nAs @cref[prop-perfect] showed, and by @ref[eq-chance], a convention can settle.\n');
 	fs.writeFileSync(path.join(vault, 'Notes', 'Alone.md'), '# Alone\n\n@begin(figure)[Lone]{#fig-lone}\nx\n@end(figure)\n\nSee @ref[fig-lone].\n');
+}
+if (mode === 'cites') {
+	// book-cites-scenario.js: Signals in a NUMERIC style (vancouver numbers by
+	// first citation — in a book, the book's first), chapter 1 citing
+	// skyrms1996 and maynardsmith1973 before Conventions cites lewis1969 and
+	// skyrms1996; Deception names a bibliography of its own, whose key
+	// Conventions cites too (one book, one list — it resolves, with the
+	// engine's warning). Alone, Conventions would read [1] [2] and an
+	// unknown key.
+	const signals = path.join(vault, 'Books', 'Signals');
+	const masterPath = path.join(signals, 'Signals.md');
+	const master = fs.readFileSync(masterPath, 'utf8');
+	if (!master.includes('Bibliography style: chicago')) throw new Error('Signals.md no longer says Bibliography style: chicago');
+	fs.writeFileSync(masterPath, master.replace('Bibliography style: chicago', 'Bibliography style: vancouver'));
+	fs.appendFileSync(path.join(signals, 'Senders and Receivers.md'), '\nThe dynamics are surveyed by \\cite{skyrms1996}, the evolutionary view by \\cite{maynardsmith1973}.\n');
+	fs.appendFileSync(path.join(signals, 'Conventions.md'), '\nCostly signals keep them honest \\cite{zahavi1975}.\n');
+	const deception = path.join(signals, 'Deception.md');
+	const text = fs.readFileSync(deception, 'utf8');
+	fs.writeFileSync(deception, text.startsWith('---\n') ? text.replace('---\n', '---\nBibliography: deception.bib\n') : `---\nBibliography: deception.bib\n---\n${text}`);
+	fs.writeFileSync(path.join(signals, 'deception.bib'), `@article{zahavi1975,
+  author = {Zahavi, Amotz},
+  title = {Mate Selection — A Selection for a Handicap},
+  journal = {Journal of Theoretical Biology},
+  year = {1975},
+  volume = {53},
+  pages = {205--214}
+}
+`);
 }
 if (mode === 'parity') {
 	// book-parity-scenario.js: Books/Parity, whose every label the master

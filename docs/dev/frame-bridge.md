@@ -110,7 +110,11 @@ before the engine.
 
 - **The render POSTs** — always, as a field of the JSON body
   (`{ token, text, sourcePath }`; the fragment POST moves from a raw-text body
-  to the same JSON shape), through one helper both platforms share
+  to the same JSON shape — and since book mode's phase 2, 2026-10-09, an
+  optional `book`, the master then its chapters as vault paths, under whose
+  citation header the block POST renders a chapter's citation pills, each
+  path resolved like `sourcePath`; a host that ignores it renders under the
+  note's own header, as before), through one helper both platforms share
   (`lib/preview-url.js#renderPost`). A body field, not a header (a custom
   header makes the request non-simple: a preflight), not a query string
   (URLs end up in places bodies do not).

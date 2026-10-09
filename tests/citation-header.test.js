@@ -11,7 +11,7 @@
 // A note's citation keys, for the blocks rendered on its behalf (src/main/citation-header.js).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { citationHeader, noteBibFiles, bibliographyDirs, bibliographyList } from '../src/main/citation-header.js';
+import { citationHeader, bookCitationHeader, noteBibFiles, bibliographyDirs, bibliographyList } from '../src/main/citation-header.js';
 
 const note = (header, body = '# Note\n\n![[Child]]\n') => `---\n${header}\n---\n${body}`;
 
@@ -94,3 +94,23 @@ test('noteBibFiles: pandoc forms count only where the vault turns them on', () =
 	assert.deepEqual(noteBibFiles('@lewis1969 argues so.', '/v', '/v/refs.bib', { pandoc: true }), ['/v/refs.bib']);
 });
 
+
+test('a book: the MASTER\'s settings, one bibliography — the master\'s files then each chapter\'s, in book order', () => {
+	const master = { text: note('book: true\nBibliography: refs.bib\nBibliography style: chicago\nResolve citations: true'), dir: '/v/Book' };
+	const one = { text: note('Bibliography: ../Lib/one.bib\nBibliography style: apa'), dir: '/v/Book' };
+	const two = { text: note('status: draft'), dir: '/v/Book/Part' };
+	const three = { text: note('Bibliography: three.bib, refs.bib'), dir: '/v/Book/Part' };
+	assert.equal(bookCitationHeader(master, [one, two, three]),
+		'---\nBibliography: /v/Book/refs.bib, /v/Lib/one.bib, /v/Book/Part/three.bib, /v/Book/Part/refs.bib\nBibliography style: chicago\nResolve citations: true\n---\n',
+		'a chapter\'s own style is not the book\'s; a file named twice is listed once');
+	assert.equal(bookCitationHeader({ text: note('book: true'), dir: '/v' }, [two]), '', 'nothing to carry');
+	assert.equal(bookCitationHeader({ text: note('book: true'), dir: '/v' }, [one]), '---\nBibliography: /v/Lib/one.bib\n---\n');
+});
+
+test('a book whose master says replace but names no file keeps the configured files: the mode is not carried', () => {
+	const master = { text: note('Bibliography mode: replace'), dir: '/v' };
+	const ch = { text: note('Bibliography: ch.bib'), dir: '/v' };
+	assert.equal(bookCitationHeader(master, [ch]), '---\nBibliography: /v/ch.bib\n---\n');
+	const own = { text: note('Bibliography: m.bib\nBibliography mode: replace'), dir: '/v' };
+	assert.equal(bookCitationHeader(own, [ch]), '---\nBibliography: /v/m.bib, /v/ch.bib\nBibliography mode: replace\n---\n');
+});

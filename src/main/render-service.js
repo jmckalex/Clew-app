@@ -29,7 +29,7 @@ import { engineExtensionEntries } from './plugins.js';
 import { inlineScriptHashes } from './preview-csp.js';
 import { writeFileAtomic } from './fs-utils.js';
 import { isDependentFragment } from '../shared/fragment-deps.js';
-import { citationHeader, noteBibFiles } from './citation-header.js';
+import { citationHeader, bookCitationHeader, noteBibFiles } from './citation-header.js';
 import { refusedNames } from '../shared/refused-names.js';
 import { calloutsEnv } from './callout-types.js';
 import { iconTable } from './callout-files.js';
@@ -546,17 +546,22 @@ export class RenderService {
 	 * the key; `blockDocument(key)` returns the HTML while it is cached.
 	 *
 	 * @param {string} text
-	 * @param {{ sourcePath?: string|null, dependent?: boolean }} [options]
+	 * @param {{ sourcePath?: string|null, book?: string[]|null, dependent?: boolean }} [options]
+	 *   `book`: the master then its chapters (vault paths) — the snippet's
+	 *   citations render under the BOOK's header, not the note's
 	 * @returns {Promise<string>} the block's key
 	 */
 	async renderBlock(text, options = {}) {
 		// The note's citation keys go in front (citation-header.js): a block
 		// renders on its own, and a `\cite` in it stayed raw while reading
 		// mode resolved it. They come from the note's file, so such a block is
-		// dependent — a saved header change reaches it.
-		const header = options.sourcePath ? this.#citationHeaderOf(options.sourcePath) : '';
+		// dependent — a saved header change reaches it. A chapter's citations
+		// (live edit's pills, cite-text.js) render under its book's.
+		const { book, ...rest } = options;
+		const header = book?.length ? this.#bookCitationHeaderOf(book)
+			: options.sourcePath ? this.#citationHeaderOf(options.sourcePath) : '';
 		const full = header + text;
-		const opts = { ...options, ...(header ? { dependent: true } : {}), document: true };
+		const opts = { ...rest, ...(header ? { dependent: true } : {}), document: true };
 		const key = this.#fragmentKey(full, opts);
 		await this.#cachedBuild(full, opts);
 		// Its note, for what the document itself cannot say: a block is served
@@ -580,6 +585,15 @@ export class RenderService {
 		} catch {
 			return '';
 		}
+	}
+
+	/** A book's citation header (citation-header.js#bookCitationHeader), or ''. */
+	#bookCitationHeaderOf([master, ...chapters]) {
+		const piece = (rel) => {
+			const abs = path.join(this.vaultRoot, rel);
+			try { return { text: fs.readFileSync(abs, 'utf8'), dir: path.dirname(abs) }; } catch { return { text: '', dir: path.dirname(abs) }; }
+		};
+		return bookCitationHeader(piece(master), chapters.map(piece));
 	}
 
 	/** A built block document by key, or undefined once evicted. */

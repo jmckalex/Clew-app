@@ -47,10 +47,18 @@ test('readRenderBody: refused before anything is read, without the token', () =>
 });
 
 test('readRenderBody: the text and its note, with the token', () => {
-	assert.deepEqual(readRenderBody(body({ token: T, text: '# A card' }), T), { text: '# A card', sourcePath: null });
-	assert.deepEqual(readRenderBody(body({ token: T, text: 'x', sourcePath: 'Notes/A.md' }), T), { text: 'x', sourcePath: 'Notes/A.md' });
+	assert.deepEqual(readRenderBody(body({ token: T, text: '# A card' }), T), { text: '# A card', sourcePath: null, book: null });
+	assert.deepEqual(readRenderBody(body({ token: T, text: 'x', sourcePath: 'Notes/A.md' }), T), { text: 'x', sourcePath: 'Notes/A.md', book: null });
 	assert.equal(readRenderBody(body({ token: T, text: 3 }), T).status, 400);
 	assert.equal(readRenderBody(body({ token: T, text: 'x', sourcePath: 7 }), T).status, 400);
+});
+
+test('readRenderBody: a chapter\'s book — the master then its chapters, vault paths', () => {
+	assert.deepEqual(readRenderBody(body({ token: T, text: 'x', sourcePath: 'B/One.md', book: ['B/B.md', 'B/One.md'] }), T),
+		{ text: 'x', sourcePath: 'B/One.md', book: ['B/B.md', 'B/One.md'] });
+	assert.equal(readRenderBody(body({ token: T, text: 'x', book: 'B/B.md' }), T).status, 400);
+	assert.equal(readRenderBody(body({ token: T, text: 'x', book: ['B/B.md', 3] }), T).status, 400);
+	assert.equal(readRenderBody(body({ token: T, text: 'x', book: Array(2001).fill('a.md') }), T).status, 400);
 });
 
 // ---- the handshake's rules ----------------------------------------------------

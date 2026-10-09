@@ -480,12 +480,15 @@ export function installPreviewProtocol({ distDir, nodeModulesDir, engineAssetsDi
 				const body = await readRender();
 				if (body.status) return refuse(body);
 				const { text, sourcePath } = body;
-				if (sourcePath !== null) {
-					try { vaults.resolve(sourcePath); } catch {
+				// A chapter's citations render under its book's header: the
+				// master then the chapters, each a vault path like sourcePath.
+				const book = body.book?.length ? body.book : null;
+				for (const rel of [...(sourcePath !== null ? [sourcePath] : []), ...(book ?? [])]) {
+					try { vaults.resolve(rel); } catch {
 						return new Response('Forbidden', { status: 403, headers: headers('text/plain') });
 					}
 				}
-				const hash = await renderService.renderBlock(text, { sourcePath });
+				const hash = await renderService.renderBlock(text, { sourcePath, book });
 				return new Response(JSON.stringify({ hash }), { headers: headers('application/json') });
 			}
 			if (rel.startsWith('__clew_block__/') && request.method === 'GET') {
