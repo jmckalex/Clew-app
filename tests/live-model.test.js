@@ -204,6 +204,18 @@ test('directives: rich ones are frames; generic ones reveal on opener/closer onl
 	assert.deepEqual(m[1].extentText, [':::theorem[P]', ':::']);
 });
 
+test('@begin(game|Mathematica|markdown-demo) are frames, as their ::: twins; @begin(comment|HTML) carry their twins\' flags', () => {
+	const m = model('@begin(game)\n | A\n@end(game)\n\n@begin(Mathematica){output="svg"}\nx\n@end(Mathematica)\n\n@begin(markdown-demo)\n*x*\n@end(markdown-demo)\n');
+	assert.deepEqual(m.map((c) => [c.kind, c.tier, c.name]), [
+		['richBlock', 'C', 'game'], ['richBlock', 'C', 'Mathematica'], ['richBlock', 'C', 'markdown-demo'],
+	]);
+	const comment = one('@begin(comment)\nnote\n@end(comment)\n', 'environment');
+	const html = one('@begin(HTML)\nweb\n@end(HTML)\n', 'environment');
+	const colon = one(':::comment\nnote\n:::\n', 'directive');
+	assert.deepEqual([comment.comment, html.htmlOnly, colon.comment], [true, true, true]);
+	assert.equal(one('@begin(<name>)\nx\n@end(name)\n', 'environment').name, 'name', 'the sigil is not the name');
+});
+
 test(':::TeX and @begin(TeX) bodies are opaque; math environments are display math', () => {
 	assert.deepEqual(kinds(':::TeX\n\\textbf{*x*}\n:::\n'), ['directive']);
 	assert.deepEqual(kinds('@begin(TeX)\n*x*\n@end(TeX)\n'), ['environment']);
