@@ -62,6 +62,9 @@ decides: `2a877a5` `e00dabe` `fa78cc0` `4f6a706` `4aa515a` `478cfdf`
   HTML, ~18 ms for LaTeX. A concurrent latex-compile suite of another
   session ran during it. iPad path NOT measured here: gen.mjs sent to Clew-iOS, which measures the
   iPad's only whole-book build, the PRINT (renderBook), on the simulator.
+  Desktop PRINT of the same book, for comparison: ~2.75 s (533 pages, 2.2 MB;
+  edited or not) — the warm render worker's build ~1.0 s, peak 317–335 MB;
+  the hidden print window's renderer ~1.6 s, peak ~543 MB.
 - Answered jmarkdown's phase-3 questions (book-map shape, transport lean for
   parts/matter, site-section needs if Q2 says yes, the print PDF's selectors
   as a contract, option C unmeasured → now measured above).
