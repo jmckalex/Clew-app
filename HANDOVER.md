@@ -1,4 +1,4 @@
-# Handover — 2026-10-09 night (origin/main e430bed, pushed; LOCAL: book mode phase 2 + the whole-book print PDF + two pill fixes, NOT pushed; dev.10 = fb3635a, boot-tested; the diagram cache waits for jmarkdown)
+# Handover — 2026-10-10 (origin/main 416c031, pushed; LOCAL: d134995 vendored, the postscript merge + mp-tikz 0.4.0, the dashboard chart + live-edit fix, the diagram cache outside the vault — NOT pushed; dev.10 = fb3635a)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it); the live edit design AS BUILT is
@@ -8,9 +8,64 @@ prefer deleting a settled item to explaining it again.
 
 ## Read this first
 
-**Where the code is.** `origin/main` = `e430bed` (app.secrets and the apps
-fixes pushed). Local since: book mode PHASE 2, six commits, NOT pushed — the
-owner decides. `git fetch` before counting.
+**Where the code is.** `origin/main` = `416c031`, pushed 2026-10-10 on the
+owner's word via Clew-boss ("Please push!", `e430bed..416c031`: book mode
+phase 2, the print PDF, the pill fixes). Local since, NOT pushed — the owner
+decides: `2a877a5` `e00dabe` `fa78cc0` `4f6a706` `4aa515a` `478cfdf`
+`d4eae20` and this handover. `git fetch` before counting.
+
+**2026-10-10 (via Clew-boss; each verified by it unless noted).**
+- `2a877a5` engine at jmarkdown at-migration `d134995` (figure-cache.js:
+  `Cache directory`, `Copy figures`, figures compiled in run folders, HTML
+  figures relative to the page).
+- `e00dabe` merges `postscript` (3f196ac 4fffe0e 8892154 5a976d1);
+  `fa78cc0` pins mp-tikz-wasm **0.4.0 as published** (tag f473f4f): main
+  archive + the `ghostscript` archive (AGPL) + `ghostscript.source`, the
+  source asset, RECORDED only — THIRD-PARTY-NOTICES' Ghostscript row offers
+  it (gen-notices.js reads the manifest). Staged with MPTIKZ_SRC=/nonexistent
+  (STAGED.json release 0.4.0, both archives; curl's TLS is blocked in the
+  sandbox, so `gh release download` into mptikz-assets/.cache, verified by
+  the script). PostScript, Optima/Avenir by family, figures 13: all mpw-ok.
+- `4f6a706` + `4aa515a`: Guide/Dashboards.md's chart IS the target now (a
+  ring, active vs `target`; the owner's report: it plotted counts by status).
+  The owner's own demo copy holds target 4, so the demo update leaves that
+  note alone until the widget is set back to 2. `478cfdf` (approved by
+  Clew-boss): live edit's frame layer re-renders vault-reading blocks when
+  the note's FRONT MATTER changes (it ignored the note's own saves).
+  `smoke/dashboard-target-scenario.js` (reading, live-widget, live-typed).
+- `d4eae20` the diagram cache OUTSIDE the vault (the owner's "Outside";
+  CLAUDE.md, under "Exports … use the note's own directory"): trusted
+  `<userData>/export-cache/<vault hash>/` capped 500 MB, restricted a temp
+  folder per export, copies in `<output>-figures/` (marked), a marked folder
+  Trashed before the next export unless another output uses it, a user's
+  folder never; the MENU's PDF now built apart too (only the PDF lands).
+  `smoke/export-cache-scenario.js` + `export-cache-check.mjs`.
+- ◆ Open, Clew-boss's to decide: a FOREIGN `<output>-figures/` (the user's
+  own folder of that name) makes the engine copy nothing; trusted, the
+  output then points into the export cache (works here, not portable);
+  restricted, at the removed temp folder (its diagrams broken). Readable
+  warning only, for now. Options sent: keep that; or an engine option naming
+  the figures folder (so Clew could use `-figures-2/`); or refuse such an
+  export by name.
+- Step 3, Guide/Dashboards.md's `INPUT[number:target]` (line 55): reading
+  view, live edit and site export fine (Clew's Meta Bind claims it); EVERY
+  note export (HTML, LaTeX, PDF; menu and `clew export`) fails at once,
+  "Cannot read properties of undefined (reading 'trim') … markedjs". Not
+  patched. ◆ jmarkdown `ff7facd` fixes it — vendor it when at-migration is
+  fast-forwarded to it (it was not, 2026-10-10 afternoon), npm test, then
+  re-run the step-3 check (exports must work) and send Clew-boss the hash;
+  add Dashboards.md to export-links-scenario then.
+- Book build timing (Clew-boss's ask, numbers only): Signals scaled to 40
+  chapters, 185,668 words, through export-book.js on an M4 Max — split HTML
+  3.2 s (engine worker peak ~700 MB), LaTeX 1.25 s (~285 MB), PDF 22.9 s
+  first / 6.8 s after an edit (latexmk reruns over build/; lualatex ~230 MB);
+  one chapter edited = the same full build (no incremental). Fixed cost of
+  any engine export ~0.55–0.6 s (a one-line note), so ~65 ms a chapter for
+  HTML, ~18 ms for LaTeX. A concurrent latex-compile suite of another
+  session ran during it. iPad path NOT measured (Clew-iOS's tree).
+- Answered jmarkdown's phase-3 questions (book-map shape, transport lean for
+  parts/matter, site-section needs if Q2 says yes, the print PDF's selectors
+  as a contract, option C unmeasured → now measured above).
 
 **2026-10-09: book mode phase 2 — DONE, reported to Clew-boss** (approved
 plan; CLAUDE.md "Books, phase 2" is the durable account):
@@ -40,10 +95,6 @@ Perf (40 chapters × 4.5k words): keystroke median 5.3 ms / p90 7.4 in-app
   the DevTools protocol, a temp profile: the real safeStorage — it created the
   login Keychain's "Clew Safe Storage" item); Print PDF on the shipped demo
   book → 5 pages, a chapter a page. out-dev keeps dev.8–dev.10; dev.7 Trashed.
-- Postscript branch, at the 0.4.0 re-pin (Clew-boss, waiting for the GitHub
-  numbers): the notices' Ghostscript row names the release's third asset,
-  `mp-tikz-wasm-ghostscript-0.4.0-source.tar.gz`, as the source offer beside
-  SOURCE.md; the manifest may record its URL; nothing downloaded or staged.
 - Phase 3, the piece that needs no answer — the WHOLE-BOOK PRINT PDF (CLAUDE.md
   "Books, phase 3"): built, `smoke/book-print-scenario.js`; a note's print
   identical before/after (pages, pdftotext, pixels). Parts/matter (Q1) and the
@@ -66,12 +117,6 @@ Perf (40 chapters × 4.5k words): keystroke median 5.3 ms / p90 7.4 in-app
   keeps its key there (denied → the session only). Clew-iOS implements the
   Keychain half at its next sync; Clew-docs gets the manual notice from
   Clew-boss. `smoke/app-sweep.sh` runs every app scenario.
-- ◆ NEXT: the diagram cache "Outside" — APPROVED plan (trusted:
-  <userData>/export-cache/<vault id>, capped; restricted: a per-export temp
-  folder; copyFigures on; Trash only a `-figures/` folder carrying the
-  `.jmarkdown-figures` marker; PDF exports leave only the PDF). Waits for
-  jmarkdown at-migration `d134995` (cacheDir/copyFigures); tell Clew-boss
-  before any stopgap.
 - A manifest that only asks for MORE is asked without a reload again
   (`EV_APP_ASK`), so §9b's live `grant-changed` reaches a running app — lost
   since 917303b (found by the app sweep, fixed as Clew-boss's approved small
