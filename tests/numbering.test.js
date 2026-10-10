@@ -42,6 +42,17 @@ test('::: forms are the engine\'s generic container: no number, no count, a refe
 	assert.equal(n.lines.has(5), false, 'no head number for :::corollary');
 });
 
+test('the @begin sigils (`.name`, `<name>`) change nothing for a known name; an unknown one counts nothing', () => {
+	// The engine's numbers for this text (vendored 21dee42): 1 1 ?? 2 1 1. An
+	// unknown name is `?` here as it is without the sigil — the engine's
+	// registry, not the sigil, decides (a plugin may register `note`).
+	const n = num('@begin(.figure)[Cap]{#f1}\nF\n@end(figure)\n\n@begin( <lemma> )[L]{#l1}\nL\n@end(<lemma>)\n\n@begin(<note>){#n}\nN\n@end(note)\n\n@begin(theorem){#t}\nT\n@end(theorem)\n\n@begin(<equation>){#e1}\nx=1\n@end(equation)\n\n@begin(<table>)[TC]{#t1}\n| a |\n@end(.table)\n');
+	assert.deepEqual(['f1', 'l1', 'n', 't', 'e1', 't1'].map((k) => refDisplay(n, k, 'ref').text), ['1', '1', '?', '2', '1', '1']);
+	assert.equal(refDisplay(n, 'n', 'ref').state, 'uncounted');
+	assert.equal(n.labels.get('l1').type, 'lemma');
+	assert.equal(headText(n.lines.get(5)), 'Lemma 1');
+});
+
 test('equations: @begin(equation) only; $$ is unnumbered; a label inside is not one', () => {
 	const n = num('$$\nx\n$$\n\n@begin(equation){#a}\ny @label[inside]\n@end(equation)\n\n\\[z\\]\n\n@begin(equation){id=eq:b}\nw\n@end(equation)\n');
 	assert.deepEqual([n.labels.get('a').number, n.labels.get('eq:b').number], ['1', '2']);

@@ -246,6 +246,14 @@ R
 d
 :::
 
+@begin(<figure>)[Sigil]{#fig-d2}
+d2
+@end(figure)
+
+@begin( .lemma )[Dot]{#lem-d2}
+L
+@end(<lemma>)
+
 @begin(equation){#eq-d1}
 y
 @end(equation)

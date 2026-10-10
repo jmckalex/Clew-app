@@ -91,6 +91,15 @@ test('labels: every source form, their hosts, and what is not a label', () => {
 	assert.equal(by.fnl.kind, 'footnote');
 });
 
+test('labels: the @begin sigils (`.name`, `<name>`) keep a known name\'s kind', () => {
+	const text = '@begin(<figure>)[Cap]{#f}\nx @label[inner]\n@end(figure)\n\n@begin( .theorem )[T]{#t}\ny\n@end(<theorem>)\n\n@begin(<note>){#n}\nz\n@end(note)\n';
+	const by = Object.fromEntries(extractNoteMetadata(text).labels.map((l) => [l.key, l]));
+	assert.deepEqual([by.f.kind, by.f.title, by.f.host], ['figure', 'Cap', { from: 1, to: 3 }]);
+	assert.deepEqual([by.inner.kind, by.inner.host], ['figure', { from: 1, to: 3 }]);
+	assert.deepEqual([by.t.kind, by.t.host], ['theorem', { from: 5, to: 7 }]);
+	assert.equal(by.n.kind, 'env:note');
+});
+
 test('citations: the \\cite family, multi-key, pandoc forms flagged, and what is not one', () => {
 	const text = 'A \\cite{alexander2023} and \\citep[p. 3][]{knuth84, lamport94} and \\fullcite*{x}.\n\n'
 		+ 'Pandoc [see @smith2020, p. 4; @jones] and bare @doe2019. but me@example.com is mail.\n\n'
