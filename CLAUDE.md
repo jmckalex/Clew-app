@@ -102,7 +102,7 @@ note API, plugins, and every settings key.
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
   dialect scanner's constructs and grammar, live edit's model, reveal rule,
-  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band, figure errors, the PDF save guard, deep links and the clew command, the shareable callout resolver, the device word, where notices sit, pinned apps, the demo vault's updates (untouched files by hash and by shipped history, a record-less copy dated by its files), the ticker's live rules, origin-bound network grants, books (the master reader, chapter titles, words and status, the index's chapter lists and their renames, a build's warnings placed, a book's numbers, a book's citation header), an app's secrets (the store, the methods) — 1189 tests. DOM/UI work is
+  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band, figure errors, the PDF save guard, deep links and the clew command, the shareable callout resolver, the device word, where notices sit, pinned apps, the demo vault's updates (untouched files by hash and by shipped history, a record-less copy dated by its files), the ticker's live rules, origin-bound network grants, books (the master reader, chapter titles, words and status, the index's chapter lists and their renames, a build's warnings placed, a book's numbers, a book's citation header), an app's secrets (the store, the methods), the system font index (family names, the cache) — 1192 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
@@ -357,7 +357,7 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   build's `bundles/index.json` lists the bundle (a findable luaotfload
   costs every LuaTeX run ~180 ms; asking for a bundle that is not there
   fails the whole engine — 0.2.1 had none, so a build staged from it
-  refuses marked figures BY NAME; 0.3.0 and the pinned 0.3.1 have it). The list is read once by auto.js, so a marked
+  refuses marked figures BY NAME; 0.3.0 and later have it). The list is read once by auto.js, so a marked
   figure arriving later reloads the preview once. The faces come from
   `main/note-fonts.js`: extracted at app start from the machine's own font
   folder (`Avenir Next.ttc` is a COLLECTION, and a collection is garbled
@@ -368,12 +368,13 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   addFiles` BEFORE the loader is injected, and named to the render worker
   through `CLEW_NOTE_FONTS`. A site export bakes such figures as OUTLINES
   (`figure-bake.js`), never embedding Apple's or Microsoft's face in a
-  published page. The manifest pins mp-tikz-wasm 0.3.1 (2026-10-03; 0.3.0,
-  2026-09-28, was the first release carrying the `opentype` bundle), so the
+  published page. The manifest pins mp-tikz-wasm 0.4.0 (published 2026-10-10,
+  with its Ghostscript archive; 0.3.0, 2026-09-28, was the first release
+  carrying the `opentype` bundle), so the
   feature is live on every machine that stages from the pin, not only where
   the master is built — and staging prefers the master wherever it exists,
   so a build meant to carry the PIN sets `MPTIKZ_SRC=/nonexistent`.
-  **PostScript** (mp-tikz-wasm 0.4.0, 2026-10-09): PSTricks, EPS images,
+  **PostScript** (mp-tikz-wasm 0.4.0, built 2026-10-09, pinned as published 2026-10-10): PSTricks, EPS images,
   graphicx's `\rotatebox`/`\scalebox` and raw `\special{ps:}` render through
   Ghostscript — the `ghostscript` bundle (dvips headers, PSTricks; in the main
   archive) plus an AGPL module, `ghostscript/gs.mjs` + `gs.wasm` (12.5 MB), in
@@ -382,7 +383,9 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   bundle AND its 774-byte `ghostscript/SOURCE.md` answers; the library fetches
   gs.wasm only for a figure whose DVI carries such PostScript (measured: a note
   without any never loads it). Leave the module out of a build (Clew-iOS's
-  App Store question) and nothing asks for it. `figure-bake.js` does the same
+  App Store question) and nothing asks for it. THIRD-PARTY-NOTICES offers
+  its source as the release's own `-source.tar.gz` (the pin's
+  `ghostscript.source`, named by gen-notices.js, never staged). `figure-bake.js` does the same
   for site export; `asset-stamp.js` stamps gs.wasm (its URL has no version,
   unlike a bundle file's `?v=<sha>`, which protocol.js never looks at —
   `url.pathname` only). `smoke/postscript-scenario.js`. **A family a figure

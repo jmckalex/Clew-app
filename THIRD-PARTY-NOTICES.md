@@ -74,16 +74,16 @@ part keeps its own licence:
 | pdfTeX and kpathsea (`tex.wasm`) | GPL-2.0-or-later / LGPL-2.1-or-later | TeX Live 2025 (https://tug.org/texlive/) |
 | LuaTeX (`luatex.wasm`) | GPL-2.0-or-later (with Lua 5.3, MIT, and others) | TeX Live 2025 |
 | dvisvgm (`dvisvgm.wasm`) | GPL-3.0-or-later (with FreeType, potrace and others) | https://github.com/mgieseki/dvisvgm |
-| Ghostscript (`ghostscript/gs.mjs`, `gs.wasm`), when present | **GNU AGPL v3** (`ghostscript/COPYING`, `ghostscript/LICENSE`) | Ghostscript 10.08.0 (https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/tag/gs10080) and the port's build, as `ghostscript/SOURCE.md` pins them |
+| Ghostscript (`ghostscript/gs.mjs`, `gs.wasm`), when present | **GNU AGPL v3** (`ghostscript/COPYING`, `ghostscript/LICENSE`) | the corresponding source, https://github.com/jmckalex/mp-tikz-wasm/releases/download/v0.4.0/mp-tikz-wasm-ghostscript-0.4.0-source.tar.gz (SHA-256 2096e4fc00b79ec80d11a3984009c606907cadb92456f93ed62e56d0d494f84a), and Ghostscript 10.08.0 (https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/tag/gs10080) and the port's build, as `ghostscript/SOURCE.md` pins them |
 | TeX macro packages and fonts (`bundles/`) | LPPL 1.3c and package-specific free licences; Knuth's, AMS and GUST font licences; dvips's headers GPL | TeX Live 2025 |
 
 **Where the source is offered.** The corresponding source of every engine —
 the upstream sources, the patches and a reproducible build — is in the
 mp-tikz-wasm repository and attached to the GitHub release Clew pins
 (`src/shared/mptikz-manifest.json`: the archive and its SHA-256), and
-Ghostscript's as `ghostscript/SOURCE.md` names it, beside the module in
-every copy of Clew that ships it. mp-tikz-wasm's own `NOTICE.md` has the
-full table.
+Ghostscript's in the release's own source archive, `mp-tikz-wasm-ghostscript-0.4.0-source.tar.gz`, as
+`ghostscript/SOURCE.md` names it, beside the module in every copy of Clew
+that ships it. mp-tikz-wasm's own `NOTICE.md` has the full table.
 
 ### Components shipping no licence file
 

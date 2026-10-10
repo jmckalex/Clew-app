@@ -174,9 +174,13 @@ out('SIL Open Font License. Reserved font names may not be reused, and the fonts
 out('may not be sold on their own. Bundling them in an application is expressly');
 out('permitted.');
 out();
-// The figure engines: not an npm dependency, so no manifest to read — the
-// staged tree (Resources/mptikz) is mp-tikz-wasm's release, and its own
-// NOTICE.md is the source of these rows.
+// The figure engines: not an npm dependency, so no package manifest to read —
+// the staged tree (Resources/mptikz) is mp-tikz-wasm's release, and its own
+// NOTICE.md is the source of these rows. The pin names the release, and since
+// 0.4.0 the Ghostscript module's corresponding source as a release asset of
+// its own, which the row offers (never downloaded or staged by Clew).
+const mptikz = JSON.parse(fs.readFileSync(path.join(root, 'src', 'shared', 'mptikz-manifest.json'), 'utf8'));
+const gsSource = mptikz.ghostscript?.source;
 out('### The figure engines — mp-tikz-wasm (GPL, LGPL, AGPL)');
 out();
 out('TikZ, MetaPost, LaTeX and plain-TeX figures are typeset by **mp-tikz-wasm**');
@@ -192,16 +196,16 @@ out('| MetaPost (`mplib.wasm`) | public domain; with `avl.c`, LGPL-3.0-or-later 
 out('| pdfTeX and kpathsea (`tex.wasm`) | GPL-2.0-or-later / LGPL-2.1-or-later | TeX Live 2025 (https://tug.org/texlive/) |');
 out('| LuaTeX (`luatex.wasm`) | GPL-2.0-or-later (with Lua 5.3, MIT, and others) | TeX Live 2025 |');
 out('| dvisvgm (`dvisvgm.wasm`) | GPL-3.0-or-later (with FreeType, potrace and others) | https://github.com/mgieseki/dvisvgm |');
-out('| Ghostscript (`ghostscript/gs.mjs`, `gs.wasm`), when present | **GNU AGPL v3** (`ghostscript/COPYING`, `ghostscript/LICENSE`) | Ghostscript 10.08.0 (https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/tag/gs10080) and the port\'s build, as `ghostscript/SOURCE.md` pins them |');
+out(`| Ghostscript (\`ghostscript/gs.mjs\`, \`gs.wasm\`), when present | **GNU AGPL v3** (\`ghostscript/COPYING\`, \`ghostscript/LICENSE\`) | ${gsSource ? `the corresponding source, ${gsSource.url} (SHA-256 ${gsSource.sha256}), and ` : ''}Ghostscript 10.08.0 (https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/tag/gs10080) and the port's build, as \`ghostscript/SOURCE.md\` pins them |`);
 out('| TeX macro packages and fonts (`bundles/`) | LPPL 1.3c and package-specific free licences; Knuth\'s, AMS and GUST font licences; dvips\'s headers GPL | TeX Live 2025 |');
 out();
 out('**Where the source is offered.** The corresponding source of every engine —');
 out('the upstream sources, the patches and a reproducible build — is in the');
 out('mp-tikz-wasm repository and attached to the GitHub release Clew pins');
 out('(`src/shared/mptikz-manifest.json`: the archive and its SHA-256), and');
-out('Ghostscript\'s as `ghostscript/SOURCE.md` names it, beside the module in');
-out('every copy of Clew that ships it. mp-tikz-wasm\'s own `NOTICE.md` has the');
-out('full table.');
+out(`Ghostscript's${gsSource ? ` in the release's own source archive, \`${gsSource.archive}\`,` : ''} as`);
+out('`ghostscript/SOURCE.md` names it, beside the module in every copy of Clew');
+out('that ships it. mp-tikz-wasm\'s own `NOTICE.md` has the full table.');
 out();
 if (noText.length) {
 	out('### Components shipping no licence file');
