@@ -1127,7 +1127,10 @@ except where the selection touches a construct. The durable design is
   carried by `main/citation-header.js`, the bibliography path made
   absolute): a `\cite` in an embed stayed raw in live edit until
   2026-09-29. The layer ignores the note's own saves except when those keys
-  change, which re-renders every frame.
+  change, which re-renders every frame — or its FRONT MATTER changes, which
+  re-renders the blocks that read the vault (`fragment-deps.js`'s dependent
+  ones): a dataviewjs `dv.current()`, a query's `this`, read this note's
+  fields from disk (the demo dashboard's chart, 2026-10-10).
 - **The toolbar** is `toolbar-spec.js` (items are COMMAND ids),
   `toolbar-state.js` / `toolbar-layout.js` (pure, tested), the
   `<clew-editor-toolbar>` element, `popover.js`/`popovers.js` (Insert and
