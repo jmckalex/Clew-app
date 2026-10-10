@@ -103,7 +103,7 @@ note API, plugins, and every settings key.
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
   dialect scanner's constructs and grammar, live edit's model, reveal rule,
-  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band, figure errors, the PDF save guard, deep links and the clew command, the shareable callout resolver, the device word, where notices sit, pinned apps, the demo vault's updates (untouched files by hash and by shipped history, a record-less copy dated by its files), the ticker's live rules, origin-bound network grants, books (the master reader, chapter titles, words and status, the index's chapter lists and their renames, a build's warnings placed, a book's numbers, a book's citation header), an app's secrets (the store, the methods), the system font index (family names, the cache), an export's figures outside the vault (the engine's marker, which folder may go, the prune) and what draws them (the setting per trust, the TeX tools' refusing stand-ins), a chapter proof (its files' names, whether a full run can number it) — 1209 tests. DOM/UI work is
+  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band, figure errors, the PDF save guard, deep links and the clew command, the shareable callout resolver, the device word, where notices sit, pinned apps, the demo vault's updates (untouched files by hash and by shipped history, a record-less copy dated by its files), the ticker's live rules, origin-bound network grants, books (the master reader, chapter titles, words and status, the index's chapter lists and their renames, a build's warnings placed, a book's numbers, a book's citation header), an app's secrets (the store, the methods), the system font index (family names, the cache), an export's figures outside the vault (the engine's marker, which folder may go, the prune) and what draws them (the setting per trust, the TeX tools' refusing stand-ins), a chapter proof (its files' names, whether a full run can number it), what the Insert commands write (the `@` forms, never a colon directive) — 1215 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
@@ -1811,6 +1811,22 @@ except where the selection touches a construct. The durable design is
   strong, `**x**` intense, `/x/` italic. Mermaid's native forms are
   `:::mermaid`/`@begin(mermaid)`; the ```mermaid fence works only because
   Clew's `obsidian-fences.js` adds it.
+- **The colon directives are being retired** (`:::name … :::`, `::name[…]`,
+  `:name[…]`; jmarkdown, the owner's decision 2026-10-10, three phases agreed
+  with Clew-boss). Phase 1 (done): Clew WRITES none — every Insert reads
+  `shared/format-spec.js#BLOCK_INSERTS`: `@begin(name)` … `@end(name)` for a
+  name the engine knows, the generic container `@begin(<name>)` … `@end(name)`
+  (the `<…>` sigil forces the element `<name>`, as `:::name` printed), `@today`
+  (`tests/format-inserts.test.js`, `smoke/insert-forms-scenario.js`). A colon
+  block is NOT always its `@begin` twin: for a name the engine numbers
+  (theorem family, proof, figure, table, equation) `:::x` is a bare,
+  unnumbered `<x>` that drops its caption, `@begin(x)` the numbered
+  environment — so "Insert environment…" now gives Theorem 1. The sigils never
+  change a known name (`@begin(<figure>)` is Figure 1), and numbering.js /
+  note-metadata.js read them as the engine does. Everything still READS colon
+  forms until the deletion (phase 3, in lockstep with jmarkdown and Clew-iOS,
+  on the owner's date); phase 2 is a "Convert this vault" flow on the engine's
+  converter. Do not add a writer of colon forms.
 - **Engine embedding gotchas:** never emit `data-target` attributes in
   extension output — the engine's sources-and-targets post-pass deletes such
   elements (Clew uses `data-href`). The engine's bib indexer splits `.bib`

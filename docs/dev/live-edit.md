@@ -1561,9 +1561,10 @@ for every canonical type in `CALLOUT_TYPES` (replaces/extends the five
 (args `{rows, cols}`; the fixed `format:table-2/3/4` stay),
 `format:code-fence` gains args `{lang}`, `format:math-env` (args `{name}`),
 `format:figure` (args `{kind: 'tikz'|'latex'|'tex'|'metapost'|'mermaid', show}`),
-`format:env` (args `{name}` → `:::name` wrap; `@begin` form when the
-selection's document already uses `@begin` anywhere — a small heuristic,
-documented), `editor:toggle-task`.
+`format:env` (args `{name}` → `@begin(name)` … `@end(name)`; until
+2026-10-10 a `:::name` wrap unless the document already used `@begin` — the
+colon directives are being retired, and `:::theorem` was never the numbered
+environment), `editor:toggle-task`.
 
 As built (Phase 6): the fence command that takes a language is a NEW id,
 `format:code-fence-lang {lang}` (the existing `format:code-fence` keeps its

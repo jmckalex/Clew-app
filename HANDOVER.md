@@ -1,4 +1,4 @@
-# Handover — 2026-10-10 (origin/main 416c031, pushed; LOCAL: d134995 vendored, the postscript merge + mp-tikz 0.4.0, the dashboard chart + live-edit fix, the diagram cache outside the vault, Proof this chapter, the figure engine in exports — NOT pushed; dev.10 = fb3635a)
+# Handover — 2026-10-10 (origin/main 416c031, pushed; LOCAL: d134995 vendored, the postscript merge + mp-tikz 0.4.0, the dashboard chart + live-edit fix, the diagram cache outside the vault, Proof this chapter, the figure engine in exports, the colon retirement's phase 1 — NOT pushed; dev.10 = fb3635a)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it); the live edit design AS BUILT is
@@ -109,10 +109,30 @@ the 21dee42 vendor `cc02f40`, the figure engine in exports `2cc6d89`
   own figure fences print as code in every export) is with the owner.
 - **jmarkdown retires the colon directives** (`:name[…]`, `::name[…]`,
   `:::name … :::` → the `@` forms; the owner's decision, 2026-10-10, on
-  jmarkdown's branch `retire-colon-directives` — nothing on at-migration
-  until the owner OKs it). HOLD: build nothing until jmarkdown's converter
-  and per-name differential arrive AND the owner answers the migration
-  question (Clew-boss). Measured on 21dee42 and sent to both: NOT a rename
+  jmarkdown's branch `retire-colon-directives`). The owner decided the
+  migration: generic `:::note` → `@begin(<note>)` (byte-identical), names
+  @begin knows → the REAL numbered environments (flagged "output changes"),
+  the deletion only after Clew writes no colon form AND has a vault
+  converter, on the owner's date. Clew-boss approved Clew's three phases:
+  **PHASE 1 DONE** — `42d6930` numbering.js/note-metadata.js read @begin's
+  `.`/`<…>` sigils as the engine does (`@begin(<figure>)` IS Figure 1;
+  book-parity keys=33 mismatches=[] both modes, the old readers failed it on
+  the two sigil labels); `acd9c27` every Insert writes the @ forms from
+  `shared/format-spec.js#BLOCK_INSERTS` (generic `@begin(<name>)` …
+  `@end(name)` — the closer Clew-boss chose pending jmarkdown's converter;
+  change it and the test if the converter differs), `@today`,
+  RICH_ENVIRONMENTS + game/Mathematica/markdown-demo, @begin(HTML)/(comment)
+  flagged as their twins; the one output change is "Insert environment…" →
+  numbered Theorem 1 (`insert-forms-scenario`). Found, not fixed (a build
+  order is the owner's): the Game Matrix Insert's sample body is not the
+  engine's game syntax (`&`-separated) — one-column rows, as always.
+  **PHASE 2** (approved in principle; waits for jmarkdown's converter as an
+  import-free module and Clew-boss's check): "Convert this vault" — dry run,
+  output changes itemised, never automatic, backups + note history, guarded
+  writes, undo only notes still as written; restricted vaults offered (text
+  only); iOS in principle; measure on the 5k vault + a converted round trip.
+  **PHASE 3** (lockstep, the owner's date): the list below. Measured on
+  21dee42 and sent to both: NOT a rename
   for theorem/lemma/definition/proof/equation/figure/table — the colon form
   is a bare unnumbered element that drops its caption, `@begin` the numbered
   environment (a converted `:::theorem[X]` becomes "Theorem 1 (X).", later
