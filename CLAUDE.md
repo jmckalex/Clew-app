@@ -102,7 +102,7 @@ note API, plugins, and every settings key.
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
   dialect scanner's constructs and grammar, live edit's model, reveal rule,
-  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band, figure errors, the PDF save guard, deep links and the clew command, the shareable callout resolver, the device word, where notices sit, pinned apps, the demo vault's updates (untouched files by hash and by shipped history, a record-less copy dated by its files), the ticker's live rules, origin-bound network grants, books (the master reader, chapter titles, words and status, the index's chapter lists and their renames, a build's warnings placed, a book's numbers, a book's citation header), an app's secrets (the store, the methods), the system font index (family names, the cache) — 1192 tests. DOM/UI work is
+  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band, figure errors, the PDF save guard, deep links and the clew command, the shareable callout resolver, the device word, where notices sit, pinned apps, the demo vault's updates (untouched files by hash and by shipped history, a record-less copy dated by its files), the ticker's live rules, origin-bound network grants, books (the master reader, chapter titles, words and status, the index's chapter lists and their renames, a build's warnings placed, a book's numbers, a book's citation header), an app's secrets (the store, the methods), the system font index (family names, the cache), an export's figures outside the vault (the engine's marker, which folder may go, the prune) — 1200 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
@@ -659,7 +659,8 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   document made by the ENGINE — processFile's `chapters`, each chapter
   handed relative to the master — never assembled here; LaTeX or PDF via
   LaTeX into `build/` beside the master, named by it, LaTeX's intermediates
-  there too, and HTML as PAGES (D4; `htmlLayout: 'split'`, jmarkdown
+  there too (and the engine's figures, copied into `build/<master>-figures/`,
+  which the .tex and the pages share — export.js#figureCache), and HTML as PAGES (D4; `htmlLayout: 'split'`, jmarkdown
   2ac7048): asked for `build/<master>.html`, the engine writes
   `build/<master>/` — index.html, a page per chapter, references.html. Clew
   OWNS that folder: the previous one goes to the Trash before each build
@@ -1567,9 +1568,11 @@ except where the selection touches a construct. The durable design is
   LuaLaTeX (xeCJK and the XeTeX-only ones XeLaTeX), anything else pdfLaTeX
   as before; the `latexEngine` setting forces one. The owner's global config
   loads fontspec, so every such export used to fail under `latexmk -pdf`.
-  Compiled with the NOTE's folder on BIBINPUTS/TEXINPUTS (the .tex is
-  written beside the chosen output — the vault root by default — and
-  `\bibliography{refs}` is the note's: every citation came out undefined),
+  Compiled with the NOTE's folder on BIBINPUTS/TEXINPUTS (a PDF's .tex is
+  built in a temporary folder, removed afterwards, so ONLY the PDF lands
+  where it was asked for — the clew command's since 2026-10-04, the menu's
+  since 2026-10-10 — and `\bibliography{refs}` is the note's: every citation
+  came out undefined),
   and since the additive Bibliography every bibliography's folder too
   (`citation-header.js#bibliographyDirs`: the note's files, the configured
   ones as the engine resolves them from the export's working folder, the
@@ -1583,7 +1586,26 @@ except where the selection touches a construct. The durable design is
   `replace` drops it. Before that, a note citing only the vault's file
   exported every such citation undefined. A PDF is accepted only if THIS run wrote
   it; a failure names the engine, why it was chosen and the log's first
-  error. **Build warnings** — the engine's, incl. its LaTeX-export lint
+  error. **The engine's figures are cached OUTSIDE the vault** (the owner's
+  "Outside", 2026-10-06; jmarkdown d134995 processFile `cacheDir` /
+  `copyFigures`; `main/export-cache.js`, `export.js#figureCache`): an export
+  makes the engine render mermaid, MetaPost, TiKZ, video posters and
+  Mathematica itself, and until 2026-10-10 it kept them in `mermaid/`,
+  `MetaPost/`, … beside the NOTE, in the vault. Now a trusted vault's go to
+  `<userData>/export-cache/<hash of its identity>/` (reused, every vault
+  together capped at 500 MB, least recently used pruned once no export
+  runs), a restricted vault's to a temporary folder of the export's own,
+  removed when it ends. `copyFigures` is always on: the engine copies what
+  an output refers to into `<output base>-figures/<kind>/` beside it, marked
+  `.jmarkdown-figures`, so a kept .tex or .html stands on its own (measured:
+  compiles, images load, with the cache deleted). Before an export Clew
+  Trashes a MARKED folder of that name — never one the user made (the engine
+  then copies nothing there and warns; `explainFiguresWarnings` says it for
+  a reader) — and never while another export it serves is there (a note's
+  .tex and .html share one, a book's pages too). A book's go to
+  `build/<master>-figures/`. Folders the engine left in vaults before are
+  the user's files now, untouched. `smoke/export-cache-scenario.js`.
+  **Build warnings** — the engine's, incl. its LaTeX-export lint
   (`latex-export [code]: …`, jmarkdown 0631c42, on EVERY build; `Silence
   warnings:` turns codes off) — ride on `EV_RENDER_DONE` and an export's
   result; `renderer/build-warnings.js` keeps them per note and says them

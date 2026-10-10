@@ -33,11 +33,13 @@ clew export --latex|--pdf|--html <note> [--out <file or folder>]
   it names without asking; `export` runs under the vault's trust exactly as
   Export in the menu does (`exportNote({ trusted })` — a restricted vault's
   export has `Run note code` off). It writes ONLY the artefact asked for
-  (2026-10-04, Clew-docs): a PDF is built in a temporary folder
-  (`exportNote({ buildApart })` — the note's folder on TEXINPUTS, every
-  bibliography's on BIBINPUTS, as always) that is removed afterwards, so no
-  .tex/.aux/.log/.fls/.out/.fdb_latexmk/.bbl/.blg lands beside the note;
-  `--latex` writes the .tex alone. `--out` names a file, or a folder (one
+  (2026-10-04, Clew-docs): a PDF is built in a temporary folder (the note's
+  folder on TEXINPUTS, every bibliography's on BIBINPUTS, as always) that is
+  removed afterwards, so no .tex/.aux/.log/.fls/.out/.fdb_latexmk/.bbl/.blg —
+  nor the copies of its figures — lands beside the note; the menu's PDF
+  export does the same since 2026-10-10 (the diagram cache moved out of the
+  vault, export-cache.js). `--latex` writes the .tex alone, with its
+  `-figures/` folder when it has diagrams. `--out` names a file, or a folder (one
   that exists, or written with a trailing `/`), relative to the command's
   working folder, `~` meaning home; without it, beside the note. A failure
   still names the engine and the log's first error (read before the folder
