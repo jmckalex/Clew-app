@@ -1,4 +1,4 @@
-# Handover — 2026-10-09 night (origin/main e430bed, pushed; LOCAL: book mode phase 2 + the whole-book print PDF, NOT pushed; the diagram cache waits for jmarkdown)
+# Handover — 2026-10-09 night (origin/main e430bed, pushed; LOCAL: book mode phase 2 + the whole-book print PDF + two pill fixes, NOT pushed; dev.10 = fb3635a, boot-tested; the diagram cache waits for jmarkdown)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it); the live edit design AS BUILT is
@@ -29,6 +29,21 @@ Perf (40 chapters × 4.5k words): keystroke median 5.3 ms / p90 7.4 in-app
   note's own header); `bookCitationHeader` is pure, in main/citation-header.js.
 - Clew-boss checked phase 2 (6fc68ac, 1189/1189) and decided: the master's
   reading view gets the line too (`76dd382`); the push waits on the owner.
+- c115418 / fb3635a (2026-10-10): citation pills follow a header edited in an
+  editor — a chapter's the master's (Clew-iOS's finding), a note's its own
+  (Clew-boss's approved fix): both keyed on the header AS SAVED.
+- **dev.10 (0.12.1-dev.10) from `fb3635a`**: `out-dev/Clew-0.12.1-dev.10-
+  arm64.dmg` 231,130,691 bytes, notarised (198efea2…), stapled, spctl both,
+  stamp matches; mptikz = release 0.3.1, no Ghostscript (main, not
+  postscript). BOOT TEST PASSED (figures 13, live edit 7/7). Packaged checks:
+  an app secret set → quit → relaunched → `match` (OUTSIDE the harness, over
+  the DevTools protocol, a temp profile: the real safeStorage — it created the
+  login Keychain's "Clew Safe Storage" item); Print PDF on the shipped demo
+  book → 5 pages, a chapter a page. out-dev keeps dev.8–dev.10; dev.7 Trashed.
+- Postscript branch, at the 0.4.0 re-pin (Clew-boss, waiting for the GitHub
+  numbers): the notices' Ghostscript row names the release's third asset,
+  `mp-tikz-wasm-ghostscript-0.4.0-source.tar.gz`, as the source offer beside
+  SOURCE.md; the manifest may record its URL; nothing downloaded or staged.
 - Phase 3, the piece that needs no answer — the WHOLE-BOOK PRINT PDF (CLAUDE.md
   "Books, phase 3"): built, `smoke/book-print-scenario.js`; a note's print
   identical before/after (pages, pdftotext, pixels). Parts/matter (Q1) and the
