@@ -22,8 +22,10 @@ after(() => fs.rmSync(tmpRoot, { recursive: true, force: true }));
 
 test('the stamp follows the engines, the bundle indexes and the app version, and nothing else', () => {
 	const dir = fs.mkdtempSync(path.join(tmpRoot, 'clew-stamp-'));
-	fs.mkdirSync(path.join(dir, 'bundles'));
-	for (const f of STAMP_FILES) fs.writeFileSync(path.join(dir, f), 'v1');
+	for (const f of STAMP_FILES) {
+		fs.mkdirSync(path.dirname(path.join(dir, f)), { recursive: true });
+		fs.writeFileSync(path.join(dir, f), 'v1');
+	}
 	fs.writeFileSync(path.join(dir, 'auto.js'), 'not part of the stamp');
 	const first = assetStamp(dir, '0.9.0');
 	assert.equal(assetStamp(dir, '0.9.0'), first, 'stable when nothing changed');
@@ -34,6 +36,11 @@ test('the stamp follows the engines, the bundle indexes and the app version, and
 	const index = path.join(dir, 'bundles', 'index.json');
 	fs.writeFileSync(index, 'v2 — longer');
 	assert.notEqual(assetStamp(dir, '0.9.0'), first, 'a changed bundle index is a different build');
+	// Ghostscript's module (0.4.0): its URL has no version, so a rebuilt one
+	// must change the stamp too.
+	const second = assetStamp(dir, '0.9.0');
+	fs.writeFileSync(path.join(dir, 'ghostscript', 'gs.wasm'), 'v2 — rebuilt');
+	assert.notEqual(assetStamp(dir, '0.9.0'), second, 'a rebuilt gs.wasm is a different build');
 	// An absent tree still stamps (as "missing"), so a machine with no engines does not throw.
 	assert.match(assetStamp(path.join(dir, 'nowhere'), '0.9.0'), /index\.js:-/);
 	fs.rmSync(dir, { recursive: true, force: true });

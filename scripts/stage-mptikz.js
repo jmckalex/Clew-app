@@ -25,6 +25,9 @@
 //      arrangement, minus the guesswork: the URL carries a version, so a
 //      mismatch means the wrong file rather than a new upstream build. The
 //      download is cached in mptikz-assets/.cache so a re-stage is free.
+//      From 0.4.0 a SECOND archive may be pinned beside it,
+//      `manifest.ghostscript` (Ghostscript's module, AGPL, which upstream
+//      ships apart): verified the same way and unpacked into the same tree.
 //
 // mptikz-assets/ is gitignored. In DEV nothing needs staging at all:
 // paths.js reads the master's dist directly (and CLEW_MPTIKZ_DIR overrides
@@ -74,7 +77,7 @@ function describeMaster() {
  */
 function masterIdentity() {
 	const mtimes = ['index.js', 'mplib.wasm', 'tex.wasm', 'dvisvgm.wasm', 'luatex.wasm',
-		path.join('bundles', 'index.json'), path.join('bundles', 'hot.json')]
+		path.join('bundles', 'index.json'), path.join('bundles', 'hot.json'), path.join('ghostscript', 'gs.wasm')]
 		.map((f) => {
 			try { return fs.statSync(path.join(master, f)).mtimeMs; } catch { return 0; }
 		});
@@ -166,9 +169,14 @@ if (fs.existsSync(path.join(master, 'index.js')) && fs.existsSync(path.join(mast
 }
 
 // ---- 2. the pinned release ------------------------------------------------
+// The main archive, and — from 0.4.0 — Ghostscript's module as an archive of
+// its own (`manifest.ghostscript`, AGPL, so upstream ships it apart), whose
+// dist/ghostscript/ unpacks into the same tree. Each is SHA256-pinned and
+// verified; a manifest without the second simply stages the first.
 
 const cache = path.join(dest, '.cache');
-const archive = path.join(cache, manifest.archive);
+const assets = [manifest, manifest.ghostscript].filter(Boolean);
+const pins = assets.map((a) => a.sha256);
 
 function sha256(file) {
 	const hash = crypto.createHash('sha256');
@@ -176,36 +184,53 @@ function sha256(file) {
 	return hash.digest('hex');
 }
 
-async function download() {
-	console.log(`stage-mptikz: fetching ${manifest.url} (${Math.round(manifest.bytes / 1e6)} MB)…`);
-	const res = await fetch(manifest.url, { redirect: 'follow' });
+async function download(asset, file) {
+	console.log(`stage-mptikz: fetching ${asset.url} (${Math.round(asset.bytes / 1e6)} MB)…`);
+	const res = await fetch(asset.url, { redirect: 'follow' });
 	if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
 	fs.mkdirSync(cache, { recursive: true });
-	fs.writeFileSync(archive, Buffer.from(await res.arrayBuffer()));
+	fs.writeFileSync(file, Buffer.from(await res.arrayBuffer()));
+}
+
+/** The asset's archive in the cache, fetched if need be and VERIFIED. */
+async function verified(asset) {
+	const file = path.join(cache, asset.archive);
+	if (!fs.existsSync(file)) await download(asset, file);
+	const digest = sha256(file);
+	if (digest !== asset.sha256) {
+		// REFUSE rather than "probably fine": the pin names one exact file.
+		fs.rmSync(file, { force: true });
+		throw new Error(`SHA256 mismatch for ${asset.archive}\n  expected ${asset.sha256}\n  got      ${digest}`);
+	}
+	return file;
 }
 
 const current = staged();
 if (!force && current?.source === 'release' && current.version === manifest.version
+	&& JSON.stringify(current.archives ?? [current.sha256]) === JSON.stringify(pins)
 	&& fs.existsSync(path.join(dest, 'index.js'))) {
 	console.log(`stage-mptikz: mptikz-assets/ already holds the pinned ${manifest.version}; nothing to do.`);
 	process.exit(0);
 }
 
 try {
-	if (!fs.existsSync(archive)) await download();
-	const digest = sha256(archive);
-	if (digest !== manifest.sha256) {
-		// REFUSE rather than "probably fine": the pin names one exact file.
-		fs.rmSync(archive, { force: true });
-		throw new Error(`SHA256 mismatch for ${manifest.archive}\n  expected ${manifest.sha256}\n  got      ${digest}`);
+	const kept = [];
+	for (const asset of assets) {
+		const file = await verified(asset);
+		kept.push([file, fs.readFileSync(file)]);
 	}
-	const keep = fs.readFileSync(archive);
 	fs.rmSync(dest, { recursive: true, force: true, maxRetries: 3 });
 	fs.mkdirSync(cache, { recursive: true });
-	fs.writeFileSync(archive, keep);
-	// dist/ inside the archive IS the staged tree (two components deep).
-	execFileSync('tar', ['xzf', archive, '-C', dest, '--strip-components=2', manifest.unpackedDir], { stdio: 'inherit' });
-	report({ source: 'release', version: manifest.version, from: manifest.url, describe: `pinned ${manifest.tag}`, sha256: manifest.sha256 });
+	for (const [file, bytes] of kept) fs.writeFileSync(file, bytes);
+	// dist/ inside each archive IS (part of) the staged tree, two components deep.
+	for (const asset of assets) {
+		execFileSync('tar', ['xzf', path.join(cache, asset.archive), '-C', dest, '--strip-components=2', asset.unpackedDir], { stdio: 'inherit' });
+	}
+	report({
+		source: 'release', version: manifest.version, from: manifest.url,
+		describe: `pinned ${manifest.tag}${manifest.ghostscript ? ' + ghostscript' : ''}`,
+		sha256: manifest.sha256, archives: pins,
+	});
 } catch (err) {
 	const message = `stage-mptikz: no mp-tikz-wasm build staged — ${String(err.message ?? err)}`;
 	if (required) {

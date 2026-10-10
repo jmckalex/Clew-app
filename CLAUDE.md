@@ -372,7 +372,35 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   2026-09-28, was the first release carrying the `opentype` bundle), so the
   feature is live on every machine that stages from the pin, not only where
   the master is built — and staging prefers the master wherever it exists,
-  so a build meant to carry the PIN sets `MPTIKZ_SRC=/nonexistent`. The
+  so a build meant to carry the PIN sets `MPTIKZ_SRC=/nonexistent`.
+  **PostScript** (mp-tikz-wasm 0.4.0, 2026-10-09): PSTricks, EPS images,
+  graphicx's `\rotatebox`/`\scalebox` and raw `\special{ps:}` render through
+  Ghostscript — the `ghostscript` bundle (dvips headers, PSTricks; in the main
+  archive) plus an AGPL module, `ghostscript/gs.mjs` + `gs.wasm` (12.5 MB), in
+  an archive of its own (`manifest.ghostscript`, staged into the same tree).
+  `figures.js#stagedBuild` asks for `+ghostscript` whenever the build lists the
+  bundle AND its 774-byte `ghostscript/SOURCE.md` answers; the library fetches
+  gs.wasm only for a figure whose DVI carries such PostScript (measured: a note
+  without any never loads it). Leave the module out of a build (Clew-iOS's
+  App Store question) and nothing asks for it. `figure-bake.js` does the same
+  for site export; `asset-stamp.js` stamps gs.wasm (its URL has no version,
+  unlike a bundle file's `?v=<sha>`, which protocol.js never looks at —
+  `url.pathname` only). `smoke/postscript-scenario.js`. **A family a figure
+  NAMES** (`\setmainfont{Optima}`, `\newfontfamily…`, `\fontspec{…}` — read
+  by `engine/figure-fonts.js`, in the source or the preamble a TeX fragment
+  fills) is handed over from THIS machine: `main/system-fonts.js` indexes the
+  font folders by family (the table directories and `name` tables only;
+  ~0.2 s once, kept in `<userData>/system-fonts.json` against the folders'
+  mtimes), protocol.js serves `__clew_assets__/systemfonts/` only the files
+  the index maps a family to, whole collections included (0.4.0's
+  scan-local finds every style), and the preview client hands them to
+  `addFiles` before its loader goes in — a figure naming a NEW family
+  reloads the preview once, as a late OpenType figure does; figure-bake
+  does the same for site export (outlines, never an embedded face). A
+  family past 64 MB is not handed over. First parse ≈ +80 ms a family on a
+  warm engine (measured). A preamble that loads fontspec marks its figure
+  OpenType too (`wantsOpenType` over the preamble — a fragment's lands
+  there). The
   mptikz root is served IMMUTABLE for a year (protocol.js) and its URLs
   carry no version, so a restaged or upgraded build would be served
   stale: `main/asset-stamp.js` stamps the engines + bundle indexes + app
