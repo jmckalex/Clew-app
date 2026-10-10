@@ -12,7 +12,8 @@ prefer deleting a settled item to explaining it again.
 owner's word via Clew-boss ("Please push!", `e430bed..416c031`: book mode
 phase 2, the print PDF, the pill fixes). Local since, NOT pushed — the owner
 decides: `2a877a5` `e00dabe` `fa78cc0` `4f6a706` `4aa515a` `478cfdf`
-`d4eae20`, the handover, the ff7facd vendor. `git fetch` before counting.
+`d4eae20`, the handover, the ff7facd vendor, then the cf5ed60 vendor `3b15bcc`,
+Proof this chapter `ef22b0b`, the engine's book map in the gate `282fde3`. `git fetch` before counting.
 
 **2026-10-10 (via Clew-boss; each verified by it unless noted).**
 - `2a877a5` engine at jmarkdown at-migration `d134995` (figure-cache.js:
@@ -65,6 +66,16 @@ decides: `2a877a5` `e00dabe` `fa78cc0` `4f6a706` `4aa515a` `478cfdf`
   Desktop PRINT of the same book, for comparison: ~2.75 s (533 pages, 2.2 MB;
   edited or not) — the warm render worker's build ~1.0 s, peak 317–335 MB;
   the hidden print window's renderer ~1.6 s, peak ~543 MB.
+- **Phase 3 items 1–2, Clew's side** (jmarkdown cf5ed60 vendored, `3b15bcc`):
+  `ef22b0b` Proof this chapter — the book PDF in the include layout (text
+  identical to the single layout, measured), `build/.<master>-full-run.json`,
+  a proof from a copy of that run's .aux (refused by name without one, or
+  when the chapters changed); the LaTeX export stays one file.
+  `282fde3` the parity gate also holds the engine's book map (b5c7732)
+  against Clew's: number/type/file equal (30/30), six line/kind NOTES
+  (definitions differ — reported to Clew-boss). ◆ Not done, asked first: the
+  reading view of a chapter numbered from the last HTML build's map
+  (user-visible).
 - Answered jmarkdown's phase-3 questions (book-map shape, transport lean for
   parts/matter, site-section needs if Q2 says yes, the print PDF's selectors
   as a contract, option C unmeasured → now measured above).
