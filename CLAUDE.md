@@ -728,7 +728,12 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   built book — per chapter and continuous, `mismatches=[]` both. Change a
   numbering rule only with that run green. It caught `:::figure`/`:::theorem`
   … numbered by Clew and not by the engine (the generic container
-  directive — only `@begin(…)` numbers). **Reading view still renders a
+  directive — only `@begin(…)` numbers). Since phase 3 (jmarkdown b5c7732) the
+  gate also asks the build for the ENGINE's book map (`bookMap: true`, Clew's
+  own shape) and holds Clew's label table against it: number, type and file
+  must be equal; line and kind differences are notes (each side's own
+  bookkeeping — the README row lists them). Nothing the writer sees reads
+  the engine's map. **Reading view still renders a
   chapter ALONE** (its own numbers, `??` for another chapter's label), so a
   quiet line above a chapter's frame says "Chapter 2 of *Book* · numbers as
   in the book: Build" (`books.js#bookReadingBanner`, an HTML build): app

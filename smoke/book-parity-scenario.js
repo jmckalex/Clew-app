@@ -9,12 +9,18 @@
 //           every consumer asks (numbering-source.js#numberingFor), each
 //           reference shown as a chip shows it (numbering.js#refDisplay);
 //   engine  the book built as HTML (clew:export-book, the panel's Build), the
-//           master's page read back: each item's printed @ref and @cref.
+//           master's page read back: each item's printed @ref and @cref;
+//   map     the same build's BOOK MAP (jmarkdown b5c7732, `bookMap: true`:
+//           every label as the engine numbered it, in Clew's own shape) held
+//           against Clew's label table field by field: number, type and file
+//           (as handed to the engine: master-relative) must be equal; kind
+//           and line differences are notes (compareMaps says why).
 //
 // Logs, for each numbering:
 //   parity <mode> keys=<n> equal=<n> mismatches=[…] warnings=<n>
+//   map <mode> labels=<n> compared=<n> mismatches=[…] notes=[…]
 //   numbers <mode> <key>=<number> …   (the engine's, to read by eye)
-// The gate passes when both lines say mismatches=[] with keys equal to the
+// The gate passes when every line says mismatches=[] with keys equal to the
 // fixture's label count.
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const { workspaceStore, editorPool, vaultStore, ipc } = window.__clew;
@@ -45,12 +51,13 @@ async function clewNumbers() {
 	// The book's texts are read asynchronously: the master's own numbers until then.
 	await until(() => (numbering = numberingFor(view().state.doc, MASTER))?.book, 10000);
 	if (!numbering?.book) return null;
-	return new Map(keys.map((k) => [k, [flat(refDisplay(numbering, k, 'ref').text), flat(refDisplay(numbering, k, 'cref').text)]]));
+	const shown = new Map(keys.map((k) => [k, [flat(refDisplay(numbering, k, 'ref').text), flat(refDisplay(numbering, k, 'cref').text)]]));
+	return { shown, labels: numbering.labels };
 }
 
 /** What the built book prints for each key: [ref, cref]. */
 async function engineNumbers() {
-	const result = await ipc.invoke('clew:export-book', { master: MASTER, format: 'html' });
+	const result = await ipc.invoke('clew:export-book', { master: MASTER, format: 'html', bookMap: true });
 	const html = await read(result.outputRel);
 	const doc = new DOMParser().parseFromString(html, 'text/html');
 	const out = new Map();
@@ -58,13 +65,14 @@ async function engineNumbers() {
 		const m = /^R ([\w-]+): (.*?) ; (.*)$/.exec(flat(li.textContent));
 		if (m) out.set(m[1], [m[2], m[3]]);
 	}
-	return { out, warnings: result.warnings ?? [] };
+	return { out, warnings: result.warnings ?? [], map: result.bookMap ?? null };
 }
 
 async function compare(mode) {
-	const clew = await clewNumbers();
-	if (!clew) { log(`parity ${mode} error=no book numbering`); return; }
-	const { out: engine, warnings } = await engineNumbers();
+	const numbers = await clewNumbers();
+	if (!numbers) { log(`parity ${mode} error=no book numbering`); return; }
+	const clew = numbers.shown;
+	const { out: engine, warnings, map } = await engineNumbers();
 	const mismatches = [];
 	for (const k of keys) {
 		const c = clew.get(k);
@@ -72,8 +80,51 @@ async function compare(mode) {
 		if (!e || c[0] !== e[0] || c[1] !== e[1]) mismatches.push(`${k}: clew ${c.join(' ; ')} ≠ engine ${e ? e.join(' ; ') : '(missing)'}`);
 	}
 	log(`parity ${mode} keys=${keys.length} equal=${keys.length - mismatches.length} mismatches=${JSON.stringify(mismatches)} warnings=${warnings.length}`);
+	log(`map ${mode} ${compareMaps(numbers.labels, map)}`);
 	log(`numbers ${mode} ${keys.map((k) => `${k}=${engine.get(k)?.[0] ?? '-'}`).join(' ')}`);
 	for (const w of warnings) log(`warning ${mode} ${w.path ?? ''}:${w.line ?? ''} ${w.text ?? w}`);
+}
+
+/**
+ * Clew's label table against the engine's book map, field by field. What the
+ * writer sees rests on `number`, `type` (the word @cref prints) and `file`:
+ * those must be equal for every label the engine maps, and every label it
+ * maps must be Clew's too — `mismatches`. `line` and `kind` are each side's
+ * own bookkeeping (where a label inside a theorem lives, a subfigure's kind,
+ * a footnote label's line, the master's own lines), and a label Clew knows
+ * that prints ?? either way may be missing from the engine's map: those are
+ * `notes`, to read, not to fail on (2026-10-10, jmarkdown cf5ed60).
+ */
+function compareMaps(labels, map) {
+	if (!map?.labels) return 'error=no book map from the engine';
+	const dir = MASTER.slice(0, MASTER.lastIndexOf('/') + 1);
+	const clewFields = (info) => ({
+		number: info.status === 'ok' && info.number ? String(info.number) : null,
+		type: info.type ?? null,
+		file: info.path?.startsWith(dir) ? info.path.slice(dir.length) : info.path,
+		kind: info.kind,
+		line: info.line ?? null,
+	});
+	const all = [...new Set([...labels.keys(), ...Object.keys(map.labels)])].sort();
+	const mismatches = [];
+	const notes = [];
+	let compared = 0;
+	for (const key of all) {
+		const c = labels.has(key) ? clewFields(labels.get(key)) : null;
+		const e = map.labels[key] ?? null;
+		if (!e) {
+			(c.number === null ? notes : mismatches).push(`${key}: not in the engine's map${c.number === null ? ' (?? either way)' : ''}`);
+			continue;
+		}
+		if (!c) { mismatches.push(`${key}: not in Clew's labels`); continue; }
+		compared += 1;
+		const differ = (fields) => fields.filter((f) => String(c[f]) !== String(e[f] ?? null)).map((f) => `${f} clew ${c[f]} ≠ engine ${e[f] ?? null}`);
+		const hard = differ(['number', 'type', 'file']);
+		const soft = differ(['kind', 'line']);
+		if (hard.length) mismatches.push(`${key}: ${hard.join(', ')}`);
+		if (soft.length) notes.push(`${key}: ${soft.join(', ')}`);
+	}
+	return `labels=${all.length} compared=${compared} mismatches=${JSON.stringify(mismatches)} notes=${JSON.stringify(notes)}`;
 }
 
 try {
