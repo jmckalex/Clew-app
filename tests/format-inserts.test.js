@@ -35,6 +35,11 @@ test('every block Insert is @begin(name) … @end(name), the generic container @
 	assert.deepEqual(environmentBlock('theorem'), { header: '@begin(theorem)', footer: '@end(theorem)' });
 	assert.equal(BLOCK_INSERTS['format:mathematica'].header, '@begin(Mathematica){output="svg"}');
 	assert.equal(TODAY_INSERT, '@today');
+	// The game sample in the engine's syntax: a column-strategy line, then a
+	// row each, `&` between cells — a `|` table was one column of rows.
+	const game = BLOCK_INSERTS['format:game'].body.split('\n');
+	assert.deepEqual(game.map((l) => l.split('&').length), [2, 3, 3]);
+	assert.equal(game.some((l) => l.includes('|')), false);
 });
 
 test('the Block group\'s environments are the table\'s, and no menu label shows a colon form', () => {

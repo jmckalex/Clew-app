@@ -123,9 +123,12 @@ the 21dee42 vendor `cc02f40`, the figure engine in exports `2cc6d89`
   change it and the test if the converter differs), `@today`,
   RICH_ENVIRONMENTS + game/Mathematica/markdown-demo, @begin(HTML)/(comment)
   flagged as their twins; the one output change is "Insert environment…" →
-  numbered Theorem 1 (`insert-forms-scenario`). Found, not fixed (a build
-  order is the owner's): the Game Matrix Insert's sample body is not the
-  engine's game syntax (`&`-separated) — one-column rows, as always.
+  numbered Theorem 1 (`insert-forms-scenario`). Clew-boss verified all three
+  (clean export, 1215/1215) and approved the Game Matrix fix: its sample was
+  a `|` table the engine read as one column of rows — now the engine's `&`
+  syntax, a 2×2 game (`game=3x3`). Neither the manual nor a demo note shows
+  the old sample; `:::game` is still NAMED in prose (manual editing.html:292,
+  dialect.html:327; demo Guide/Editing.md:53) — for Docs and phase 3.
   **PHASE 2** (approved in principle; waits for jmarkdown's converter as an
   import-free module and Clew-boss's check): "Convert this vault" — dry run,
   output changes itemised, never automatic, backups + note history, guarded

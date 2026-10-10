@@ -148,7 +148,10 @@ export const BLOCK_INSERTS = {
 	'format:mermaid': { ...environmentBlock('mermaid'), body: 'graph LR\n  A --> B' },
 	'format:tikz': { ...environmentBlock('TiKZ'), body: '\\begin{tikzpicture}\n  \\draw (0,0) -- (1,1);\n\\end{tikzpicture}' },
 	'format:mathematica': { ...environmentBlock('Mathematica', { attrs: '{output="svg"}' }), body: 'Plot[Sin[x], {x, 0, 2 Pi}]' },
-	'format:game': { ...environmentBlock('game'), body: '       | Cooperate | Defect\n-------+-----------+--------\nCooperate | 3, 3   | 0, 5\nDefect    | 5, 0   | 1, 1' },
+	// The engine's game syntax: column strategies first, then a row each, cells
+	// separated by `&` (until 2026-10-10 this was a `|` table, which the engine
+	// read as one column of rows).
+	'format:game': { ...environmentBlock('game'), body: '          Cooperate & Defect\nCooperate & (3,3) & (0,5)\nDefect    & (5,0) & (1,1)' },
 	'format:markdown-demo': { ...environmentBlock('markdown-demo'), body: 'This is *some* /text/.' },
 	'format:tex-block': { ...environmentBlock('TeX'), body: '% LaTeX-only content (verbatim)' },
 	'format:html-block': { ...environmentBlock('HTML'), body: 'Web-only content (markdown processed)' },
