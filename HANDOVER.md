@@ -107,6 +107,27 @@ the 21dee42 vendor `cc02f40`, the figure engine in exports `2cc6d89`
   the outside file reached the PDF in every TeX run; changing that reverses
   note-code.js's choice to leave TeX outside "Run note code". ◆ Q10 (Clew's
   own figure fences print as code in every export) is with the owner.
+- **jmarkdown retires the colon directives** (`:name[…]`, `::name[…]`,
+  `:::name … :::` → the `@` forms; the owner's decision, 2026-10-10, on
+  jmarkdown's branch `retire-colon-directives` — nothing on at-migration
+  until the owner OKs it). HOLD: build nothing until jmarkdown's converter
+  and per-name differential arrive AND the owner answers the migration
+  question (Clew-boss). Measured on 21dee42 and sent to both: NOT a rename
+  for theorem/lemma/definition/proof/equation/figure/table — the colon form
+  is a bare unnumbered element that drops its caption, `@begin` the numbered
+  environment (a converted `:::theorem[X]` becomes "Theorem 1 (X).", later
+  ones renumber); a generic `:::name` is `<name>`, `@begin(name)` a
+  `<div class="name">`; the rest Clew's Insert menu writes, `:today` and
+  `::title` identical. The Clew change, when it comes (Clew-boss agreed the
+  list): figures.js's own `:::TiKZ` tokenizer goes in the SAME vendor step
+  (else the preview draws what exports print as text); the `[@:]` label/ref
+  regexes go (link-at.js, complete/crossrefs.js, live/numbering.js,
+  shared/note-metadata.js); `RICH_ENVIRONMENTS` gains game, Mathematica,
+  markdown-demo; vault-code.js's `Load directives` gate STAYS; the Insert
+  commands, scanner/folding/fill, demo notes (incl. the bare `:today` in
+  Guide/Live Edit.md), smoke vault makers (the book parity fixture's
+  `:::figure` is deliberate) and tests follow the converter; seven Clew-docs
+  manual pages use colon forms.
 - Answered jmarkdown's phase-3 questions (book-map shape, transport lean for
   parts/matter, site-section needs if Q2 says yes, the print PDF's selectors
   as a contract, option C unmeasured → now measured above).
