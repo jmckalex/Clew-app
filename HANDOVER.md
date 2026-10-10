@@ -12,7 +12,7 @@ prefer deleting a settled item to explaining it again.
 owner's word via Clew-boss ("Please push!", `e430bed..416c031`: book mode
 phase 2, the print PDF, the pill fixes). Local since, NOT pushed — the owner
 decides: `2a877a5` `e00dabe` `fa78cc0` `4f6a706` `4aa515a` `478cfdf`
-`d4eae20` and this handover. `git fetch` before counting.
+`d4eae20`, the handover, the ff7facd vendor. `git fetch` before counting.
 
 **2026-10-10 (via Clew-boss; each verified by it unless noted).**
 - `2a877a5` engine at jmarkdown at-migration `d134995` (figure-cache.js:
@@ -47,14 +47,12 @@ decides: `2a877a5` `e00dabe` `fa78cc0` `4f6a706` `4aa515a` `478cfdf`
   warning only, for now. Options sent: keep that; or an engine option naming
   the figures folder (so Clew could use `-figures-2/`); or refuse such an
   export by name.
-- Step 3, Guide/Dashboards.md's `INPUT[number:target]` (line 55): reading
-  view, live edit and site export fine (Clew's Meta Bind claims it); EVERY
-  note export (HTML, LaTeX, PDF; menu and `clew export`) fails at once,
-  "Cannot read properties of undefined (reading 'trim') … markedjs". Not
-  patched. ◆ jmarkdown `ff7facd` fixes it — vendor it when at-migration is
-  fast-forwarded to it (it was not, 2026-10-10 afternoon), npm test, then
-  re-run the step-3 check (exports must work) and send Clew-boss the hash;
-  add Dashboards.md to export-links-scenario then.
+- Step 3, Guide/Dashboards.md's `INPUT[number:target]` (line 55): at
+  d134995 every NOTE export failed at once ("Cannot read properties of
+  undefined (reading 'trim')"); reading view, live edit, site export fine.
+  FIXED by jmarkdown `ff7facd`, vendored (see the log): HTML, LaTeX, PDF
+  export, trusted and restricted, the widget's text literal. That vendor
+  commit is the pin for Clew-iOS's next sync (Clew-boss).
 - Book build timing (Clew-boss's ask, numbers only): Signals scaled to 40
   chapters, 185,668 words, through export-book.js on an M4 Max — split HTML
   3.2 s (engine worker peak ~700 MB), LaTeX 1.25 s (~285 MB), PDF 22.9 s
@@ -62,7 +60,8 @@ decides: `2a877a5` `e00dabe` `fa78cc0` `4f6a706` `4aa515a` `478cfdf`
   one chapter edited = the same full build (no incremental). Fixed cost of
   any engine export ~0.55–0.6 s (a one-line note), so ~65 ms a chapter for
   HTML, ~18 ms for LaTeX. A concurrent latex-compile suite of another
-  session ran during it. iPad path NOT measured (Clew-iOS's tree).
+  session ran during it. iPad path NOT measured here: gen.mjs sent to Clew-iOS, which measures the
+  iPad's only whole-book build, the PRINT (renderBook), on the simulator.
 - Answered jmarkdown's phase-3 questions (book-map shape, transport lean for
   parts/matter, site-section needs if Q2 says yes, the print PDF's selectors
   as a contract, option C unmeasured → now measured above).
