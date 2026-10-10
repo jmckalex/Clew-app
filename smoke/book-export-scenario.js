@@ -9,7 +9,8 @@
 // (main logs `smoke-open-path: …/build/Signals/index.html` instead of
 // launching). Then, from the files: the pages' chapter sections and
 // headings, no chapter's front matter as content; the .tex's \chapter
-// lines; the PDF's presence and that no inline code is left as minted's
+// lines (the PDF's include layout: the master and its chapter files read as
+// one); the PDF's presence and that no inline code is left as minted's
 // `<MINTED>` (latexmk ran its passes); the numbers (`numbers html=
 // ["Proposition 1.1","Theorem 2.1"] tex-within=true` per chapter).
 //
@@ -48,7 +49,15 @@ log(`case=${kind} panel=${!!document.querySelector('clew-book .book-build')} but
 	log(`build-files=${JSON.stringify(files.map((p) => p.slice(BUILD.length)))}`);
 	const pages = files.filter((p) => p.startsWith(`${BUILD}Signals/`) && p.endsWith('.html'));
 	const html = (await Promise.all(pages.map(read))).join('\n');
-	const tex = await read(`${BUILD}Signals.tex`);
+	// The PDF, built last, writes the include layout (book phase 3): the
+	// master .tex \include's a .tex a chapter — read as ONE text, each
+	// chapter file where its \include stands.
+	let tex = await read(`${BUILD}Signals.tex`);
+	for (const [line, name] of [...tex.matchAll(/^\\include\{([^}]+)\}$/gm)]) {
+		const chapter = await read(`${BUILD}${name}.tex`);
+		tex = tex.replace(line, () => chapter);   // a function: TeX's `$` is no pattern
+	}
+	log(`tex layout=${/\\include\{Signals-ch-1\}/.test(await read(`${BUILD}Signals.tex`)) ? 'include' : 'single'}`);
 	log(`html pages=${pages.length} sections=${(html.match(/<section class="jmd-chapter"/g) ?? []).length} h1=${JSON.stringify([...new Set([...html.matchAll(/<h1[^>]*>([\s\S]*?)<\/h1>/g)].map((m) => m[1].replace(/<[^>]+>/g, '').trim()))])} front-matter-as-content=${/status: (done|revised|draft)/.test(html)}`);
 	log(`numbers html=${JSON.stringify([...new Set(html.match(/(?:Proposition|Theorem) [0-9.]+/g) ?? [])])} tex-within=${/numberwithin=chapter/.test(tex)} tex-without=${/\\counterwithout\{equation\}\{chapter\}/.test(tex)}`);
 	log(`tex chapters=${JSON.stringify([...tex.matchAll(/\\chapter\*?\{([^}]*)\}/g)].map((m) => m[1]))} front-matter-as-content=${/status: (done|revised|draft)/.test(tex)} cleveref=${/\\usepackage(\[[^\]]*\])?\{cleveref\}/.test(tex)}`);

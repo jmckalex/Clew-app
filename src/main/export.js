@@ -90,7 +90,10 @@ export function runWorker({ file, options, cwd, callouts = '', vault = null }) {
 			if (msg?.type === 'ready') {
 				child.send({ type: 'build', file, options });
 			} else if (msg?.type === 'done') {
-				resolve({ output: msg.output, warnings: Array.isArray(msg.warnings) ? msg.warnings : [] });
+				resolve({
+					output: msg.output, warnings: Array.isArray(msg.warnings) ? msg.warnings : [],
+					bookMap: msg.bookMap ?? null, latexFiles: msg.latexFiles ?? null,
+				});
 			} else if (msg?.type === 'error') {
 				reject(new Error(msg.message));
 			}

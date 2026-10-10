@@ -344,6 +344,15 @@ references and the index; `build/<master> (reading view).pdf`; File →
 Export → Book as PDF (reading view), the panel's "Print PDF".
 `smoke/book-print-scenario.js`.
 
+*As built (2026-10-10):* the LaTeX `include` layout with `\includeonly`
+proofs (jmarkdown cf5ed60). A book's PDF is built in the include layout and
+records its run (`build/.<master>-full-run.json`); "Proof this chapter"
+typesets the active chapter alone, every other chapter's numbers and pages
+from that run's .aux files (copied into a folder of the proof's own), into
+`build/<master> (proof, <chapter>).pdf` — and says so by name when there is
+no full run, or the chapters changed since. The LaTeX export stays one
+file. `main/book-proof.js`, `smoke/book-proof-scenario.js`.
+
 ---
 
 ## 8. Risks

@@ -102,7 +102,7 @@ note API, plugins, and every settings key.
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
   dialect scanner's constructs and grammar, live edit's model, reveal rule,
-  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band, figure errors, the PDF save guard, deep links and the clew command, the shareable callout resolver, the device word, where notices sit, pinned apps, the demo vault's updates (untouched files by hash and by shipped history, a record-less copy dated by its files), the ticker's live rules, origin-bound network grants, books (the master reader, chapter titles, words and status, the index's chapter lists and their renames, a build's warnings placed, a book's numbers, a book's citation header), an app's secrets (the store, the methods), the system font index (family names, the cache), an export's figures outside the vault (the engine's marker, which folder may go, the prune) — 1200 tests. DOM/UI work is
+  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band, figure errors, the PDF save guard, deep links and the clew command, the shareable callout resolver, the device word, where notices sit, pinned apps, the demo vault's updates (untouched files by hash and by shipped history, a record-less copy dated by its files), the ticker's live rules, origin-bound network grants, books (the master reader, chapter titles, words and status, the index's chapter lists and their renames, a build's warnings placed, a book's numbers, a book's citation header), an app's secrets (the store, the methods), the system font index (family names, the cache), an export's figures outside the vault (the engine's marker, which folder may go, the prune), a chapter proof (its files' names, whether a full run can number it) — 1206 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
@@ -768,6 +768,24 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   view), `export:book-print`, the panel's "Print PDF". A note's print is
   unchanged (same pages, text and pixels as before).
   `smoke/book-print-scenario.js`.
+- **Books, phase 3 — proof this chapter** (2026-10-10, Clew-boss's go; jmarkdown
+  cf5ed60): a book's PDF is built in LaTeX's INCLUDE layout — `build/<master>.tex`
+  `\include`s a `<master>-ch-N.tex` per chapter, names as the engine makes them
+  (`main/book-proof.js#chapterIncludeName`, held to the vendored book-latex.js
+  by a test) — whose text is the single layout's (measured: `pdftotext` 0 diff
+  lines, the demo book and a 563-page one), and a run that COMPILED leaves
+  `build/.<master>-full-run.json` (the chapters it typeset, when; removed
+  while a run is under way). A PROOF (`exportBook` format `proof` with the
+  chapter's vault path; `export:book-proof`, File → Export → Proof This
+  Chapter, the Book panel's Proof row while a chapter of that book is the
+  active note) typesets the one chapter with `\includeonly`, LaTeX taking every
+  other chapter's numbers and pages from that run's .aux files — copied, with
+  the .bbl, into a temporary folder of the proof's own, so the full run's
+  build/ is never touched — into `build/<master> (proof, <chapter>).pdf`.
+  Refused BY NAME, never numbered wrong: no full run yet, the chapters changed
+  since it (order or list), its .aux files gone, a note that is no chapter of
+  the book. The book's LaTeX EXPORT stays one .tex. 40 chapters: full PDF
+  22 s, a chapter's proof 3.8 s. `smoke/book-proof-scenario.js`.
 - **Obsidian's own query formats** — for opening other people's vaults,
   alongside (not replacing) Clew's `query`/`tasks`/`kanban` fences:
   `vault-model.js` (the vault as pages: `file.*`, the link graph,
