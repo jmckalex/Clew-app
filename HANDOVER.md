@@ -99,10 +99,14 @@ the 21dee42 vendor `cc02f40`, the figure engine in exports `2cc6d89`
   font hook, a warning on a font miss under wasm, the fallback wording):
   then flip the trusted default to `auto` (own commit), wire `figureFonts` to
   system-fonts.js, re-measure siunitx/Times. Manual items to Clew-docs then.
-  ◆ Known, reported: a restricted vault's PDF via LaTeX is typeset by the
-  installed LaTeX (its TikZ is native in the .tex) — the outside file reached
-  the PDF in every TeX run. ◆ Q10 (Clew's own figure fences print as code in
-  every export) is with the owner.
+  Clew-boss verified all four (clean export of 4c095fa) and APPROVED the
+  stand-ins as the second guard; it queued 9.vi (a strict 'wasm' that never
+  runs the tools) for jmarkdown. ◆ With the OWNER (Clew-boss's
+  recommendation; nothing to build until answered): a restricted vault's PDF
+  via LaTeX is typeset by the installed LaTeX (its TikZ native in the .tex) —
+  the outside file reached the PDF in every TeX run; changing that reverses
+  note-code.js's choice to leave TeX outside "Run note code". ◆ Q10 (Clew's
+  own figure fences print as code in every export) is with the owner.
 - Answered jmarkdown's phase-3 questions (book-map shape, transport lean for
   parts/matter, site-section needs if Q2 says yes, the print PDF's selectors
   as a contract, option C unmeasured → now measured above).
