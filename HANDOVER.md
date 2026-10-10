@@ -73,9 +73,12 @@ Proof this chapter `ef22b0b`, the engine's book map in the gate `282fde3`. `git 
   when the chapters changed); the LaTeX export stays one file.
   `282fde3` the parity gate also holds the engine's book map (b5c7732)
   against Clew's: number/type/file equal (30/30), six line/kind NOTES
-  (definitions differ — reported to Clew-boss). ◆ Not done, asked first: the
-  reading view of a chapter numbered from the last HTML build's map
-  (user-visible).
+  (definitions differ; Clew-boss: accepted as notes, no engine change).
+  Clew-boss's decisions 2026-10-10: NO book numbers in a chapter's reading
+  view from the last build's map (stale between builds is worse than the
+  honest "numbered alone" line); NO include-layout LaTeX export (one .tex;
+  the include layout is the PDF/proof's internal build). The owner may ask.
+  Nothing queued: parts/matter and the site section wait for the owner.
 - Answered jmarkdown's phase-3 questions (book-map shape, transport lean for
   parts/matter, site-section needs if Q2 says yes, the print PDF's selectors
   as a contract, option C unmeasured → now measured above).

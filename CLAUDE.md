@@ -733,7 +733,9 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   own shape) and holds Clew's label table against it: number, type and file
   must be equal; line and kind differences are notes (each side's own
   bookkeeping — the README row lists them). Nothing the writer sees reads
-  the engine's map. **Reading view still renders a
+  the engine's map — a chapter's reading view is NOT numbered from it
+  (Clew-boss, 2026-10-10: numbers stale between builds are worse than the
+  honest "numbered alone" line). **Reading view still renders a
   chapter ALONE** (its own numbers, `??` for another chapter's label), so a
   quiet line above a chapter's frame says "Chapter 2 of *Book* · numbers as
   in the book: Build" (`books.js#bookReadingBanner`, an HTML build): app
@@ -789,7 +791,8 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   build/ is never touched — into `build/<master> (proof, <chapter>).pdf`.
   Refused BY NAME, never numbered wrong: no full run yet, the chapters changed
   since it (order or list), its .aux files gone, a note that is no chapter of
-  the book. The book's LaTeX EXPORT stays one .tex. 40 chapters: full PDF
+  the book. The book's LaTeX EXPORT stays one .tex (Clew-boss's decision
+  2026-10-10: the include layout is the PDF and the proof's internal build). 40 chapters: full PDF
   22 s, a chapter's proof 3.8 s. `smoke/book-proof-scenario.js`.
 - **Obsidian's own query formats** — for opening other people's vaults,
   alongside (not replacing) Clew's `query`/`tasks`/`kanban` fences:
