@@ -9,6 +9,15 @@
 #   figures-scenario    make-figures-vault.mjs; every figure `mpw-ok` with
 #                       paths > 0, `pending=0`, `cache-probe first=engine
 #                       second=cache`
+#   export-figures-scenario
+#                       make-export-figures-vault.mjs, RESTRICTED (a fresh
+#                       profile) with CLEW_SMOKE_NO_TEX=1: an export's TikZ
+#                       and MetaPost drawn by mp-tikz-wasm inside the forked
+#                       export worker, which nothing else proves under the
+#                       hardened runtime (figure-bake runs in main) —
+#                       export-figures-check.mjs `Engine.html drawn=2
+#                       errors=0 metapost=library`, `Engine.tex includes=1
+#                       present=1`, under both values of the setting
 #   live-edit-scenario  a scratch copy of demo-vault/ (it opens
 #                       Projects/Dialect Demo.md; any other vault proves
 #                       nothing — the 0.11.0 run that got another scenario's
@@ -34,7 +43,7 @@
 # BOOT_TEST_ALLOW_STALE=1 tests an older build anyway (a release DMG after
 # main moved on), and says so in every run.
 #
-# Exit: 0 both passed · 1 an assertion failed, or a run never started (named:
+# Exit: 0 all passed · 1 an assertion failed, or a run never started (named:
 #       no `smoke-boot:` line) · 2 bad arguments ·
 #       3 the machine never went quiet (nothing was run) ·
 #       4 the app was not built from this checkout (nothing was run).
@@ -96,6 +105,15 @@ check "every figure mpw-ok" test "$(grep -E 'smoke-figures-frame: (tikz|metapost
 check "no figure with paths=0" test "$(grep -cE 'smoke-figures-frame: (tikz|metapost)-diagram.* paths=0 ' "$L")" -eq 0
 check "pending=0" grep -q 'smoke-figures-frame: pending=0 ' "$L"
 check "cache-probe first=engine second=cache" grep -q 'cache-probe first=engine second=cache' "$L"
+
+node smoke/make-export-figures-vault.mjs "$S/v-ef" > /dev/null
+run export-figures "$S/v-ef/vault" CLEW_SMOKE_NO_TEX=1
+node smoke/export-figures-check.mjs "$S/v-ef" > "$S/export-figures.check"
+L=$S/export-figures.check
+for setting in external auto; do
+	check "$setting: Engine.html drawn by the library" grep -q "ef-check: $setting Engine.html drawn=2 errors=0 metapost=library" "$L"
+	check "$setting: Engine.tex MetaPost PDF" grep -q "ef-check: $setting Engine.tex includes=1 present=1" "$L"
+done
 
 rsync -a --exclude .clew demo-vault/ "$S/v-le/"
 run live-edit "$S/v-le"
