@@ -33,7 +33,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { readMaster, laterNotice, placeWarnings } from '../shared/book.js';
-import { runWorker, compilePdf, configuredBibliographies, restrictedExportDir, figureCache, clearFigures } from './export.js';
+import { runWorker, compilePdf, configuredBibliographies, restrictedExportDir, figureCache, clearFigures, figureEngine } from './export.js';
 import { figuresFolder, explainFiguresWarnings } from './export-cache.js';
 import { bibliographyDirs } from './citation-header.js';
 import { calloutsEnv } from './callout-types.js';
@@ -124,7 +124,7 @@ export async function exportBook({ vaults, indexer, masterRel, format, trusted =
 	const title = master.title || base;
 
 	const figures = figureCache({ root: vaults.root, trusted });
-	const engineFigures = { cacheDir: figures.cacheDir, copyFigures: true };
+	const engineFigures = { cacheDir: figures.cacheDir, copyFigures: true, ...figureEngine(trusted) };
 	const explained = (warnings) => place(explainFiguresWarnings(warnings, { restricted: !trusted }));
 	const output = path.join(outDir, `${base}.${format === 'html' ? 'html' : 'tex'}`);
 	let work = null;   // a proof's own folder

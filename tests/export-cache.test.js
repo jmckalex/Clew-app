@@ -10,15 +10,19 @@
 
 // An export's figures outside the vault (src/main/export-cache.js; jmarkdown
 // d134995): the figures folder's name and marker as the engine has them, which
-// folder may go to the Trash, the trusted vault's cache folder, and the prune.
+// folder may go to the Trash, the trusted vault's cache folder, and the prune;
+// and what draws an export's TikZ and MetaPost (jmarkdown 21dee42), with the
+// stand-ins that keep a restricted vault's TeX off the installed tools.
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import {
 	FIGURES_MARKER, EXPORT_CACHE_LIMIT, figuresFolder, figuresState, otherOutputs,
 	vaultCacheDir, markUsed, pruneExportCache, explainFiguresWarnings,
+	FIGURE_ENGINE_SETTINGS, figureEngineOptions, TEX_TOOLS, texRefusalDir,
 } from '../src/main/export-cache.js';
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'clew-export-cache-'));
@@ -128,4 +132,41 @@ test('explainFiguresWarnings: the engine\'s warning about a folder of the user\'
 	assert.equal(other, 'latex-export [x]: y');
 	const [restricted] = explainFiguresWarnings([engine], { restricted: true });
 	assert.match(restricted, /temporary folder this export removed, so its diagrams will not show/);
+});
+
+test('figureEngineOptions: a trusted vault as the setting says, a restricted one always the library alone', () => {
+	const dist = '/app/mptikz';
+	assert.deepEqual(FIGURE_ENGINE_SETTINGS, ['external', 'auto']);
+	assert.deepEqual(figureEngineOptions({ trusted: true, dist, setting: 'external' }), {});
+	assert.deepEqual(figureEngineOptions({ trusted: true, dist, setting: undefined }), {}, 'no setting: the installed tools');
+	assert.deepEqual(figureEngineOptions({ trusted: true, dist, setting: 'nonsense' }), {});
+	assert.deepEqual(figureEngineOptions({ trusted: true, dist, setting: 'auto' }), { figureEngine: 'auto', mpTikzDist: dist });
+	for (const setting of ['external', 'auto', undefined]) {
+		assert.deepEqual(figureEngineOptions({ trusted: false, dist, setting }), { figureEngine: 'wasm', mpTikzDist: dist }, `restricted, setting ${setting}`);
+	}
+	const defaults = fs.readFileSync(new URL('../src/main/settings.js', import.meta.url), 'utf8');
+	assert.ok(defaults.includes("exportFigureEngine: 'external',"), 'the setting\'s default is the first value');
+});
+
+test('TEX_TOOLS: every program the engine runs over a figure\'s TeX (vendored tikz.js, metapost.js)', () => {
+	const ran = new Set();
+	for (const file of ['tikz.js', 'metapost.js']) {
+		const src = fs.readFileSync(new URL(`../vendor/jmarkdown/src/${file}`, import.meta.url), 'utf8');
+		for (const m of src.matchAll(/exec(?:File)?Sync\(\s*['"`]([A-Za-z0-9_-]+)/g)) ran.add(m[1]);
+	}
+	assert.deepEqual([...ran].sort(), [...TEX_TOOLS].sort());
+});
+
+test('texRefusalDir: a stand-in for each tool that refuses, saying why; none on Windows', () => {
+	const dir = path.join(fresh(), 'no-tex');
+	assert.equal(texRefusalDir(dir), dir);
+	assert.deepEqual(fs.readdirSync(dir).sort(), [...TEX_TOOLS].sort());
+	assert.equal(texRefusalDir(dir), dir, 'written again over itself');
+	for (const tool of TEX_TOOLS) {
+		assert.ok(fs.statSync(path.join(dir, tool)).mode & 0o111, `${tool} is executable`);
+		// Found by name on PATH, as the engine's execFileSync finds the real one.
+		assert.throws(() => execFileSync(tool, ['--version'], { env: { PATH: `${dir}${path.delimiter}/usr/bin:/bin` }, stdio: 'pipe' }),
+			(err) => err.status === 1 && /was not run: in a vault this device does not trust/.test(String(err.stderr)));
+	}
+	assert.equal(texRefusalDir(path.join(fresh(), 'win'), 'win32'), null);
 });
