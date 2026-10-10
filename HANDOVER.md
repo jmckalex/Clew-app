@@ -1,4 +1,4 @@
-# Handover — 2026-10-10 (origin/main 416c031, pushed; LOCAL: d134995 vendored, the postscript merge + mp-tikz 0.4.0, the dashboard chart + live-edit fix, the diagram cache outside the vault — NOT pushed; dev.10 = fb3635a)
+# Handover — 2026-10-10 (origin/main 416c031, pushed; LOCAL: d134995 vendored, the postscript merge + mp-tikz 0.4.0, the dashboard chart + live-edit fix, the diagram cache outside the vault, Proof this chapter, the figure engine in exports — NOT pushed; dev.10 = fb3635a)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it); the live edit design AS BUILT is
@@ -13,7 +13,9 @@ owner's word via Clew-boss ("Please push!", `e430bed..416c031`: book mode
 phase 2, the print PDF, the pill fixes). Local since, NOT pushed — the owner
 decides: `2a877a5` `e00dabe` `fa78cc0` `4f6a706` `4aa515a` `478cfdf`
 `d4eae20`, the handover, the ff7facd vendor, then the cf5ed60 vendor `3b15bcc`,
-Proof this chapter `ef22b0b`, the engine's book map in the gate `282fde3`. `git fetch` before counting.
+Proof this chapter `ef22b0b`, the engine's book map in the gate `282fde3`,
+the 21dee42 vendor `cc02f40`, the figure engine in exports `2cc6d89`
+`40030c7`. `git fetch` before counting.
 
 **2026-10-10 (via Clew-boss; each verified by it unless noted).**
 - `2a877a5` engine at jmarkdown at-migration `d134995` (figure-cache.js:
@@ -79,6 +81,28 @@ Proof this chapter `ef22b0b`, the engine's book map in the gate `282fde3`. `git 
   honest "numbered alone" line); NO include-layout LaTeX export (one .tex;
   the include layout is the PDF/proof's internal build). The owner may ask.
   Nothing queued: parts/matter and the site section wait for the owner.
+- **The figure engine in exports** (jmarkdown `21dee42` vendored `cc02f40`;
+  Clew-boss approved the plan, steps A/B): `2cc6d89` — a TRUSTED vault's note
+  and book exports follow the new setting `exportFigureEngine` (default
+  `external` = today's tools; `auto` = mp-tikz-wasm, the preview's build); a
+  RESTRICTED vault's ALWAYS `wasm` (the installed lualatex read a file
+  outside the vault into a figure — measured; the library's TeX sees no
+  disk), with refusing stand-ins for lualatex/dvisvgm/mpost/mptopdf first on
+  its worker's PATH because 'wasm' falls back to the tools when the library
+  will not load (measured). `40030c7` export-figures-scenario (+ the
+  `CLEW_SMOKE_NO_TEX` knob) and a boot-test.sh run (packaged worker's wasm,
+  checked against dev output only — no package made). Measured (plan to
+  Clew-boss): 80-figure book cold HTML 63.7 → 38.9 s, LaTeX 18.5 → 4.9 s,
+  peak +~350 MB; MetaPost identical to the preview's pixels, TikZ never
+  (wrapper + the user's preamble).
+  ◆ Step C waits on jmarkdown 9.i–9.iv (fallback on a missing file, a host
+  font hook, a warning on a font miss under wasm, the fallback wording):
+  then flip the trusted default to `auto` (own commit), wire `figureFonts` to
+  system-fonts.js, re-measure siunitx/Times. Manual items to Clew-docs then.
+  ◆ Known, reported: a restricted vault's PDF via LaTeX is typeset by the
+  installed LaTeX (its TikZ is native in the .tex) — the outside file reached
+  the PDF in every TeX run. ◆ Q10 (Clew's own figure fences print as code in
+  every export) is with the owner.
 - Answered jmarkdown's phase-3 questions (book-map shape, transport lean for
   parts/matter, site-section needs if Q2 says yes, the print PDF's selectors
   as a contract, option C unmeasured → now measured above).

@@ -87,9 +87,10 @@ note API, plugins, and every settings key.
   copy launches offline). A signed build is not proved by `codesign
   --verify` — boot the PACKAGED binary under CLEW_SMOKE and check a
   ```latex figure typesets (`smoke/boot-test.sh`, which refuses a busy
-  machine rather than run on one), because the hardened runtime is what breaks the
-  forked worker or the wasm (entitlements.mac.plist says which entitlement
-  carries which).
+  machine rather than run on one; it also exports a TikZ + MetaPost note from
+  a restricted vault with no TeX, the export worker's wasm), because the
+  hardened runtime is what breaks the forked worker or the wasm
+  (entitlements.mac.plist says which entitlement carries which).
 - **Tests:** `npm test` (`node --test --test-timeout=60000` — a test that
   hangs fails within a minute, by name, instead of stalling the run; files
   in `tests/`; a test's temp files go under ONE `mkdtemp` root of its own,
@@ -102,7 +103,7 @@ note API, plugins, and every settings key.
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
   dialect scanner's constructs and grammar, live edit's model, reveal rule,
-  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band, figure errors, the PDF save guard, deep links and the clew command, the shareable callout resolver, the device word, where notices sit, pinned apps, the demo vault's updates (untouched files by hash and by shipped history, a record-less copy dated by its files), the ticker's live rules, origin-bound network grants, books (the master reader, chapter titles, words and status, the index's chapter lists and their renames, a build's warnings placed, a book's numbers, a book's citation header), an app's secrets (the store, the methods), the system font index (family names, the cache), an export's figures outside the vault (the engine's marker, which folder may go, the prune), a chapter proof (its files' names, whether a full run can number it) — 1206 tests. DOM/UI work is
+  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band, figure errors, the PDF save guard, deep links and the clew command, the shareable callout resolver, the device word, where notices sit, pinned apps, the demo vault's updates (untouched files by hash and by shipped history, a record-less copy dated by its files), the ticker's live rules, origin-bound network grants, books (the master reader, chapter titles, words and status, the index's chapter lists and their renames, a build's warnings placed, a book's numbers, a book's citation header), an app's secrets (the store, the methods), the system font index (family names, the cache), an export's figures outside the vault (the engine's marker, which folder may go, the prune) and what draws them (the setting per trust, the TeX tools' refusing stand-ins), a chapter proof (its files' names, whether a full run can number it) — 1209 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
@@ -123,6 +124,8 @@ note API, plugins, and every settings key.
   focus, and the harness's keys never reach the native menu (every ⌘ chord
   used to open "About Electron"). More knobs, all documented in main.js:
   `CLEW_SMOKE_VISIBLE=1` (show the window, to watch a run),
+  `CLEW_SMOKE_NO_TEX=1` (a machine with no TeX: `toolchainPath()` and
+  export.js's `findTex` leave out every folder holding a TeX program),
   `CLEW_SMOKE_LOG=1` (every console line), `CLEW_SMOKE_ALLOW_STALE=1` (run
   on a `dist/` built from other sources — by default the harness REFUSES,
   naming the changed files: `src/main/build-stamp.js`, `dist/
@@ -1631,6 +1634,35 @@ except where the selection touches a construct. The durable design is
   .tex and .html share one, a book's pages too). A book's go to
   `build/<master>-figures/`. Folders the engine left in vaults before are
   the user's files now, untouched. `smoke/export-cache-scenario.js`.
+  **What draws an export's TikZ and MetaPost** (jmarkdown 21dee42, processFile
+  `figureEngine`/`mpTikzDist`; `export-cache.js#figureEngineOptions`,
+  `export.js#figureEngine`, spread into note and book exports alike): in a
+  TRUSTED vault the app setting `exportFigureEngine` — `external` (the
+  installed lualatex/dvisvgm/mpost/mptopdf; no option passed — the default,
+  Clew-boss 2026-10-10, until the engine also falls back on a missing
+  package: the bundles lack siunitx, which the tools draw) or `auto`
+  (mp-tikz-wasm from `paths.mptikzAssets`, the preview's own build; the tools
+  for a font it cannot resolve, warned). A RESTRICTED vault's exports are
+  ALWAYS `wasm`, whatever the setting: the installed lualatex reads any file
+  the user can (measured: `\input{<a file outside the vault>}` in a TikZ
+  node drew its text into the export), the library's TeX sees no disk. And
+  because the engine's `wasm` still falls back to the tools when the library
+  will not load or a figure throws, a restricted export worker finds
+  REFUSING stand-ins for those four programs first on its PATH
+  (`export-cache.js#texRefusalDir`, `<userData>/restricted-export/no-tex/`;
+  POSIX only — Windows finds .exe): such a figure is an error box saying
+  why. Not covered, by nature: a PDF via LaTeX is the document's own TeX
+  (TikZ is written natively into the .tex) typeset by the installed LaTeX,
+  in a restricted vault too. In LaTeX only MetaPost changes (its PDFs); a
+  library render is keyed apart from the tools' in the export cache, so a
+  switch re-renders once. Where the two draw differently: a MetaPost SVG is
+  px-sized (the preview's size; the tools' pt is 1.33×), a TikZ box ~3%
+  larger; a family whose faces are separate files (Times New Roman,
+  Georgia, Arial) is found by FILE NAME, regular only, until the engine
+  takes a host font hook. Clew's own figure fences (```tikz, ```latex, …)
+  print as code in every note and book export — the engine draws only its
+  own `@begin(TiKZ)`/`:::TiKZ`/`@begin(metapost)`.
+  `smoke/export-figures-scenario.js`.
   **Build warnings** — the engine's, incl. its LaTeX-export lint
   (`latex-export [code]: …`, jmarkdown 0631c42, on EVERY build; `Silence
   warnings:` turns codes off) — ride on `EV_RENDER_DONE` and an export's
