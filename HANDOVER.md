@@ -1,4 +1,4 @@
-# Handover — 2026-10-11 (origin/main 416c031, pushed; LOCAL: d134995 vendored, the postscript merge + mp-tikz 0.4.0, the dashboard chart + live-edit fix, the diagram cache outside the vault, Proof this chapter, the figure engine in exports, the colon retirement's phases 1 and 2 — NOT pushed; dev.10 = fb3635a)
+# Handover — 2026-10-11 (origin/main 185e950, pushed; LOCAL: 6b97acb vendored jmarkdown 389b3a1, and this handover — NOT pushed; dev.11 = 6b97acb)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it); the live edit design AS BUILT is
@@ -8,35 +8,43 @@ prefer deleting a settled item to explaining it again.
 
 ## Read this first
 
-**Where the code is.** `origin/main` = `416c031`, pushed 2026-10-10 on the
-owner's word via Clew-boss ("Please push!", `e430bed..416c031`: book mode
-phase 2, the print PDF, the pill fixes). Local since, NOT pushed — the owner
-decides: `2a877a5` `e00dabe` `fa78cc0` `4f6a706` `4aa515a` `478cfdf`
-`d4eae20`, the handover, the ff7facd vendor, then the cf5ed60 vendor `3b15bcc`,
-Proof this chapter `ef22b0b`, the engine's book map in the gate `282fde3`,
-the 21dee42 vendor `cc02f40`, the figure engine in exports `2cc6d89`
-`40030c7`. `git fetch` before counting.
+**Where the code is.** `origin/main` = `185e950`, pushed 2026-10-11 on the
+owner's word in this window ("push it"): everything through the colon
+retirement's phase 2. Local since, NOT pushed: `6b97acb` (below) and this
+handover. `git fetch` before counting.
 
-**THE OWNER'S FREEZE (2026-10-11, via Clew-boss): only the colon
-retirement proceeds.** Frozen until the owner or Clew-boss lifts it: figure
-engine step C (the trusted default `auto`, figureFonts), the restricted-PDF
-and Q10 questions, any feature or fix outside the colon work, dev builds.
-Nothing is pushed until the owner says.
+**The freeze is LIFTED (2026-10-11), restarted in stages by Clew-boss:**
+Clew-iOS syncs to `185e950`; jmarkdown's figure-engine queue; then Clew-app's
+step C (the trusted default `auto`, figureFonts) — HOLD until Clew-boss sends
+it. Main moves only for what Clew-boss asks (iOS is pinned to 185e950).
 
-**2026-10-11: colon retirement PHASE 2 — built, sent to Clew-boss to verify**
-(its go after jmarkdown's converter landed: at-migration `851e8e8`, local,
-on the owner's OK). `65ef069` vendor 851e8e8 (new `colon-to-at.js`;
-`@begin(print)` keeps its LaTeX paragraph break; mirror = git archive +
-the owner's 10-line index.js hunk). `fcc7faf` "Convert this vault" (CLAUDE.md
-"The colon directives are being retired" is the durable account). `ae6787e`
-colon-convert-scenario + make-colon-vault (smoke/README has the numbers:
-demo round trip byte-identical after undo, HTML exports identical; 5k dry
-run ~1 s, main ≤10 ms, frames ≤10.3 ms; convert 4,001 notes 25–31 s, fsync
-the floor). Found, for jmarkdown via Clew-boss: `@begin(TeX)`'s LaTeX loses
-the paragraph break after the block (as `:::TeX` did, differently), so the
-converter's `same` for TeX is not byte-equal in LaTeX; generic blocks' and
-`:span`'s LaTeX change as the converter documents. Docs drafts the phase-2
-pages after Clew-boss verifies; Clew-iOS's sync is Clew-boss's to schedule.
+**2026-10-11.**
+- Colon retirement PHASE 2 verified by Clew-boss and pushed: `65ef069`
+  vendor 851e8e8, `fcc7faf` "Convert this vault" (CLAUDE.md has the durable
+  account), `ae6787e` the scenario + 5k fixture (smoke/README has the
+  numbers), `185e950` the sheet's words agree with their counts. jmarkdown's
+  answer on `@begin(TeX)`'s lost paragraph break: not a bug (raw
+  passthrough; authors write `\par`) — phase 3 ends the TeX bodies in
+  Projects/Dialect Demo.md:19 and Guide/Live Edit.md:118 with `\par`.
+- `6b97acb` vendors jmarkdown at-migration `389b3a1` (verified by Clew-boss):
+  LaTeX for feedback, source/target (a cell's source in a minipage),
+  markdown-demo, title-box and the title page; a full document whose body
+  prints its own title gets no `\maketitle` (the owner's "match the HTML").
+  No HTML change: render dump (demo 60, study 20) and a fixture of every
+  changed construct — reading view, site export, HTML exports — identical
+  before and after; its PDFs compile through Clew's export; book export,
+  parity (33/33), print and proof as their README rows.
+- **dev.11 (0.12.1-dev.11) from `6b97acb`**, on Clew-boss's word (the owner
+  asked): `out-dev/Clew-0.12.1-dev.11-arm64.dmg` 242,940,338 bytes, notarised
+  (`0440547e-5481-4d65-bf2d-d99e5a9c50f9`, Accepted), stapled (DMG and app),
+  spctl accepts both (Notarized Developer ID), codesign deep/strict valid,
+  runtime flag, the four entitlements, the build stamp in the asar. mptikz =
+  release 0.4.0 + Ghostscript (STAGED.json `source: release`, both pinned
+  archives); `gs.wasm` sealed in CodeResources (hash matches the file). BOOT
+  TEST PASSED: figures 13 `mpw-ok` — the app fetched `gs.mjs`/`gs.wasm` and
+  drew Figures.md's `\rotatebox`, so Ghostscript runs under the hardened
+  runtime — export figures both settings, live edit 7/7. out-dev keeps
+  dev.9–dev.11; dev.8 Trashed.
 
 **2026-10-10 (via Clew-boss; each verified by it unless noted).**
 - `2a877a5` engine at jmarkdown at-migration `d134995` (figure-cache.js:
