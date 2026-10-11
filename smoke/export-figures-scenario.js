@@ -8,7 +8,7 @@
 //
 // Under each value of the `exportFigureEngine` setting in turn — external,
 // then auto — every fixture note is exported into `ef/<setting>/`:
-//   start    `default=external trusted=…` — the setting's value before any change
+//   start    `default=auto trusted=…` — the setting's value before any change
 //   export   `<setting> <note>.<ext> ok=… warnings=[…]` (minted's lexer
 //            warnings left out) or `error="…"`
 // A restricted vault's exports come out the same under both values: the

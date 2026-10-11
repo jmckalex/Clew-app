@@ -90,11 +90,11 @@ class ClewSettingsView extends ClewElement {
 					+ 'polyglossia or Lua code (a \\setmainfont in your jmarkdown config, say) is compiled with '
 					+ 'LuaLaTeX, anything else with pdfLaTeX. Choose an engine here for what that cannot see.'),
 				this.#selectRow('TikZ and MetaPost figures in exports', 'exportFigureEngine',
-					[['external', 'Your TeX installation'], ['auto', 'Clew\'s built-in TeX']]),
+					[['auto', 'Clew\'s built-in TeX'], ['external', 'Your TeX installation']]),
 				this.#hint('For a note or book exported as HTML, LaTeX or PDF. Clew\'s built-in TeX is the '
-					+ 'one the preview draws with, and needs no TeX installed; a figure naming a font it cannot '
-					+ 'find goes to your installation instead. It lacks some packages your installation may '
-					+ 'have (siunitx, for one), and a figure that needs one shows an error. In a vault '
+					+ 'one the preview draws with, and needs no TeX installed; a figure it cannot draw — one '
+					+ 'naming a font it cannot find, or needing a package it lacks (siunitx, for one) — goes '
+					+ 'to your installation instead, and the export says so. In a vault '
 					+ `${DEVICE} does not trust, the built-in TeX always draws the figures, so that vault's TeX `
 					+ 'never runs on your installation.'),
 				this.#textRow('Shell panel font', 'shellFont', 'e.g. MesloLGS NF — blank for the default'),

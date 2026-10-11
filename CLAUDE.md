@@ -1666,12 +1666,14 @@ except where the selection touches a construct. The durable design is
   **What draws an export's TikZ and MetaPost** (jmarkdown 21dee42, processFile
   `figureEngine`/`mpTikzDist`; `export-cache.js#figureEngineOptions`,
   `export.js#figureEngine`, spread into note and book exports alike): in a
-  TRUSTED vault the app setting `exportFigureEngine` — `external` (the
-  installed lualatex/dvisvgm/mpost/mptopdf; no option passed — the default,
-  Clew-boss 2026-10-10, until the engine also falls back on a missing
-  package: the bundles lack siunitx, which the tools draw) or `auto`
-  (mp-tikz-wasm from `paths.mptikzAssets`, the preview's own build; the tools
-  for a font it cannot resolve, warned). A RESTRICTED vault's exports are
+  TRUSTED vault the app setting `exportFigureEngine` — `auto` (the
+  default since step C, 2026-10-11, on branch `step-c` until the owner sees
+  the differences: mp-tikz-wasm from `paths.mptikzAssets`, the preview's own
+  build; the tools for a figure it cannot draw — a font it cannot resolve,
+  or since jmarkdown c82d206 a file its bundles lack, siunitx say — warned
+  with what came of it) or `external` (the installed
+  lualatex/dvisvgm/mpost/mptopdf alone; no option passed; the default until
+  then). A RESTRICTED vault's exports are
   ALWAYS `wasm`, whatever the setting: the installed lualatex reads any file
   the user can (measured: `\input{<a file outside the vault>}` in a TikZ
   node drew its text into the export), the library's TeX sees no disk.
@@ -1689,9 +1691,13 @@ except where the selection touches a construct. The durable design is
   (TikZ is written natively into the .tex) typeset by the installed LaTeX,
   in a restricted vault too. In LaTeX only MetaPost changes (its PDFs); a
   library render is keyed apart from the tools' in the export cache, so a
-  switch re-renders once. Where the two draw differently: a MetaPost SVG is
-  px-sized (the preview's size; the tools' pt is 1.33×), a TikZ box ~3%
-  larger; a family whose faces are separate files (Times New Roman,
+  switch re-renders once. Where the two draw differently
+  (`smoke/figure-engine-compare.sh`, measured 2026-10-11): a MetaPost SVG is
+  px-sized (the preview's size; the tools' pt is 1.33×), so in HTML an
+  UNSIZED MetaPost figure shows at ~74%, labels too (one the note sizes,
+  `{width='45%'}`, is the same), and it honours `withpen` (the tools' SVG
+  drew every stroke at 0.5); a TikZ box ~3% larger; MetaPost PDFs for LaTeX
+  within 1 pt, so a PDF via LaTeX is the same to the eye; a family whose faces are separate files (Times New Roman,
   Georgia, Arial) is found by FILE NAME, regular only, until the engine
   takes a host font hook. Clew's own figure fences (```tikz, ```latex, …)
   print as code in every note and book export — the engine draws only its

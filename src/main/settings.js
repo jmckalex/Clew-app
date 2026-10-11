@@ -60,11 +60,12 @@ const DEFAULTS = {
 	// LuaLaTeX), or 'pdflatex' | 'lualatex' | 'xelatex' for what it cannot see.
 	latexEngine: 'auto',
 	// What draws TikZ and MetaPost in a TRUSTED vault's note and book exports
-	// (export-cache.js#figureEngineOptions): 'external' — the installed TeX
-	// tools — or 'auto' — mp-tikz-wasm, the preview's own build, with the
-	// tools for a font it cannot find. A restricted vault's always use
-	// mp-tikz-wasm alone, whatever this says.
-	exportFigureEngine: 'external',
+	// (export-cache.js#figureEngineOptions): 'auto' — mp-tikz-wasm, the
+	// preview's own build, with the installed TeX tools for a figure it cannot
+	// draw (a font it cannot find, a file its bundles lack) — or 'external',
+	// the installed tools alone. A restricted vault's always use mp-tikz-wasm
+	// alone, whatever this says.
+	exportFigureEngine: 'auto',
 	// The daily update check (main/updater.js): 'on' | 'off'; and a version
 	// the user chose to skip, which is not told again.
 	updateCheck: 'on',

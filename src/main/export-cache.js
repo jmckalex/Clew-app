@@ -154,26 +154,29 @@ export function explainFiguresWarnings(warnings, { restricted }) {
 // What draws an export's TikZ and MetaPost (jmarkdown 21dee42, figure-engine.js:
 // processFile's `figureEngine` / `mpTikzDist`). 'external' is the installed
 // tools (lualatex, dvisvgm, mpost, mptopdf), as always; 'auto' is mp-tikz-wasm
-// — the preview's own build — with the tools for a font it cannot find; 'wasm'
+// — the preview's own build — with the tools for what it cannot draw; 'wasm'
 // the library alone. A TRUSTED vault's exports follow the `exportFigureEngine`
-// setting ('external' until the engine also falls back on a missing package:
-// the bundles lack some, siunitx among them, which the tools draw today). A
+// setting, 'auto' by default since step C (2026-10-11): from jmarkdown
+// c82d206 a figure needing a file the library's bundles lack (siunitx, say)
+// goes to the tools too, as a font it cannot find already did, so a TeX
+// user's figures do not regress; 'external' is the tools alone. A
 // RESTRICTED vault's always get 'wasm', whatever the setting: TeX is a
 // programming language, and the installed lualatex reads any file this user
 // can (measured: `\input{<a file outside the vault>}` in a TikZ node drew that
 // file's text into the exported figure), while the library's TeX sees no disk.
 
 /** The values the `exportFigureEngine` setting takes, its default first. */
-export const FIGURE_ENGINE_SETTINGS = ['external', 'auto'];
+export const FIGURE_ENGINE_SETTINGS = ['auto', 'external'];
 
 /**
  * The processFile options for an export's figures: `{}` (the installed tools,
  * no option at all) or `{ figureEngine, mpTikzDist }`. `dist` is the staged
  * mp-tikz-wasm (paths.js#mptikzAssets — the build the preview draws with).
+ * Only 'external' asks for the tools alone; anything else is the default.
  */
 export function figureEngineOptions({ trusted, dist, setting }) {
 	if (!trusted) return { figureEngine: 'wasm', mpTikzDist: dist };
-	return setting === 'auto' ? { figureEngine: 'auto', mpTikzDist: dist } : {};
+	return setting === 'external' ? {} : { figureEngine: 'auto', mpTikzDist: dist };
 }
 
 /**

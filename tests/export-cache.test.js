@@ -136,16 +136,16 @@ test('explainFiguresWarnings: the engine\'s warning about a folder of the user\'
 
 test('figureEngineOptions: a trusted vault as the setting says, a restricted one always the library alone', () => {
 	const dist = '/app/mptikz';
-	assert.deepEqual(FIGURE_ENGINE_SETTINGS, ['external', 'auto']);
-	assert.deepEqual(figureEngineOptions({ trusted: true, dist, setting: 'external' }), {});
-	assert.deepEqual(figureEngineOptions({ trusted: true, dist, setting: undefined }), {}, 'no setting: the installed tools');
-	assert.deepEqual(figureEngineOptions({ trusted: true, dist, setting: 'nonsense' }), {});
+	assert.deepEqual(FIGURE_ENGINE_SETTINGS, ['auto', 'external']);
+	assert.deepEqual(figureEngineOptions({ trusted: true, dist, setting: 'external' }), {}, 'external: the installed tools alone');
 	assert.deepEqual(figureEngineOptions({ trusted: true, dist, setting: 'auto' }), { figureEngine: 'auto', mpTikzDist: dist });
+	assert.deepEqual(figureEngineOptions({ trusted: true, dist, setting: undefined }), { figureEngine: 'auto', mpTikzDist: dist }, 'no setting: the default');
+	assert.deepEqual(figureEngineOptions({ trusted: true, dist, setting: 'nonsense' }), { figureEngine: 'auto', mpTikzDist: dist }, 'an unknown value: the default');
 	for (const setting of ['external', 'auto', undefined]) {
 		assert.deepEqual(figureEngineOptions({ trusted: false, dist, setting }), { figureEngine: 'wasm', mpTikzDist: dist }, `restricted, setting ${setting}`);
 	}
 	const defaults = fs.readFileSync(new URL('../src/main/settings.js', import.meta.url), 'utf8');
-	assert.ok(defaults.includes("exportFigureEngine: 'external',"), 'the setting\'s default is the first value');
+	assert.ok(defaults.includes("exportFigureEngine: 'auto',"), 'the setting\'s default is the first value');
 });
 
 test('TEX_TOOLS: every program the engine runs over a figure\'s TeX (vendored tikz.js, metapost.js)', () => {
