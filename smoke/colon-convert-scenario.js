@@ -20,6 +20,8 @@
 //            the window's frames while it ran (rAF intervals; a frame longer
 //            than 16.7 ms is `over16`) and the longtask observer's count
 //   sheet <cycle> groups=[…] button="…"   what the sheet offered
+//   words <cycle> [group: its line [box: …]]   each group's words, which agree
+//            with its count ("1 directive … renders", "this one")
 //   open-list <cycle> <group> folds=… frames …   the biggest folded list opened
 //   apply <cycle> wall=… frames: …  result="…"
 //   again <cycle> groups=[…]              the second dry run, after converting
@@ -120,6 +122,7 @@ try {
 		}, 'scanning');
 		log(`scan ${cycle} wall=${Math.round(performance.now() - t0)}ms frames ${scan.text}`);
 		log(`sheet ${cycle} groups=${JSON.stringify(groups())} button=${JSON.stringify(sheet().querySelector('[data-colon-action="convert"]')?.textContent)}`);
+		log(`words ${cycle} ${JSON.stringify([...sheet().querySelectorAll('section[data-group]')].map((sec) => `${sec.dataset.group}: ${sec.querySelector('.clew-colon-explain')?.textContent ?? ''}${sec.querySelector('.clew-colon-pick-all') ? ` [box:${sec.querySelector('.clew-colon-pick-all').textContent.trim()}]` : ''}`))}`);
 		// A folded list (a group of more than 200 notes), opened: its folds are
 		// built a few milliseconds' worth per frame.
 		const folded = [...sheet().querySelectorAll('details.clew-colon-list:not([open])')];

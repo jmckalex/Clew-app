@@ -202,6 +202,7 @@ async function review(sheet, report, { again = false } = {}) {
 	};
 
 	/** A group of rows, by note, with a box that ticks every row in it. */
+	/** `explain(count)`: the group's line, agreeing with its count of rows. */
 	const rowGroup = (key, title, explain, pick) => {
 		const members = usable.map((n) => ({ note: n, rows: n.rows.filter((r) => pick(r, n)) })).filter((m) => m.rows.length);
 		if (!members.length) return null;
@@ -221,10 +222,10 @@ async function review(sheet, report, { again = false } = {}) {
 				for (const box of section.querySelectorAll('input[data-colon-pick]')) box.checked = all.checked;
 				update();
 			});
-			label.append(all, document.createTextNode(' all of these'));
+			label.append(all, document.createTextNode(choosable.length === 1 ? ' this one' : ' all of these'));
 			head.append(label);
 		}
-		section.append(head, h('p', 'clew-colon-explain', explain),
+		section.append(head, h('p', 'clew-colon-explain', explain(count)),
 			noteList(members.length, members.map(({ note, rows }) => () => noteFold(note.path, plural(rows.length, 'item'), () => rows.map((r) => rowView(note, r))))));
 		return section;
 	};
@@ -240,7 +241,7 @@ async function review(sheet, report, { again = false } = {}) {
 		const section = h('section', 'clew-colon-group');
 		section.dataset.group = 'same';
 		section.append(h('h3', null, `Same output (${totals.auto.toLocaleString()})`),
-			h('p', 'clew-colon-explain', `${plural(totals.auto, 'directive')} in ${plural(same.length, 'note')} render exactly as before once converted. These are converted.`));
+			h('p', 'clew-colon-explain', `${plural(totals.auto, 'directive')} in ${plural(same.length, 'note')} ${totals.auto === 1 ? 'renders' : 'render'} exactly as before once converted. ${totals.auto === 1 ? 'It is' : 'These are'} converted.`));
 		section.append(noteList(same.length, same.map((n) => () => noteFold(n.path, plural(n.autoItems, 'directive'), () => n.auto.map((i) => {
 			const row = itemLine(i);
 			row.prepend(h('span', 'clew-colon-line', `line ${i.line} `));
@@ -253,13 +254,13 @@ async function review(sheet, report, { again = false } = {}) {
 	const groups = [
 		sameGroup,
 		rowGroup('output', 'Output changes',
-			'Converted, these render differently — a theorem or a figure numbered, a block\'s label kept. Left unticked, they stay as they are written.',
+			(n) => `Converted, ${n === 1 ? 'this renders' : 'these render'} differently — a theorem or a figure numbered, a block's label kept. Left unticked, ${n === 1 ? 'it stays as it is' : 'they stay as they are'} written.`,
 			(r) => r.kind === 'changes-output'),
 		rowGroup('loads', 'Notes that load directives',
-			`${plural(loading, 'note')} ${loading === 1 ? 'loads' : 'load'} directives of ${loading === 1 ? 'its' : 'their'} own (a header, a folder's or your global .jmarkdown/config.json), which may define any name ${loading === 1 ? 'it uses' : 'they use'}. Nothing in ${loading === 1 ? 'it' : 'them'} is converted unless you tick it.`,
+			() => `${plural(loading, 'note')} ${loading === 1 ? 'loads' : 'load'} directives of ${loading === 1 ? 'its' : 'their'} own (a header, a folder's or your global .jmarkdown/config.json), which may define any name ${loading === 1 ? 'it uses' : 'they use'}. Nothing in ${loading === 1 ? 'it' : 'them'} is converted unless you tick it.`,
 			(r, n) => !!n.loads),
 		rowGroup('left', 'Left as written',
-			'The converter cannot write these faithfully. Change them by hand if you want the @ form.',
+			(n) => `The converter cannot write ${n === 1 ? 'this' : 'these'} faithfully. Change ${n === 1 ? 'it' : 'them'} by hand if you want the @ form.`,
 			(r, n) => r.kind === 'needs-you' && !n.loads),
 	].filter(Boolean);
 	const refused = notes.filter((n) => n.refuse);
