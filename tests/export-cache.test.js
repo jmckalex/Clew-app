@@ -162,11 +162,14 @@ test('texRefusalDir: a stand-in for each tool that refuses, saying why; none on 
 	assert.equal(texRefusalDir(dir), dir);
 	assert.deepEqual(fs.readdirSync(dir).sort(), [...TEX_TOOLS].sort());
 	assert.equal(texRefusalDir(dir), dir, 'written again over itself');
+	assert.equal(fs.existsSync(path.join(dir, 'ran.log')), false, 'nothing run, nothing logged');
 	for (const tool of TEX_TOOLS) {
 		assert.ok(fs.statSync(path.join(dir, tool)).mode & 0o111, `${tool} is executable`);
 		// Found by name on PATH, as the engine's execFileSync finds the real one.
 		assert.throws(() => execFileSync(tool, ['--version'], { env: { PATH: `${dir}${path.delimiter}/usr/bin:/bin` }, stdio: 'pipe' }),
 			(err) => err.status === 1 && /was not run: in a vault this device does not trust/.test(String(err.stderr)));
 	}
+	// Each refusal is logged beside the stand-ins: a run can show none was reached.
+	assert.deepEqual(fs.readFileSync(path.join(dir, 'ran.log'), 'utf8').trim().split('\n'), TEX_TOOLS);
 	assert.equal(texRefusalDir(path.join(fresh(), 'win'), 'win32'), null);
 });

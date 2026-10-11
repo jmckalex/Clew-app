@@ -72,8 +72,9 @@ export function figureEngine(trusted) {
 }
 
 // A restricted vault's worker finds refusing stand-ins for the TeX tools
-// first on its PATH (export-cache.js#texRefusalDir), so its figures' TeX never
-// reaches the installed lualatex, even where the engine would fall back to it.
+// first on its PATH (export-cache.js#texRefusalDir): a second guard behind the
+// engine's own (`wasm` never runs the tools since jmarkdown c82d206), so its
+// figures' TeX never reaches the installed lualatex.
 function workerPath(restricted) {
 	const refuse = restricted ? texRefusalDir(path.join(paths.restrictedExport, 'no-tex')) : null;
 	return refuse ? [refuse, toolchainPath()].join(path.delimiter) : toolchainPath();

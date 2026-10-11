@@ -184,21 +184,23 @@ export const TEX_TOOLS = ['lualatex', 'dvisvgm', 'mpost', 'mptopdf'];
 
 /**
  * A folder of stand-ins for TEX_TOOLS that refuse, put FIRST on a restricted
- * export's PATH. 'wasm' is not enough on its own: when the library will not
- * load, or a figure throws in it, the engine falls back to the installed tools
- * (measured: a dist with no index.js drew the \input above with lualatex).
- * With these on PATH that figure is an error box naming why. Only the engine's
- * worker gets them — compilePdf's latexmk is the user's TeX by nature, and a
- * PDF via LaTeX typesets the document's own TeX, its TikZ included. POSIX
- * only: Windows finds programs by extension (.exe), which a script is not —
- * null there, and the PATH unchanged.
+ * export's PATH. Since jmarkdown c82d206 'wasm' never runs the tools on any
+ * path — a figure the library does not draw is a `jmd-refused` marker — so
+ * these are the SECOND guard: before it, a library that would not load, or a
+ * figure that threw in it, went to the installed tools (measured: a dist with
+ * no index.js drew the \input above with lualatex). Each refusal leaves its
+ * tool's name in `ran.log` beside them, so a run can show none was reached.
+ * Only the engine's worker gets them — compilePdf's latexmk is the user's TeX
+ * by nature, and a PDF via LaTeX typesets the document's own TeX, its TikZ
+ * included. POSIX only: Windows finds programs by extension (.exe), which a
+ * script is not — null there, and the PATH unchanged.
  */
 export function texRefusalDir(dir, platform = process.platform) {
 	if (platform === 'win32') return null;
 	fs.mkdirSync(dir, { recursive: true });
 	for (const tool of TEX_TOOLS) {
 		const file = path.join(dir, tool);
-		fs.writeFileSync(file, `#!/bin/sh\necho "${tool} was not run: in a vault this device does not trust, an export's figures are drawn by Clew's built-in TeX only" >&2\nexit 1\n`);
+		fs.writeFileSync(file, `#!/bin/sh\necho "${tool}" >> "$(dirname "$0")/ran.log"\necho "${tool} was not run: in a vault this device does not trust, an export's figures are drawn by Clew's built-in TeX only" >&2\nexit 1\n`);
 		fs.chmodSync(file, 0o755);
 	}
 	return dir;

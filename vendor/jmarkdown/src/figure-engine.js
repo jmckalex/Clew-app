@@ -6,7 +6,10 @@
 	OFF unless the config or a host asks, and then only with a library to load:
 	  `Figure engine`: external (the default: the installed tools, as always) |
 	                   auto (the library; per figure, the tools when a font the
-	                   figure needs cannot be resolved) | wasm (the library only)
+	                   figure needs cannot be resolved, or a file its TeX does
+	                   not have) | wasm (the library only: the tools are never
+	                   run, on any path — a figure the library does not draw
+	                   is refused by name instead)
 	  `MP-TikZ dist`:  the path to a release's dist/ folder (mp-tikz-wasm is no
 	                   npm package; its release tarball holds dist/)
 	— processFile's `figureEngine` / `mpTikzDist`, the CLI's --figure-engine /
@@ -26,8 +29,11 @@
 	output never mixes with the tools' and a new release re-renders cleanly.
 	Fonts: a preamble's \setmainfont{Optima} and the like are found in the
 	system's font folders and handed to the library (addFiles); a face it still
-	cannot resolve shows in its TeX log, and under `auto` that figure is drawn by
-	the tools instead, with a warning.
+	cannot resolve shows in its TeX log: under `auto` that figure is drawn by the
+	tools instead, and under `wasm` it is drawn without that face; a warning
+	either way. Under `auto` a figure whose TeX needs a file the library's
+	bundles leave out (a package such as siunitx or tikz-feynman) goes to the
+	tools too: the installed TeX has it.
 */
 
 import fs from 'fs';
@@ -52,6 +58,33 @@ function setting() {
 	return v === 'auto' || v === 'wasm' ? v : 'external';
 }
 
+/*
+	`wasm` is the library ALONE: the installed lualatex, dvisvgm, mpost and
+	mptopdf are never run, on any path — no dist, a library that will not load,
+	a library call that throws, a figure no walk filled. A host relies on it
+	(Clew's restricted vaults: the installed TeX reads any file the user can).
+	It is enforced where the tools are called, not where the fallbacks are
+	decided: tikz.js's compile and metapost.js's renderers ask
+	figureToolsRefused() first, and a figure the library did not draw becomes
+	refuseFigure(name) — a `jmd-refused` marker naming it in HTML, as note code
+	refused is (note-code.js), nothing in LaTeX, and a warning.
+*/
+export function figureToolsRefused() {
+	return setting() === 'wasm';
+}
+
+export function refuseFigure(name) {
+	warnOnce(`${name} not drawn — \`Figure engine: wasm\` never runs the installed tools`);
+	if (global.isLatex) return '';
+	return `<div class="jmd-error jmd-refused" data-jmd-refused="${name}">[${name} not drawn: the figure engine is wasm, which never runs the installed tools]</div>\n`;
+}
+
+// What the engine falls back to when the library cannot draw: the tools, or
+// under `wasm` nothing.
+const fallback = () => (setting() === 'wasm'
+	? 'no figure is drawn (`wasm` never runs the installed tools)'
+	: 'the installed tools are used');
+
 function distDir() {
 	const d = configManager.get('MP-TikZ dist');
 	return d ? path.resolve(process.cwd(), String(d)) : null;
@@ -65,7 +98,7 @@ function distDir() {
 export function figureEngineWanted() {
 	if (setting() === 'external') return false;
 	if (!distDir()) {
-		warnOnce(`Figure engine: ${setting()} needs \`MP-TikZ dist\` (a path to mp-tikz-wasm's dist/) — the installed tools are used`);
+		warnOnce(`Figure engine: ${setting()} needs \`MP-TikZ dist\` (a path to mp-tikz-wasm's dist/) — ${fallback()}`);
 		return false;
 	}
 	return true;
@@ -108,7 +141,7 @@ async function instance() {
 		return mp;
 	} catch (error) {
 		lib = false;
-		warnOnce(`Figure engine: mp-tikz-wasm would not load from ${distDir()} (${String(error?.message ?? error).split('\n')[0]}) — the installed tools are used`);
+		warnOnce(`Figure engine: mp-tikz-wasm would not load from ${distDir()} (${String(error?.message ?? error).split('\n')[0]}) — ${fallback()}`);
 		return null;
 	}
 }
@@ -164,7 +197,23 @@ async function giveFonts(engine, source) {
 
 const FONT_MISS = /Could not resolve font|Font shape [^\n]* undefined/;
 
+// A file the library's TeX does not have: `! LaTeX Error: File `siunitx.sty'
+// not found.` (its bundles hold a selection of TeX Live, the tools all of it).
+const MISSING_FILE = /! LaTeX Error: File `([^']+)' not found/;
+
 // --- the jobs --------------------------------------------------------------------
+
+// A TiKZ figure sent to the installed tools under `auto`, and a warning that
+// says what came of it. The tools can fail too — a font no installed TeX has,
+// or no lualatex at all — and the page then shows an error box, which a
+// warning saying "drawn by the installed tools" used to sit above.
+function toTools(job, why) {
+	const failure = job.external();
+	const outcome = failure === null ? 'drawn by the installed tools instead'
+		: /\bENOENT\b/.test(failure) ? 'and the installed tools are not available, so it is not drawn (see the error box)'
+		: 'and the installed tools could not draw it either (see the error box)';
+	addWarning(`Figure engine: ${why} — ${outcome}`);
+}
 
 const hash = (kind, text) => crypto.createHash('md5').update(`${fingerprint()}|${kind}|${text}`).digest('hex');
 
@@ -182,10 +231,21 @@ async function fillTikz(job) {
 		dvisvgmArgs: ['--no-fonts=1', ...(optimise ? [`--optimize=${optimise}`] : [])],
 	}));
 	if (setting() === 'auto' && FONT_MISS.test(r.texLog || '')) {
-		addWarning('Figure engine: a TiKZ figure names a font mp-tikz-wasm could not resolve — drawn by the installed tools instead');
-		return job.external();
+		return toTools(job, 'a TiKZ figure names a font mp-tikz-wasm could not resolve');
 	}
-	if (!r.pages?.length || r.status === 'error' || r.status === 'fatal') {
+	const missing = MISSING_FILE.exec(r.texLog || '');
+	if (setting() === 'auto' && missing) {
+		return toTools(job, `a TiKZ figure needs \`${missing[1]}\`, which mp-tikz-wasm does not have`);
+	}
+	const made = r.pages?.length && r.status !== 'error' && r.status !== 'fatal';
+	// Under `wasm` nothing falls back, and a face the library cannot resolve
+	// used to pass in silence: the figure's bold and italic came out regular.
+	if (setting() === 'wasm' && FONT_MISS.test(r.texLog || '')) {
+		const faces = [...new Set([...(r.texLog || '').matchAll(/Could not resolve font "([^"]+)"/g)].map((m) => m[1]))];
+		const named = faces.length ? ` (${faces.join(', ')})` : '';
+		addWarning(`Figure engine: a TiKZ figure names a font mp-tikz-wasm could not resolve${named} — ${made ? 'drawn without it' : 'not drawn (see the error box)'}`);
+	}
+	if (!made) {
 		return job.fail(r.texLog || r.log || r.diagnostics?.map((d) => d.message).join('\n') || 'mp-tikz-wasm made no figure');
 	}
 	compileInRunDir(job.dir, (run) => { fs.writeFileSync(path.join(run, `${name}.svg`), r.pages[0]); return [`${name}.svg`]; });
@@ -245,7 +305,7 @@ async function runAll() {
 			if (job.kind === 'tikz') await fillTikz(job);
 			else await fillMetapost(job);
 		} catch (error) {
-			warnOnce(`Figure engine: mp-tikz-wasm failed (${String(error?.message ?? error).split('\n')[0]}) — the installed tools are used`);
+			warnOnce(`Figure engine: mp-tikz-wasm failed (${String(error?.message ?? error).split('\n')[0]}) — ${fallback()}`);
 			job.external();
 		}
 	}

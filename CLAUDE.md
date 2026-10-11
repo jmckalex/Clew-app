@@ -1674,13 +1674,18 @@ except where the selection touches a construct. The durable design is
   for a font it cannot resolve, warned). A RESTRICTED vault's exports are
   ALWAYS `wasm`, whatever the setting: the installed lualatex reads any file
   the user can (measured: `\input{<a file outside the vault>}` in a TikZ
-  node drew its text into the export), the library's TeX sees no disk. And
-  because the engine's `wasm` still falls back to the tools when the library
-  will not load or a figure throws, a restricted export worker finds
-  REFUSING stand-ins for those four programs first on its PATH
+  node drew its text into the export), the library's TeX sees no disk.
+  Since jmarkdown c82d206 `wasm` never runs the tools on ANY path (no
+  library, one that will not load, a call that throws): a figure the
+  library did not draw is a `jmd-refused` marker naming it in HTML
+  (`data-jmd-refused="TiKZ"`/`"metapost"`; nothing in LaTeX) and a warning;
+  one it tried and failed keeps its error box. The REFUSING stand-ins for
+  those four programs first on a restricted export worker's PATH
   (`export-cache.js#texRefusalDir`, `<userData>/restricted-export/no-tex/`;
-  POSIX only — Windows finds .exe): such a figure is an error box saying
-  why. Not covered, by nature: a PDF via LaTeX is the document's own TeX
+  POSIX only — Windows finds .exe) are the second guard, each run logged in
+  their `ran.log` (`smoke/export-figures-scenario.js`: `stand-ins-ran=0`).
+  The marker reaches note and book HTML exports only — the reading view and
+  a site export draw `@begin(TiKZ)` themselves. Not covered, by nature: a PDF via LaTeX is the document's own TeX
   (TikZ is written natively into the .tex) typeset by the installed LaTeX,
   in a restricted vault too. In LaTeX only MetaPost changes (its PDFs); a
   library render is keyed apart from the tools' in the export cache, so a
