@@ -1,4 +1,4 @@
-# Handover — 2026-10-10 (origin/main 416c031, pushed; LOCAL: d134995 vendored, the postscript merge + mp-tikz 0.4.0, the dashboard chart + live-edit fix, the diagram cache outside the vault, Proof this chapter, the figure engine in exports, the colon retirement's phase 1 — NOT pushed; dev.10 = fb3635a)
+# Handover — 2026-10-11 (origin/main 416c031, pushed; LOCAL: d134995 vendored, the postscript merge + mp-tikz 0.4.0, the dashboard chart + live-edit fix, the diagram cache outside the vault, Proof this chapter, the figure engine in exports, the colon retirement's phases 1 and 2 — NOT pushed; dev.10 = fb3635a)
 
 Session-rollover state. Durable architecture, conventions and gotchas live
 in **CLAUDE.md** (trust it); the live edit design AS BUILT is
@@ -16,6 +16,27 @@ decides: `2a877a5` `e00dabe` `fa78cc0` `4f6a706` `4aa515a` `478cfdf`
 Proof this chapter `ef22b0b`, the engine's book map in the gate `282fde3`,
 the 21dee42 vendor `cc02f40`, the figure engine in exports `2cc6d89`
 `40030c7`. `git fetch` before counting.
+
+**THE OWNER'S FREEZE (2026-10-11, via Clew-boss): only the colon
+retirement proceeds.** Frozen until the owner or Clew-boss lifts it: figure
+engine step C (the trusted default `auto`, figureFonts), the restricted-PDF
+and Q10 questions, any feature or fix outside the colon work, dev builds.
+Nothing is pushed until the owner says.
+
+**2026-10-11: colon retirement PHASE 2 — built, sent to Clew-boss to verify**
+(its go after jmarkdown's converter landed: at-migration `851e8e8`, local,
+on the owner's OK). `65ef069` vendor 851e8e8 (new `colon-to-at.js`;
+`@begin(print)` keeps its LaTeX paragraph break; mirror = git archive +
+the owner's 10-line index.js hunk). `fcc7faf` "Convert this vault" (CLAUDE.md
+"The colon directives are being retired" is the durable account). `ae6787e`
+colon-convert-scenario + make-colon-vault (smoke/README has the numbers:
+demo round trip byte-identical after undo, HTML exports identical; 5k dry
+run ~1 s, main ≤10 ms, frames ≤10.3 ms; convert 4,001 notes 25–31 s, fsync
+the floor). Found, for jmarkdown via Clew-boss: `@begin(TeX)`'s LaTeX loses
+the paragraph break after the block (as `:::TeX` did, differently), so the
+converter's `same` for TeX is not byte-equal in LaTeX; generic blocks' and
+`:span`'s LaTeX change as the converter documents. Docs drafts the phase-2
+pages after Clew-boss verifies; Clew-iOS's sync is Clew-boss's to schedule.
 
 **2026-10-10 (via Clew-boss; each verified by it unless noted).**
 - `2a877a5` engine at jmarkdown at-migration `d134995` (figure-cache.js:
@@ -129,11 +150,7 @@ the 21dee42 vendor `cc02f40`, the figure engine in exports `2cc6d89`
   syntax, a 2×2 game (`game=3x3`). Neither the manual nor a demo note shows
   the old sample; `:::game` is still NAMED in prose (manual editing.html:292,
   dialect.html:327; demo Guide/Editing.md:53) — for Docs and phase 3.
-  **PHASE 2** (approved in principle; waits for jmarkdown's converter as an
-  import-free module and Clew-boss's check): "Convert this vault" — dry run,
-  output changes itemised, never automatic, backups + note history, guarded
-  writes, undo only notes still as written; restricted vaults offered (text
-  only); iOS in principle; measure on the 5k vault + a converted round trip.
+  **PHASE 2** built 2026-10-11 (above).
   **PHASE 3** (lockstep, the owner's date): the list below. Measured on
   21dee42 and sent to both: NOT a rename
   for theorem/lemma/definition/proof/equation/figure/table — the colon form

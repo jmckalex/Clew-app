@@ -103,7 +103,7 @@ note API, plugins, and every settings key.
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
   dialect scanner's constructs and grammar, live edit's model, reveal rule,
-  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band, figure errors, the PDF save guard, deep links and the clew command, the shareable callout resolver, the device word, where notices sit, pinned apps, the demo vault's updates (untouched files by hash and by shipped history, a record-less copy dated by its files), the ticker's live rules, origin-bound network grants, books (the master reader, chapter titles, words and status, the index's chapter lists and their renames, a build's warnings placed, a book's numbers, a book's citation header), an app's secrets (the store, the methods), the system font index (family names, the cache), an export's figures outside the vault (the engine's marker, which folder may go, the prune) and what draws them (the setting per trust, the TeX tools' refusing stand-ins), a chapter proof (its files' names, whether a full run can number it), what the Insert commands write (the `@` forms, never a colon directive) — 1215 tests. DOM/UI work is
+  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band, figure errors, the PDF save guard, deep links and the clew command, the shareable callout resolver, the device word, where notices sit, pinned apps, the demo vault's updates (untouched files by hash and by shipped history, a record-less copy dated by its files), the ticker's live rules, origin-bound network grants, books (the master reader, chapter titles, words and status, the index's chapter lists and their renames, a build's warnings placed, a book's numbers, a book's citation header), an app's secrets (the store, the methods), the system font index (family names, the cache), an export's figures outside the vault (the engine's marker, which folder may go, the prune) and what draws them (the setting per trust, the TeX tools' refusing stand-ins), a chapter proof (its files' names, whether a full run can number it), what the Insert commands write (the `@` forms, never a colon directive), converting a vault's colon directives (a note's plan, what a choice writes, a note changed under the dry run, the backups, byte-exact undo) — 1226 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
@@ -1825,8 +1825,32 @@ except where the selection touches a construct. The durable design is
   change a known name (`@begin(<figure>)` is Figure 1), and numbering.js /
   note-metadata.js read them as the engine does. Everything still READS colon
   forms until the deletion (phase 3, in lockstep with jmarkdown and Clew-iOS,
-  on the owner's date); phase 2 is a "Convert this vault" flow on the engine's
-  converter. Do not add a writer of colon forms.
+  on the owner's date). Do not add a writer of colon forms.
+  Phase 2 (done 2026-10-11): **File → Convert Colon Directives…**
+  (`vault:convert-colons`) runs the engine's converter
+  (`#jmarkdown/colon-to-at.js`) as a DRY RUN and shows a sheet — never
+  automatic. `shared/colon-conversion.js` (pure, iOS-shareable) is a note's
+  plan: `same` converts by default, `changes-output` rows are unticked with
+  their why and @ form, what the converter leaves keeps its reason, `prose`
+  is never shown (not even a count — Meta Bind fields, Kanban comments; a
+  debug log under `CLEW_COLON_DEBUG`). A note that loads directives (header
+  `Load directives`, a folder's — its own up to the root — or the global
+  `.jmarkdown/config.json` `Directives`/`Optionals`) passes every colon name
+  as `customDirectives`: all needs-you, "Convert anyway" per row. What is
+  written is the converter again with `keep` (a row is a LINE — keep works by
+  line), checked against the plan; CRLF given back; mixed endings or non-UTF-8
+  refused by name. `main/colon-conversion.js`: apply in two passes — check
+  each note's hash against its dry run (changed → not written, planned and
+  offered again), back it up into `<userData>/colon-conversion/<vault>/
+  <time>/` with a manifest and keep it in history, THEN the atomic writes
+  (`vault.js#writeNoteAsync`, fsync off the main thread — on APFS a file
+  created while fsyncs were in flight held main 270 ms, hence the passes),
+  each note read again just before; a note open in an editor is changed
+  there as a transaction (the renderer, then `COLON_FINISH`). Undo
+  (`vault:undo-colon-conversion`, or the result's button) restores byte for
+  byte every note still exactly as written and names the rest.
+  `smoke/colon-convert-scenario.js` (+ `make-colon-vault.mjs`): the round
+  trip and the 5k cost.
 - **Engine embedding gotchas:** never emit `data-target` attributes in
   extension output — the engine's sources-and-targets post-pass deletes such
   elements (Clew uses `data-href`). The engine's bib indexer splits `.bib`
