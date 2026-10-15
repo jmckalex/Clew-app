@@ -22,6 +22,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { latexmkCommand } from '../src/main/latex-engine.js';
+import { absoluteSearchPath } from '../src/main/fs-utils.js';
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'clew-latexmk-command-'));
 after(() => fs.rmSync(root, { recursive: true, force: true }));
@@ -57,6 +58,13 @@ test('biber gets the user\'s own config file, in biber\'s order, else --noconf',
 	assert.deepEqual(biber({ HOME: '/h' }, '/h/Library/biber/biber.conf')[1], { CLEW_BIBER_CONF: '/h/Library/biber/biber.conf' });
 });
 
+test('the tools\' PATH keeps absolute folders only — an empty or relative entry is the working folder', () => {
+	const posix = { delimiter: ':', isAbsolute: path.posix.isAbsolute };
+	assert.deepEqual(absoluteSearchPath(':/usr/bin::.:bin:/Library/TeX/texbin:/usr/bin:', posix), ['/usr/bin', '/Library/TeX/texbin']);
+	assert.deepEqual(absoluteSearchPath(undefined, posix), []);
+	assert.deepEqual(absoluteSearchPath('C:\\TeX\\bin;;.\\x;D:\\y', { delimiter: ';', isAbsolute: path.win32.isAbsolute }), ['C:\\TeX\\bin', 'D:\\y']);
+});
+
 // The real tools. Skipped on a machine without them.
 const TEX_DIRS = ['/Library/TeX/texbin', '/usr/local/bin', '/opt/homebrew/bin'];
 const tool = (name) => TEX_DIRS.map((d) => path.join(d, name)).find((p) => fs.existsSync(p)) ?? null;
@@ -65,8 +73,8 @@ const haveTools = latexmk && tool('biber') && tool('pdflatex');
 const skip = haveTools ? false : 'latexmk, biber and pdfLaTeX are not installed';
 const isFile = (p) => { try { return fs.statSync(p).isFile(); } catch { return false; } };
 
-const run = (dir, home) => {
-	const env = { ...process.env, HOME: home, PATH: `${TEX_DIRS.join(':')}:${process.env.PATH}` };
+const run = (dir, home, PATH = `${TEX_DIRS.join(':')}:${process.env.PATH}`) => {
+	const env = { ...process.env, HOME: home, PATH };
 	delete env.XDG_CONFIG_HOME;
 	delete env.LATEXMKRCSYS;
 	const command = latexmkCommand({ engine: 'pdflatex', texFile: 'Book.tex', env, isFile });
@@ -113,4 +121,22 @@ test('a biber.conf the document\'s TeX writes during the run is not read either'
 	assert.ok(fs.existsSync(path.join(dir, 'biber.conf')), `the document planted its biber.conf\n${log}`);
 	assert.equal(fs.existsSync(sentinel('tex-biber-conf-wrote.bbl')), false, 'biber obeyed a biber.conf the document wrote');
 	assert.ok(fs.existsSync(path.join(dir, 'Book.pdf')), `a PDF\n${log}`);
+});
+
+test('a biber or pdflatex planted in the build folder is not run, whatever empty or relative entries the PATH had', { skip }, async () => {
+	const home = path.join(root, 'path-home');
+	const build = path.join(root, 'path-vault', 'build');
+	fs.mkdirSync(home, { recursive: true });
+	fs.mkdirSync(build, { recursive: true });
+	for (const name of ['biber', 'pdflatex']) {
+		fs.writeFileSync(path.join(build, name), `#!/bin/sh\ntouch '${sentinel(`planted-${name}-ran`)}'\nexit 1\n`);
+		fs.chmodSync(path.join(build, name), 0o755);
+	}
+	fs.writeFileSync(path.join(build, 'refs.bib'), BIB);
+	fs.writeFileSync(path.join(build, 'Book.tex'), book());
+	// A terminal's PATH as it often is: a leading empty entry, a `.`, a trailing ':'.
+	const { log } = await run(build, home, absoluteSearchPath(`:.:${TEX_DIRS.join(':')}:bin:${process.env.PATH}:`).join(':'));
+	assert.equal(fs.existsSync(sentinel('planted-pdflatex-ran')), false, 'the build folder\'s pdflatex ran');
+	assert.equal(fs.existsSync(sentinel('planted-biber-ran')), false, 'the build folder\'s biber ran');
+	assert.ok(fs.existsSync(path.join(build, 'Book.pdf')), `a PDF\n${log}`);
 });
