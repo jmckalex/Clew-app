@@ -96,3 +96,39 @@ test('a table in a book chapter is drawn, its references numbered as the BOOK nu
 		setBookNumbering(null);
 	}
 });
+
+// ---- a construct that cannot be drawn costs only itself (block-field.js#guarded) ----
+
+const kinds = (state) => widgets(state).map((w) => w.constructor.name);
+const note = '# Note\n\n---\n\n![[pic.png]]\n\n@begin(equation){#eq-a}\na = b\n@end(equation)\n\n'
+	+ '| a | b |\n| --- | --- |\n| 1 | @ref[eq-a] |\n';
+
+test('a widget that throws leaves its construct as source, the rest of the note drawn, and says so once', (t) => {
+	const warn = t.mock.method(console, 'warn', () => {});
+	// The table's widget, forced to throw as it is made.
+	Object.defineProperty(TableWidget.prototype, 'rows', { configurable: true, set() { throw new Error('forced'); } });
+	try {
+		const state = liveState(note);   // the state is made: the note keeps its live edit
+		assert.deepEqual(kinds(state), ['HrWidget', 'ImageWidget', 'MathWidget'], 'everything but the table');
+		assert.equal(warn.mock.callCount(), 1);
+		assert.match(String(warn.mock.calls[0].arguments[0]), /a table could not be drawn; it shows as source/);
+		const moved = state.update({ selection: { anchor: 3 } }).state;   // a rebuild
+		assert.deepEqual(kinds(moved), ['HrWidget', 'ImageWidget', 'MathWidget']);
+		assert.equal(warn.mock.callCount(), 1, 'said once, not on every rebuild');
+	} finally {
+		delete TableWidget.prototype.rows;
+	}
+	assert.deepEqual(kinds(liveState(note)), ['HrWidget', 'ImageWidget', 'MathWidget', 'TableWidget'], 'and drawn again once it can be');
+});
+
+test('numbers that cannot be counted cost only what shows a number: the table and the numbered equation', (t) => {
+	const warn = t.mock.method(console, 'warn', () => {});
+	setBookNumbering({ numbering() { throw new Error('the book could not be counted'); }, text: () => null, describe: () => null });
+	try {
+		const state = liveState(note, 'Chapter.md');
+		assert.deepEqual(kinds(state), ['HrWidget', 'ImageWidget'], 'the rule and the image still drawn');
+		assert.deepEqual(warn.mock.calls.map((c) => String(c.arguments[0]).match(/a (\w+) could not/)?.[1]), ['math', 'table']);
+	} finally {
+		setBookNumbering(null);
+	}
+});
