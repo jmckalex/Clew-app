@@ -7,7 +7,7 @@
 // in pdf-core.js, shared with the standalone viewer page that the file tab
 // and canvas nodes use.
 import { createViewer } from './pdf-core.js';
-import { sizePdfHost, fitPdfToPage, onePageHeight, pdfPageOption, pageTop } from './pdf-size.js';
+import { sizePdfHost, fitPdfToPage, onePageHeight, pdfPageOption, pageTop, MESSAGE_CARD } from './pdf-size.js';
 import { parentOrigin, postTo } from '../shared/message-guard.js';
 
 const CSS = `
@@ -125,6 +125,13 @@ async function describeSize(host) {
 			contentWidth: metrics.scrollWidth, contentHeight: metrics.scrollHeight,
 		};
 		out.status = documents.getDocumentState(documents.getActiveDocumentId())?.status;
+		if (out.status === 'error') {
+			// EmbedPDF's card: whole inside its area, or clipped
+			const card = host.querySelector('*')?.shadowRoot?.querySelector(MESSAGE_CARD);
+			const c = card?.getBoundingClientRect();
+			const a = card?.parentElement?.getBoundingClientRect();
+			out.card = c && { height: Math.round(c.height), fits: c.top >= a.top - 0.5 && c.bottom <= a.bottom + 0.5 && c.right <= a.right + 0.5 };
+		}
 		if (out.status !== 'loaded') return out;
 		const spreads = scroll.forDocument(documents.getActiveDocumentId()).getSpreadPagesWithRotatedSize();
 		const zoom = registry.getPlugin('zoom').provides().getState();

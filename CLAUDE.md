@@ -1488,8 +1488,12 @@ except where the selection touches a construct. The durable design is
   short scrolled, the width changed, EmbedPDF re-zoomed and the viewer
   flickered between two widths for ever — so one page is rounded up with 10px
   of room; and a PDF it cannot open (not a PDF, damaged, behind a password)
-  unmounts the viewport and shows its own card or password prompt — held at
-  toolbar + 440px, one page again once a password opens it. The file tab,
+  unmounts the viewport and shows its own card or password prompt — the host
+  is MEASURED to it (`pdf-size.js#messageHeight`: the toolbar, the card
+  `.items-center.justify-center > .max-w-sm`, its area's padding; again on
+  the frame's resize), because the card grows as the viewer narrows (the
+  prompt 388px at 704 wide, 516 at 210: a fixed 440 clipped it on the iPad),
+  and one page again once a password opens it. The file tab,
   canvas nodes and a canvas SCENE's PDF nodes (`canvas-embed.js`, 2026-09-30
   — until then Chromium's plugin,
   which could not annotate) — which point an iframe at a raw PDF and so have

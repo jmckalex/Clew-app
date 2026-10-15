@@ -6,7 +6,7 @@
 // (and in Clew-iOS's simulator).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { pdfSizeOptions, plainTitle, onePageHeight, estimateHeight, sizePdfHost, fitPdfToPage, pdfPageOption, pageTop } from '../src/preview-client/pdf-size.js';
+import { pdfSizeOptions, plainTitle, onePageHeight, estimateHeight, sizePdfHost, fitPdfToPage, pdfPageOption, pageTop, messageHeight, MESSAGE_CARD } from '../src/preview-client/pdf-size.js';
 
 test('pdfSizeOptions: none by default; height and width from the fragment, Obsidian-style', () => {
 	const none = { height: null, width: null };
@@ -529,4 +529,47 @@ test('fitPdfToPage: after a width change, a document a re-zoom left near its pag
 	await viewer.resize();
 	await viewer.resize();
 	assert.equal(viewer.view.top, topOf(host, four, 3, 420) + 40, 'far from it: the reader\'s place');
+});
+
+// ---- EmbedPDF's card for a PDF it cannot open, measured (Clew-iOS: a 516px
+// password prompt clipped in a fixed 445px area at an iPad's 208px) ----
+
+/** The area's padding, as a page's getComputedStyle has it (Node has none). */
+function padded(t, area) {
+	globalThis.getComputedStyle = (el) => (el === area ? { paddingTop: '32px', paddingBottom: '32px' } : {});
+	t.after(() => { delete globalThis.getComputedStyle; });
+}
+
+/** A host whose EmbedPDF shows its message card: `card` px tall, the area
+ *  under a 51px toolbar padded 32px each side. */
+function withCard(host, card) {
+	const area = { get offsetHeight() { return host.offsetHeight - 51; } };
+	const el = { offsetHeight: card, parentElement: area };
+	const root = { querySelector: (sel) => (sel === MESSAGE_CARD ? el : null) };
+	const query = host.querySelector;
+	host.querySelector = (sel) => (sel === '*' ? { shadowRoot: root } : query(sel));
+	return { area, el };
+}
+
+test('messageHeight: the toolbar, the card and its area\'s padding — none before the card is drawn', (t) => {
+	const host = fakeHost('x.pdf');
+	host.style.height = '496px';
+	assert.equal(messageHeight(host), null, 'no card yet');
+	const { area } = withCard(host, 428);
+	padded(t, area);
+	assert.equal(messageHeight(host), 51 + 428 + 64);
+});
+
+test('fitPdfToPage: a PDF it cannot open is as tall as its card, measured — a narrow viewer\'s taller prompt fits', async (t) => {
+	const host = fakeHost('x.pdf');
+	sizePdfHost(host);
+	const viewer = fakeViewer(host, { pages: [letter], status: 'error' });
+	const { area } = withCard(host, 516);
+	padded(t, area);
+	await fitPdfToPage(host, viewer.handle);
+	await frame();
+	await frame();
+	assert.equal(host.offsetHeight, 51 + 516 + 64, 'the whole prompt, not 56 + 440');
+	await viewer.resize();
+	assert.equal(host.offsetHeight, 51 + 516 + 64, 'and it stays');
 });

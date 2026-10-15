@@ -59,7 +59,7 @@ const MAX_HEIGHT = 8000;
 const MIN_WIDTH = 160;
 const MAX_WIDTH = 8000;
 const MAX_TRIES = 4;          // corrections per width (a sidebar under the page)
-const MESSAGE_HEIGHT = 440;   // under the toolbar: EmbedPDF's password prompt (388px, measured) or its error card (262px)
+const MESSAGE_HEIGHT = 440;   // under the toolbar, until the card is measured: the password prompt is 388px wide open
 const LINE_ROOM = 10;         // below a PDF of one page (see fitPdfToPage)
 const QUIET_MS = 1000;        // after which a correction counts afresh
 const ARRIVE_MS = 2000;       // how long a viewer sent to a page is put back there
@@ -172,6 +172,27 @@ export function onePageHeight({ spreads, pageGap = 0, viewportGap = 0, width }) 
 	return viewportGap + tallest * scale + below;
 }
 
+// EmbedPDF's card for a PDF it could not open — its error, or the password
+// prompt — centred in a padded area under its toolbar (the snippet's
+// `.items-center.justify-center.p-8`, the card `.max-w-sm` in it).
+export const MESSAGE_CARD = '.items-center.justify-center > .max-w-sm';
+
+/**
+ * How tall `host` must be to show that card whole: its toolbar, the card,
+ * the area's padding. Measured — the card grows as the viewer narrows (the
+ * password prompt 388px at 704 wide, 428 at 277, 516 on an iPad's 208: its
+ * lock clipped and its buttons cut off at a fixed height). null before the
+ * card is drawn.
+ */
+export function messageHeight(host) {
+	const card = host.querySelector?.('*')?.shadowRoot?.querySelector(MESSAGE_CARD);
+	const area = card?.parentElement;
+	if (!card?.offsetHeight || !area?.offsetHeight) return null;
+	const style = globalThis.getComputedStyle?.(area);
+	const padding = (parseFloat(style?.paddingTop) || 0) + (parseFloat(style?.paddingBottom) || 0);
+	return Math.ceil(host.offsetHeight - area.offsetHeight + card.offsetHeight + padding);
+}
+
 /** The height to hold before the PDF has opened: a portrait letter page. */
 export function estimateHeight(width) {
 	return Math.round(Math.max(width || 0, 240) * LETTER + CHROME_GUESS);
@@ -219,6 +240,11 @@ export function sizePdfHost(host) {
 	else if (!before || before.height) host.style.height = `${estimateHeight(host.clientWidth)}px`;
 }
 
+const onWindowResize = (fn) => {
+	globalThis.addEventListener?.('resize', fn);
+	return () => globalThis.removeEventListener?.('resize', fn);
+};
+
 // The height is set on the next frame, never inside the resize report that
 // asked for it: a size changed within a ResizeObserver callback is the
 // "ResizeObserver loop completed with undelivered notifications" error.
@@ -247,6 +273,7 @@ export async function fitPdfToPage(host, handle) {
 	let at = null;       // the page the viewer was sent to (none yet)
 	let atScale = 0;     // and the scale it was at then
 	let going = 0;       // until when it is put back there, not yet seen arrive
+	let cardTries = 0;   // frames waited for EmbedPDF's message card
 	let zoomed = false;  // the zoom is fit width, or the reader's own
 	let pending = false;
 	// Settled: the viewer at its page's top (pageTop). Sent there once per
@@ -298,9 +325,13 @@ export async function fitPdfToPage(host, handle) {
 		try { state = documents.getDocumentState?.(documents.getActiveDocumentId()); } catch { /* none yet */ }
 		if (state?.status === 'error') {
 			// EmbedPDF's message in place of its viewport (which it unmounts:
-			// 0×0) — its error card, or the password prompt: as tall as that.
+			// 0×0) — its error card, or the password prompt: as tall as that,
+			// measured once it is drawn (a frame or two after the error).
 			unopened.add(host);
-			host.style.height = `${CHROME_GUESS + MESSAGE_HEIGHT}px`;
+			const height = messageHeight(host);
+			if (height === null && cardTries++ < 30) refit();
+			const want = height ?? CHROME_GUESS + MESSAGE_HEIGHT;
+			if (Math.abs(host.offsetHeight - want) >= 1) host.style.height = `${want}px`;
 			return;
 		}
 		let metrics;
@@ -388,6 +419,9 @@ export async function fitPdfToPage(host, handle) {
 		// On its way to a page: every scroll is measured, so one that put it
 		// back elsewhere is seen.
 		viewport.onScrollChange?.(() => { if (going) refit(); }),
+		// A message's card is measured again as the viewer's width changes
+		// (no viewport to report a resize: EmbedPDF has unmounted it).
+		onWindowResize(() => { if (unopened.has(host)) refit(); }),
 		zoom?.onZoomChange?.(refit),
 		documents.onDocumentOpened?.(refit),
 		documents.onDocumentError?.(refit),

@@ -23,13 +23,16 @@
 //   `scrolls=false`, and the width it was fitted to stays — on this machine's
 //   classic scrollbars the viewer flickered between two widths for ever);
 // - `broken`: EmbedPDF's own error card (`status=error`) under its toolbar,
-//   the host 496px (`message=true`), not a letter page;
+//   the host as tall as the card (`card=… card-fits=true`), not a letter page;
 // - `edit-*`: Edit.md's link changed in place — in live edit a new block
 //   frame, in reading view the SAME viewer re-sized.
 // Then `title` lines: "Paper.pdf", never "Paper.pdf § height=400". Last, when
 // the fixture has Locked.pdf (qpdf): `locked` — the password prompt, the
 // viewport 440px — then the password typed by REAL input into EmbedPDF's own
-// prompt (`message=true`), and `unlocked`: one page, like any other. The run's log must hold
+// prompt — first at narrow widths (`locked-narrow`, `locked-210` — an
+// iPad's, `#width=210` — `broken-narrow`: a taller card, still
+// `card-fits=true`) — and `unlocked`: one page, like any
+// other. The run's log must hold
 // no ResizeObserver loop error and no `smoke-pdf-leak:`.
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const { workspaceStore, vaultStore, editorPool, ipc } = window.__clew;
@@ -87,7 +90,7 @@ async function report(mode, note, label, { until = () => true, ms = 25000 } = {}
 	const parts = [`${mode} ${label}`, `viewer=${s.viewer}`, `status=${s.status}`];
 	// EmbedPDF unmounts its viewport for a message: the host is its toolbar
 	// (pdf-size.js's 56px guess) and 440px for the message.
-	if (s.status === 'error') parts.push(`message=${s.host === 56 + 440}`);
+	if (s.status === 'error') parts.push(`card=${s.card?.height} card-fits=${s.card?.fits}`);
 	else if (vp) {
 		// pdf-size.js's target: down for a PDF of pages, up and 10px of room
 		// for one of a single page.
@@ -231,7 +234,29 @@ if (!hasLocked) {
 }
 const locked = workspaceStore.openNote('Locked.md', { newTab: true, defaultMode: 'reading' });
 workspaceStore.setTabMode(locked.id, 'reading');
-const prompt = await report('reading', 'Locked.md', 'locked', { until: (s) => s.status === 'error' });
+// Narrow first — a split and both sidebars: the prompt is taller there, and
+// the host is measured to it (Clew-iOS's 516px prompt in a 445px area).
+{
+	const left = workspaceStore.activeGroupId;
+	workspaceStore.splitWithClone(left, 'right', locked.id);
+	const right = workspaceStore.activeGroupId;
+	workspaceStore.openNote('Spacer.md', { defaultMode: 'reading' });
+	workspaceStore.setSidebar('left', { open: true });
+	workspaceStore.setSidebar('right', { open: true });
+	await report('reading', 'Locked.md', 'locked-narrow', { until: (s) => s.status === 'error' && s.box < 320 && s.card?.fits });
+	const tiny = workspaceStore.openNote('LockedNarrow.md', { newTab: true, defaultMode: 'reading' });
+	workspaceStore.activateTab(tiny.id);
+	await report('reading', 'LockedNarrow.md', 'locked-210', { until: (s) => s.status === 'error' && s.box <= 230 && s.card?.fits });
+	const broken = workspaceStore.openNote('Broken.md', { newTab: true, defaultMode: 'reading' });
+	workspaceStore.activateTab(broken.id);
+	await report('reading', 'Broken.md', 'broken-narrow', { until: (s) => s.status === 'error' && s.box < 320 && s.card?.fits });
+	workspaceStore.setSidebar('left', { open: false });
+	workspaceStore.setSidebar('right', { open: false });
+	workspaceStore.closeGroup(right, { force: true });
+	workspaceStore.setActiveGroup(left);
+	workspaceStore.activateTab(locked.id);
+}
+const prompt = await report('reading', 'Locked.md', 'locked', { until: (s) => s.status === 'error' && s.box > 600 });
 // Typed for real once this script returns: EmbedPDF's own password field.
 window.__clewSmokeInput = [
 	{ frameClick: { match: 'Locked.md', selector: 'input[type="password"]' } },

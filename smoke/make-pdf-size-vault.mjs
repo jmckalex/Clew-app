@@ -49,7 +49,11 @@ writeFileSync(join(dir, 'Wide.pdf'), pdf([wide, wide, wide]), 'latin1');
 writeFileSync(join(dir, 'One.pdf'), pdf([letter]), 'latin1');
 writeFileSync(join(dir, 'Broken.pdf'), '%PDF-1.4\nthis is not a PDF\n%%EOF\n', 'latin1');
 const locked = spawnSync('qpdf', ['--encrypt', 'secret', 'secret', '256', '--', join(dir, 'One.pdf'), join(dir, 'Locked.pdf')]);
-if (locked.status === 0) writeFileSync(join(dir, 'Locked.md'), '# Locked\n\nAbove the embed.\n\n![[Locked.pdf]]\n\nBelow the embed.\n');
+if (locked.status === 0) {
+	writeFileSync(join(dir, 'Locked.md'), '# Locked\n\nAbove the embed.\n\n![[Locked.pdf]]\n\nBelow the embed.\n');
+	// An iPad's narrow viewer (208px): the password prompt at its tallest.
+	writeFileSync(join(dir, 'LockedNarrow.md'), '# Locked, narrow\n\nAbove the embed.\n\n![[Locked.pdf#width=210]]\n\nBelow the embed.\n');
+}
 else console.log('make-pdf-size-vault: no qpdf, so no Locked.pdf (the password case is skipped)');
 
 const notes = {
