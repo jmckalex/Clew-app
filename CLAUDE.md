@@ -103,7 +103,7 @@ note API, plugins, and every settings key.
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
   dialect scanner's constructs and grammar, live edit's model, reveal rule,
-  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band, figure errors, the PDF save guard, deep links and the clew command, the shareable callout resolver, the device word, where notices sit, pinned apps, the demo vault's updates (untouched files by hash and by shipped history, a record-less copy dated by its files), the ticker's live rules, origin-bound network grants, books (the master reader, chapter titles, words and status, the index's chapter lists and their renames, a build's warnings placed, a book's numbers, a book's citation header), an app's secrets (the store, the methods), the system font index (family names, the cache), an export's figures outside the vault (the engine's marker, which folder may go, the prune) and what draws them (the setting per trust, the TeX tools' refusing stand-ins), a chapter proof (its files' names, whether a full run can number it), what the Insert commands write (the `@` forms, never a colon directive), converting a vault's colon directives (a note's plan, what a choice writes, a note changed under the dry run, the backups, byte-exact undo) — 1226 tests. DOM/UI work is
+  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band, figure errors, the PDF save guard, deep links and the clew command, the shareable callout resolver, the device word, where notices sit, pinned apps, the demo vault's updates (untouched files by hash and by shipped history, a record-less copy dated by its files), the ticker's live rules, origin-bound network grants, books (the master reader, chapter titles, words and status, the index's chapter lists and their renames, a build's warnings placed, a book's numbers, a book's citation header), an app's secrets (the store, the methods), the system font index (family names, the cache), an export's figures outside the vault (the engine's marker, which folder may go, the prune) and what draws them (the setting per trust, the TeX tools' refusing stand-ins), a chapter proof (its files' names, whether a full run can number it), what the Insert commands write (the `@` forms, never a colon directive), converting a vault's colon directives (a note's plan, what a choice writes, a note changed under the dry run, the backups, byte-exact undo), a PDF embed's size (the link's sizes, the one-page sum, the viewer held at it) — 1246 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
@@ -1450,8 +1450,30 @@ except where the selection touches a construct. The durable design is
   gitignore exception outranking the blanket `dist/` rule.
   One implementation, `preview-client/pdf-core.js`, serves all
   three surfaces: note embeds upgrade `<embed class="pdf-embed">` in place
-  (`pdf-embed.js`), while the file tab, canvas nodes and a canvas SCENE's
-  PDF nodes (`canvas-embed.js`, 2026-09-30 — until then Chromium's plugin,
+  (`pdf-embed.js`) — **one page tall at "fit width"** (`pdf-size.js`, Clew-iOS
+  9b0b67e's module upstreamed 2026-10-15, the owner's ask: until then `height:
+  70vh`, which in a live-edit block frame is 70% of a frame sized to its own
+  content — each size report shrank it, 480 → 176px, a toolbar over a
+  sliver). The height is EmbedPDF's own sum (viewport gap, the tallest page at
+  the fit-width scale, the page gap it scales) set on the next frame, never in
+  a resize callback, a few corrections per width; it follows the width (split,
+  sidebars, ⟷ — which is now one page at 96vw) and starts at the top of page
+  one. Sizes in the link, Obsidian's syntax: `![[x.pdf#height=600]]`,
+  `#width=480`, `#width=60%` (the box's content width), joined by `&`,
+  `#page=N` left alone; the title drops them. Three things EmbedPDF does that
+  the module answers (`smoke/pdf-size-scenario.js` measures each): it re-zooms
+  150ms after any resize (its `recalcAuto`), so fit width is asked anchored at
+  the TOP-LEFT (its centre anchor left the page 36px down) and a document a
+  re-zoom left within the viewport's gap of the top goes back to it; a PDF of
+  ONE page has a line box's descent under its inline-block page wrapper
+  (6.5px), and with the desktop's classic scrollbars a viewport a fraction
+  short scrolled, the width changed, EmbedPDF re-zoomed and the viewer
+  flickered between two widths for ever — so one page is rounded up with 10px
+  of room; and a PDF it cannot open (not a PDF, damaged, behind a password)
+  unmounts the viewport and shows its own card or password prompt — held at
+  toolbar + 440px, one page again once a password opens it. The file tab,
+  canvas nodes and a canvas SCENE's PDF nodes (`canvas-embed.js`, 2026-09-30
+  — until then Chromium's plugin,
   which could not annotate) — which point an iframe at a raw PDF and so have
   no document to upgrade — load `pdf-page.html` from
   `__clew_assets__/clewpdf/`. The save bridge is on the app page, which is
