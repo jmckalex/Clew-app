@@ -23,6 +23,8 @@ const EXPORTS = [
 	['Figures/Engine.md', ['html', 'latex']],
 	['Figures/Probe.md', ['html', 'pdf']],
 	['Figures/Times.md', ['html']],
+	['Figures/Georgia.md', ['html']],
+	['Figures/Nowhere.md', ['html']],
 	['Pkg/Package.md', ['html']],
 ];
 const EXT = { html: 'html', latex: 'tex', pdf: 'pdf' };

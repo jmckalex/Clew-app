@@ -10,9 +10,13 @@
 //                                   a file OUTSIDE the vault: the installed
 //                                   lualatex draws its word, the library's TeX
 //                                   cannot see it
-//   <dir>/vault/Figures/Times.md    Times New Roman, bold — a family whose faces
-//                                   are separate files, which the engine's
-//                                   file-name lookup finds only the regular of
+//   <dir>/vault/Figures/Times.md    Times New Roman, bold and italic — a family
+//                                   whose faces are separate files, which the
+//                                   engine's file-name lookup finds only the
+//                                   regular of (Clew's figureFonts hands the
+//                                   whole family, system-fonts.js's index)
+//   <dir>/vault/Figures/Georgia.md  Georgia, all four faces — the same
+//   <dir>/vault/Figures/Nowhere.md  a family no machine has: none handed over
 //   <dir>/vault/Pkg/Package.md      \SI{3}{\metre}, siunitx loaded by the folder's
 //                                   own .jmarkdown/config.json (read only by a
 //                                   TRUSTED vault's export, whose cwd is the
@@ -62,7 +66,19 @@ write('Figures/Probe.md', `# Probe
 write('Figures/Times.md', `# Times
 
 @begin(TiKZ)
-\\node[draw] at (0,0) {\\fontspec{Times New Roman}Regular \\textbf{Bold}};
+\\node[draw] at (0,0) {\\fontspec{Times New Roman}Regular \\textbf{Bold} \\textit{Italic}};
+@end(TiKZ)
+`);
+write('Figures/Georgia.md', `# Georgia
+
+@begin(TiKZ)
+\\node[draw] at (0,0) {\\fontspec{Georgia}Regular \\textbf{Bold} \\textit{Italic} \\textbf{\\textit{Both}}};
+@end(TiKZ)
+`);
+write('Figures/Nowhere.md', `# Nowhere
+
+@begin(TiKZ)
+\\node[draw] at (0,0) {\\fontspec{Nowhere Sans Clew}Missing};
 @end(TiKZ)
 `);
 write('Pkg/.jmarkdown/config.json', `${JSON.stringify({ 'LaTeX preamble': ['\\usepackage{siunitx}'] }, null, '\t')}\n`);
