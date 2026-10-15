@@ -116,7 +116,7 @@ function build(state) {
 
 	for (const c of model) {
 		if (c.tier === 'B' && c.level === 'block' && !live.revealed.has(c.id)) {
-			if (c.kind === 'table') block(c, tableWidget(state, c, model));
+			if (c.kind === 'table') block(c, tableWidget(state, c, model, numbering));
 			else if (c.kind === 'image') block(c, new ImageWidget(imageSpec(c, config.notePath, true)));
 			continue;
 		}
@@ -186,10 +186,12 @@ export const blockField = StateField.define({
  * A table construct's widget. Cells come from the table's TEXT
  * (live/table-cell-model.js#cellRanges — lezer has no node for an empty
  * cell, and an empty cell must be editable); each cell's inline markdown is
- * tokenised from the model. An extended table (colspan/rowspan/widths) or a
- * very large one is drawn but edited as source (§5.5c).
+ * tokenised from the model, its references against `numbering` — the
+ * note's, or its BOOK's (numbering-source.js). An extended table
+ * (colspan/rowspan/widths) or a very large one is drawn but edited as
+ * source (§5.5c).
  */
-function tableWidget(state, c, model) {
+function tableWidget(state, c, model, numbering) {
 	const doc = state.doc;
 	const first = doc.lineAt(c.from).number;
 	const last = doc.lineAt(c.to).number;
