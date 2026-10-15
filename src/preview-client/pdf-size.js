@@ -37,6 +37,11 @@
 //   A height is the viewer's, in CSS pixels; a width narrows the box, and
 //   the default height then follows it. The title shows the file's name,
 //   not "x.pdf § height=600" (the engine's way with a fragment).
+// - `#page=N` (Obsidian's, the owner's yes 2026-10-15) opens the viewer at
+//   page N's top — framed as page one is, one page tall — combined with sizes
+//   or not; out of range, the nearest page. A link edited to another page
+//   goes there; a re-render that leaves the link as it was leaves the
+//   reader's place alone.
 //
 // - A PDF EmbedPDF cannot open — not a PDF, damaged, or behind a password —
 //   is as tall as the message EmbedPDF draws in its place (its error card, or
@@ -57,6 +62,7 @@ const MAX_TRIES = 4;          // corrections per width (a sidebar under the page
 const MESSAGE_HEIGHT = 440;   // under the toolbar: EmbedPDF's password prompt (388px, measured) or its error card (262px)
 const LINE_ROOM = 10;         // below a PDF of one page (see fitPdfToPage)
 const QUIET_MS = 1000;        // after which a correction counts afresh
+const ARRIVE_MS = 2000;       // how long a viewer sent to a page is put back there
 const FIT_WIDTH = 'fit-width';   // EmbedPDF's ZoomMode.FitWidth
 const FIT_PAGE = 'fit-page';     // and its default, ZoomMode.FitPage
 
@@ -88,6 +94,39 @@ export function pdfSizeOptions(href) {
 }
 
 const OPTION = /^\s*(height|width|page)\s*=\s*[\d.]+\s*(px|%)?\s*$/i;
+
+/**
+ * The page a link opens its PDF at (`x.pdf#page=3`, `#page=3&height=600`),
+ * or null: none, or not a whole number from 1.
+ */
+export function pdfPageOption(href) {
+	const text = String(href ?? '');
+	const hash = text.indexOf('#');
+	if (hash === -1) return null;
+	for (const part of text.slice(hash + 1).split('&')) {
+		const m = /^\s*page\s*=\s*(\d+)\s*$/i.exec(part);
+		if (m && Number(m[1]) >= 1) return Number(m[1]);
+	}
+	return null;
+}
+
+/**
+ * Where page `page` (1-based; past the end, the last) starts in EmbedPDF's
+ * vertical layout at `scale`: the scrollTop that frames it as page one is at
+ * 0 — the viewport's gap above it, the next page's top at the bottom edge of
+ * a one-page viewer. Spreads stacked with `pageGap` between them, both
+ * scaled (the scroll plugin's createVirtualItems).
+ */
+export function pageTop({ spreads, page, scale, pageGap = 0 }) {
+	let seen = 0;
+	let y = 0;
+	for (const [i, spread] of (spreads ?? []).entries()) {
+		if (seen + spread.length >= page || i === spreads.length - 1) break;
+		seen += spread.length;
+		y += Math.max(...spread.map((p) => p.rotatedSize.height)) + pageGap;
+	}
+	return y * scale;
+}
 
 /**
  * The embed's title without its options: the engine titles
@@ -161,7 +200,7 @@ export function sizePdfHost(host) {
 	}
 	const size = pdfSizeOptions(href);
 	const before = sizes.get(host);
-	sizes.set(host, size);
+	sizes.set(host, { ...size, page: pdfPageOption(href) });
 	// The width is the BOX's — the title bar narrows with the viewer, and a
 	// percentage is of the note's column — set again after every morph,
 	// which takes it off with the rest of the engine's markup. (⟷ wins:
@@ -172,6 +211,7 @@ export function sizePdfHost(host) {
 	}
 	if (size.height && !unopened.has(host)) {
 		host.style.height = `${size.height}px`;
+		fitters.get(host)?.();   // the page, when the link changed it
 		return;
 	}
 	const refit = fitters.get(host);
@@ -204,9 +244,53 @@ export async function fitPdfToPage(host, handle) {
 	const widths = new Set();   // the widths corrected for since the last quiet
 	let tries = 0;
 	let lastTry = 0;
-	let atTop = false;   // scrolled to the top once, when first settled
+	let at = null;       // the page the viewer was sent to (none yet)
+	let atScale = 0;     // and the scale it was at then
+	let going = 0;       // until when it is put back there, not yet seen arrive
 	let zoomed = false;  // the zoom is fit width, or the reader's own
 	let pending = false;
+	// Settled: the viewer at its page's top (pageTop). Sent there once per
+	// page the link names, whatever the reader's place — at the start (page
+	// one when there is no #page=), and when an edit to the link names
+	// another — and put back there until it is seen to arrive (ARRIVE_MS at
+	// most): EmbedPDF's re-zoom 150ms after a resize scrolls from where ITS
+	// state last saw the document, which a scroll a moment before has not
+	// reached yet — page three opened at page one (measured). After that only
+	// when the document is NEAR it: that re-zoom moves a document that was at
+	// a page's top by up to the viewport's gap times the change of scale (its
+	// sums keep that gap unscaled). A reader's place further off is theirs.
+	const place = (metrics, spreads) => {
+		const count = spreads.reduce((n, spread) => n + spread.length, 0);
+		if (!count) return;
+		const page = Math.min(Math.max(sizes.get(host)?.page ?? 1, 1), count);
+		const pageGap = scroll.getPageGap?.() ?? 0;
+		const gap = viewport.getViewportGap?.() ?? 0;
+		let scale = 0;
+		try { scale = zoom?.getState?.()?.currentZoomLevel ?? 0; } catch { /* no zoom yet */ }
+		if (!(scale > 0)) {
+			// Fit width, as onePageHeight has it.
+			const widest = Math.max(...spreads.map((spread) => spread.reduce((w, p, i) => w + p.rotatedSize.width + (i ? pageGap : 0), 0)));
+			scale = (metrics.clientWidth - 2 * gap) / widest;
+		}
+		const y = pageTop({ spreads, page, scale, pageGap });
+		const off = Math.abs((metrics.scrollTop ?? 0) - y);
+		const drift = gap * Math.max(1, atScale ? Math.max(scale / atScale, atScale / scale) : 1);
+		const now = performance.now();
+		let send = false;
+		if (page !== at) {
+			at = page;
+			going = now + ARRIVE_MS;
+			send = true;
+		} else if (going && (off < 0.5 || now > going)) {
+			going = 0;   // arrived, or given up
+		} else {
+			send = going ? off >= 0.5 : off >= 0.5 && off < drift;
+		}
+		if (send) {
+			try { viewport.scrollTo?.({ x: 0, y, behavior: 'instant' }); } catch { /* where it is */ }
+		}
+		atScale = scale;
+	};
 	const measure = () => {
 		pending = false;
 		if (!host.isConnected) return;
@@ -247,7 +331,10 @@ export async function fitPdfToPage(host, handle) {
 				else zoomed = true;
 			} catch { zoomed = true; }
 		}
-		if (set) return;
+		if (set) {
+			place(metrics, spreads);
+			return;
+		}
 		const need = onePageHeight({
 			spreads,
 			pageGap: scroll.getPageGap?.() ?? 0,
@@ -278,17 +365,7 @@ export async function fitPdfToPage(host, handle) {
 		}
 		const short = target - metrics.clientHeight;
 		if (Math.abs(short) < 1) {
-			// Settled. Start at the top of page one — once, whatever the
-			// reader's place. After that only within the viewport's gap of
-			// the top: that is how far EmbedPDF's own re-zoom after a resize
-			// moves a document that was AT the top (its sums keep the gap
-			// unscaled); a reader's place further down is theirs.
-			const gap = viewport.getViewportGap?.() ?? 0;
-			const top = metrics.scrollTop ?? 0;
-			if (!atTop || (top > 0 && top < gap)) {
-				atTop = true;
-				try { viewport.scrollTo?.({ x: 0, y: 0, behavior: 'instant' }); } catch { /* where it is */ }
-			}
+			place(metrics, spreads);
 			return;
 		}
 		if (tries >= MAX_TRIES) return;
@@ -308,6 +385,9 @@ export async function fitPdfToPage(host, handle) {
 	// or fails to with no resize at all.
 	const offs = [
 		viewport.onViewportResize?.(refit),
+		// On its way to a page: every scroll is measured, so one that put it
+		// back elsewhere is seen.
+		viewport.onScrollChange?.(() => { if (going) refit(); }),
 		zoom?.onZoomChange?.(refit),
 		documents.onDocumentOpened?.(refit),
 		documents.onDocumentError?.(refit),

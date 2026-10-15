@@ -60,6 +60,10 @@ const notes = {
 	'One.md': '![[One.pdf]]',
 	'Broken.md': '![[Broken.pdf]]',
 	'Edit.md': '![[Paper.pdf]]',
+	// #page=N
+	'Page.md': '![[Paper.pdf#page=3]]',
+	'PageSized.md': '![[Paper.pdf#page=2&height=400]]',
+	'PageFar.md': '![[Paper.pdf#page=99]]',
 };
 // A note for the second pane of a split (a narrower width).
 writeFileSync(join(dir, 'Spacer.md'), '# Spacer\n\nThe other pane.\n');

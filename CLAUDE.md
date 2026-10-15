@@ -1470,7 +1470,15 @@ except where the selection touches a construct. The durable design is
   sidebars, ⟷ — which is now one page at 96vw) and starts at the top of page
   one. Sizes in the link, Obsidian's syntax: `![[x.pdf#height=600]]`,
   `#width=480`, `#width=60%` (the box's content width), joined by `&`,
-  `#page=N` left alone; the title drops them. Three things EmbedPDF does that
+  `#page=N` (the owner's yes, 2026-10-15: Obsidian's) opening the embed at
+  page N's TOP — framed as page one is, the height still one page; out of
+  range, the nearest; a link edited to another page goes there, a re-render
+  that leaves the link alone keeps the reader's place; the title's link opens
+  the PDF tab there too (`actions.js#openWikilink`, sizes and all); the
+  title drops them. Placing is done once per page the link names and REPEATED
+  until the viewer is seen there (2s at most): EmbedPDF's re-zoom after a
+  resize scrolls from its own state, which had not seen the scroll — page
+  three opened at page one. Three things EmbedPDF does that
   the module answers (`smoke/pdf-size-scenario.js` measures each): it re-zooms
   150ms after any resize (its `recalcAuto`), so fit width is asked anchored at
   the TOP-LEFT (its centre anchor left the page 36px down) and a document a

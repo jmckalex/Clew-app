@@ -6,7 +6,7 @@
 // (and in Clew-iOS's simulator).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { pdfSizeOptions, plainTitle, onePageHeight, estimateHeight, sizePdfHost, fitPdfToPage } from '../src/preview-client/pdf-size.js';
+import { pdfSizeOptions, plainTitle, onePageHeight, estimateHeight, sizePdfHost, fitPdfToPage, pdfPageOption, pageTop } from '../src/preview-client/pdf-size.js';
 
 test('pdfSizeOptions: none by default; height and width from the fragment, Obsidian-style', () => {
 	const none = { height: null, width: null };
@@ -155,7 +155,7 @@ test('sizePdfHost after a re-render: an edited link changes the sizes; a measure
 /** EmbedPDF as fitPdfToPage reaches it: a viewport under a toolbar of `chrome` px. */
 function fakeViewer(host, { pages, chrome = 50, gap = 10, status = 'loaded' }) {
 	const listeners = new Set();
-	const events = { zoom: new Set(), opened: new Set(), error: new Set() };
+	const events = { zoom: new Set(), opened: new Set(), error: new Set(), scroll: new Set() };
 	const on = (set) => (cb) => { set.add(cb); return () => set.delete(cb); };
 	const view = { top: 0, status };   // where the document is scrolled; whether it opened
 	const metrics = () => ({ clientWidth: host.clientWidth - 2, clientHeight: host.offsetHeight - chrome, scrollTop: view.top });
@@ -163,8 +163,11 @@ function fakeViewer(host, { pages, chrome = 50, gap = 10, status = 'loaded' }) {
 	let zoomLevel = 'fit-page';   // EmbedPDF's default, as the viewport mounts
 	const plugins = {
 		viewport: {
-			getMetrics: metrics, getViewportGap: () => gap, scrollTo: (to) => { calls.scrollTo.push(to); view.top = to.y; },
+			// A scroll it is asked for is reported, as EmbedPDF's scroll event is.
+			getMetrics: metrics, getViewportGap: () => gap,
+			scrollTo: (to) => { calls.scrollTo.push(to); view.top = to.y; for (const cb of [...events.scroll]) cb({ documentId: 'doc' }); },
 			onViewportResize: (cb) => { listeners.add(cb); return () => listeners.delete(cb); },
+			onScrollChange: on(events.scroll),
 		},
 		zoom: {
 			getState: () => ({ zoomLevel }),
@@ -239,7 +242,7 @@ test('fitPdfToPage: fit width, one page tall, at the top of page one; it follows
 	viewer.handle.dispose();
 	assert.equal(viewer.disposed(), 1, 'the viewer\'s own dispose still runs');
 	assert.equal(viewer.listeners.size, 0, 'and the resize listener goes with it');
-	assert.deepEqual(Object.values(viewer.events).map((set) => set.size), [0, 0, 0], 'and the zoom and document listeners');
+	assert.deepEqual(Object.values(viewer.events).map((set) => set.size), [0, 0, 0, 0], 'and the zoom, document and scroll listeners');
 });
 
 test('fitPdfToPage: fit width is asked at the top-left corner, so the page grows down from the top', async () => {
@@ -351,6 +354,7 @@ test('fitPdfToPage: EmbedPDF\'s own re-zoom after a resize is measured, once a f
 	vp.getMetrics = () => { reads += 1; return getMetrics(); };
 	await fitPdfToPage(host, viewer.handle);
 	await frame();
+	await viewer.resize();   // settled, and placed at its page
 	const before = reads;
 	await viewer.emit('zoom');
 	assert.equal(reads, before + 1);
@@ -421,4 +425,108 @@ test('fitPdfToPage: no viewer, no registry, no document — nothing happens and 
 	await fitPdfToPage(host, viewer.handle);
 	await frame();
 	assert.equal(host.style.height, before);
+});
+
+// ---- #page=N (the owner's yes, 2026-10-15) ----
+
+test('pdfPageOption: the page a link names, Obsidian-style, with sizes or alone', () => {
+	assert.equal(pdfPageOption('x.pdf'), null);
+	assert.equal(pdfPageOption('x.pdf#page=3'), 3);
+	assert.equal(pdfPageOption('x.pdf#page=3&height=600'), 3);
+	assert.equal(pdfPageOption('Papers/x.pdf#height=600&page=12&width=60%'), 12);
+	assert.equal(pdfPageOption('x.pdf# Page = 4 '), 4, 'case and spaces');
+	assert.equal(pdfPageOption('x.pdf#page=0'), null, 'pages count from one');
+	assert.equal(pdfPageOption('x.pdf#page=2.5'), null);
+	assert.equal(pdfPageOption('x.pdf#page=abc'), null);
+	assert.equal(pdfPageOption('x.pdf#Methods'), null, 'a heading, not a page');
+	assert.equal(plainTitle('x.pdf#page=3', 'x.pdf § page=3'), 'x.pdf', 'and the title is the file\'s name');
+});
+
+test('pageTop: a page\'s top in EmbedPDF\'s layout — the spreads before it and their gaps, scaled', () => {
+	const pages = single(letter, landscape, letter, letter);
+	assert.equal(pageTop({ spreads: pages, page: 1, scale: 2, pageGap: 10 }), 0, 'page one at the top');
+	assert.equal(pageTop({ spreads: pages, page: 2, scale: 2, pageGap: 10 }), (792 + 10) * 2);
+	assert.equal(pageTop({ spreads: pages, page: 3, scale: 0.5, pageGap: 10 }), (792 + 10 + 612 + 10) * 0.5, 'each spread its own height');
+	assert.equal(pageTop({ spreads: pages, page: 99, scale: 1, pageGap: 10 }), pageTop({ spreads: pages, page: 4, scale: 1, pageGap: 10 }), 'past the end: the last');
+	const spread = [[{ rotatedSize: letter }, { rotatedSize: letter }], [{ rotatedSize: letter }, { rotatedSize: landscape }], [{ rotatedSize: letter }]];
+	assert.equal(pageTop({ spreads: spread, page: 2, scale: 1, pageGap: 8 }), 0, 'two-page spreads: page two shares page one\'s');
+	assert.equal(pageTop({ spreads: spread, page: 4, scale: 1, pageGap: 8 }), 792 + 8);
+	assert.equal(pageTop({ spreads: spread, page: 5, scale: 1, pageGap: 8 }), (792 + 8) * 2);
+});
+
+/** The scale fitPdfToPage reads at: fit width, as the fakes have no zoom level. */
+const fitScale = (host, pages) => (host.clientWidth - 2 - 2 * 10) / Math.max(...pages.map((p) => p.width));
+const topOf = (host, pages, page, width = host.clientWidth) => pageTop({ spreads: single(...pages), page, scale: fitScale({ clientWidth: width }, pages), pageGap: 10 });
+const four = [letter, letter, letter, letter];
+
+test('fitPdfToPage: #page=3 opens at page three\'s top, one page tall', async () => {
+	const host = fakeHost('x.pdf#page=3');
+	sizePdfHost(host);
+	const viewer = fakeViewer(host, { pages: four });
+	await fitPdfToPage(host, viewer.handle);
+	await frame();
+	await viewer.resize();
+	assert.equal(host.offsetHeight, fitted(host, four, 50), 'the height is one page, as without #page=');
+	assert.deepEqual(viewer.calls.scrollTo, [{ x: 0, y: topOf(host, four, 3), behavior: 'instant' }]);
+	assert.ok(viewer.view.top > 0);
+});
+
+test('fitPdfToPage: a page past the end opens at the last; with a height set, the page still', async () => {
+	const host = fakeHost('x.pdf#page=99');
+	sizePdfHost(host);
+	const viewer = fakeViewer(host, { pages: four });
+	await fitPdfToPage(host, viewer.handle);
+	await frame();
+	await viewer.resize();
+	assert.equal(viewer.view.top, topOf(host, four, 4), 'the nearest page: the fourth');
+
+	const set = fakeHost('x.pdf#page=2&height=400');
+	sizePdfHost(set);
+	const other = fakeViewer(set, { pages: four });
+	await fitPdfToPage(set, other.handle);
+	await frame();
+	assert.equal(set.style.height, '400px');
+	assert.equal(other.view.top, topOf(set, four, 2));
+});
+
+test('fitPdfToPage: an edit to the link goes to its page; a re-render that leaves it as it was keeps the reader\'s place', async () => {
+	const host = fakeHost('x.pdf#page=3');
+	sizePdfHost(host);
+	const viewer = fakeViewer(host, { pages: four });
+	await fitPdfToPage(host, viewer.handle);
+	await frame();
+	await viewer.resize();
+	viewer.view.top = 1234;   // the reader scrolls on
+	sizePdfHost(host);        // a re-render, the link unchanged
+	await frame();
+	assert.equal(viewer.view.top, 1234, 'left where the reader is');
+	host.link.dataset.href = 'x.pdf#page=2';   // the link edited
+	sizePdfHost(host);
+	await frame();
+	assert.equal(viewer.view.top, topOf(host, four, 2), 'page two');
+	host.link.dataset.href = 'x.pdf';           // and the page taken out
+	sizePdfHost(host);
+	await frame();
+	assert.equal(viewer.view.top, 0, 'page one');
+});
+
+test('fitPdfToPage: after a width change, a document a re-zoom left near its page\'s top goes back to it', async () => {
+	const host = fakeHost('x.pdf#page=2');
+	sizePdfHost(host);
+	const viewer = fakeViewer(host, { pages: four });
+	await fitPdfToPage(host, viewer.handle);
+	await frame();
+	await viewer.resize();
+	host.clientWidth = 420;
+	// What EmbedPDF's re-zoom leaves (the fake has none): page two's top at
+	// the new width, a few pixels off — its sums keep the viewport gap unscaled.
+	viewer.view.top = topOf(host, four, 2) + 6;
+	await viewer.resize();
+	await viewer.resize();
+	assert.equal(viewer.view.top, topOf(host, four, 2), 'page two\'s top at the new width');
+	viewer.view.top = topOf(host, four, 3) + 40;   // the reader, on page three
+	host.clientWidth = 600;
+	await viewer.resize();
+	await viewer.resize();
+	assert.equal(viewer.view.top, topOf(host, four, 3, 420) + 40, 'far from it: the reader\'s place');
 });

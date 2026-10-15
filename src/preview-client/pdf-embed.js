@@ -7,7 +7,7 @@
 // in pdf-core.js, shared with the standalone viewer page that the file tab
 // and canvas nodes use.
 import { createViewer } from './pdf-core.js';
-import { sizePdfHost, fitPdfToPage, onePageHeight } from './pdf-size.js';
+import { sizePdfHost, fitPdfToPage, onePageHeight, pdfPageOption, pageTop } from './pdf-size.js';
 import { parentOrigin, postTo } from '../shared/message-guard.js';
 
 const CSS = `
@@ -76,11 +76,17 @@ window.addEventListener('message', (event) => {
 });
 
 // Scenarios: how this document's viewers are sized (smoke/pdf-size-scenario.js)
-// — the same sender rule. `press: true` clicks each viewer's ⟷ first.
+// — the same sender rule. `press: true` clicks each viewer's ⟷ first;
+// `scrollTo: y` scrolls each as a reader would.
 window.addEventListener('message', (event) => {
 	const msg = event.data;
 	if (event.source !== window.parent || msg?.source !== 'clew-preview-host' || msg.type !== 'test-pdf-size') return;
 	if (msg.press) for (const button of document.querySelectorAll('.clew-pdf-wide')) button.click();
+	if (typeof msg.scrollTo === 'number') {
+		for (const v of viewers) {
+			v.handle?.container?.registry?.then((r) => r.getPlugin('viewport')?.provides()?.scrollTo({ x: 0, y: msg.scrollTo, behavior: 'instant' }));
+		}
+	}
 	Promise.all([...document.querySelectorAll('.clew-pdf-inline')].map(describeSize))
 		.then((sizes) => postTo(window.parent, { source: 'clew-preview', type: 'test-pdf-sized', id: msg.id, sizes }, parentOrigin()));
 });
@@ -122,10 +128,16 @@ async function describeSize(host) {
 		if (out.status !== 'loaded') return out;
 		const spreads = scroll.forDocument(documents.getActiveDocumentId()).getSpreadPagesWithRotatedSize();
 		const zoom = registry.getPlugin('zoom').provides().getState();
+		const wanted = pdfPageOption(box?.querySelector('.embed-title a[data-href]')?.dataset.href);
+		const count = spreads.reduce((n, spread) => n + spread.length, 0);
 		Object.assign(out, {
 			zoom: zoom?.zoomLevel,
 			scale: zoom?.currentZoomLevel,
 			pages: spreads.length,
+			// #page=N: the page the link names, the one shown, and its top
+			wanted,
+			current: scroll.getCurrentPage?.(),
+			wantedTop: pageTop({ spreads, page: Math.min(Math.max(wanted ?? 1, 1), count), scale: zoom?.currentZoomLevel, pageGap: scroll.getPageGap?.() ?? 0 }),
 			onePage: onePageHeight({ spreads, pageGap: scroll.getPageGap?.() ?? 0, viewportGap: viewport.getViewportGap?.() ?? 0, width: metrics.clientWidth }),
 			widest: Math.max(...spreads.flat().map((p) => p.rotatedSize.width)),
 			viewportGap: viewport.getViewportGap?.() ?? 0,

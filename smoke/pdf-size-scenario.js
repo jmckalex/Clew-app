@@ -11,7 +11,8 @@
 // `equal=true` (the viewport is exactly the one-page sum: the viewport's gap,
 // the tallest page at its fit-width scale, the gap to the next page),
 // `zoom=fit-width fit=true` (the scale is (width − 2·gap) / widest page),
-// `at-top=true` (scrollTop under a pixel). The lines:
+// `at-top=true` (scrollTop within a pixel of the top of the page the link
+// names — page one, or #page=N's — and `page=<shown>/<named>`). The lines:
 // - live|reading `full` / `split` / `split+sidebars` / `full-again`: three
 //   widths, the same viewer throughout (`same-viewer=true`);
 // - `wide` / `unwide`: ⟷ on (one page at 96vw) and off;
@@ -39,7 +40,7 @@ workspaceStore.setSidebar('right', { open: false });
 
 let seq = 0;
 /** The viewers in `win`'s document, as pdf-embed.js describes them. */
-const ask = (win, press = false) => new Promise((resolve) => {
+const ask = (win, press = false, scrollTo) => new Promise((resolve) => {
 	const id = ++seq;
 	const done = (value) => { removeEventListener('message', on); clearTimeout(timer); resolve(value); };
 	const on = (event) => {
@@ -47,7 +48,7 @@ const ask = (win, press = false) => new Promise((resolve) => {
 	};
 	const timer = setTimeout(() => done(null), 3000);
 	addEventListener('message', on);
-	win.postMessage({ source: 'clew-preview-host', type: 'test-pdf-size', id, press }, '*');
+	win.postMessage({ source: 'clew-preview-host', type: 'test-pdf-size', id, press, scrollTo }, '*');
 });
 
 const shown = (el) => el && !el.closest('[data-clew-retiring]') && el.getBoundingClientRect().width > 0;
@@ -93,7 +94,7 @@ async function report(mode, note, label, { until = () => true, ms = 25000 } = {}
 		const sum = s.pages > 1 ? Math.floor(s.onePage) : Math.ceil(s.onePage) + 10;
 		const fitScale = (vp.width - 2 * s.viewportGap) / s.widest;
 		parts.push(`width=${vp.width}`, `viewport=${vp.height}`, `sum=${sum}`, `equal=${vp.height === sum}`,
-			`zoom=${s.zoom}`, `scale=${s.scale?.toFixed(4)}`, `fit=${Math.abs(s.scale - fitScale) < 1e-3}`, `top=${+vp.top.toFixed(2)}`, `at-top=${vp.top < 1}`,
+			`zoom=${s.zoom}`, `scale=${s.scale?.toFixed(4)}`, `fit=${Math.abs(s.scale - fitScale) < 1e-3}`, `top=${+vp.top.toFixed(2)}`, `at-top=${Math.abs(vp.top - (s.wantedTop ?? 0)) < 1}`, `page=${s.current}/${s.wanted ?? '-'}`,
 			`content=${vp.contentHeight}`, `scrolls=${vp.contentHeight > vp.height}`, `pages=${s.pages}`);
 	}
 	parts.push(`host=${s.host}`, `failed=${s.failed}`, `box=${s.box}`, `column=${s.column}`, `wide=${s.wide}`);
@@ -140,6 +141,10 @@ for (const [note, label, until] of [
 	['Wide.md', 'landscape'],
 	['One.md', 'one-page'],
 	['Broken.md', 'broken', (s) => s.status === 'error'],
+	// #page=N: at that page's top, one page tall; with a height; past the end
+	['Page.md', 'page=3', (s) => s.current === 3],
+	['PageSized.md', 'page=2&height=400', (s) => s.host === 400 && s.current === 2],
+	['PageFar.md', 'page=99', (s) => s.current === 4],
 ]) {
 	const tab = workspaceStore.openNote(note, { newTab: true, defaultMode: 'live' });
 	for (const mode of ['live', 'reading']) {
@@ -170,6 +175,12 @@ relink('![[Paper.pdf#width=60%]]');
 await report('live', 'Edit.md', 'edit-width=60%', { until: (s) => s.box < s.column * 0.75 });
 relink('![[Paper.pdf]]');
 await report('live', 'Edit.md', 'edit-plain-again', { until: (s) => s.box > s.column * 0.9 && s.host !== 400 });
+relink('![[Paper.pdf#page=3]]');
+await report('live', 'Edit.md', 'edit-page=3', { until: (s) => s.current === 3 });
+relink('![[Paper.pdf#page=2]]');
+await report('live', 'Edit.md', 'edit-page=2', { until: (s) => s.current === 2 });
+relink('![[Paper.pdf]]');
+await report('live', 'Edit.md', 'edit-page-out', { until: (s) => s.current === 1 });
 await sleep(1500);   // auto-save
 
 workspaceStore.setTabMode(edit.id, 'reading');
@@ -181,7 +192,32 @@ await write('![[Paper.pdf#width=60%]]');
 const w = await report('reading', 'Edit.md', 'edit-width=60%', { until: (s) => s.box < s.column * 0.75 });
 await write('![[Paper.pdf]]');
 const p = await report('reading', 'Edit.md', 'edit-plain-again', { until: (s) => s.box > s.column * 0.9 && s.host !== 400 });
-log(`reading edits same-viewer=${[h, w, p].every((s) => s?.viewer === before?.viewer)}`);
+// #page=N edited in place: the same viewer goes there; a re-render that
+// leaves the link as it was leaves the reader's place.
+await write('![[Paper.pdf#page=3]]');
+const p3 = await report('reading', 'Edit.md', 'edit-page=3', { until: (s) => s.current === 3 });
+await write('![[Paper.pdf#page=2]]');
+const p2 = await report('reading', 'Edit.md', 'edit-page=2', { until: (s) => s.current === 2 });
+await ask(frameOf('reading', 'Edit.md').contentWindow, false, 2000);   // the reader scrolls on, to page three
+await report('reading', 'Edit.md', 'reader-scrolled', { until: (s) => s.current === 3 });
+await ipc.invoke('clew:note-write', { path: 'Edit.md', content: '# Edit\n\nAbove the embed, edited.\n\n![[Paper.pdf#page=2]]\n\nBelow the embed.\n' });
+await sleep(2500);   // the re-render: the text changed, the link did not
+const kept = await report('reading', 'Edit.md', 'rerender-same-link');
+log(`reading edits same-viewer=${[h, w, p, p3, p2, kept].every((s) => s?.viewer === before?.viewer)} reader-kept=${kept?.viewport?.top === 2000}`);
+
+// The title's link opens the PDF's tab at the page too, sizes and all.
+{
+	const shown = new Promise((resolve) => {
+		const on = (event) => {
+			if (event.data?.source === 'clew-preview' && event.data.type === 'pdf-page-shown') { removeEventListener('message', on); resolve(event.data.page); }
+		};
+		addEventListener('message', on);
+		setTimeout(() => resolve(null), 15000);
+	});
+	await window.__clew.actions.openWikilink('Paper.pdf#page=2&height=400');
+	const page = await shown;
+	log(`title-link tab=${workspaceStore.activeTab()?.path} pdfPage=${workspaceStore.activeTab()?.view?.pdfPage} shown=${page}`);
+}
 
 // ---- a PDF behind a password: EmbedPDF's prompt, then opened ----
 const hasLocked = await ipc.invoke('clew:note-read', { path: 'Locked.md' }).then(() => true, () => false);
