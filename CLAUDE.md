@@ -1966,7 +1966,14 @@ except where the selection touches a construct. The durable design is
   (`vault:undo-colon-conversion`, or the result's button) restores byte for
   byte every note still exactly as written and names the rest.
   `smoke/colon-convert-scenario.js` (+ `make-colon-vault.mjs`): the round
-  trip and the 5k cost.
+  trip and the 5k cost. A folded list's note folds go into a div of their
+  own (`.clew-colon-rows`), never straight into its `<details>`: in WebKit
+  each append into a laid-out `<details>` of thousands cost 6–9 ms and its
+  relayout 20–42 ms — the 4,001-note list filled for a minute on an iPad,
+  168 ms wrapped (Clew-iOS, 2026-10-15); the folds carry no
+  `content-visibility` (it hid an off-screen fold from WebKit's find and
+  cost Chromium's scroll more than it saved the fill). `smoke/colon-list-
+  scenario.js`.
 - **Engine embedding gotchas:** never emit `data-target` attributes in
   extension output — the engine's sources-and-targets post-pass deletes such
   elements (Clew uses `data-href`). The engine's bib indexer splits `.bib`
