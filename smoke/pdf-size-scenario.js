@@ -1,0 +1,211 @@
+// A PDF embed's size (preview-client/pdf-size.js): one page tall at "fit
+// width", or the link's #height= / #width=, in live edit's block frames AND
+// reading view. Until 2026-10-15 the viewer was `height: 70vh`, which in a
+// live-edit block frame is 70% of a frame sized to its own content: the
+// frame went 480 → 325 → 211 → … → 176px, a toolbar over a sliver of page.
+// Fixture: `node smoke/make-pdf-size-vault.mjs <dir>`.
+//
+// Every number comes from inside the viewer's document through pdf-embed.js's
+// `test-pdf-size` hook (EmbedPDF's own metrics and layout), asked once the
+// viewer has settled — two asks 600ms apart that agree. Expect, per line:
+// `equal=true` (the viewport is exactly the one-page sum: the viewport's gap,
+// the tallest page at its fit-width scale, the gap to the next page),
+// `zoom=fit-width fit=true` (the scale is (width − 2·gap) / widest page),
+// `at-top=true` (scrollTop under a pixel). The lines:
+// - live|reading `full` / `split` / `split+sidebars` / `full-again`: three
+//   widths, the same viewer throughout (`same-viewer=true`);
+// - `wide` / `unwide`: ⟷ on (one page at 96vw) and off;
+// - `height=400`: `host=400` (the link's height), still fit width;
+// - `width=60%`: an A4 in a box 60% of its column (`box/column=0.600`, the
+//   content widths — CSS's rule; the box's padding is on top);
+// - `landscape`, `one-page` (one page, rounded up with 10px of room below:
+//   `scrolls=false`, and the width it was fitted to stays — on this machine's
+//   classic scrollbars the viewer flickered between two widths for ever);
+// - `broken`: EmbedPDF's own error card (`status=error`) under its toolbar,
+//   the host 496px (`message=true`), not a letter page;
+// - `edit-*`: Edit.md's link changed in place — in live edit a new block
+//   frame, in reading view the SAME viewer re-sized.
+// Then `title` lines: "Paper.pdf", never "Paper.pdf § height=400". Last, when
+// the fixture has Locked.pdf (qpdf): `locked` — the password prompt, the
+// viewport 440px — then the password typed by REAL input into EmbedPDF's own
+// prompt (`message=true`), and `unlocked`: one page, like any other. The run's log must hold
+// no ResizeObserver loop error and no `smoke-pdf-leak:`.
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const { workspaceStore, vaultStore, editorPool, ipc } = window.__clew;
+const log = (s) => console.log('smoke-pdfsize: ' + s);
+for (let i = 0; i < 150 && !vaultStore.vault?.sessionId; i++) await sleep(100);
+workspaceStore.setSidebar('left', { open: false });
+workspaceStore.setSidebar('right', { open: false });
+
+let seq = 0;
+/** The viewers in `win`'s document, as pdf-embed.js describes them. */
+const ask = (win, press = false) => new Promise((resolve) => {
+	const id = ++seq;
+	const done = (value) => { removeEventListener('message', on); clearTimeout(timer); resolve(value); };
+	const on = (event) => {
+		if (event.source === win && event.data?.type === 'test-pdf-sized' && event.data.id === id) done(event.data.sizes);
+	};
+	const timer = setTimeout(() => done(null), 3000);
+	addEventListener('message', on);
+	win.postMessage({ source: 'clew-preview-host', type: 'test-pdf-size', id, press }, '*');
+});
+
+const shown = (el) => el && !el.closest('[data-clew-retiring]') && el.getBoundingClientRect().width > 0;
+/** The document holding the note's PDF viewer: live edit's block frame, or the reading view's. */
+function frameOf(mode, note) {
+	if (mode === 'live') {
+		const slot = [...document.querySelectorAll('.le-frame-slot[data-kind="pdf"]')].find(shown);
+		return slot && document.querySelector(`.le-frames iframe[data-frame-id="${CSS.escape(slot.dataset.frameId)}"]`);
+	}
+	return [...document.querySelectorAll('iframe.preview-frame')].find((f) => shown(f) && decodeURIComponent(f.src).includes(`/${note}`));
+}
+
+const same = (a, b) => a && b && a.viewer === b.viewer && a.host === b.host && a.failed === b.failed
+	&& a.viewport?.height === b.viewport?.height && a.viewport?.width === b.viewport?.width
+	&& a.zoom === b.zoom && a.scale === b.scale && a.viewport?.top === b.viewport?.top;
+
+/** Wait for the viewer to settle (`until` it is what the step expects), then one line. */
+async function report(mode, note, label, { until = () => true, ms = 25000 } = {}) {
+	let last = null;
+	let frame = null;
+	// 600ms apart: EmbedPDF re-zooms 150ms after a resize stops (debounced),
+	// and an answer from before that has the old scale.
+	for (const t0 = Date.now(); Date.now() - t0 < ms; await sleep(600)) {
+		frame = frameOf(mode, note);
+		const now = frame && (await ask(frame.contentWindow))?.[0];
+		const ready = now && (now.failed || now.status === 'error' || now.zoom) && until(now);
+		if (ready && same(now, last)) break;
+		last = ready ? now : null;
+	}
+	if (!last) {
+		log(`${mode} ${label} UNSETTLED`);
+		return null;
+	}
+	const s = last;
+	const vp = s.viewport;
+	const parts = [`${mode} ${label}`, `viewer=${s.viewer}`, `status=${s.status}`];
+	// EmbedPDF unmounts its viewport for a message: the host is its toolbar
+	// (pdf-size.js's 56px guess) and 440px for the message.
+	if (s.status === 'error') parts.push(`message=${s.host === 56 + 440}`);
+	else if (vp) {
+		// pdf-size.js's target: down for a PDF of pages, up and 10px of room
+		// for one of a single page.
+		const sum = s.pages > 1 ? Math.floor(s.onePage) : Math.ceil(s.onePage) + 10;
+		const fitScale = (vp.width - 2 * s.viewportGap) / s.widest;
+		parts.push(`width=${vp.width}`, `viewport=${vp.height}`, `sum=${sum}`, `equal=${vp.height === sum}`,
+			`zoom=${s.zoom}`, `scale=${s.scale?.toFixed(4)}`, `fit=${Math.abs(s.scale - fitScale) < 1e-3}`, `top=${+vp.top.toFixed(2)}`, `at-top=${vp.top < 1}`,
+			`content=${vp.contentHeight}`, `scrolls=${vp.contentHeight > vp.height}`, `pages=${s.pages}`);
+	}
+	parts.push(`host=${s.host}`, `failed=${s.failed}`, `box=${s.box}`, `column=${s.column}`, `wide=${s.wide}`);
+	if (mode === 'live') parts.push(`block-frame=${Math.round(frame.getBoundingClientRect().height)}`);
+	log(parts.join(' '));
+	return s;
+}
+
+// ---- three widths, ⟷, the same viewer throughout ----
+async function widths(mode, tab) {
+	const left = workspaceStore.activeGroupId;
+	const first = await report(mode, 'Embed.md', 'full');
+	workspaceStore.splitWithClone(left, 'right', tab.id);
+	const right = workspaceStore.activeGroupId;
+	workspaceStore.openNote('Spacer.md', { defaultMode: mode });
+	const split = await report(mode, 'Embed.md', 'split', { until: (s) => s.viewport?.width < first.viewport.width - 40 });
+	workspaceStore.setSidebar('left', { open: true });
+	workspaceStore.setSidebar('right', { open: true });
+	const narrow = await report(mode, 'Embed.md', 'split+sidebars', { until: (s) => s.viewport?.width < split.viewport.width - 40 });
+	workspaceStore.setSidebar('left', { open: false });
+	workspaceStore.setSidebar('right', { open: false });
+	workspaceStore.closeGroup(right, { force: true });
+	workspaceStore.setActiveGroup(left);
+	const again = await report(mode, 'Embed.md', 'full-again', { until: (s) => s.viewport?.width === first.viewport.width });
+	log(`${mode} widths=${[first, split, narrow, again].map((s) => s?.viewport?.width).join(',')} same-viewer=${[split, narrow, again].every((s) => s?.viewer === first?.viewer)}`);
+
+	await ask(frameOf(mode, 'Embed.md').contentWindow, true);
+	await report(mode, 'Embed.md', 'wide', { until: (s) => s.wide });
+	await ask(frameOf(mode, 'Embed.md').contentWindow, true);
+	await report(mode, 'Embed.md', 'unwide', { until: (s) => !s.wide && s.viewport?.width === first.viewport.width });
+}
+
+const embed = workspaceStore.openNote('Embed.md', { newTab: true, defaultMode: 'live' });
+workspaceStore.setTabMode(embed.id, 'live');
+await widths('live', embed);
+workspaceStore.setTabMode(embed.id, 'reading');
+await widths('reading', embed);
+
+// ---- the cases, each in both modes ----
+const titles = [];
+for (const [note, label, until] of [
+	['Height.md', 'height=400', (s) => s.host === 400],
+	['Width.md', 'width=60%', (s) => s.box < s.column * 0.75],
+	['Wide.md', 'landscape'],
+	['One.md', 'one-page'],
+	['Broken.md', 'broken', (s) => s.status === 'error'],
+]) {
+	const tab = workspaceStore.openNote(note, { newTab: true, defaultMode: 'live' });
+	for (const mode of ['live', 'reading']) {
+		workspaceStore.setTabMode(tab.id, mode);
+		const s = await report(mode, note, label, { until });
+		titles.push(`${mode}:${note}=${JSON.stringify(s?.title)}`);
+		if (label === 'width=60%' && s) log(`${mode} ${label} box/column=${(s.boxContent / s.column).toFixed(3)} (content widths ${s.boxContent}/${s.column})`);
+	}
+}
+log(`titles ${titles.join(' ')}`);
+
+// ---- editing the link ----
+const edit = workspaceStore.openNote('Edit.md', { newTab: true, defaultMode: 'live' });
+workspaceStore.setTabMode(edit.id, 'live');
+await report('live', 'Edit.md', 'edit-plain');
+const view = editorPool.get(edit.id).view;
+let link = '![[Paper.pdf]]';
+const relink = (to) => {
+	const at = view.state.doc.toString().indexOf(link);
+	view.dispatch({ changes: { from: at, to: at + link.length, insert: to } });
+	// the cursor at the end, off the embed's line, so the block is drawn
+	view.dispatch({ selection: { anchor: view.state.doc.length } });
+	link = to;
+};
+relink('![[Paper.pdf#height=400]]');
+await report('live', 'Edit.md', 'edit-height=400', { until: (s) => s.host === 400 });
+relink('![[Paper.pdf#width=60%]]');
+await report('live', 'Edit.md', 'edit-width=60%', { until: (s) => s.box < s.column * 0.75 });
+relink('![[Paper.pdf]]');
+await report('live', 'Edit.md', 'edit-plain-again', { until: (s) => s.box > s.column * 0.9 && s.host !== 400 });
+await sleep(1500);   // auto-save
+
+workspaceStore.setTabMode(edit.id, 'reading');
+const before = await report('reading', 'Edit.md', 'edit-plain');
+const write = (to) => ipc.invoke('clew:note-write', { path: 'Edit.md', content: `# Edit\n\nAbove the embed.\n\n${to}\n\nBelow the embed.\n` });
+await write('![[Paper.pdf#height=400]]');
+const h = await report('reading', 'Edit.md', 'edit-height=400', { until: (s) => s.host === 400 });
+await write('![[Paper.pdf#width=60%]]');
+const w = await report('reading', 'Edit.md', 'edit-width=60%', { until: (s) => s.box < s.column * 0.75 });
+await write('![[Paper.pdf]]');
+const p = await report('reading', 'Edit.md', 'edit-plain-again', { until: (s) => s.box > s.column * 0.9 && s.host !== 400 });
+log(`reading edits same-viewer=${[h, w, p].every((s) => s?.viewer === before?.viewer)}`);
+
+// ---- a PDF behind a password: EmbedPDF's prompt, then opened ----
+const hasLocked = await ipc.invoke('clew:note-read', { path: 'Locked.md' }).then(() => true, () => false);
+if (!hasLocked) {
+	log('locked skipped (no qpdf when the fixture was made)');
+	workspaceStore.activateTab(embed.id);
+	workspaceStore.setTabMode(embed.id, 'live');
+	await report('live', 'Embed.md', 'last');
+	log('done');
+	return;
+}
+const locked = workspaceStore.openNote('Locked.md', { newTab: true, defaultMode: 'reading' });
+workspaceStore.setTabMode(locked.id, 'reading');
+const prompt = await report('reading', 'Locked.md', 'locked', { until: (s) => s.status === 'error' });
+// Typed for real once this script returns: EmbedPDF's own password field.
+window.__clewSmokeInput = [
+	{ frameClick: { match: 'Locked.md', selector: 'input[type="password"]' } },
+	{ wait: 300 },
+	{ text: 'secret' },
+	{ combo: { key: 'Enter', modifiers: 0, text: '\r' } },
+	{ wait: 8000 },
+];
+(async () => {
+	const open = await report('reading', 'Locked.md', 'unlocked', { until: (s) => s.status === 'loaded' });
+	log(`locked same-viewer=${open?.viewer === prompt?.viewer}`);
+	log('done');
+})();
