@@ -12,7 +12,11 @@
 // `without-table mode=live cm-live=true le=10 intense=1 image=1 callout=2
 // table=0 raw-stars=false`, the same with `le=12 … table=1` for `with-table`,
 // and no `smoke-wn: warn` line (a live-edit warning: a construct's drawing
-// failed).
+// failed) — until the third: the same note with a wikilink, the vault
+// store's resolver made to throw (the inline layer's guard, guarded.js):
+// `wikilink-throws mode=live cm-live=true … intense=1 image=1 callout=2
+// wikilink=0` and one `smoke-wn: warn [clew live edit] a wikilink could not
+// be drawn` — the link as source, the rest of the note drawn.
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const { workspaceStore, vaultStore, ipc } = window.__clew;
 const log = (s) => console.log('smoke-wn: ' + s);
@@ -30,9 +34,12 @@ const body = '# Whole\n\nSome **bold** text.\n\n![[Attachments/pic.png]]\n\n> [!
 const table = '\n| a | b |\n| --- | --- |\n| 1 | 2 |\n';
 await ipc.invoke('clew:note-write', { path: 'Without.md', content: body });
 await ipc.invoke('clew:note-write', { path: 'With.md', content: body + table });
+await ipc.invoke('clew:note-write', { path: 'Linked.md', content: `${body}\nSee [[Elsewhere]].\n` });
 await sleep(800);
 
-for (const [label, path] of [['without-table', 'Without.md'], ['with-table', 'With.md']]) {
+const resolve = vaultStore.resolveNoteName;
+for (const [label, path] of [['without-table', 'Without.md'], ['with-table', 'With.md'], ['wikilink-throws', 'Linked.md']]) {
+	if (label === 'wikilink-throws') vaultStore.resolveNoteName = () => { throw new Error('forced by the scenario'); };
 	const tab = workspaceStore.openNote(path, { newTab: true, defaultMode: 'live' });
 	workspaceStore.setTabMode(tab.id, 'live');
 	await sleep(2500);
@@ -41,6 +48,7 @@ for (const [label, path] of [['without-table', 'Without.md'], ['with-table', 'Wi
 	const count = (sel) => editor ? editor.querySelectorAll(sel).length : -1;
 	log(`${label} mode=${workspaceStore.activeTab()?.view?.mode} cm-live=${editor?.classList.contains('cm-live')}`
 		+ ` le=${count('[class*="le-"]')} intense=${count('.le-intense')}`
-		+ ` image=${count('.le-image')} callout=${count('.cm-line.le-callout')} table=${count('.le-table')}`
+		+ ` image=${count('.le-image')} callout=${count('.cm-line.le-callout')} table=${count('.le-table')} wikilink=${count('.le-wikilink')}`
 		+ ` raw-stars=${editor?.querySelector('.cm-content')?.textContent.includes('**bold**')}`);
+	vaultStore.resolveNoteName = resolve;
 }

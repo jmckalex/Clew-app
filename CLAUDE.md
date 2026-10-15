@@ -103,7 +103,7 @@ note API, plugins, and every settings key.
   references, Dataview/Bases/dataviewjs, office-tab layout rules, the
   embed graph and the embed keyword syntax, the shell sessions, the watch order, the
   dialect scanner's constructs and grammar, live edit's model, reveal rule,
-  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band, figure errors, the PDF save guard, deep links and the clew command, the shareable callout resolver, the device word, where notices sit, pinned apps, the demo vault's updates (untouched files by hash and by shipped history, a record-less copy dated by its files), the ticker's live rules, origin-bound network grants, books (the master reader, chapter titles, words and status, the index's chapter lists and their renames, a build's warnings placed, a book's numbers, a book's citation header), an app's secrets (the store, the methods), the system font index (family names, the cache), an export's figures outside the vault (the engine's marker, which folder may go, the prune) and what draws them (the setting per trust, the TeX tools' refusing stand-ins), a chapter proof (its files' names, whether a full run can number it), what the Insert commands write (the `@` forms, never a colon directive), converting a vault's colon directives (a note's plan, what a choice writes, a note changed under the dry run, the backups, byte-exact undo), a PDF embed's size (the link's sizes, the one-page sum, the viewer held at it), live edit's block field (a table drawn, its references numbered as its note or book numbers them, a note holding one keeping all its live edit, a construct that cannot be drawn costing only itself), the settings file (a dev.11 pin read as the default, a choice kept through saves and relaunches) — 1256 tests. DOM/UI work is
+  inline renderer and toolbar state/layout, format toggling, the `//` menu, link hover previews, the preview pane's targets, cross-reference numbering and completion, citations, PDF annotation notes, headerless tables (with parity against the engine's tokenizer), the caller token, the message guard, tabbing (parser, layout, LaTeX), PDF frame rewriting, the vault-trust store and its enablements, the preview CSP, the vault code summary, PDF quote-and-cite (text, escaping, placement, printed pages), what a site export publishes, build-warning grouping, the write guard and the conflict text helpers, the page navigator's band, figure errors, the PDF save guard, deep links and the clew command, the shareable callout resolver, the device word, where notices sit, pinned apps, the demo vault's updates (untouched files by hash and by shipped history, a record-less copy dated by its files), the ticker's live rules, origin-bound network grants, books (the master reader, chapter titles, words and status, the index's chapter lists and their renames, a build's warnings placed, a book's numbers, a book's citation header), an app's secrets (the store, the methods), the system font index (family names, the cache), an export's figures outside the vault (the engine's marker, which folder may go, the prune) and what draws them (the setting per trust, the TeX tools' refusing stand-ins), a chapter proof (its files' names, whether a full run can number it), what the Insert commands write (the `@` forms, never a colon directive), converting a vault's colon directives (a note's plan, what a choice writes, a note changed under the dry run, the backups, byte-exact undo), a PDF embed's size (the link's sizes, the one-page sum, the viewer held at it), live edit's block field (a table drawn, its references numbered as its note or book numbers them, a note holding one keeping all its live edit, a construct that cannot be drawn costing only itself — in the block field and the inline layer), the settings file (a dev.11 pin read as the default, a choice kept through saves and relaunches) — 1259 tests. DOM/UI work is
   verified with the smoke harness.
 - **Smoke harness:** `CLEW_SMOKE=/path/out.png CLEW_SMOKE_SCRIPT=scenario.js
   [CLEW_SMOKE_FRAME_SCRIPT=frame.js [CLEW_SMOKE_FRAME_MATCH=substr]]
@@ -1120,13 +1120,16 @@ except where the selection touches a construct. The durable design is
   structure (block widgets, replacements across lines) comes from the
   StateField `block-field.js`; inline marks/widgets and LINE decorations
   from the ViewPlugin `inline-layer.js` over visibleRanges, which must
-  never replace across a line break. **A construct the block field cannot
-  draw stays SOURCE** (`block-field.js#guarded`: what it pushed is taken
-  back, one `console.warn` per kind and message) — a throw that escapes
-  `build()` is the field's create failing, and the whole note then loses
-  live edit while its tab still says live: from 8619a67 to 2026-10-15 every
-  note holding a table did (`smoke/live-whole-note-scenario.js`). The note's
-  numbering is asked for lazily, by the constructs that show a number. Line
+  never replace across a line break. **A construct either provider cannot
+  draw stays SOURCE** (`live/guarded.js`: what it pushed is taken back, one
+  `console.warn` per kind and message) — a throw that escapes the block
+  field's `build()` is its create failing, and the whole note then loses
+  live edit while its tab still says live (from 8619a67 to 2026-10-15 every
+  note holding a table did); one out of the inline layer's crashes the
+  plugin, and every mark, chip and line class goes (`smoke/live-whole-note-
+  scenario.js`: a wikilink made to throw, `le=4 intense=0 callout=0`
+  unguarded). Both ask for the note's numbering lazily, by the constructs
+  that show a number. Line
   classes (heading size, list indent, callout tint) apply in BOTH states —
   entering a line never
   changes its height (CodeMirror's `cm-widgetBuffer` images lifted a
