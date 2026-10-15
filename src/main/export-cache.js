@@ -168,6 +168,23 @@ export function explainFiguresWarnings(warnings, { restricted }) {
 /** The values the `exportFigureEngine` setting takes, its default first. */
 export const FIGURE_ENGINE_SETTINGS = ['auto', 'external'];
 
+/** The mark a choice of the setting leaves beside it in clew-settings.json. */
+export const FIGURE_ENGINE_CHOSEN = 'exportFigureEngineChosen';
+
+/**
+ * clew-settings.json as read, with an `exportFigureEngine` nobody chose
+ * taken out, so the default applies. Every save writes every key
+ * (settings-store.js), so dev.9–11 wrote their default, 'external', into the
+ * file at the first vault opened, and a default changed since would never
+ * reach that user. A value set from the Settings page carries the mark
+ * (SettingsStore#set) and is kept, 'external' included.
+ */
+export function unpinFigureEngine(stored) {
+	if (!stored || typeof stored !== 'object' || stored[FIGURE_ENGINE_CHOSEN] === true || !('exportFigureEngine' in stored)) return stored;
+	const { exportFigureEngine, ...rest } = stored;
+	return rest;
+}
+
 /**
  * The processFile options for an export's figures: `{}` (the installed tools,
  * no option at all) or `{ figureEngine, mpTikzDist }`. `dist` is the staged
