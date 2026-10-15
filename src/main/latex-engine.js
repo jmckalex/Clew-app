@@ -118,6 +118,26 @@ export function latexmkCommand({ engine, texFile, env, isFile, platform = proces
 	};
 }
 
+/**
+ * Why a PDF via LaTeX is not made in a vault this device does not trust (the
+ * owner's decision 2026-10-15): it runs the TeX installed here over the
+ * vault's own TeX code, which reads any file the user can (measured: a TikZ
+ * node's `\input{<a file outside the vault>}` printed its text into the
+ * export), and the tools around it read their configuration from the folders
+ * they run in (latexmkCommand). The vault's LaTeX and HTML exports stay —
+ * their figures are drawn by the built-in TeX, which sees no disk, and nothing
+ * else is typeset — and so do the reading-view PDFs, which need no TeX.
+ *
+ * @param {'note'|'book'|'proof'} kind
+ * @param {string} device  the device word (renderer/lib/device-name.js)
+ */
+export function latexPdfRefusal(kind, device) {
+	const what = { note: 'A PDF via LaTeX', book: 'A book\'s PDF via LaTeX', proof: 'A chapter proof (a PDF via LaTeX)' }[kind];
+	const instead = { note: 'Export the note as PDF (reading view), or trust', book: 'Build the book as PDF (reading view), or trust', proof: 'Trust' }[kind];
+	return `${what} is not made in a vault ${device} does not trust: it would run your TeX installation `
+		+ `over the vault's own TeX, which can read any file you can. ${instead} the vault (Settings → This vault).`;
+}
+
 /** The first error in a TeX log (`! …` and the line after), or ''. */
 export function firstLatexError(log) {
 	const lines = String(log ?? '').split('\n');

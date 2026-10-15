@@ -10,7 +10,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { chooseLatexEngine, latexmkFlag, firstLatexError } from '../src/main/latex-engine.js';
+import { chooseLatexEngine, latexmkFlag, firstLatexError, latexPdfRefusal } from '../src/main/latex-engine.js';
 import { readFileSync } from 'node:fs';
 import { LATEX_ENGINE_SETTING } from '../src/shared/latex-engine-setting.js';
 
@@ -63,4 +63,12 @@ test('the reason names the section the Settings view really draws the row in', (
 	assert.ok(row > 0, 'the view draws the row from LATEX_ENGINE_SETTING.label');
 	const sections = [...view.slice(0, row).matchAll(/this\.#section\('([^']+)'/g)];
 	assert.equal(sections.at(-1)?.[1], LATEX_ENGINE_SETTING.section);
+});
+
+test('a vault this device does not trust: each PDF via LaTeX refused by name, saying why and what instead', () => {
+	const note = latexPdfRefusal('note', 'this Mac');
+	assert.match(note, /^A PDF via LaTeX is not made in a vault this Mac does not trust: it would run your TeX installation over the vault's own TeX/);
+	assert.match(note, /Export the note as PDF \(reading view\), or trust the vault \(Settings → This vault\)\.$/);
+	assert.match(latexPdfRefusal('book', 'this computer'), /^A book's PDF via LaTeX is not made in a vault this computer does not trust.*Build the book as PDF \(reading view\), or trust the vault/);
+	assert.match(latexPdfRefusal('proof', 'this Mac'), /^A chapter proof \(a PDF via LaTeX\) is not made.*Trust the vault \(Settings → This vault\)\.$/);
 });

@@ -44,7 +44,7 @@ import { printNoteToPdf } from './print-pdf.js';
 import { settings } from './settings.js';
 import { calloutsEnv } from './callout-types.js';
 import { iconTable } from './callout-files.js';
-import { chooseLatexEngine, engineName, latexmkCommand, firstLatexError } from './latex-engine.js';
+import { chooseLatexEngine, engineName, latexmkCommand, latexPdfRefusal, firstLatexError } from './latex-engine.js';
 import { identityKey } from './vault-trust.js';
 import { figuresFolder, figuresState, otherOutputs, vaultCacheDir, markUsed, pruneExportCache, explainFiguresWarnings, figureEngineOptions, texRefusalDir } from './export-cache.js';
 import { buildIndex, fontDirs } from './system-fonts.js';
@@ -193,6 +193,9 @@ export async function clearFigures(vaults, output) {
 }
 
 const TEX_DIRS = ['/Library/TeX/texbin', '/usr/local/bin', '/opt/homebrew/bin'];
+// The device word the window says (renderer/lib/device-name.js): a desktop
+// page has no host name, so its platform's.
+export const DEVICE_WORD = process.platform === 'darwin' ? 'this Mac' : 'this computer';
 // CLEW_SMOKE_NO_TEX (scenarios only; render-service.js#toolchainPath): none here either.
 const findTex = (name) => (process.env.CLEW_SMOKE && process.env.CLEW_SMOKE_NO_TEX ? null
 	: TEX_DIRS.map((dir) => path.join(dir, name)).find((p) => fs.existsSync(p)) ?? null);
@@ -262,6 +265,9 @@ export function compilePdf(texFile, noteDir, bibDirs = [noteDir]) {
  * Prompts for a destination; returns { output } or { canceled: true }.
  */
 export async function exportNote({ win, vaults, sessionId, callerToken = null, relPath, format, outFile, trusted = false }) {
+	// No PDF via LaTeX in a vault this device does not trust (latex-engine.js#
+	// latexPdfRefusal): refused before the save dialog, nothing built.
+	if (format === 'pdf' && !trusted) return { refused: latexPdfRefusal('note', DEVICE_WORD) };
 	const abs = vaults.resolve(relPath);
 	const cwd = trusted ? path.dirname(abs) : restrictedExportDir();
 	// Exports honor the vault's standard-syntax choice, like previews do.
