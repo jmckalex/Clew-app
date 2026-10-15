@@ -15,7 +15,9 @@
 // names — page one, or #page=N's — and `page=<shown>/<named>`). The lines:
 // - live|reading `full` / `split` / `split+sidebars` / `full-again`: three
 //   widths, the same viewer throughout (`same-viewer=true`);
-// - `wide` / `unwide`: ⟷ on (one page at 96vw) and off;
+// - `wide-button button=false` in live edit (no ⟷ in a block frame: there it
+//   could only narrow the box), `button=true` in reading view, then `wide` /
+//   `unwide`: ⟷ on (one page at 96vw) and off;
 // - `height=400`: `host=400` (the link's height), still fit width;
 // - `width=60%`: an A4 in a box 60% of its column (`box/column=0.600`, the
 //   content widths — CSS's rule; the box's padding is on top);
@@ -124,6 +126,10 @@ async function widths(mode, tab) {
 	const again = await report(mode, 'Embed.md', 'full-again', { until: (s) => s.viewport?.width === first.viewport.width });
 	log(`${mode} widths=${[first, split, narrow, again].map((s) => s?.viewport?.width).join(',')} same-viewer=${[split, narrow, again].every((s) => s?.viewer === first?.viewer)}`);
 
+	// ⟷: reading view's only — a live-edit block frame is the column itself,
+	// where it could only narrow the box (pdf-embed.js#IN_BLOCK).
+	log(`${mode} wide-button button=${first.button}`);
+	if (mode === 'live') return;
 	await ask(frameOf(mode, 'Embed.md').contentWindow, true);
 	await report(mode, 'Embed.md', 'wide', { until: (s) => s.wide });
 	await ask(frameOf(mode, 'Embed.md').contentWindow, true);

@@ -53,6 +53,12 @@ const CSS = `
 }
 `;
 
+// A live-edit block frame (protocol.js marks its <html>) is the text column
+// itself, so ⟷ could never widen the box past it — it made it 6px NARROWER
+// (measured: 656 → 650; a #width=480 box only to the column's 650). No ⟷
+// there; reading view keeps it, where it reaches 96vw (704 → 1243).
+const IN_BLOCK = document.documentElement.dataset.clewBlock === '1';
+
 function ensureStyles() {
 	if (document.getElementById('clew-pdf-inline-css')) return;
 	const style = document.createElement('style');
@@ -110,6 +116,7 @@ async function describeSize(host) {
 		column: box?.parentElement ? contentWidth(box.parentElement) : 0,
 		title: box?.querySelector('.embed-title a')?.textContent ?? null,
 		wide: host.hasAttribute('data-wide'),
+		button: Boolean(box?.querySelector('.clew-pdf-wide')),   // ⟷ (none in a live-edit block)
 		failed: Boolean(host.querySelector(':scope > .clew-pdf-message')),
 		frame: innerHeight,
 	};
@@ -222,7 +229,7 @@ function ensureChrome(host) {
 	if (!titleBar) return;
 
 	// Rightmost first: both controls float right, so DOM order is right-to-left.
-	if (!titleBar.querySelector('.clew-pdf-wide')) {
+	if (!IN_BLOCK && !titleBar.querySelector('.clew-pdf-wide')) {
 		const button = document.createElement('button');
 		button.className = 'clew-pdf-wide';
 		button.type = 'button';

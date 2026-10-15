@@ -1467,7 +1467,9 @@ except where the selection touches a construct. The durable design is
   sliver). The height is EmbedPDF's own sum (viewport gap, the tallest page at
   the fit-width scale, the page gap it scales) set on the next frame, never in
   a resize callback, a few corrections per width; it follows the width (split,
-  sidebars, ⟷ — which is now one page at 96vw) and starts at the top of page
+  sidebars, ⟷ — which is now one page at 96vw, in reading view only: a
+  live-edit block frame IS the column, where ⟷ could only narrow the box, so
+  it is not drawn there, `pdf-embed.js#IN_BLOCK`) and starts at the top of page
   one. Sizes in the link, Obsidian's syntax: `![[x.pdf#height=600]]`,
   `#width=480`, `#width=60%` (the box's content width), joined by `&`,
   `#page=N` (the owner's yes, 2026-10-15: Obsidian's) opening the embed at
