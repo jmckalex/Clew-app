@@ -35,7 +35,10 @@ for (const setting of ['external', 'auto']) {
 			const outFile = `ef/${setting}/${name}.${EXT[format]}`;
 			const r = await ipc.invoke('clew:export-note', { path: note, format, outFile })
 				.catch((e) => ({ error: String(e.message ?? e).replace(/^Error invoking remote method '[^']+': (Error: )?/, '') }));
-			const warnings = (r?.warnings ?? []).map(String).filter((w) => !/minted has no Pygments lexer/.test(w)).map((w) => w.slice(0, 160));
+			const warnings = (r?.warnings ?? []).map(String).filter((w) => !/minted has no Pygments lexer/.test(w))
+				// A file a figure needs is named whole (jmarkdown 1cce2c1: TeX's
+				// log breaks a long name at 79 columns, and it arrived in pieces).
+				.map((w) => (/ needs `/.test(w) ? w : w.slice(0, 160)));
 			log(`export ${setting} ${name}.${EXT[format]} ${r?.error ? `error=${JSON.stringify(String(r.error).slice(0, 200))}` : `ok=true warnings=${JSON.stringify(warnings)}`}`);
 		}
 	}

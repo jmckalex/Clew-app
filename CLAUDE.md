@@ -1685,8 +1685,10 @@ except where the selection touches a construct. The durable design is
   node drew its text into the export), the library's TeX sees no disk.
   Since jmarkdown c82d206 `wasm` never runs the tools on ANY path (no
   library, one that will not load, a call that throws): a figure the
-  library did not draw is a `jmd-refused` marker naming it in HTML
-  (`data-jmd-refused="TiKZ"`/`"metapost"`; nothing in LaTeX) and a warning;
+  library did not draw is a `jmd-refused` marker in HTML — "[TiKZ figure not
+  drawn]", "[MetaPost figure not drawn]", a reader's words in a quiet dashed
+  box (jmarkdown 6bbc3bf), `data-jmd-refused="TiKZ"`/`"metapost"`; nothing in
+  LaTeX — and a warning saying why;
   one it tried and failed keeps its error box. The REFUSING stand-ins for
   those four programs first on a restricted export worker's PATH
   (`export-cache.js#texRefusalDir`, `<userData>/restricted-export/no-tex/`;
