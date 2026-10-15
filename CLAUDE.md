@@ -1505,8 +1505,16 @@ except where the selection touches a construct. The durable design is
   is MEASURED to it (`pdf-size.js#messageHeight`: the toolbar, the card
   `.items-center.justify-center > .max-w-sm`, its area's padding; again on
   the frame's resize), because the card grows as the viewer narrows (the
-  prompt 388px at 704 wide, 516 at 210: a fixed 440 clipped it on the iPad),
-  and one page again once a password opens it. The file tab,
+  prompt 388px at 704 wide, 516 at 208: a fixed 440 clipped it on the iPad),
+  and one page again once a password opens it. The card itself is kept
+  WHOLE in a narrow viewer (`pdf-card-fit.js`, 2026-10-15, Clew-iOS's 208px):
+  its area's 2rem padding shrinks with the width, the card may be narrower
+  than its longest word, which wraps (the error card's unbroken
+  "FPDF_LoadMemDocument failed" held it at 221px, cut off both sides), and
+  the prompt's Cancel and Open wrap rather than run 40px past its edge — a
+  wide viewer drawn exactly as before; the prompt is 430px at 208 now. Its
+  fit (`cardFit`) counts every box and every text line in the card, a line
+  only when wider than 1px (WebKit's zero-width rect at a line's end). The file tab,
   canvas nodes and a canvas SCENE's PDF nodes (`canvas-embed.js`, 2026-09-30
   — until then Chromium's plugin,
   which could not annotate) — which point an iframe at a raw PDF and so have

@@ -31,9 +31,10 @@
 // Then `title` lines: "Paper.pdf", never "Paper.pdf § height=400". Last, when
 // the fixture has Locked.pdf (qpdf): `locked` — the password prompt, the
 // viewport 440px — then the password typed by REAL input into EmbedPDF's own
-// prompt — first at narrow widths (`locked-narrow`, `locked-210` — an
-// iPad's, `#width=210` — `broken-narrow`: a taller card, still
-// `card-fits=true`) — and `unlocked`: one page, like any
+// prompt — first at narrow widths (`locked-narrow`, `locked-208` and
+// `broken-208` — an iPad's, `#width=208`, the card WHOLE: `card-fits=true
+// past=0`, everything in it inside it (pdf-card-fit.js) — `broken-narrow`:
+// a taller card, still `card-fits=true`) — and `unlocked`: one page, like any
 // other. The run's log must hold
 // no ResizeObserver loop error and no `smoke-pdf-leak:`.
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -92,7 +93,7 @@ async function report(mode, note, label, { until = () => true, ms = 25000 } = {}
 	const parts = [`${mode} ${label}`, `viewer=${s.viewer}`, `status=${s.status}`];
 	// EmbedPDF unmounts its viewport for a message: the host is its toolbar
 	// (pdf-size.js's 56px guess) and 440px for the message.
-	if (s.status === 'error') parts.push(`card=${s.card?.height} card-fits=${s.card?.fits}`);
+	if (s.status === 'error') parts.push(`card=${s.card?.height} card-fits=${s.card?.fits} past=${s.card?.past} card-width=${s.card?.width} box=${s.box}`);
 	else if (vp) {
 		// pdf-size.js's target: down for a PDF of pages, up and 10px of room
 		// for one of a single page.
@@ -252,7 +253,12 @@ workspaceStore.setTabMode(locked.id, 'reading');
 	await report('reading', 'Locked.md', 'locked-narrow', { until: (s) => s.status === 'error' && s.box < 320 && s.card?.fits });
 	const tiny = workspaceStore.openNote('LockedNarrow.md', { newTab: true, defaultMode: 'reading' });
 	workspaceStore.activateTab(tiny.id);
-	await report('reading', 'LockedNarrow.md', 'locked-210', { until: (s) => s.status === 'error' && s.box <= 230 && s.card?.fits });
+	// An iPad's 208px (Clew-iOS): settled on the card, whatever its fit — the
+	// line says it (`card-fits`, `past`: px over the edge).
+	await report('reading', 'LockedNarrow.md', 'locked-208', { until: (s) => s.status === 'error' && s.box <= 230 && s.card?.height > 0 });
+	const brokenTiny = workspaceStore.openNote('BrokenNarrow.md', { newTab: true, defaultMode: 'reading' });
+	workspaceStore.activateTab(brokenTiny.id);
+	await report('reading', 'BrokenNarrow.md', 'broken-208', { until: (s) => s.status === 'error' && s.box <= 230 && s.card?.height > 0 });
 	const broken = workspaceStore.openNote('Broken.md', { newTab: true, defaultMode: 'reading' });
 	workspaceStore.activateTab(broken.id);
 	await report('reading', 'Broken.md', 'broken-narrow', { until: (s) => s.status === 'error' && s.box < 320 && s.card?.fits });
