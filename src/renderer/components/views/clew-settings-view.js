@@ -95,8 +95,8 @@ class ClewSettingsView extends ClewElement {
 					+ 'one the preview draws with, and needs no TeX installed; a figure it cannot draw — one '
 					+ 'naming a font it cannot find, or needing a package it lacks (siunitx, for one) — goes '
 					+ 'to your installation instead, and the export says so. In a vault '
-					+ `${DEVICE} does not trust, the built-in TeX always draws the figures, so that vault's TeX `
-					+ 'never runs on your installation.'),
+					+ `${DEVICE} does not trust, HTML and LaTeX exports always draw figures with the built-in `
+					+ 'TeX; a PDF via LaTeX is still compiled by your TeX installation.'),
 				this.#textRow('Shell panel font', 'shellFont', 'e.g. MesloLGS NF — blank for the default'),
 				this.#hint('A monospace family for the shell panel — your terminal\'s, say. Blank uses '
 					+ 'Clew\'s monospace font. Prompt symbols (Powerline and Nerd Font glyphs) come from '
