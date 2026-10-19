@@ -137,6 +137,16 @@ test('quotes: one construct per line, depth from the markers', () => {
 	]);
 });
 
+test('title-page lines: @title, @<title>, ::title alone on their lines; not mid-sentence, not :title', () => {
+	const doc = '@title[A two-line\n  title]\n@author+[An Author]\n@<date>[Today]\n::subtitle[Sub]\n'
+		+ '\nBy @author[Someone] here.\n\n:title[a title element]\n\n@begin[not a title]\n';
+	const m = model(doc).filter((c) => c.kind === 'directiveAt' || c.kind === 'directiveInline');
+	assert.deepEqual(m.map((c) => [c.text.split('[')[0], c.titlePage]), [
+		['@title', 'title'], ['@author+', 'author'], ['@<date>', 'date'], ['::subtitle', 'subtitle'],
+		['@author', null], [':title', null], ['@begin', null],
+	]);
+});
+
 test('callouts: type through the aliases, fold, title; body lines carry the type', () => {
 	const m = model('> [!TLDR]- Short *version*\n> body\n');
 	const c = m.find((x) => x.kind === 'callout');
