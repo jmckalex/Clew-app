@@ -13,10 +13,12 @@
 // the editor's own markdown config; `|` is the cursor, before and after.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { EditorState, EditorSelection } from '@codemirror/state';
+import { EditorState, EditorSelection, Transaction } from '@codemirror/state';
+import { keymap } from '@codemirror/view';
 import { syntaxTree, ensureSyntaxTree } from '@codemirror/language';
 import { noteMarkdown } from '../src/renderer/editor/jmd/markdown-config.js';
 import { listEnterSpec, newListItemSpec } from '../src/renderer/editor/list-keys.js';
+import { noteKeys } from '../src/renderer/editor/note-keys.js';
 
 function stateOf(text) {
 	const at = text.indexOf('|');
@@ -113,4 +115,66 @@ test('⌘Enter declines outside a list and on an empty item', () => {
 	assert.equal(cmdEnter('prose|'), null);
 	assert.equal(cmdEnter('> a quote|'), null);
 	assert.equal(cmdEnter('* |'), null);
+});
+
+// A key pressed through the note editor's REAL key stack (note-keys.js over
+// noteMarkdown(), as editor.js installs them): each binding for the key in
+// CodeMirror's precedence order (the keymap facet's), until one takes it —
+// which is how a7baa98's Enter was missed: its spec was right, and
+// lang-markdown's Enter, at Prec.high, ran before it on an item's first line.
+function pressKey(text, key, markdown = noteMarkdown({}), mark = '|') {
+	const at = text.indexOf(mark);
+	let state = EditorState.create({
+		doc: text.slice(0, at) + text.slice(at + 1),
+		selection: EditorSelection.cursor(at),
+		extensions: [markdown, noteKeys()],
+	});
+	ensureSyntaxTree(state, state.doc.length, 5000);
+	const view = {
+		get state() { return state; },
+		dispatch(...specs) { state = (specs[0] instanceof Transaction ? specs[0] : state.update(...specs)).state; },
+	};
+	const taken = state.facet(keymap).flat().some((b) => b.key === key && b.run?.(view));
+	if (!taken) return null;
+	const head = state.selection.main.head;
+	return state.doc.sliceString(0, head) + mark + state.doc.sliceString(head);
+}
+
+test('the note editor\'s markdown carries no keymap of its own; the cell editor\'s asks for lang-markdown\'s', () => {
+	const keys = (md) => EditorState.create({ extensions: [md] }).facet(keymap).flat().length;
+	assert.equal(keys(noteMarkdown({})), 0);
+	assert.ok(keys(noteMarkdown({ keymap: true })) > 0);
+});
+
+test('a real Enter at the end of an item\'s FIRST line stays in the item (bullet, numbered, task)', () => {
+	assert.equal(pressKey('* Alpha\n* Beta|', 'Enter'), '* Alpha\n* Beta\n  |');
+	assert.equal(pressKey('1. one|\n2. two', 'Enter'), '1. one\n   |\n2. two');
+	assert.equal(pressKey('- [ ] task|', 'Enter'), '- [ ] task\n  |');
+	// With lang-markdown's keymap where markdown() puts it, ahead of the
+	// stack — 1dc5c81 — the same key starts a new item: what this guards.
+	assert.equal(pressKey('* Alpha\n* Beta|', 'Enter', noteMarkdown({ keymap: true })), '* Alpha\n* Beta\n* |');
+});
+
+test('every other Enter and Backspace is what it was with lang-markdown\'s keymap at Prec.high', () => {
+	const cases = [
+		['> a quote|', 'Enter'],
+		['> a\n> |', 'Enter'],
+		['prose|', 'Enter'],
+		['* |', 'Enter'],
+		['> |', 'Backspace'],
+		['* |', 'Backspace'],
+		['1. |', 'Backspace'],
+		['* item\n  |', 'Backspace'],
+		['text (|)', 'Backspace'],
+		['plain|', 'Backspace'],
+	];
+	for (const [text, key] of cases) {
+		assert.equal(pressKey(text, key), pressKey(text, key, noteMarkdown({ keymap: true })), `${key} at ${JSON.stringify(text)}`);
+	}
+	// A table's Enter is the table's — a new row, the cursor in the same
+	// column (`§` here: a table's pipes are no cursor).
+	const table = '| a | b |\n|---|---|\n| 1 | 2§ |';
+	const row = '| a   | b   |\n| --- | --- |\n| 1   | 2   |\n|     | §    |';
+	assert.equal(pressKey(table, 'Enter', noteMarkdown({}), '§'), row);
+	assert.equal(pressKey(table, 'Enter', noteMarkdown({ keymap: true }), '§'), row);
 });

@@ -783,7 +783,13 @@ reaches (markdown's rule; the tree leaves blank lines out of every item),
 so Backspace over the indentation, then Enter, leaves the list.
 `editor:toggle-task` moved to **⌘L** (Obsidian's chord). Quotes, fences and
 prose keep CodeMirror's Enter. `tests/list-keys.test.js`,
-`smoke/list-keys-scenario.js`.
+`smoke/list-keys-scenario.js`. Corrected the same day (Clew-docs measured
+it): `markdown()` installs lang-markdown's keymap at Prec.high unless told
+not to, so its Enter ran before `listEnter` and an item's FIRST line still
+started a new item; `noteMarkdown()` now leaves it out (`keymap: false`, the
+default; the table cell editor asks for it) and the note editor's keys are
+`editor/note-keys.js` — in the order editor.js installs them, which the
+tests press Enter and Backspace through (every other key as before).
 
 Corrected with §5.12: the arrow-key claim above holds for INLINE
 constructs only. Vertical motion carried the cursor past a block widget

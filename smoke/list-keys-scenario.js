@@ -12,6 +12,12 @@
 //   numbered lines=["1. first","2. inserted","3. second"]
 //   prose lines=["Prose line.","Below."]   ⌘Enter outside a list: the blank
 //              line below it always gave
+//   first-line bullet=["* First item.","  B2"] numbered=["3. second","   N2"]
+//              task=["- [ ] another task","  TC"]
+//              Enter at the end of an item's FIRST line stays in the item too.
+//              Until the fix after a7baa98 it started a new item (`* B2`,
+//              `4. N2`, `- [ ] TC`): lang-markdown's keymap, at Prec.high, ran
+//              before listEnter (Clew-docs measured it; note-keys.js)
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const { workspaceStore, editorPool, ipc } = window.__clew;
 const log = (s) => console.log('smoke-list-keys: ' + s);
@@ -65,7 +71,10 @@ window.__clewSmokeInput = [
 	{ combo: { key: 'l', code: 'KeyL', modifiers: 4 } }, { wait: 300 },
 	cmdEnter, { text: 'another task' }, { wait: 1500 }, // → "1. first"
 	cmdEnter, { text: 'inserted' }, { wait: 1500 },     // → "Prose line."
-	cmdEnter, { text: 'Below.' }, { wait: 1500 },
+	cmdEnter, { text: 'Below.' }, { wait: 1500 },       // → "* First item."
+	enter, { text: 'B2' }, { wait: 1500 },              // → "3. second"
+	enter, { text: 'N2' }, { wait: 1500 },              // → "- [ ] another task"
+	enter, { text: 'TC' }, { wait: 1000 },
 ];
 // Each step's checks once its text is in, then the cursor to the next place.
 setTimeout(async () => {
@@ -85,5 +94,14 @@ setTimeout(async () => {
 	await until(() => text().includes('Below.'));
 	await sleep(200);
 	log(`prose lines=${around('Below.', 1, 0)}`);
+	// Enter at the end of an item's FIRST line, three kinds of item.
+	const first = {};
+	for (const [name, at, typed] of [['bullet', '* First item.', 'B2'], ['numbered', '3. second', 'N2'], ['task', '- [ ] another task', 'TC']]) {
+		endOf(at);
+		await until(() => text().includes(typed));
+		await sleep(200);
+		first[name] = around(typed, 1, 0);
+	}
+	log(`first-line bullet=${first.bullet} numbered=${first.numbered} task=${first.task}`);
 	log('done');
 }, 0);
