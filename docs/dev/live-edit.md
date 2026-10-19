@@ -768,6 +768,23 @@ now three commands in format.js — `format:indent`, `format:outdent`, and
 `editor:toggle-task` on ⌘-Enter, which falls back to CodeMirror's own ⌘-Enter
 (`insertBlankLine`) off a task line so the chord takes nothing away.
 
+Changed 2026-10-19 (the owner's choice): in a LIST ITEM, **Enter** stays in
+the item — a new line under its text, so an item holds several paragraphs
+(Enter twice) — and **⌘Enter** starts the next item after the whole of this
+one, wherever the cursor is in it (`editor/list-keys.js`: `listEnter` ahead
+of `markdownKeymap` in editor.js, `editor:new-list-item` in format.js —
+the next number, the later numbers moved up while they run on, an empty
+box after a task, a blank line first in a loose list; on an empty item
+CodeMirror's Enter ends the list; outside a list, `insertBlankLine` as
+⌘Enter always gave). The continuation goes to the item's CONTENT column —
+lang-markdown's goes past a task's `[ ] `, where a second paragraph is an
+indented code block. A blank line belongs to the item its indentation
+reaches (markdown's rule; the tree leaves blank lines out of every item),
+so Backspace over the indentation, then Enter, leaves the list.
+`editor:toggle-task` moved to **⌘L** (Obsidian's chord). Quotes, fences and
+prose keep CodeMirror's Enter. `tests/list-keys.test.js`,
+`smoke/list-keys-scenario.js`.
+
 Corrected with §5.12: the arrow-key claim above holds for INLINE
 constructs only. Vertical motion carried the cursor past a block widget
 entirely; `live/keys.js` now stops it at the block's near edge (§5.12).

@@ -22,6 +22,7 @@ node smoke/make-live-vault.mjs $S/v-ll >/dev/null; run live-lines $S/v-ll
 mkdir -p $S/v-toc; run live-toc $S/v-toc
 mkdir -p $S/v-title; run live-title $S/v-title CLEW_SMOKE_FRAME_SCRIPT=smoke/live-title-frame.js CLEW_SMOKE_FRAME_MATCH=Title.md
 mkdir -p $S/v-lq; run live-list-quote $S/v-lq CLEW_SMOKE_FRAME_SCRIPT=smoke/live-list-quote-frame.js CLEW_SMOKE_FRAME_MATCH=ListQuote.md
+mkdir -p $S/v-lk; run list-keys $S/v-lk
 node smoke/make-live-vault.mjs $S/v-te >/dev/null; run live-table-edit $S/v-te
 node smoke/make-live-vault.mjs $S/v-hl >/dev/null; run live-headerless-table $S/v-hl
 node smoke/make-live-vault.mjs $S/v-nf >/dev/null; run live-nested-fence $S/v-nf

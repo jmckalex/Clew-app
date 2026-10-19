@@ -60,8 +60,11 @@ inside `*word*`, not around it.
 
 ## Lists and tasks
 
-**⌘↩** ticks or unticks the task on the cursor's line (anywhere else it
-opens a blank line below, as it always did). **Tab** and **⇧Tab** indent
-and outdent list items; Enter continues a list, a task list or a quote.
+In a list item, **Enter** stays in the item: a new line under its text, and
+Enter twice gives the item another paragraph. **⌘↩** starts the next item —
+the next number, an empty box after a task — wherever the cursor is in this
+one; on an empty item it ends the list, and outside a list it opens a blank
+line below. **⌘L** ticks or unticks the task on the cursor's line. **Tab**
+and **⇧Tab** indent and outdent list items; Enter continues a quote.
 
 See also: [[Reading Mode]], [[Links and Embeds]].

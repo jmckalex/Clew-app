@@ -24,6 +24,7 @@ import {
 } from '@codemirror/autocomplete';
 import { search, searchKeymap } from '@codemirror/search';
 import { markdownKeymap } from '@codemirror/lang-markdown';
+import { listEnter } from './list-keys.js';
 import { clewEditorTheme, clewHighlighting } from './theme.js';
 import { wikilinkCompletions } from './complete/wikilinks.js';
 import { slashCompletions } from './complete/slash-commands.js';
@@ -108,6 +109,9 @@ export function makeNoteState(doc, handlerRef, { normalSyntax = false } = {}) {
 			tableKeymap(),
 			keymap.of([
 				...closeBracketsKeymap,
+				// Enter in a list item stays in the item (list-keys.js); ⌘Enter,
+				// the next item, is the command registry's (format.js).
+				{ key: 'Enter', run: listEnter },
 				...markdownKeymap,
 				...defaultKeymap,
 				...historyKeymap,
