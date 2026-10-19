@@ -8,9 +8,12 @@
 //          of its item's text: 0 when the quote stands under the text>
 //          text-from-border=<its text's start less the border's>
 //          colour=<the quote text's colour as one of quote|muted|normal|other>
+//          bar=<the border's colour: border (reading view's grey)|quote|other>
 // for `bullet` (`* item` then a quote 4 spaces in, as the owner's), `numbered`
 // (`1.` then 3), `nested` (an item in an item), and `top` (no list:
 // border-from-item-text is its distance from the margin's text instead).
+// Every quote reads as reading view's: colour=muted bar=border (the owner's
+// choice, 2026-10-19; source mode's quote green until then).
 // Then REAL input: a click in the bullet's quote reveals its `>`, the line
 // staying where it is — `revealed=true moved=0`. The tab ends in reading
 // view, where the frame script measures the same (smoke-list-quote-frame:).
@@ -84,13 +87,14 @@ const probe = (cls) => {
 	el.remove();
 	return c;
 };
-const colours = { quote: probe('--clew-quote'), muted: probe('--clew-text-muted'), normal: probe('--clew-text-normal') };
-const colourOf = (el) => Object.entries(colours).find(([, c]) => c === getComputedStyle(el).color)?.[0] ?? `other(${getComputedStyle(el).color})`;
+const colours = { quote: probe('--clew-quote'), muted: probe('--clew-text-muted'), normal: probe('--clew-text-normal'), border: probe('--clew-border') };
+const nameOf = (c) => Object.entries(colours).find(([, v]) => v === c)?.[0] ?? `other(${c})`;
+const colourOf = (el) => nameOf(getComputedStyle(el).color);
 const measure = (name, quote, item) => {
 	const border = quote.getBoundingClientRect().left;
 	const itemText = item ? textLeft(item) : textLeft(lineWith('Prose between.'));
 	log(`${name} border-from-item-text=${Math.round(border - itemText)} text-from-border=${Math.round(textLeft(quote) - border)}`
-		+ ` colour=${colourOf(textEl(quote))}`);
+		+ ` colour=${colourOf(textEl(quote))} bar=${nameOf(getComputedStyle(quote).borderLeftColor)}`);
 };
 const bulletQuote = lineWith('success conditions');
 measure('bullet', bulletQuote, lineWith('I worry that'));

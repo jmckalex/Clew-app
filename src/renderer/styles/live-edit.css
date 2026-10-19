@@ -136,9 +136,13 @@
 .le-done { color: var(--clew-text-muted); text-decoration: line-through; text-decoration-color: var(--clew-text-faint); }
 
 /* ---- quotes and callouts (colours mirror preview.css's callout table) ---- */
+/* A quote is reading view's (preview.css `blockquote`): muted text, the
+   border's grey bar — --clew-text-muted and --clew-border are its
+   --preview-muted and --preview-border, in both themes. Until 2026-10-19 it
+   was source mode's quote green (the owner's choice). */
 .le-quote {
-	border-left: 3px solid var(--clew-quote);
-	color: var(--clew-quote);
+	border-left: 3px solid var(--clew-border);
+	color: var(--clew-text-muted);
 	padding-left: 20px !important;
 	margin-left: 24px;
 }
@@ -397,9 +401,9 @@ body[data-theme='light'] .le-frame { color-scheme: light; }
 	font-size: 0.8em;
 }
 .le-frame-slot.is-measured .le-frame-skeleton { border-color: transparent; color: transparent; }
-/* A callout's text is prose, as in reading mode — not the quote face that
-   lang-markdown puts on every span of a blockquote. */
-.cm-live .le-callout .cmt-quote { color: inherit; }
+/* A quote's text is its line's colour — muted, or a callout's prose — not
+   the quote face lang-markdown puts on every span of a blockquote. */
+.cm-live .le-quote .cmt-quote { color: inherit; }
 /* lang-markdown tags `__x__` as strong emphasis, and the source theme's
    strong face is the dialect's INTENSE (small caps). Concealed, `__x__` is
    an underline and nothing else — whichever way the two spans nest. */

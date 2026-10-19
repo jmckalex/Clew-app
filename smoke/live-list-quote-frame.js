@@ -25,5 +25,5 @@ for (const [name, s] of [['bullet', 'success conditions'], ['numbered', 'numbere
 	const border = quote.getBoundingClientRect().left;
 	const itemText = item ? textLeft(item) : textLeft([...document.querySelectorAll('p')].find((p) => p.textContent.includes('Prose between')));
 	log(`${name} border-from-item-text=${Math.round(border - itemText)} text-from-border=${Math.round(textLeft(quote) - border)}`
-		+ ` colour=${getComputedStyle(quote).color === top ? 'normal' : getComputedStyle(quote).color}`);
+		+ ` colour=${getComputedStyle(quote).color === top ? 'normal' : getComputedStyle(quote).color} bar=${getComputedStyle(quote).borderLeftColor}`);
 }
