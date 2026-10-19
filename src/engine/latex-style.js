@@ -11,27 +11,39 @@
 // Clew's style for a LaTeX export and a PDF via LaTeX (the owner's choice,
 // 2026-10-19: "a properly-formatted LaTeX document using a font like
 // Garamond") — EB Garamond with Garamond-Math, 12pt on A4 (Letter where the
-// machine's region uses it), microtype, the language's hyphenation, smart
-// quotes, quieter lists and headings, smaller long quotations, a colour emoji
-// fallback, links unboxed. Setting `latexExportStyle` (Settings → Export):
-// `clew`, the default, or `none` — the user's jmarkdown configuration alone,
-// as every export was before.
+// region uses it), microtype, the document language's hyphenation (babel),
+// smart quotes, quieter lists and headings, smaller long quotations, a colour
+// emoji fallback, links unboxed. Setting `latexExportStyle` (Settings →
+// Appearance, beside the LaTeX engine): `clew`, the default, or `none` — the
+// user's jmarkdown configuration alone, as every export was before.
 //
-// Applied as CONFIGURATION, the engine's own keys, set by the export worker
-// after the engine has read the user's config files and before the build:
+// Applied as CONFIGURATION, the engine's own keys, which the export worker
+// sets twice: before the build, from the user's config files alone, and
+// again when the engine merges the note's HEADER (configManager.mergeMetadata
+// — the worker wraps it), so the header's own `Lang`, `LaTeX engine`,
+// `Class options` and `Geometry` decide the style as they decide everything
+// else (Clew-docs measured the first version deciding without them: a German
+// note hyphenated as British, a header's pdflatex overruled):
+//   - a header forcing `LaTeX engine: pdflatex` gets no style at all, as the
+//     setting forcing pdfLaTeX does (fontspec needs a Unicode engine);
+//   - the language is the header's `Lang`, else the config's, else English;
+//     its region, else the machine's, chooses the paper and English's
+//     variant; a language babel does not know gets no hyphenation from the
+//     style — the engine's own table (book.js#BABEL), mirrored here and held
+//     to it by a test;
 //   - a layout key (`Class options`, `Geometry`, `LaTeX engine`) only where
-//     the user's config leaves it as the engine's default (`LaTeX engine`'s
-//     is pdflatex, which the style cannot live with: fontspec);
+//     neither the header nor the user's config sets it (a config left at the
+//     engine's DEFAULT_CONFIG sets nothing); class options that name no paper
+//     get the region's paper through `Geometry`;
 //   - `Packages` and `LaTeX preamble` ADDED to the user's — the packages load
 //     before hyperref, the preamble lines after the user's own, so the
 //     style's fonts win over a config's `\setmainfont` (the owner's: Garamond
-//     over his global Optima);
-//   - a note's own HEADER wins over all of it, as over any config: the engine
-//     reads a header key before the config's, so a note whose header sets
-//     `LaTeX preamble` or `Packages` replaces the style's along with the
-//     user's, and every style command is guarded (\@ifpackageloaded — as old
-//     as LaTeX2e, unlike the 2021 kernel's \IfPackageLoadedTF) so that
-//     leaves a document that compiles.
+//     over his global Optima); a header setting either replaces the style's
+//     with the user's, as the engine replaces any config's;
+//   - no key the header set is touched, and every style command is guarded
+//     (\@ifpackageloaded — as old as LaTeX2e, unlike the 2021 kernel's
+//     \IfPackageLoadedTF — babel only where no babel or polyglossia is
+//     loaded: the engine's book loads babel for a book in other languages).
 // The fonts are named by FILE, which LuaLaTeX and XeLaTeX both find in
 // TeX Live, and guarded by \IfFontExistsTF: a TeX installation without them
 // keeps its default face rather than failing. Imports nothing; tested by
@@ -40,54 +52,113 @@
 /** The values `latexExportStyle` takes, its default first. */
 export const LATEX_EXPORT_STYLES = ['clew', 'none'];
 
+/** The configuration keys the style sets: what the worker restores before
+ *  deciding again, the header's merge known. */
+export const STYLE_KEYS = ['LaTeX engine', 'Class options', 'Geometry', 'Smart typography', 'Packages', 'LaTeX preamble'];
+
+/** The header keys the style reads, by their spelling folded (case, spaces). */
+const HEADER_KEYS = new Map(['Lang', ...STYLE_KEYS].map((k) => [k.toLowerCase(), k]));
+
 /** Packages the style loads (by name, so before hyperref), in order. */
 const PACKAGES = ['unicode-math', 'microtype', 'enumitem', 'titlesec', 'titling', 'etoolbox'];
 
+/** The engine's babel names (jmarkdown book.js#BABEL), mirrored: the engine's
+ *  module loads its config manager, so it is not imported. */
+export const BABEL = {
+	en: 'english', 'en-us': 'american', 'en-gb': 'british', 'en-au': 'australian', 'en-ca': 'canadian',
+	'en-nz': 'newzealand', de: 'ngerman', 'de-at': 'naustrian', 'de-ch': 'nswissgerman', fr: 'french',
+	es: 'spanish', it: 'italian', pt: 'portuguese', 'pt-br': 'brazilian', nl: 'dutch', sv: 'swedish',
+	da: 'danish', nb: 'norsk', no: 'norsk', nn: 'nynorsk', fi: 'finnish', is: 'icelandic', pl: 'polish',
+	cs: 'czech', sk: 'slovak', hu: 'magyar', ro: 'romanian', hr: 'croatian', sl: 'slovenian', tr: 'turkish',
+	ca: 'catalan', gl: 'galician', eu: 'basque', ga: 'irish', cy: 'welsh', et: 'estonian', lv: 'latvian',
+	lt: 'lithuanian', la: 'latin', ru: 'russian', uk: 'ukrainian', el: 'greek',
+};
+
 /** Regions whose paper is Letter, not A4. */
 const LETTER_REGIONS = new Set(['US', 'CA', 'MX', 'PH', 'CL', 'CO', 'VE', 'GT', 'PR']);
+/** A class option or geometry key that names the paper. */
+const PAPER = /\b(a[0-6]|b[0-6]|letter|legal|executive)paper\b|\bpaper(size)?\s*=/;
 
 /** A colour emoji face each platform ships, for the main font's fallback. */
 const EMOJI = { darwin: 'AppleColorEmoji', win32: 'SegoeUIEmoji', linux: 'NotoColorEmoji' };
 
 const asList = (v) => (v == null || v === '' ? [] : Array.isArray(v) ? v : [v]);
-const regionOf = (locale) => /[-_]([A-Za-z]{2})\b/.exec(String(locale ?? ''))?.[1]?.toUpperCase() ?? '';
+const asText = (v) => asList(v).join(' ').trim();
+const regionOf = (tag) => /[-_]([A-Za-z]{2})\b/.exec(String(tag ?? ''))?.[1]?.toUpperCase() ?? '';
 
 /**
- * The configuration keys the style sets, as [key, value] pairs.
+ * The note header's values for the keys the style reads, from the metadata
+ * the engine merges (its keys as written, its values lists of lines).
+ *
+ * @param {Record<string, unknown>} metadata
+ * @returns {Record<string, string>} by the style's spelling of each key
+ */
+export function headerValues(metadata) {
+	const out = {};
+	for (const [key, value] of Object.entries(metadata ?? {})) {
+		const name = HEADER_KEYS.get(key.toLowerCase().replace(/[\s_]+/g, ' ').trim());
+		if (name) out[name] = asList(value).join('\n');
+	}
+	return out;
+}
+
+/**
+ * babel's name for a language tag — the engine's table; a bare `en` takes
+ * the region's English (the machine's: a British Mac's `en` is British), and
+ * falls back to babel's `english`. Null for a tag babel does not know.
+ */
+export function babelName(lang, region = '') {
+	const tag = String(lang ?? '').trim().toLowerCase().replace(/_/g, '-');
+	if (tag === 'en' && region) return BABEL[`en-${region.toLowerCase()}`] ?? BABEL.en;
+	return BABEL[tag] ?? BABEL[tag.split('-')[0]] ?? null;
+}
+
+/**
+ * The configuration keys the style sets, as [key, value] pairs — none at all
+ * for a header that forces pdfLaTeX, and none the header set itself.
  *
  * @param {(key: string) => unknown} get - the engine's configuration as the
- *   user's config files left it (configManager.get)
- * @param {{ locale?: string, platform?: string, defaults?: object }} [where] -
- *   the machine's locale (`en-GB`) and platform, for the paper, the
- *   hyphenation and the emoji face; and the engine's DEFAULT_CONFIG, so a
- *   key still at its default counts as unset
+ *   user's config files left it (configManager.get before the header)
+ * @param {{ locale?: string, platform?: string, defaults?: object,
+ *   header?: Record<string, string> }} [where] - the machine's locale (`en-GB`)
+ *   and platform; the engine's DEFAULT_CONFIG, so a key still at its default
+ *   counts as unset; the note header's values (headerValues), or none
  * @returns {[string, unknown][]}
  */
-export function latexStyleConfig(get, { locale = '', platform = 'darwin', defaults = {} } = {}) {
+export function latexStyleConfig(get, { locale = '', platform = 'darwin', defaults = {}, header = {} } = {}) {
+	if (/^\s*pdflatex\s*$/i.test(header['LaTeX engine'] ?? '')) return [];
 	const out = [];
-	const unset = (key) => get(key) == null || get(key) === '' || get(key) === defaults[key];
-	const region = regionOf(get('Lang')) || regionOf(locale);
-	const letter = LETTER_REGIONS.has(region);
+	const configured = (key) => {
+		const v = get(key);
+		return v == null || v === '' || v === defaults[key] ? null : v;
+	};
+	const chosen = (key) => (key in header ? header[key] : configured(key));
+	const lang = String(chosen('Lang') ?? 'en');
+	const region = regionOf(lang) || regionOf(locale);
+	const paper = LETTER_REGIONS.has(region) ? 'letterpaper' : 'a4paper';
 
-	if (unset('LaTeX engine')) out.push(['LaTeX engine', 'lualatex']);
-	if (unset('Class options')) out.push(['Class options', `12pt,${letter ? 'letterpaper' : 'a4paper'}`]);
-	if (unset('Geometry')) out.push(['Geometry', 'textwidth=31pc,top=30mm,bottom=32mm']);
-	if (get('Smart typography') !== true) out.push(['Smart typography', true]);
-
-	const userPreamble = asList(get('LaTeX preamble'));
-	const userText = userPreamble.join('\n');
-	// English hyphenation by the region, unless the user's config already
-	// chooses a language: babel and polyglossia do not mix.
-	const english = /^en\b/i.test(String(get('Lang') ?? 'en')) && !/\{(babel|polyglossia)\}/.test(userText);
-	const packages = [...(english ? ['polyglossia'] : []), ...PACKAGES];
-	const userPackages = asList(get('Packages'));
-	out.push(['Packages', [...userPackages, ...packages.filter((p) => !userPackages.includes(p))]]);
-	out.push(['LaTeX preamble', [...userPreamble, ...preamble({ english, region, platform })]]);
+	if (chosen('LaTeX engine') == null) out.push(['LaTeX engine', 'lualatex']);
+	const classOptions = chosen('Class options');
+	if (classOptions == null) out.push(['Class options', `12pt,${paper}`]);
+	if (chosen('Geometry') == null) {
+		// Class options that name no paper (`11pt`) would print on the class's
+		// Letter: the region's paper, through geometry.
+		const own = classOptions != null && !PAPER.test(asText(classOptions));
+		out.push(['Geometry', `${own ? `${paper},` : ''}textwidth=31pc,top=30mm,bottom=32mm`]);
+	}
+	if (!('Smart typography' in header) && get('Smart typography') !== true) out.push(['Smart typography', true]);
+	if (!('Packages' in header)) {
+		const userPackages = asList(get('Packages'));
+		out.push(['Packages', [...userPackages, ...PACKAGES.filter((p) => !userPackages.includes(p))]]);
+	}
+	if (!('LaTeX preamble' in header)) {
+		out.push(['LaTeX preamble', [...asList(get('LaTeX preamble')), ...preamble({ babel: babelName(lang, region), platform })]]);
+	}
 	return out;
 }
 
 /** The style's preamble lines: every one guarded by the package it needs. */
-function preamble({ english, region, platform }) {
+function preamble({ babel, platform }) {
 	const emoji = EMOJI[platform] ?? EMOJI.linux;
 	const garamond = 'EBGaramond-Regular.otf';
 	const faces = '[Extension=.otf,UprightFont=*-Regular,ItalicFont=*-Italic,BoldFont=*-Bold,BoldItalicFont=*-BoldItalic';
@@ -96,9 +167,14 @@ function preamble({ english, region, platform }) {
 	// does not have, and the style is on by default (Clew-boss, 2026-10-19).
 	const ifLoaded = (pkg, then) => `\\@ifpackageloaded{${pkg}}{${then}}{}`;
 	return [
-		'% Clew\'s export style (Settings → Export; `latexExportStyle: none` leaves it out).',
+		'% Clew\'s export style (Settings → Appearance; `latexExportStyle: none` leaves it out).',
 		'\\makeatletter',
-		...(english ? [ifLoaded('polyglossia', `\\setdefaultlanguage[variant=${region === 'US' ? 'american' : 'british'}]{english}`)] : []),
+		// The document language's hyphenation, unless a babel or polyglossia
+		// is loaded already (the engine's for a book in other languages, the
+		// user's own). Loaded late, after hyperref: measured to compile and
+		// hyphenate as the language does (british or-gan-isa-tion, ngerman
+		// or-ga-ni-sa-ti-on).
+		...(babel ? [`\\@ifpackageloaded{babel}{}{\\@ifpackageloaded{polyglossia}{}{\\usepackage[${babel}]{babel}}}`] : []),
 		// fontspec's, so only where it is loaded (a config forcing pdfLaTeX has
 		// none). The emoji fallback is LuaTeX's — luaotfload 3.11 and later
 		// (TeX Live 2020), asked first — and only for a face that is there: a

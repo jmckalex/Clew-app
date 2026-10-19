@@ -19,7 +19,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fork, execFile } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { latexStyleConfig } from '../src/engine/latex-style.js';
+import { latexStyleConfig, headerValues, babelName, BABEL } from '../src/engine/latex-style.js';
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'clew-latex-style-'));
 after(() => fs.rmSync(root, { recursive: true, force: true }));
@@ -44,22 +44,54 @@ test('layout keys only where the user\'s config leaves them unset, or at the eng
 	assert.equal('Smart typography' in mine, false);
 });
 
-test('the paper and the hyphenation follow the region: Lang\'s, else the machine\'s', () => {
+const babelOf = (s) => /\\usepackage\[(\w+)\]\{babel\}/.exec(s['LaTeX preamble'].join('\n'))?.[1] ?? null;
+
+test('the language: the header\'s Lang, else the config\'s; its region, else the machine\'s, for the paper and English\'s variant', () => {
 	assert.equal(style({}, { locale: 'en-US' })['Class options'], '12pt,letterpaper');
-	assert.match(style({}, { locale: 'en-US' })['LaTeX preamble'].join('\n'), /variant=american/);
+	assert.equal(babelOf(style({}, { locale: 'en-US' })), 'american');
 	assert.equal(style({ Lang: 'en-GB' }, { locale: 'en-US' })['Class options'], '12pt,a4paper');
-	assert.match(style({ Lang: 'en' }, { locale: 'en-GB' })['LaTeX preamble'].join('\n'), /variant=british/);
-	// Not English, or a language the user's config already sets: no polyglossia.
-	for (const config of [{ Lang: 'de' }, { 'LaTeX preamble': ['\\usepackage[ngerman]{babel}'] }]) {
-		const s = style(config);
-		assert.equal(s.Packages.includes('polyglossia'), false, JSON.stringify(config));
-		assert.doesNotMatch(s['LaTeX preamble'].join('\n'), /setdefaultlanguage/);
-	}
+	assert.equal(babelOf(style({ Lang: 'en' }, { locale: 'en-GB' })), 'british');
+	assert.equal(babelOf(style({ Lang: 'en' }, { locale: 'de-DE' })), 'english', 'a bare en elsewhere: babel\'s english');
+	assert.equal(babelOf(style({ Lang: 'de' })), 'ngerman');
+	assert.equal(babelOf(style({ Lang: 'tlh' })), null, 'a tag babel does not know: no hyphenation from the style');
+	// The header's Lang over the config's (Clew-docs: a German note hyphenated as British).
+	const de = Object.fromEntries(latexStyleConfig((k) => ({ Lang: 'en' })[k], { locale: 'en-GB', header: { Lang: 'de' } }));
+	assert.equal(babelOf(de), 'ngerman');
+	const us = Object.fromEntries(latexStyleConfig((k) => ({ Lang: 'en' })[k], { locale: 'en-GB', header: { Lang: 'en-US' } }));
+	assert.equal(us['Class options'], '12pt,letterpaper');
+	assert.equal(babelOf(us), 'american');
+	// babel only where none is loaded: the engine's book loads one for a book in other languages.
+	assert.match(style({})['LaTeX preamble'].join('\n'), /\\@ifpackageloaded\{babel\}\{\}\{\\@ifpackageloaded\{polyglossia\}\{\}\{\\usepackage/);
+});
+
+test('a header that forces pdfLaTeX gets no style; a key the header set is never set by the style', () => {
+	assert.deepEqual(latexStyleConfig(() => undefined, { header: { 'LaTeX engine': 'pdflatex' } }), []);
+	const s = Object.fromEntries(latexStyleConfig(() => undefined, { locale: 'en-GB',
+		header: { Packages: 'xcolor', 'LaTeX preamble': '\\usepackage{x}', Geometry: 'margin=1in', 'Smart typography': 'false', 'LaTeX engine': 'xelatex' } }));
+	for (const key of ['Packages', 'LaTeX preamble', 'Geometry', 'Smart typography', 'LaTeX engine']) assert.equal(key in s, false, key);
+	assert.deepEqual(headerValues({ 'latex  engine': ['pdflatex'], Class_options: ['11pt'], lang: ['de'], Title: ['x'] }),
+		{ 'LaTeX engine': 'pdflatex', 'Class options': '11pt', Lang: 'de' });
+});
+
+test('class options naming no paper get the region\'s through geometry; ones that name it keep it', () => {
+	assert.equal(style({ 'Class options': '11pt' }).Geometry, 'a4paper,textwidth=31pc,top=30mm,bottom=32mm');
+	assert.equal(style({ 'Class options': '11pt' }, { locale: 'en-US' }).Geometry, 'letterpaper,textwidth=31pc,top=30mm,bottom=32mm');
+	assert.equal(style({ 'Class options': '11pt,letterpaper' }).Geometry, 'textwidth=31pc,top=30mm,bottom=32mm');
+	assert.equal(Object.fromEntries(latexStyleConfig(() => undefined, { locale: 'en-GB', header: { 'Class options': '10pt' } })).Geometry,
+		'a4paper,textwidth=31pc,top=30mm,bottom=32mm');
+});
+
+test('babel\'s names are the engine\'s own (jmarkdown book.js#BABEL)', () => {
+	const source = fs.readFileSync(path.resolve('vendor/jmarkdown/src/book.js'), 'utf8');
+	const literal = /const BABEL = (\{[\s\S]*?\});/.exec(source)?.[1];
+	assert.ok(literal, 'book.js has a BABEL table');
+	assert.deepEqual(BABEL, new Function(`return ${literal}`)());
+	assert.equal(babelName('EN_gb'), 'british');
 });
 
 test('packages and preamble are ADDED to the user\'s — the style\'s fonts after the user\'s own', () => {
 	const s = style({ Packages: ['xcolor', 'microtype'], 'LaTeX preamble': ['\\usepackage{fontspec}', '\\setmainfont{Optima}'] });
-	assert.deepEqual(s.Packages, ['xcolor', 'microtype', 'polyglossia', 'unicode-math', 'enumitem', 'titlesec', 'titling', 'etoolbox']);
+	assert.deepEqual(s.Packages, ['xcolor', 'microtype', 'unicode-math', 'enumitem', 'titlesec', 'titling', 'etoolbox']);
 	const lines = s['LaTeX preamble'];
 	assert.deepEqual(lines.slice(0, 2), ['\\usepackage{fontspec}', '\\setmainfont{Optima}']);
 	assert.ok(lines.findIndex((l) => l.includes('\\setmainfont{EBGaramond}')) > 1);
@@ -116,15 +148,16 @@ const NOTE = [
 	'',
 ].join('\n');
 
-/** The note exported to LaTeX by the real export worker, with `latexStyle` (or none). */
-function exportTex(dir, latexStyle) {
+/** The note exported to LaTeX by the real export worker, with `latexStyle`
+ *  (or none) — under a `---`-fenced header of `header`'s lines, if any. */
+function exportTex(dir, latexStyle, header = []) {
 	const home = path.join(dir, 'home');
 	fs.mkdirSync(path.join(home, '.jmarkdown'), { recursive: true });
 	// The user's own config sets another face, as the owner's sets Optima.
 	fs.writeFileSync(path.join(home, '.jmarkdown', 'config.json'), JSON.stringify({
 		'LaTeX preamble': ['\\usepackage{fontspec}', '\\setmainfont{texgyrepagella-regular.otf}'],
 	}));
-	fs.writeFileSync(path.join(dir, 'Note.md'), NOTE);
+	fs.writeFileSync(path.join(dir, 'Note.md'), header.length ? `---\n${header.join('\n')}\n---\n${NOTE}` : NOTE);
 	const worker = fork(path.resolve('src/engine/export-worker.mjs'), [createRequire(import.meta.url).resolve('jmarkdown/src/watch-worker.js')], {
 		cwd: dir, stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
 		env: { ...process.env, HOME: home, CLEW_VAULT_ROOT: dir, CLEW_VAULT_RESTRICTED: '0' },
@@ -149,8 +182,60 @@ test('through the export worker: the style\'s class, page, fonts after the user\
 	assert.match(styled, /“What are the success conditions/, 'smart quotes');
 	const plain = await exportTex(fs.mkdtempSync(path.join(root, 'plain-')), null);
 	assert.match(plain, /^\\documentclass\{article\}/);
-	assert.doesNotMatch(plain, /EBGaramond|titlesec|polyglossia/);
+	assert.doesNotMatch(plain, /EBGaramond|titlesec|babel/);
 	assert.match(plain, /"What are the success conditions/);
+});
+
+test('through the export worker, the note\'s HEADER decides: its Lang, its pdflatex, its paperless class options', async () => {
+	const gb = { locale: 'en-GB', platform: process.platform };
+	const tex = (header) => exportTex(fs.mkdtempSync(path.join(root, 'header-')), gb, header);
+	const none = await tex([]);
+	assert.match(none, /\\usepackage\[british\]\{babel\}/, 'no header: the machine\'s English');
+	const de = await tex(['Lang: de']);
+	assert.match(de, /\\usepackage\[ngerman\]\{babel\}/);
+	assert.doesNotMatch(de, /british|american/, 'a German note is not hyphenated as English');
+	const us = await tex(['Lang: en-US']);
+	assert.match(us, /^\\documentclass\[12pt,letterpaper\]\{article\}/);
+	assert.match(us, /\\usepackage\[american\]\{babel\}/);
+	const pdflatex = await tex(['LaTeX engine: pdflatex']);
+	assert.match(pdflatex, /^\\documentclass\{article\}/, 'a header forcing pdfLaTeX: no style');
+	assert.match(pdflatex, /\{inputenc\}/);
+	assert.doesNotMatch(pdflatex, /EBGaramond|titlesec|babel|unicode-math|Clew's export style/);
+	const eleven = await tex(['Class options: 11pt']);
+	assert.match(eleven, /^\\documentclass\[11pt\]\{article\}/);
+	assert.match(eleven, /\\usepackage\[a4paper,textwidth=31pc,top=30mm,bottom=32mm\]\{geometry\}/);
+	const packages = await tex(['Packages: xcolor']);
+	assert.match(packages, /\\usepackage\{xcolor\}/);
+	assert.doesNotMatch(packages, /\\usepackage\{titlesec\}/, 'the header\'s Packages replace the style\'s');
+});
+
+test('a book: the MASTER\'s header decides, its chapters\' headers never re-decide it', async () => {
+	// book.js checks a chapter's keys by merging them into TRIAL copies of the
+	// configuration, which inherit the worker's wrapper: re-deciding from one
+	// chapter's key reset a German book's language to British (measured).
+	const dir = fs.mkdtempSync(path.join(root, 'book-'));
+	const home = path.join(dir, 'home');
+	fs.mkdirSync(path.join(home, '.jmarkdown'), { recursive: true });
+	fs.writeFileSync(path.join(home, '.jmarkdown', 'config.json'), '{}');
+	fs.writeFileSync(path.join(dir, 'Book.md'), '---\nLang: de\nbook: true\n---\n\nVorwort.\n');
+	fs.writeFileSync(path.join(dir, 'Eins.md'), '# Eins\n\nText.\n');
+	fs.writeFileSync(path.join(dir, 'Zwei.md'), '---\nSmart typography: true\n---\n# Zwei\n\nText.\n');
+	const worker = fork(path.resolve('src/engine/export-worker.mjs'), [createRequire(import.meta.url).resolve('jmarkdown/src/watch-worker.js')], {
+		cwd: dir, stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
+		env: { ...process.env, HOME: home, CLEW_VAULT_ROOT: dir, CLEW_VAULT_RESTRICTED: '0' },
+	});
+	const tex = await new Promise((resolve, reject) => {
+		worker.on('message', (msg) => {
+			if (msg?.type === 'ready') {
+				worker.send({ type: 'build', file: 'Book.md', options: { to: 'latex', output: 'Book.tex', chapters: ['Eins.md', 'Zwei.md'] },
+					latexStyle: { locale: 'en-GB', platform: process.platform } });
+			} else if (msg?.type === 'done') resolve(fs.readFileSync(path.join(dir, 'Book.tex'), 'utf8'));
+			else if (msg?.type === 'error') reject(new Error(msg.message));
+		});
+		worker.on('error', reject);
+	});
+	assert.match(tex, /\\@ifpackageloaded\{polyglossia\}\{\}\{\\usepackage\[ngerman\]\{babel\}\}/, 'the style\'s language is the master\'s');
+	assert.doesNotMatch(tex, /british/);
 });
 
 test('compiled by LuaLaTeX: EB Garamond and Garamond-Math, the user\'s face set aside', { skip }, async () => {
