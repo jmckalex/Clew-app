@@ -52,11 +52,13 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { resolveFileTarget } from './vault-files.js';
 import { familyFiles, readFontIndex } from './font-families.js';
+import { latexStyleConfig } from './latex-style.js';
 
 const engineDir = path.dirname(process.argv[2]);
 const load = (name) => import(pathToFileURL(path.join(engineDir, name)).href);
 const { processFile } = await load('index.js');
 const { getWarnings } = await load('warnings.js');
+const { configManager, DEFAULT_CONFIG } = await load('config-manager.js');
 
 let building = null;   // the build's message: its file and options
 const fontIndex = process.env.CLEW_FONT_INDEX ? readFontIndex(process.env.CLEW_FONT_INDEX) : null;
@@ -98,6 +100,12 @@ process.once('message', async (msg) => {
 	building = msg;
 	try {
 		const options = { ...msg.options, obsidianLinks: { resolveEmbed, resolveLink: () => null }, ...figureFonts };
+		// Clew's LaTeX style (latex-style.js): configuration added to what the
+		// user's config files gave the engine at import — before the build,
+		// whose header is read after it and wins.
+		if (msg.latexStyle && options.to === 'latex') {
+			for (const [key, value] of latexStyleConfig((k) => configManager.get(k), { ...msg.latexStyle, defaults: DEFAULT_CONFIG })) configManager.set(key, value);
+		}
 		const { outFile, bookMap = null, latexFiles = null } = await processFile(msg.file, options);
 		if (process.send) process.send({ type: 'done', output: outFile, warnings: getWarnings(), bookMap, latexFiles });
 	} catch (err) {
