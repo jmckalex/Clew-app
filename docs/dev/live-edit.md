@@ -727,6 +727,16 @@ level; entries via `renderInline`; click → `view.dispatch({selection,
 effects: EditorView.scrollIntoView(pos, {y:'start'})})`. Reflects edits
 because `eq` compares a hash of the heading list.
 
+As built (2026-10-19): an entry carries its heading's ORDINAL
+(`data-le-heading`), and the click resolves it against the document as it
+is then (`block-field.js#tocHeadings`, the one list the widget draws too).
+The widget has no `updateDOM`: CodeMirror reuses a widget's DOM whenever
+`updateDOM` says yes, and the first one patched only positions, so a
+renamed heading kept its old entry until the cursor entered `{{TOC}}` and
+left it; and the positions it kept went stale at the first edit above a
+heading (one is never patched when `eq` is true), so a click landed there
+instead. `smoke/live-toc-scenario.js`.
+
 ### 5.9 Keys
 
 - **Enter** at the end of a list item continues the list (`- `, `1. ` with

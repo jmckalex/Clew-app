@@ -19,6 +19,7 @@ rm -rf $S; mkdir -p $S
 run() { local n=$1 v=$2; shift 2; env CLEW_SMOKE_LOG=1 CLEW_USER_DATA="$(sweep_ud "$n")" CLEW_SMOKE=$S/$n.png CLEW_SMOKE_SCRIPT=smoke/$n-scenario.js CLEW_SMOKE_VAULT=$v "$@" perl -e 'alarm shift; exec @ARGV' 240 $E . 2>&1 | grep -E "smoke-[a-z-]+:|smoke-[a-z]+-frame|ERROR|smoke failed" | grep -v smoke-asset > $S/$n.log; echo "=== $n: $(wc -l < $S/$n.log) lines"; cat $S/$n.log; sweep_booted "$n" "$S/$n.log"; }
 rsync -a --exclude .clew demo-vault/ $S/v-le/; run live-edit $S/v-le
 node smoke/make-live-vault.mjs $S/v-ll >/dev/null; run live-lines $S/v-ll
+mkdir -p $S/v-toc; run live-toc $S/v-toc
 node smoke/make-live-vault.mjs $S/v-te >/dev/null; run live-table-edit $S/v-te
 node smoke/make-live-vault.mjs $S/v-hl >/dev/null; run live-headerless-table $S/v-hl
 node smoke/make-live-vault.mjs $S/v-nf >/dev/null; run live-nested-fence $S/v-nf
