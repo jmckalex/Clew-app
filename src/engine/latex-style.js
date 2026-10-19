@@ -29,8 +29,9 @@
 //   - a note's own HEADER wins over all of it, as over any config: the engine
 //     reads a header key before the config's, so a note whose header sets
 //     `LaTeX preamble` or `Packages` replaces the style's along with the
-//     user's, and every style command is guarded so that leaves a document
-//     that compiles.
+//     user's, and every style command is guarded (\@ifpackageloaded — as old
+//     as LaTeX2e, unlike the 2021 kernel's \IfPackageLoadedTF) so that
+//     leaves a document that compiles.
 // The fonts are named by FILE, which LuaLaTeX and XeLaTeX both find in
 // TeX Live, and guarded by \IfFontExistsTF: a TeX installation without them
 // keeps its default face rather than failing. Imports nothing; tested by
@@ -90,37 +91,48 @@ function preamble({ english, region, platform }) {
 	const emoji = EMOJI[platform] ?? EMOJI.linux;
 	const garamond = 'EBGaramond-Regular.otf';
 	const faces = '[Extension=.otf,UprightFont=*-Regular,ItalicFont=*-Italic,BoldFont=*-Bold,BoldItalicFont=*-BoldItalic';
+	// Commands as old as LaTeX2e: \@ifpackageloaded, inside \makeatletter —
+	// never the 2021-11 kernel's \IfPackageLoadedTF, which an older TeX Live
+	// does not have, and the style is on by default (Clew-boss, 2026-10-19).
+	const ifLoaded = (pkg, then) => `\\@ifpackageloaded{${pkg}}{${then}}{}`;
 	return [
 		'% Clew\'s export style (Settings → Export; `latexExportStyle: none` leaves it out).',
-		...(english ? [`\\IfPackageLoadedTF{polyglossia}{\\setdefaultlanguage[variant=${region === 'US' ? 'american' : 'british'}]{english}}{}`] : []),
+		'\\makeatletter',
+		...(english ? [ifLoaded('polyglossia', `\\setdefaultlanguage[variant=${region === 'US' ? 'american' : 'british'}]{english}`)] : []),
 		// fontspec's, so only where it is loaded (a config forcing pdfLaTeX has
-		// none). The emoji fallback is LuaTeX's (luaotfload), and only for a face
-		// that is there: a fallback naming a missing one leaves the MAIN font
-		// null, every character dropped (measured). XeTeX gets the face alone.
-		'\\IfPackageLoadedTF{fontspec}{\\IfFontExistsTF{' + garamond + '}{%',
+		// none). The emoji fallback is LuaTeX's — luaotfload 3.11 and later
+		// (TeX Live 2020), asked first — and only for a face that is there: a
+		// fallback naming a missing one leaves the MAIN font null, every
+		// character dropped (measured). XeTeX gets the face alone.
+		'\\@ifpackageloaded{fontspec}{\\IfFontExistsTF{' + garamond + '}{%',
 		'  \\ifdefined\\directlua',
 		`    \\IfFontExistsTF{${emoji}}{%`,
-		`      \\directlua{luaotfload.add_fallback("clewemoji", {"${emoji}:mode=harf;"})}%`,
-		`      \\setmainfont{EBGaramond}${faces},RawFeature={fallback=clewemoji}]%`,
-		`    }{\\setmainfont{EBGaramond}${faces}]}`,
+		'      \\ifnum\\directlua{tex.sprint(luaotfload.add_fallback and 1 or 0)}=1\\relax',
+		`        \\directlua{luaotfload.add_fallback("clewemoji", {"${emoji}:mode=harf;"})}%`,
+		`        \\setmainfont{EBGaramond}${faces},RawFeature={fallback=clewemoji}]%`,
+		'      \\else',
+		`        \\setmainfont{EBGaramond}${faces}]%`,
+		'      \\fi',
+		`    }{\\setmainfont{EBGaramond}${faces}]}%`,
 		'  \\else',
-		`    \\setmainfont{EBGaramond}${faces}]`,
+		`    \\setmainfont{EBGaramond}${faces}]%`,
 		'  \\fi',
 		'}{}}{}',
-		'\\IfPackageLoadedTF{unicode-math}{\\IfFontExistsTF{Garamond-Math.otf}{\\setmathfont{Garamond-Math.otf}[StylisticSet={7,8,9}]}{}}{}',
-		'\\IfPackageLoadedTF{enumitem}{\\setlist{itemsep=0.35\\baselineskip,topsep=0.5\\baselineskip}\\setlist[itemize,2]{label=–,itemsep=0.15\\baselineskip}}{}',
-		'\\IfPackageLoadedTF{titlesec}{%',
+		ifLoaded('unicode-math', '\\IfFontExistsTF{Garamond-Math.otf}{\\setmathfont{Garamond-Math.otf}[StylisticSet={7,8,9}]}{}'),
+		ifLoaded('enumitem', '\\setlist{itemsep=0.35\\baselineskip,topsep=0.5\\baselineskip}\\setlist[itemize,2]{label=–,itemsep=0.15\\baselineskip}'),
+		'\\@ifpackageloaded{titlesec}{%',
 		'  \\titleformat{\\section}{\\normalfont\\Large\\bfseries}{\\thesection}{0.8em}{}%',
 		'  \\titleformat{\\subsection}{\\normalfont\\large\\itshape}{\\thesubsection}{0.8em}{}%',
 		'  \\titlespacing*{\\section}{0pt}{3ex plus 1ex minus .2ex}{1.2ex plus .2ex}%',
 		'  \\titlespacing*{\\subsection}{0pt}{2ex plus .5ex minus .2ex}{0.8ex plus .2ex}%',
 		'}{}',
-		'\\IfPackageLoadedTF{etoolbox}{\\AtBeginEnvironment{quote}{\\small}\\AtBeginEnvironment{quotation}{\\small}}{}',
-		'\\IfPackageLoadedTF{titling}{%',
+		ifLoaded('etoolbox', '\\AtBeginEnvironment{quote}{\\small}\\AtBeginEnvironment{quotation}{\\small}'),
+		'\\@ifpackageloaded{titling}{%',
 		'  \\pretitle{\\begin{center}\\LARGE}\\posttitle{\\par\\end{center}\\vskip 1.2em}%',
 		'  \\preauthor{\\begin{center}\\large\\scshape}\\postauthor{\\par\\end{center}}%',
 		'  \\predate{\\begin{center}\\normalsize}\\postdate{\\par\\end{center}\\vskip 1.5em}%',
 		'}{}',
-		'\\IfPackageLoadedTF{hyperref}{\\hypersetup{hidelinks}}{}',
+		ifLoaded('hyperref', '\\hypersetup{hidelinks}'),
+		'\\makeatother',
 	];
 }

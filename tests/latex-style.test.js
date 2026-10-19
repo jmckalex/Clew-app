@@ -72,6 +72,26 @@ test('packages and preamble are ADDED to the user\'s — the style\'s fonts afte
 	assert.match(style({}, { platform: 'linux' })['LaTeX preamble'].join('\n'), /NotoColorEmoji/);
 });
 
+test('only commands an old TeX has: \\@ifpackageloaded inside \\makeatletter, never the 2021 kernel\'s tests; luaotfload\'s fallback asked for first', () => {
+	// The style is on by default: a TeX Live before 2021-11 has no
+	// \IfPackageLoadedTF, and every LaTeX export would stop at "Undefined
+	// control sequence" (Clew-boss, 2026-10-19).
+	for (const where of [{ platform: 'darwin' }, { platform: 'linux', locale: 'en-US' }]) {
+		const lines = style({}, where)['LaTeX preamble'];
+		const text = lines.join('\n');
+		assert.doesNotMatch(text, /\\(IfPackageLoaded|IfClassLoaded|IfFormatAtLeast|IfPackageAtLeast|NewDocumentCommand|IfBooleanTF)/);
+		const open = lines.indexOf('\\makeatletter');
+		const close = lines.lastIndexOf('\\makeatother');
+		assert.ok(open >= 0 && close === lines.length - 1, 'the block is \\makeatletter … \\makeatother');
+		lines.forEach((line, i) => {
+			if (/\\@/.test(line)) assert.ok(i > open && i < close, `an @ command outside the block: ${line}`);
+		});
+		assert.match(text, /\\@ifpackageloaded\{fontspec\}/);
+		// luaotfload 3.11 (TeX Live 2020) brought add_fallback: older, the face alone.
+		assert.ok(text.indexOf('luaotfload.add_fallback and 1 or 0') < text.indexOf('luaotfload.add_fallback("clewemoji"'));
+	}
+});
+
 // The real worker, engine and LuaLaTeX. Skipped on a machine without them.
 const TEX_DIRS = ['/Library/TeX/texbin', '/usr/local/bin', '/opt/homebrew/bin'];
 const tool = (name) => TEX_DIRS.map((d) => path.join(d, name)).find((p) => fs.existsSync(p)) ?? null;
