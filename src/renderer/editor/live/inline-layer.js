@@ -353,8 +353,13 @@ function build(view) {
 						? ` le-callout le-callout-${c.callout}${color ? ' le-callout-custom' : ''}${c.calloutFirst ? ' le-callout-first' : ''}${c.calloutLast ? ' le-callout-last' : ''}`
 						: '';
 					const blank = /^(?:[ \t]*>)+[ \t]*$/.test(doc.lineAt(c.from).text) ? ' le-quote-blank' : '';
-					lineClass(c.from, `le-quote le-quote-${Math.min(c.depth, 4)}${box}${blank}`,
-						color ? { style: `--clew-callout-color: ${color}` } : undefined);
+					// A quote in a list item stands under the item's text
+					// (model.js#quote), its indentation concealed whatever the
+					// reveal, as a list line's is.
+					const style = [color && `--clew-callout-color: ${color}`, c.listMark && `--le-indent: ${listIndent(c)}`].filter(Boolean).join('; ');
+					lineClass(c.from, `le-quote le-quote-${Math.min(c.depth, 4)}${box}${blank}${c.listMark ? ' le-quote-li' : ''}`,
+						style ? { style } : undefined);
+					if (c.indent) hide(c.indent);
 					if (hidden) c.hidden.forEach(hide);
 					break;
 				}

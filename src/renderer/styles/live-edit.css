@@ -200,6 +200,15 @@
    reading view's list does, 2.5em from the callout's text. */
 .le-quote.le-li, .le-quote.le-li-cont { padding-left: calc(20px + var(--le-hang)) !important; }
 .le-quote.le-callout.le-li, .le-quote.le-callout.le-li-cont { padding-left: calc(16px + 2.5em + var(--le-indent, 0) * 0.3em) !important; }
+/* A quote inside a list item: its border under the item's text, where
+   reading view's <li> holds it — the item's hang past the line's 24px — and
+   its text the quote's, not the list face lang-markdown gives the item's
+   every span (model.js#quote). */
+.le-quote.le-quote-li {
+	--le-hang: calc(var(--le-indent, 0) * 0.3em + 1.4em);
+	margin-left: calc(24px + var(--le-hang));
+}
+.cm-live .le-quote .cmt-list { color: inherit; }
 /* A bare `>` between a callout's paragraphs is reading view's paragraph gap. */
 .le-quote.le-callout.le-quote-blank { line-height: 1em; }
 .le-callout-note          { --callout: #5b8def; }

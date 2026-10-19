@@ -137,6 +137,22 @@ test('quotes: one construct per line, depth from the markers', () => {
 	]);
 });
 
+test('a quote inside a list item knows the item\'s marker and the indentation before its `>`', () => {
+	const doc = '* item:\n    > quoted\n    > more\n\n1. numbered:\n   > in it\n\n* outer\n  * inner:\n    > nested\n\n> top\n';
+	const m = model(doc).filter((c) => c.kind === 'quote');
+	assert.deepEqual(m.map((c) => [c.text.trim(), c.listMark ? doc.slice(c.listMark.from, c.listMark.to) : null,
+		c.indent ? doc.slice(c.indent.from, c.indent.to) : null, c.hiddenText]), [
+		['> quoted', '*', '    ', ['> ']],
+		['> more', '*', '    ', ['> ']],
+		['> in it', '1.', '   ', ['> ']],
+		['> nested', '*', '    ', ['> ']],
+		['> top', null, null, ['> ']],
+	]);
+	// The nested quote is the INNER item's: its marker two columns in.
+	const nested = m.find((c) => c.text.includes('nested'));
+	assert.equal(nested.listMark.from, doc.indexOf('* inner'));
+});
+
 test('title-page lines: @title, @<title>, ::title alone on their lines; not mid-sentence, not :title', () => {
 	const doc = '@title[A two-line\n  title]\n@author+[An Author]\n@<date>[Today]\n::subtitle[Sub]\n'
 		+ '\nBy @author[Someone] here.\n\n:title[a title element]\n\n@begin[not a title]\n';
