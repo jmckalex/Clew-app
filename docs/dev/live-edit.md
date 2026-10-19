@@ -472,11 +472,12 @@ CSS classes are `le-<kind>`; delimiters concealed with
 | `\cite{k}` family | replace with chip `le-cite`: the key text; when `complete/citations.js`'s index resolves it, chip text = `Author Year` (extract a `citationLabel(key)` helper from that module) and tooltip = title; multiple keys → one chip per key inside one pill; command variant (`citep`/`citet`/`fullcite`) shown as a tiny prefix glyph only when not `cite` | click → reveals |
 | `{{name}}` mustache | `{{TOC}}` alone on a line → §5.8; otherwise chip `le-var` with the name | — |
 | `:name[content]{attrs}` / `@name[text]{attrs}` (inline, generic) | hide `:name[`, `]`, `{attrs}`; content styled `le-directive` (dotted underline, `title` = `name` + attrs) | — |
+| `@title[…]` `@subtitle` `@author` `@institution` `@date` (`+`, `@<…>` and `::` forms too) alone on their lines | **As built (2026-10-19, the owner's report):** the title block reading view draws (preview.css `div.title` …, sized as the engine's LaTeX sizes them: title bold 1.8em, author and date 1.15em, subtitle and institution body text) — LINE classes `le-tp le-tp-<name>` on every line the bracket spans, in both states, as a heading's; concealed, the content plain (`le-tp-text`: no dotted underline, not the link colour the grammar gives `[…]`), a continuation line's indentation hidden, `@date+[@today]` the engine's date. Mid-sentence, or `:title` (a `<title>` element to the engine), the generic row above. `smoke/live-title-scenario.js` | click reveals |
 | `:TeX[…]` | keep the content but dim (`le-tex-only`, opacity .55, `title="LaTeX only"`); brackets hidden | — |
 | `:HTML[…]` | content shown normally (brackets hidden) | — |
 | `:label[k]` | anchor badge `⚓ k` (`le-label`) | — |
 | `:ref[k]` `:cref` `:Cref` `@ref[k]` | `le-ref` link-styled `k` | click → cursor to the matching `:label[k]` if in this note |
-| `:today` | today's date (`toLocaleDateString`) `le-today` | — |
+| `:today` | today's date as the engine prints it ("19 October 2026", `en-GB` whatever the locale; until 2026-10-19 the locale's short form) `le-today` | — |
 | `INPUT[…]` / `VIEW[…]` (Meta Bind) | chip `le-widget` showing `type:field` — NOT rendered live (non-goal) | click → reveals |
 | inline HTML tags | source, `cmt-meta` face | — |
 | `^block-id` trailing / own line | hide; badge `le-block-id` (`⌗`) at the line end with tooltip `id` | click → copies `[[Note#^id]]` via the existing `copyBlockReference` path |

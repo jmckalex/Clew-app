@@ -88,6 +88,19 @@
 .le-h5, .le-h6 { font-size: 1em; }
 .le-h6 { color: var(--clew-text-muted); }
 
+/* ---- the title page: `@title[…]`, `@author[…]`, … alone on their lines
+   (model.js#TITLE_PAGE), sized as reading view sizes them (preview.css) —
+   on the LINE, in both states, as a heading's. Concealed, the text is plain:
+   no directive underline, and not the link colour the markdown grammar gives
+   a `[…]`. `@today` in one reads as the line's text. ---- */
+.le-tp { --le-tp-color: var(--clew-text-normal); }
+.le-tp-title { --le-tp-color: var(--clew-heading); font-size: 1.8em; font-weight: 700; line-height: 1.25; color: var(--le-tp-color); }
+.le-tp-title:not(.le-tp-title + .le-tp-title) { padding-top: 0.3em !important; }
+.le-tp-title:not(:has(+ .le-tp-title)) { padding-bottom: 0.2em !important; }
+.le-tp-author, .le-tp-date { font-size: 1.15em; line-height: 1.4; }
+.le-tp .le-tp-text, .le-tp .le-tp-text .cmt-link, .le-tp .cmt-link .le-tp-text { color: var(--le-tp-color); }
+.le-tp .le-today { background: none; color: inherit; font: inherit; padding: 0; }
+
 /* ---- alignment ---- */
 .le-align-center { text-align: center; }
 .le-align-right { text-align: right; }
