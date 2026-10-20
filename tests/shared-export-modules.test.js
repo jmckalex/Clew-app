@@ -24,6 +24,7 @@ const MODULES = [
 	'src/shared/citation-files.js',
 	'src/shared/latex-engine.js',
 	'src/shared/latex-engine-setting.js',
+	'src/shared/export-figures.js',
 ];
 
 const code = (file) => fs.readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/\s\/\/.*$/gm, '');

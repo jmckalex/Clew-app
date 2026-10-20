@@ -35,7 +35,7 @@ import path from 'node:path';
 import { readMaster, laterNotice, placeWarnings } from '../shared/book.js';
 import { runWorker, compilePdf, configuredBibliographies, restrictedExportDir, figureCache, clearFigures, figureEngine, DEVICE_WORD } from './export.js';
 import { latexPdfRefusal } from './latex-engine.js';
-import { figuresFolder, explainFiguresWarnings } from './export-cache.js';
+import { figuresFolder, explainFiguresWarnings } from '../shared/export-figures.js';
 import { bibliographyDirs, vaultBiblify } from '../shared/citation-files.js';
 import { calloutsEnv } from './callout-types.js';
 import { iconTable } from './callout-files.js';

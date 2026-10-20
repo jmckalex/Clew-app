@@ -20,10 +20,11 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import {
-	FIGURES_MARKER, EXPORT_CACHE_LIMIT, figuresFolder, figuresState, otherOutputs,
-	vaultCacheDir, markUsed, pruneExportCache, explainFiguresWarnings,
+	EXPORT_CACHE_LIMIT, figuresState, otherOutputs,
+	vaultCacheDir, markUsed, pruneExportCache,
 	FIGURE_ENGINE_SETTINGS, figureEngineOptions, TEX_TOOLS, texRefusalDir,
 } from '../src/main/export-cache.js';
+import { FIGURES_MARKER, figuresFolder, explainFiguresWarnings } from '../src/shared/export-figures.js';
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'clew-export-cache-'));
 after(() => fs.rmSync(root, { recursive: true, force: true }));

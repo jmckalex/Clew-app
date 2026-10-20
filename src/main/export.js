@@ -47,7 +47,8 @@ import { iconTable } from './callout-files.js';
 import { latexmkCommand, latexPdfRefusal } from './latex-engine.js';
 import { chooseLatexEngine, pdfViaLatexFailure } from '../shared/latex-engine.js';
 import { identityKey } from './vault-trust.js';
-import { figuresFolder, figuresState, otherOutputs, vaultCacheDir, markUsed, pruneExportCache, explainFiguresWarnings, figureEngineOptions, texRefusalDir } from './export-cache.js';
+import { figuresState, otherOutputs, vaultCacheDir, markUsed, pruneExportCache, figureEngineOptions, texRefusalDir } from './export-cache.js';
+import { figuresFolder, explainFiguresWarnings } from '../shared/export-figures.js';
 import { buildIndex, fontDirs } from './system-fonts.js';
 
 const WORKER_PATH = paths.engineWorker;
