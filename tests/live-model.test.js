@@ -125,8 +125,11 @@ test('an item past its first line: each line of its own paragraphs is its text',
 		['>   quoted line', 1, '  ', '-'],
 	]);
 	// The blank line and the fence are not text lines; the number's width
-	// covers the number and its space.
+	// covers the number and its space — and a numbered item's text lines carry
+	// it too, so they hang by it (columns.js#numberWidth); no other item's do.
 	assert.equal(cut(m.find((c) => c.kind === 'numbered').numberMark), '1. ');
+	assert.deepEqual(m.filter((c) => c.kind === 'listText').map((c) => c.numberMark && cut(c.numberMark)),
+		[undefined, undefined, undefined, undefined, undefined, '1. ', undefined, undefined]);
 });
 
 test('quotes: one construct per line, depth from the markers', () => {
@@ -151,6 +154,12 @@ test('a quote inside a list item knows the item\'s marker and the indentation be
 	// The nested quote is the INNER item's: its marker two columns in.
 	const nested = m.find((c) => c.text.includes('nested'));
 	assert.equal(nested.listMark.from, doc.indexOf('* inner'));
+	// A numbered item's quote carries its number, which it hangs by; a
+	// bullet's, a task's in a numbered list and a quote outside a list none.
+	assert.deepEqual(m.map((c) => c.numberMark && doc.slice(c.numberMark.from, c.numberMark.to)), [undefined, undefined, '1. ', undefined, undefined]);
+	const more = '10)  ten:\n     > in ten\n\n1. [ ] a task:\n   > in the task\n';
+	assert.deepEqual(model(more).filter((c) => c.kind === 'quote').map((c) => c.numberMark && more.slice(c.numberMark.from, c.numberMark.to)),
+		['10)  ', undefined]);
 });
 
 test('title-page lines: @title, @<title>, ::title alone on their lines; not mid-sentence, not :title', () => {
