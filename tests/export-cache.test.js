@@ -24,7 +24,7 @@ import {
 	vaultCacheDir, markUsed, pruneExportCache,
 	FIGURE_ENGINE_SETTINGS, figureEngineOptions, TEX_TOOLS, texRefusalDir,
 } from '../src/main/export-cache.js';
-import { FIGURES_MARKER, figuresFolder, explainFiguresWarnings } from '../src/shared/export-figures.js';
+import { FIGURES_MARKER, figuresFolder, explainFiguresWarnings, explainMermaidWarning } from '../src/shared/export-figures.js';
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'clew-export-cache-'));
 after(() => fs.rmSync(root, { recursive: true, force: true }));
@@ -133,6 +133,44 @@ test('explainFiguresWarnings: the engine\'s warning about a folder of the user\'
 	assert.equal(other, 'latex-export [x]: y');
 	const [restricted] = explainFiguresWarnings([engine], { restricted: true });
 	assert.match(restricted, /temporary folder this export removed, so its diagrams will not show/);
+});
+
+// The engine's warning for a Mermaid diagram a LaTeX export left out (jmarkdown
+// mermaid.js), as the engine words it for its own command line.
+const NO_MMDC = 'mermaid: "flowchart LR" left out of the LaTeX — mermaid-cli (mmdc) was not found; install @mermaid-js/mermaid-cli to render mermaid for print';
+
+test('the Mermaid warning explainMermaidWarning rewords is the vendored engine\'s', () => {
+	const engine = fs.readFileSync(new URL('../vendor/jmarkdown/src/mermaid.js', import.meta.url), 'utf8');
+	assert.ok(engine.includes('addWarning(`mermaid: ${diagramName(source)} left out of the LaTeX — mermaid-cli (mmdc) was not found; install @mermaid-js/mermaid-cli to render mermaid for print`);'),
+		'a change to the engine\'s words must change explainMermaidWarning too');
+	assert.ok(engine.includes('left out of the LaTeX — mmdc failed: ${'), 'and the failure it passes through');
+});
+
+test('a Mermaid diagram left out for want of mermaid-cli: on the iPad said plainly, on a desktop what to install and where Clew looks', () => {
+	const ios = explainMermaidWarning(NO_MMDC, 'ios');
+	assert.equal(ios, 'mermaid: "flowchart LR" left out of the LaTeX — Mermaid diagrams are left out of LaTeX exports on the iPad, which cannot run the program that draws them for print; reading view still shows them.');
+	assert.doesNotMatch(ios, /npm|install|mmdc/, 'nothing an iPad can do');
+	const mac = explainMermaidWarning(NO_MMDC, 'darwin');
+	assert.match(mac, /^mermaid: "flowchart LR" left out of the LaTeX — drawing a Mermaid diagram for print needs mermaid-cli, a separate program whose command is mmdc/);
+	assert.match(mac, /`npm install -g @mermaid-js\/mermaid-cli` in a terminal \(npm comes with Node\.js\)/);
+	// Where render-service.js#toolchainPath looks on macOS and Linux, and Windows' PATH alone.
+	assert.match(mac, /in \/opt\/homebrew\/bin and \/usr\/local\/bin, where that puts it, and on its PATH, so the next export draws the diagram\.$/);
+	assert.equal(explainMermaidWarning(NO_MMDC, 'linux'), mac);
+	assert.match(explainMermaidWarning(NO_MMDC, 'win32'), /Clew looks for mmdc on its PATH, so the next export/);
+	// A book's warning keeps its chapter and line, through explainFiguresWarnings.
+	const [book] = explainFiguresWarnings([`Chapters/One.md:12: ${NO_MMDC}`], { restricted: false, platform: 'ios' });
+	assert.equal(book, `Chapters/One.md:12: ${ios}`);
+});
+
+test('every other warning passes through unchanged — mmdc having run and failed among them', () => {
+	const failed = 'mermaid: "flowchart LR" left out of the LaTeX — mmdc failed: Could not find Chrome (ver. 131.0.6778.204).';
+	const others = [failed, 'latex-export [x]: y', 'mermaid-cli (mmdc) was not found', `${NO_MMDC} (again)`];
+	for (const platform of ['ios', 'darwin', 'win32', '']) {
+		assert.deepEqual(explainFiguresWarnings(others, { restricted: false, platform }), others, platform);
+		for (const w of others) assert.equal(explainMermaidWarning(w, platform), w);
+	}
+	// A host that names no platform gets the desktop's words.
+	assert.equal(explainFiguresWarnings([NO_MMDC], { restricted: true })[0], explainMermaidWarning(NO_MMDC, 'darwin'));
 });
 
 test('figureEngineOptions: a trusted vault as the setting says, a restricted one always the library alone', () => {
