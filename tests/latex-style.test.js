@@ -19,7 +19,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fork, execFile } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { latexStyleConfig, headerValues, babelName, BABEL } from '../src/engine/latex-style.js';
+import { latexStyleConfig, latexStyleWanted, headerValues, babelName, BABEL } from '../src/engine/latex-style.js';
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'clew-latex-style-'));
 after(() => fs.rmSync(root, { recursive: true, force: true }));
@@ -125,6 +125,26 @@ test('only commands an old TeX has: \\@ifpackageloaded inside \\makeatletter, ne
 });
 
 // The real worker, engine and LuaLaTeX. Skipped on a machine without them.
+test('whether a build gets the style: a LaTeX build, the setting `clew` or unset, pdfLaTeX not forced — every host\'s rule', () => {
+	const where = { locale: 'en-GB', platform: 'ios' };
+	assert.deepEqual(latexStyleWanted({ to: 'latex', ...where }), where, 'the setting unset is its default, clew');
+	assert.deepEqual(latexStyleWanted({ to: 'latex', style: 'clew', engine: 'lualatex', ...where }), where);
+	assert.equal(latexStyleWanted({ to: 'html', style: 'clew', ...where }), null);
+	assert.equal(latexStyleWanted({ to: 'latex', style: 'none', ...where }), null);
+	assert.equal(latexStyleWanted({ to: 'latex', style: 'clew', engine: 'pdflatex', ...where }), null);
+	assert.deepEqual(latexStyleWanted({ to: 'latex' }), { locale: '', platform: '' });
+});
+
+test('the emoji face by platform: the Mac\'s, Windows\', Linux\' for one unknown — and none on the iPad, whose TeX has no HarfBuzz', () => {
+	const preambleOn = (platform) => style({}, { locale: 'en-GB', platform })['LaTeX preamble'].join('\n');
+	assert.match(preambleOn('darwin'), /add_fallback\("clewemoji", \{"AppleColorEmoji:mode=harf;"\}\)/);
+	assert.match(preambleOn('win32'), /SegoeUIEmoji:mode=harf/);
+	assert.match(preambleOn('freebsd'), /NotoColorEmoji:mode=harf/);
+	const ios = preambleOn('ios');
+	assert.doesNotMatch(ios, /add_fallback|Emoji|directlua/);
+	assert.match(ios, /\\@ifpackageloaded\{fontspec\}\{\\IfFontExistsTF\{EBGaramond-Regular\.otf\}\{%\n  \\setmainfont\{EBGaramond\}\[Extension=\.otf,[^\n]*\]%\n\}\{\}\}\{\}/);
+});
+
 const TEX_DIRS = ['/Library/TeX/texbin', '/usr/local/bin', '/opt/homebrew/bin'];
 const tool = (name) => TEX_DIRS.map((d) => path.join(d, name)).find((p) => fs.existsSync(p)) ?? null;
 const haveTools = tool('latexmk') && tool('lualatex') && tool('pdffonts') && tool('kpsewhich');

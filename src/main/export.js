@@ -49,6 +49,7 @@ import { chooseLatexEngine, pdfViaLatexFailure } from '../shared/latex-engine.js
 import { identityKey } from './vault-trust.js';
 import { figuresState, otherOutputs, vaultCacheDir, markUsed, pruneExportCache, figureEngineOptions, texRefusalDir } from './export-cache.js';
 import { figuresFolder, explainFiguresWarnings } from '../shared/export-figures.js';
+import { latexStyleWanted } from '../engine/latex-style.js';
 import { buildIndex, fontDirs } from './system-fonts.js';
 
 const WORKER_PATH = paths.engineWorker;
@@ -98,9 +99,10 @@ function workerPath(restricted) {
  * locale and platform choose the paper, the hyphenation and the emoji face.
  */
 function latexStyle(options) {
-	if (options?.to !== 'latex' || (settings.get('latexExportStyle') ?? 'clew') !== 'clew') return null;
-	if (settings.get('latexEngine') === 'pdflatex') return null;
-	return { locale: Intl.DateTimeFormat().resolvedOptions().locale, platform: process.platform };
+	return latexStyleWanted({
+		to: options?.to, style: settings.get('latexExportStyle'), engine: settings.get('latexEngine'),
+		locale: Intl.DateTimeFormat().resolvedOptions().locale, platform: process.platform,
+	});
 }
 
 export function runWorker({ file, options, cwd, callouts = '', vault = null }) {
