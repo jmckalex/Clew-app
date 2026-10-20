@@ -17,7 +17,7 @@ import { EditorState, EditorSelection, Transaction } from '@codemirror/state';
 import { keymap } from '@codemirror/view';
 import { syntaxTree, ensureSyntaxTree } from '@codemirror/language';
 import { noteMarkdown } from '../src/renderer/editor/jmd/markdown-config.js';
-import { listEnterSpec, newListItemSpec } from '../src/renderer/editor/list-keys.js';
+import { listEnterSpec, newListItemSpec, toggleTaskSpec } from '../src/renderer/editor/list-keys.js';
 import { noteKeys } from '../src/renderer/editor/note-keys.js';
 
 function stateOf(text) {
@@ -177,4 +177,44 @@ test('every other Enter and Backspace is what it was with lang-markdown\'s keyma
 	const row = '| a   | b   |\n| --- | --- |\n| 1   | 2   |\n|     | §    |';
 	assert.equal(pressKey(table, 'Enter', noteMarkdown({}), '§'), row);
 	assert.equal(pressKey(table, 'Enter', noteMarkdown({ keymap: true }), '§'), row);
+});
+
+const cmdL = (text) => press(toggleTaskSpec, text);
+
+test('⌘L makes a line a task, as Obsidian\'s Toggle checkbox status does — and ticks or unticks one', () => {
+	assert.equal(cmdL('Buy milk|'), '- [ ] Buy milk|');
+	assert.equal(cmdL('|Buy milk'), '- [ ] |Buy milk', 'the cursor moves with its text');
+	assert.equal(cmdL('- Buy milk|'), '- [ ] Buy milk|');
+	assert.equal(cmdL('* Buy milk|'), '* [ ] Buy milk|', 'the marker kept');
+	assert.equal(cmdL('1. Buy milk|'), '1. [ ] Buy milk|');
+	assert.equal(cmdL('2) Buy milk|'), '2) [ ] Buy milk|');
+	assert.equal(cmdL('|'), '- [ ] |', 'an empty line');
+	assert.equal(cmdL('  - nested|'), '  - [ ] nested|');
+	assert.equal(cmdL('    |'), '    - [ ] |');
+	assert.equal(cmdL('-|'), '- [ ] |', 'a bare marker');
+	assert.equal(cmdL('- [ ] task|'), '- [x] task|');
+	assert.equal(cmdL('- [x] task|'), '- [ ] task|');
+	assert.equal(cmdL('- [X] task|'), '- [ ] task|');
+	assert.equal(cmdL('- [/] half done|'), '- [ ] half done|', 'any other status unticks');
+	assert.equal(cmdL('1. [ ] first|'), '1. [x] first|');
+	assert.equal(cmdL('> quoted|'), '> - [ ] quoted|', 'after a quote\'s >');
+	assert.equal(cmdL('> - [ ] in a quote|'), '> - [x] in a quote|');
+	// The dialect: `*x*` at a line\'s start is strong, not a bullet.
+	assert.equal(cmdL('*Strong* start|'), '- [ ] *Strong* start|');
+	assert.equal(cmdL('-1 degrees|'), '- [ ] -1 degrees|');
+	assert.equal(cmdL('# Heading|'), '- [ ] # Heading|');
+});
+
+test('⌘L on a selection: every line it touches, each by its own rule, in one change', () => {
+	const doc = 'alpha\n- beta\n- [ ] gamma\n- [x] delta\nepsilon';
+	const state = EditorState.create({ doc, selection: EditorSelection.range(0, doc.indexOf('delta') + 2), extensions: [noteMarkdown({})] });
+	const next = state.update(toggleTaskSpec(state)).state;
+	assert.equal(next.doc.toString(), '- [ ] alpha\n- [ ] beta\n- [x] gamma\n- [ ] delta\nepsilon');
+	// A selection ending at a line\'s start does not take that line.
+	const two = EditorState.create({ doc: 'a\nb\nc', selection: EditorSelection.range(0, 4), extensions: [noteMarkdown({})] });
+	assert.equal(two.update(toggleTaskSpec(two)).state.doc.toString(), '- [ ] a\n- [ ] b\nc');
+	// Several cursors, one on each of two lines.
+	const multi = EditorState.create({ doc: 'a\nb', selection: EditorSelection.create([EditorSelection.cursor(1), EditorSelection.cursor(3)]),
+		extensions: [noteMarkdown({}), EditorState.allowMultipleSelections.of(true)] });
+	assert.equal(multi.update(toggleTaskSpec(multi)).state.doc.toString(), '- [ ] a\n- [ ] b');
 });

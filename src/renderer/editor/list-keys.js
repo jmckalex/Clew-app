@@ -221,3 +221,53 @@ export function newListItem(view) {
 	if (item && shape(state.doc, item)?.empty && insertNewlineContinueMarkup(view)) return true;
 	return insertBlankLine(view);
 }
+
+/**
+ * ⌘L, Obsidian's "Toggle checkbox status" (the owner's yes, 2026-10-20): on
+ * each line the selection touches, a task is ticked or unticked (any status
+ * but a space — Obsidian's `[/]`, `[-]` — unticks), a list item becomes a task
+ * (`- text` → `- [ ] text`, `1. text` → `1. [ ] text`, its marker kept), and
+ * any other line — an empty one too — becomes `- [ ] ` and its text, after
+ * its indentation and a quote's `>`s. A leading `*strong*` is the dialect's
+ * emphasis, not a bullet: a marker needs the space after it. Cursors move
+ * with their text.
+ *
+ * @param {import('@codemirror/state').EditorState} state
+ */
+export function toggleTaskSpec(state) {
+	const { doc } = state;
+	const lines = new Set();
+	for (const r of state.selection.ranges) {
+		let last = doc.lineAt(r.to).number;
+		// A selection ending at a line's start does not take that line.
+		if (r.to > r.from && doc.line(last).from === r.to) last -= 1;
+		for (let n = doc.lineAt(r.from).number; n <= Math.max(last, doc.lineAt(r.from).number); n += 1) lines.add(n);
+	}
+	const changes = [];
+	for (const n of [...lines].sort((a, b) => a - b)) {
+		const line = doc.line(n);
+		const lead = /^[ \t]*(?:>[ \t]*)*/.exec(line.text)[0].length;
+		const rest = line.text.slice(lead);
+		const task = /^([-*+]|\d+[.)])([ \t]+)\[(.)\]/.exec(rest);
+		if (task) {
+			const at = line.from + lead + task[1].length + task[2].length + 1;
+			changes.push({ from: at, to: at + 1, insert: task[3] === ' ' ? 'x' : ' ' });
+			continue;
+		}
+		const item = /^([-*+]|\d+[.)])(?:([ \t]+)|$)/.exec(rest);
+		if (item) {
+			const at = line.from + lead + item[0].length;
+			changes.push({ from: at, insert: item[2] ? '[ ] ' : ' [ ] ' });
+		} else {
+			changes.push({ from: line.from + lead, insert: '- [ ] ' });
+		}
+	}
+	const set = state.changes(changes);
+	return { changes: set, selection: state.selection.map(set, 1), userEvent: 'input.task' };
+}
+
+/** ⌘L: make each touched line a task, or tick or untick it (toggleTaskSpec). */
+export function toggleTask(view) {
+	view.dispatch(view.state.update(toggleTaskSpec(view.state)));
+	return true;
+}

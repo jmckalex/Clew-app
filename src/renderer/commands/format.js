@@ -16,7 +16,7 @@ import { EditorSelection } from '@codemirror/state';
 import { startCompletion } from '@codemirror/autocomplete';
 import { indentMore, indentLess, undo, redo } from '@codemirror/commands';
 import { toggleWrapSpec } from '../editor/toggle-wrap.js';
-import { newListItem } from '../editor/list-keys.js';
+import { newListItem, toggleTask } from '../editor/list-keys.js';
 import { vaultSettingsStore } from '../state/vault-settings-store.js';
 import { saveAndInsert } from '../editor/attachments.js';
 import { CALLOUT_TYPES, BUILTIN_CALLOUT_TYPES } from '#jmarkdown/callout-table.js';
@@ -410,15 +410,6 @@ function insertEnvironment(view, id) {
  * task line it is CodeMirror's own ⌘-Enter (a blank line below), which the
  * chord would otherwise have taken away.
  */
-function toggleTask(view) {
-	const { state } = view;
-	const line = state.doc.lineAt(state.selection.main.head);
-	const m = /^(\s*(?:[-*+]|\d+[.)])\s+)\[( |x|X)\]/.exec(line.text);
-	if (!m) return false;
-	const at = line.from + m[1].length + 1;
-	view.dispatch({ changes: { from: at, to: at + 1, insert: m[2] === ' ' ? 'x' : ' ' }, userEvent: 'input.task' });
-	return true;
-}
 
 /** A list of the note's labels (§5.13) — kind, number, title — to jump to;
  *  Back returns. */
@@ -620,6 +611,8 @@ export function registerFormatCommands() {
 		// outside a list, the blank line below it always gave; so the task
 		// box moved to ⌘L, Obsidian's chord for it.
 		{ id: 'editor:new-list-item', name: 'New list item', hotkeys: ['Mod-Enter'], fn: (v) => newListItem(v) },
+		// ⌘L: Obsidian's "Toggle checkbox status" — a line becomes a task, a
+		// task is ticked or unticked (list-keys.js#toggleTaskSpec).
 		{ id: 'editor:toggle-task', name: 'Toggle task checkbox', hotkeys: ['Mod-l'], fn: (v) => toggleTask(v) },
 		{ id: 'editor:jump-to-label', name: 'Jump to label…', main: (v) => jumpToLabel(v) },
 	];

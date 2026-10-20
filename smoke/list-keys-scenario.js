@@ -12,6 +12,8 @@
 //   numbered lines=["1. first","2. inserted","3. second"]
 //   prose lines=["Prose line.","Below."]   ⌘Enter outside a list: the blank
 //              line below it always gave
+//   cmd-l line="- [ ] Below."   ⌘L on a plain line makes it a task
+//              (Obsidian's Toggle checkbox status, the owner's yes 2026-10-20)
 //   first-line bullet=["* First item.","  B2"] numbered=["3. second","   N2"]
 //              task=["- [ ] another task","  TC"]
 //              Enter at the end of an item's FIRST line stays in the item too.
@@ -74,7 +76,8 @@ window.__clewSmokeInput = [
 	cmdEnter, { text: 'Below.' }, { wait: 1500 },       // → "* First item."
 	enter, { text: 'B2' }, { wait: 1500 },              // → "3. second"
 	enter, { text: 'N2' }, { wait: 1500 },              // → "- [ ] another task"
-	enter, { text: 'TC' }, { wait: 1000 },
+	enter, { text: 'TC' }, { wait: 1500 },              // → "Below."
+	{ combo: { key: 'l', code: 'KeyL', modifiers: 4 } }, { wait: 800 },
 ];
 // Each step's checks once its text is in, then the cursor to the next place.
 setTimeout(async () => {
@@ -103,5 +106,8 @@ setTimeout(async () => {
 		first[name] = around(typed, 1, 0);
 	}
 	log(`first-line bullet=${first.bullet} numbered=${first.numbered} task=${first.task}`);
+	endOf('Below.');
+	await until(() => lines().some((l) => l.startsWith('- [ ] Below')));
+	log(`cmd-l line=${JSON.stringify(lines().find((l) => l.includes('Below.')))}`);
 	log('done');
 }, 0);
