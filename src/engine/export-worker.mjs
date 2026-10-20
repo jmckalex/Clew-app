@@ -100,6 +100,21 @@ process.once('message', async (msg) => {
 	building = msg;
 	try {
 		const options = { ...msg.options, obsidianLinks: { resolveEmbed, resolveLink: () => null }, ...figureFonts };
+		// A header is a `---`-fenced block, as reading view reads one (render-
+		// service.js's generated config, `Header style: fenced`): the engine's
+		// own bare-key header took a note's first line `Note: remember this.`
+		// as a key and waited for a `---` that never came, and the note
+		// exported EMPTY — HTML, LaTeX and a 0-byte PDF, no error (Clew-docs,
+		// 2026-10-20). Notes and books alike (book.js reads it for chapters).
+		configManager.set('Header style', 'fenced');
+		// The vault's bibliography (processFile's `bibliography`, export.js /
+		// export-book.js) resolves a note's citations in HTML as it does in
+		// reading view, whose generated config turns `resolve` on whenever the
+		// vault names a file (render-service.js#biblifyConfig): without it a
+		// note citing only the vault's file exported `\cite{key}` as written. A
+		// header's `Resolve citations: false` is merged later and wins. HTML
+		// only: in LaTeX the citations are natbib's, never resolved by the engine.
+		if (options.to === 'html' && options.bibliography?.length) configManager.set('Biblify.resolve', true);
 		// The title-page directives as LaTeX's own title (jmarkdown's `LaTeX
 		// maketitle`, default off — the owner, 2026-10-20: "jmarkdown should
 		// write @title[…] and @author[…] and @date[…] … as \title{…} and
