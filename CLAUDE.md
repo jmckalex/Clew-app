@@ -1311,7 +1311,8 @@ except where the selection touches a construct. The durable design is
   lines as the engine's header does, and `citation-header.js#
   bibliographyList` mirrors the engine's parser (a parity test holds it;
   the engine's module loads its config manager, so it is never imported).
-  `smoke/bib-additive-scenario.js`.
+  `smoke/bib-additive.sh` (the scenario on its fixture, its PDFs read by
+  pdftotext — a PDF via LaTeX leaves no .tex or .log beside it to read).
 - **PDF annotations → note** (§5.15): the viewer (pdf-core.js) lists its
   annotations with the text under them (engine glyph geometry +
   getTextSlices) when pdf-page.js is asked by its PARENT;

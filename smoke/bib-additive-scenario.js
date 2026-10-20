@@ -1,8 +1,9 @@
 // The engine's additive Bibliography, as Clew renders, re-renders and
-// exports it (jmarkdown 909af7a/e7cf638; main/citation-header.js). Fixture:
-// `node smoke/make-bib-vault.mjs <dir>`. For the PDF exports under BOTH
-// engines run with HOME pointed at an empty folder: the owner's global
-// ~/.jmarkdown loads fontspec, which no pdfLaTeX run survives.
+// exports it (jmarkdown 909af7a/e7cf638; main/citation-header.js). Run it
+// through `smoke/bib-additive.sh <out-dir>`, which makes the fixture
+// (make-bib-vault.mjs), trusts it, points HOME at an empty folder (the
+// owner's global ~/.jmarkdown loads fontspec, which no pdfLaTeX run
+// survives) and reads the PDFs this exports from outside.
 //
 //   paper:   vault=true note=true shared="Note Title"  (the note's entry wins)
 //   replace: vault=false note=true                      (Bibliography mode: replace)
@@ -16,12 +17,13 @@
 //            2026-10-20 export="\citep{vaultonly:2001}", unresolved
 //   restale: paper-updated=true                         (a vault.bib edit re-renders a
 //            note naming its OWN Bibliography — it draws on the vault's too now)
-//   export <engine> <note>: ok=… bibliography={…} undefined=N engine=…
-//     — an export is handed the vault's bibliography for its build
-//     (jmarkdown 455cb61), so: Paper (its own file + the vault's, a key in
-//     both → the engine's merged file) undefined=0; Replace (the note's
-//     alone) undefined=1 — vaultonly; Cites (the vault's alone) undefined=0;
-//     Split undefined=0 (BIBINPUTS); Merge undefined=0.
+//   export <engine> <note>: ok=true engine=<engine> pdf=out/<note>-<engine>.pdf
+//     — what the app knows of a PDF via LaTeX. What the PDF holds (each
+//     citation defined, the references a key in two files resolves to) is
+//     the runner's `pdf <engine> <note>:` lines, by pdftotext: the build is
+//     made in a temporary folder and only the PDF lands, so the .tex, .log
+//     and .blg this used to read beside it are gone (since 2026-10-10; it
+//     then logged `bibliography=none undefined=0` for every note).
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const { vaultStore, ipc, settingsStore } = window.__clew;
 const log = (s) => console.log('smoke-bib: ' + s);
@@ -63,12 +65,7 @@ for (const engine of engines) {
 	for (const note of ['Paper', 'Replace', 'Cites', 'Split', 'Merge']) {
 		const out = `out/${note}-${engine}.pdf`;
 		const result = await ipc.invoke('clew:export-note', { path: `Notes/${note}.md`, format: 'pdf', outFile: out }).catch((err) => ({ error: String(err.message ?? err) }));
-		const tex = await ipc.invoke('clew:note-read', { path: out.replace(/\.pdf$/, '.tex') }).catch(() => '');
-		const texLog = await ipc.invoke('clew:note-read', { path: out.replace(/\.pdf$/, '.log') }).catch(() => '');
-		const blg = await ipc.invoke('clew:note-read', { path: out.replace(/\.pdf$/, '.blg') }).catch(() => '');
-		const merged = await ipc.invoke('clew:note-read', { path: out.replace(/\.pdf$/, '-bibliography.bib') }).then((t) => (t ? (t.match(/^@/gm) ?? []).length : 0)).catch(() => 0);
-		const undefinedCites = (texLog.match(/Citation [`'][^']*' on page \d+ undefined/g) ?? []).length;
-		log(`export ${engine} ${note}: ok=${!result?.error} bibliography=${(/\\bibliography\{([^}]*)\}/.exec(tex) ?? [])[1] ?? 'none'} undefined=${undefinedCites} cant-open=${/couldn't open database/.test(blg)} merged-entries=${merged} engine=${result?.engine ?? '-'}${result?.error ? ` error=${JSON.stringify(String(result.error).slice(0, 160))}` : ''}`);
+		log(`export ${engine} ${note}: ok=${!result?.error} engine=${result?.engine ?? '-'} pdf=${out}${result?.error ? ` error=${JSON.stringify(String(result.error).slice(0, 160))}` : ''}`);
 	}
 }
 settingsStore.set('latexEngine', 'auto');
