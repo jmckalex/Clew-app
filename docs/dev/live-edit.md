@@ -786,7 +786,11 @@ so Backspace over the indentation, then Enter, leaves the list.
 ticked or unticked (any status but a space unticks), a list item made a task
 (its marker kept, `[ ] ` after it), any other line — an empty one too —
 `- [ ] ` and its text, after its indentation and a quote's `>`s; every line a
-selection touches (`list-keys.js#toggleTaskSpec`). Quotes, fences and
+selection touches (`list-keys.js#toggleTaskSpec`). On the iPad, whose
+on-screen keyboard has no ⌘, the toolbar's Lists group adds **Next list item**
+(⌘Enter's command, enabled in a list) — shown for a touch-first host only
+(`lib/host.js`: `window.clew.host.touchFirst`, set by Clew-iOS's shim; the
+owner's ask 2026-10-20), never on a Mac. Quotes, fences and
 prose keep CodeMirror's Enter. `tests/list-keys.test.js`,
 `smoke/list-keys-scenario.js`. Corrected the same day (Clew-docs measured
 it): `markdown()` installs lang-markdown's keymap at Prec.high unless told

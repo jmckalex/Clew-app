@@ -60,3 +60,21 @@ test('normalSyntax flows through', () => {
 	assert.equal(s.normalSyntax, true);
 	assert.deepEqual([...s.inline], ['strong']);
 });
+
+test('the Next item button is a touch-first host\'s alone (the iPad: lib/host.js), enabled in a list', async () => {
+	const { TOOLBAR_GROUPS } = await import('../src/renderer/editor/toolbar/toolbar-spec.js');
+	const item = TOOLBAR_GROUPS.find((g) => g.id === 'list').items.find((i) => i.command === 'editor:new-list-item');
+	assert.ok(item, 'the Lists group holds it');
+	const doc = '* item\n';
+	const at = (touch) => {
+		const state = EditorState.create({ doc, selection: { anchor: 3 }, extensions: [noteMarkdown({})] });
+		return deriveState(state, liveModel(state, {}), { touch });
+	};
+	assert.equal(at(false).touchFirst, false);
+	assert.equal(item.when(at(false)), false, 'never on a Mac');
+	assert.equal(item.when(at(true)), true, 'on the iPad');
+	assert.equal(item.enabled(at(true)), true, 'in a list');
+	// With no host saying otherwise — the desktop's preload says nothing — not touch-first.
+	const plain = EditorState.create({ doc: 'prose\n', extensions: [noteMarkdown({})] });
+	assert.equal(deriveState(plain, liveModel(plain, {})).touchFirst, false);
+});
