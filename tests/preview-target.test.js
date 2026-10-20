@@ -2,13 +2,18 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { EditorState } from '@codemirror/state';
-import { ensureSyntaxTree } from '@codemirror/language';
+import { ensureSyntaxTree, syntaxTree } from '@codemirror/language';
 import { noteMarkdown } from '../src/renderer/editor/jmd/markdown-config.js';
 import { previewTargetAt, sameTarget } from '../src/renderer/editor/preview-target.js';
 
 function at(doc, needle, offset = 0, config = {}) {
-	const state = EditorState.create({ doc, extensions: [noteMarkdown(config)] });
-	ensureSyntaxTree(state, state.doc.length, 5000);
+	// The WHOLE tree: ensureSyntaxTree finishes the parse, but only the next
+	// state's syntaxTree carries it — the state's own keeps the first parse,
+	// which a loaded machine can cut short (tests/list-keys.test.js#parsed).
+	const made = EditorState.create({ doc, extensions: [noteMarkdown(config)] });
+	ensureSyntaxTree(made, made.doc.length, 5000);
+	const state = made.update({}).state;
+	assert.equal(syntaxTree(state).length, state.doc.length, 'the whole document parsed');
 	const i = doc.indexOf(needle);
 	assert.ok(i !== -1, needle);
 	return previewTargetAt(state, i + offset);

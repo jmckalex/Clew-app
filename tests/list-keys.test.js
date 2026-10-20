@@ -23,9 +23,19 @@ import { noteKeys } from '../src/renderer/editor/note-keys.js';
 function stateOf(text) {
 	const at = text.indexOf('|');
 	const doc = text.slice(0, at) + text.slice(at + 1);
-	const state = EditorState.create({ doc, selection: EditorSelection.cursor(at), extensions: [noteMarkdown({})] });
-	ensureSyntaxTree(state, doc.length, 5000);
-	return state;
+	return parsed(EditorState.create({ doc, selection: EditorSelection.cursor(at), extensions: [noteMarkdown({})] }));
+}
+/** `state` with its WHOLE syntax tree. A state's first parse has a time budget
+ *  (about 20 ms), which a loaded machine can run out of even on a few lines;
+ *  ensureSyntaxTree finishes the parse, but `syntaxTree(state)` — what the
+ *  code under test reads — keeps the tree the state was made with: only the
+ *  next state carries the finished one (measured). Until 2026-10-20 the
+ *  helpers returned the state itself, and a full run once saw Enter decline. */
+function parsed(state) {
+	ensureSyntaxTree(state, state.doc.length, 5000);
+	const next = state.update({}).state;
+	assert.equal(syntaxTree(next).length, next.doc.length, 'the whole document parsed');
+	return next;
 }
 /** The text after `spec(state)`, `|` at the cursor — or null when it declines. */
 function press(spec, text) {
@@ -129,7 +139,7 @@ function pressKey(text, key, markdown = noteMarkdown({}), mark = '|') {
 		selection: EditorSelection.cursor(at),
 		extensions: [markdown, noteKeys()],
 	});
-	ensureSyntaxTree(state, state.doc.length, 5000);
+	state = parsed(state);
 	const view = {
 		get state() { return state; },
 		dispatch(...specs) { state = (specs[0] instanceof Transaction ? specs[0] : state.update(...specs)).state; },
