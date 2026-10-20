@@ -10,8 +10,16 @@
 //          colour=<the quote text's colour as one of quote|muted|normal|other>
 //          bar=<the border's colour: border (reading view's grey)|quote|other>
 // for `bullet` (`* item` then a quote 4 spaces in, as the owner's), `numbered`
-// (`1.` then 3), `nested` (an item in an item), and `top` (no list:
+// (`1.` then 3), `nested` (an item in an item), `deep` (three levels),
+// `tabbed` (an item indented by a tab, its quote by two), and `top` (no list:
 // border-from-item-text is its distance from the margin's text instead).
+// Every one 0, as reading view's: a nested item's first line is indented by
+// its DRAWN whitespace, its quote and later lines by CSS counting the same
+// columns in the font's space (live/columns.js, --le-col); until 2026-10-20 a
+// fixed 0.3em made `nested` 2 (Clew-iOS's measure), `deep` 3, `tabbed` 3.
+//   nested-cont item-text-aligned=0   the nested item's text past its first line
+//   mono col=0.6021em (was 0.25em) border-from-item-text nested=0 deep=0 tabbed=0 nested-cont=0
+//          the same in Menlo, whose space is 0.6em: the column is measured
 // Every quote reads as reading view's: colour=muted bar=border (the owner's
 // choice, 2026-10-19; source mode's quote green until then).
 // Then REAL input: a click in the bullet's quote reveals its `>`, the line
@@ -41,7 +49,14 @@ await ipc.invoke('clew:note-write', { path: 'ListQuote.md', content: [
 	'',
 	'* Outer item',
 	'  * Inner item:',
+	'    more of the inner item',
 	'    > a quote in a nested item',
+	'    * Third level:',
+	'      > a quote three deep',
+	'',
+	'* Tab outer',
+	'\t* Tab inner:',
+	'\t\t> a quote in a tabbed item',
 	'',
 	'Prose between.',
 	'',
@@ -100,12 +115,34 @@ const bulletQuote = lineWith('success conditions');
 measure('bullet', bulletQuote, lineWith('I worry that'));
 measure('numbered', lineWith('a quote in a numbered item'), lineWith('A numbered item'));
 measure('nested', lineWith('a quote in a nested item'), lineWith('Inner item'));
+measure('deep', lineWith('a quote three deep'), lineWith('Third level'));
+measure('tabbed', lineWith('a quote in a tabbed item'), lineWith('Tab inner'));
 measure('top', lineWith('A top-level quote'), null);
 log(`after-quote item-text-aligned=${Math.round(textLeft(lineWith('Taken literally')) - textLeft(lineWith('I worry that')))}`);
+const nestedCont = () => Math.round(textLeft(lineWith('more of the inner item')) - textLeft(lineWith('Inner item')));
+log(`nested-cont item-text-aligned=${nestedCont()}`);
+
+// The same in a face whose space is not Avenir Next's 0.25em — Menlo's is
+// 0.6em: the column is MEASURED (live/columns.js), not assumed. A nested
+// item's first line draws its whitespace; its quote and later lines are
+// indented by CSS that must agree with it.
+const col = () => getComputedStyle(view.scrollDOM).getPropertyValue('--le-col').trim();
+const colBefore = col();
+document.body.style.setProperty('--clew-editor-font', 'Menlo, monospace');
+await until(() => col() && col() !== colBefore, 5000);
+await sleep(300);
+const mono = ['nested', 'deep', 'tabbed'].map((name) => {
+	const [q, i] = { nested: ['a quote in a nested item', 'Inner item'], deep: ['a quote three deep', 'Third level'], tabbed: ['a quote in a tabbed item', 'Tab inner'] }[name];
+	return `${name}=${Math.round(lineWith(q).getBoundingClientRect().left - textLeft(lineWith(i)))}`;
+});
+log(`mono col=${col()} (was ${colBefore}) border-from-item-text ${mono.join(' ')} nested-cont=${nestedCont()}`);
+document.body.style.removeProperty('--clew-editor-font');
+await until(() => col() === colBefore, 5000);
+await sleep(300);
 
 // REAL input: click into the bullet's quote — its `>` shows, the line stays.
-const before = bulletQuote.getBoundingClientRect().left;
-const r = bulletQuote.getBoundingClientRect();
+const r = lineWith('success conditions').getBoundingClientRect();
+const before = r.left;
 window.__clewSmokeInput = [{ click: { x: Math.round(r.left + 200), y: Math.round(r.top + r.height / 2) } }, { wait: 4000 }];
 setTimeout(async () => {
 	await until(() => lineWith('success conditions')?.textContent.includes('>'), 2000);
