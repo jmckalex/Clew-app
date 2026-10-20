@@ -50,6 +50,7 @@ import { identityKey } from './vault-trust.js';
 import { figuresState, otherOutputs, vaultCacheDir, markUsed, pruneExportCache, figureEngineOptions, texRefusalDir } from './export-cache.js';
 import { figuresFolder, explainFiguresWarnings } from '../shared/export-figures.js';
 import { latexStyleWanted } from '../engine/latex-style.js';
+import { noteExportOptions } from '../engine/export-config.js';
 import { buildIndex, fontDirs } from './system-fonts.js';
 
 const WORKER_PATH = paths.engineWorker;
@@ -285,20 +286,10 @@ export async function exportNote({ win, vaults, sessionId, callerToken = null, r
 	if (format === 'pdf' && !trusted) return { refused: latexPdfRefusal('note', DEVICE_WORD) };
 	const abs = vaults.resolve(relPath);
 	const cwd = trusted ? path.dirname(abs) : restrictedExportDir();
-	// Exports honor the vault's standard-syntax choice, like previews do.
 	const vaultSettings = vaults.loadState('vault-settings.json') ?? {};
-	const normalSyntax = vaultSettings.normalSyntax === true;
 	const callouts = calloutsEnv(settings.get('callouts'), vaultSettings.callouts, () => iconTable(paths.faIcons));
 	const base = path.basename(abs).replace(/\.(md|jmd)$/i, '');
 	const ext = format === 'html' ? 'html' : format === 'latex' ? 'tex' : 'pdf';
-	// The vault's bibliography, for this build only (jmarkdown 455cb61): an
-	// export runs the user's own config cascade, not Clew's generated one, so
-	// without it a note citing only the vault's file exported every such
-	// citation undefined. A configured file in every respect — a note's own
-	// Bibliography adds to it, `Bibliography mode: replace` drops it.
-	const vaultBibName = String(vaultSettings.bibliography ?? '').trim();
-	const vaultBib = vaultBibName ? path.resolve(vaults.root, vaultBibName) : null;
-	const bibliography = vaultBib ? [vaultBib] : [];
 	// The engine's Obsidian links, on for every note export (runWorker): Clew's
 	// own wikilink handling is the preview's and the site's, never an export's,
 	// which runs the user's own config cascade. And the vault's citation
@@ -343,12 +334,16 @@ export async function exportNote({ win, vaults, sessionId, callerToken = null, r
 	try {
 		figures = figureCache({ root: vaults.root, trusted });
 		if (!build) await clearFigures(vaults, written);
-		const options = { to: format === 'html' ? 'html' : 'latex', output: written, normalSyntax, bibliography, cacheDir: figures.cacheDir, copyFigures: true, ...figureEngine(trusted) };
+		// processFile's options for a note (engine/export-config.js): the vault's
+		// standard syntax and bibliography, the figure cache and its copies.
+		const options = noteExportOptions({
+			format, output: written, vaultSettings, vaultRoot: vaults.root, cacheDir: figures.cacheDir, figureEngine: figureEngine(trusted),
+		});
 		const built = await runWorker({ file: abs, options, cwd, callouts, vault });
 		const warnings = explainFiguresWarnings(built.warnings, { restricted: !trusted });
 		if (format !== 'pdf') return { output: written, warnings };
 		const noteDir = path.dirname(abs);
-		const configured = [...configuredBibliographies(cwd), ...bibliography];
+		const configured = [...configuredBibliographies(cwd), ...options.bibliography];
 		const bibDirs = bibliographyDirs(fs.readFileSync(abs, 'utf8'), noteDir, configured);
 		const { pdf, engine, reason } = await compilePdf(written, noteDir, bibDirs);
 		fs.copyFileSync(pdf, filePath);

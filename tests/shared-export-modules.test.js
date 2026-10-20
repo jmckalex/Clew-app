@@ -26,6 +26,7 @@ const MODULES = [
 	'src/shared/latex-engine-setting.js',
 	'src/shared/export-figures.js',
 	'src/engine/latex-style.js',
+	'src/engine/export-config.js',
 ];
 
 const code = (file) => fs.readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/\s\/\/.*$/gm, '');
