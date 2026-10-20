@@ -10,7 +10,8 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { chooseLatexEngine, latexmkFlag, firstLatexError, latexPdfRefusal } from '../src/main/latex-engine.js';
+import { latexmkFlag, latexPdfRefusal } from '../src/main/latex-engine.js';
+import { chooseLatexEngine, firstLatexError, pdfViaLatexFailure } from '../src/shared/latex-engine.js';
 import { readFileSync } from 'node:fs';
 import { LATEX_ENGINE_SETTING } from '../src/shared/latex-engine-setting.js';
 
@@ -71,4 +72,24 @@ test('a vault this device does not trust: each PDF via LaTeX refused by name, sa
 	assert.match(note, /Export the note as PDF \(reading view\), or trust the vault \(Settings → This vault\)\.$/);
 	assert.match(latexPdfRefusal('book', 'this computer'), /^A book's PDF via LaTeX is not made in a vault this computer does not trust.*Build the book as PDF \(reading view\), or trust the vault/);
 	assert.match(latexPdfRefusal('proof', 'this Mac'), /^A chapter proof \(a PDF via LaTeX\) is not made.*Trust the vault \(Settings → This vault\)\.$/);
+});
+
+test('a host without an engine: the document that needs it is refused in words, never run on another', () => {
+	const xe = doc('\\usepackage{xeCJK}');
+	const ipad = { available: ['pdflatex', 'lualatex'], host: 'Clew on the iPad' };
+	const refused = chooseLatexEngine(xe, 'auto', ipad);
+	assert.equal(refused.engine, 'xelatex');
+	assert.equal(refused.unavailable, true);
+	assert.equal(refused.refusal, 'This document needs XeLaTeX (the document needs a Unicode engine — line 3: \\usepackage{xeCJK}), which Clew on the iPad does not have.');
+	assert.equal(chooseLatexEngine(xe, 'auto').unavailable, undefined, 'every engine by default: the Mac\'s answer unchanged');
+	assert.deepEqual(chooseLatexEngine(doc('\\usepackage{fontspec}'), 'auto', ipad), chooseLatexEngine(doc('\\usepackage{fontspec}'), 'auto'));
+	assert.match(chooseLatexEngine(doc(''), 'xelatex', ipad).refusal, /^This document needs XeLaTeX \(set in Settings → Appearance → LaTeX engine \(PDF via LaTeX export\): XeLaTeX\), which Clew on the iPad/);
+});
+
+test('a failed PDF via LaTeX says the engine, why, and the first error — else the run\'s own error, else that none came out', () => {
+	const log = '! Undefined control sequence.\nl.3 \\foo\n\nmore';
+	assert.equal(pdfViaLatexFailure({ engine: 'lualatex', reason: 'r', log, error: 'exit 1' }),
+		'PDF via LaTeX failed — LuaLaTeX ran (r). First error: ! Undefined control sequence. l.3 \\foo');
+	assert.equal(pdfViaLatexFailure({ engine: 'pdflatex', reason: 'r', log: 'fine', error: 'spawn ENOENT' }), 'PDF via LaTeX failed — pdfLaTeX ran (r). First error: spawn ENOENT');
+	assert.equal(pdfViaLatexFailure({ engine: 'xelatex', reason: 'r' }), 'PDF via LaTeX failed — XeLaTeX ran (r). First error: no PDF was produced');
 });

@@ -44,7 +44,8 @@ import { printNoteToPdf } from './print-pdf.js';
 import { settings } from './settings.js';
 import { calloutsEnv } from './callout-types.js';
 import { iconTable } from './callout-files.js';
-import { chooseLatexEngine, engineName, latexmkCommand, latexPdfRefusal, firstLatexError } from './latex-engine.js';
+import { latexmkCommand, latexPdfRefusal } from './latex-engine.js';
+import { chooseLatexEngine, pdfViaLatexFailure } from '../shared/latex-engine.js';
 import { identityKey } from './vault-trust.js';
 import { figuresFolder, figuresState, otherOutputs, vaultCacheDir, markUsed, pruneExportCache, explainFiguresWarnings, figureEngineOptions, texRefusalDir } from './export-cache.js';
 import { buildIndex, fontDirs } from './system-fonts.js';
@@ -260,8 +261,7 @@ export function compilePdf(texFile, noteDir, bibDirs = [noteDir]) {
 			}
 			let log = '';
 			try { log = fs.readFileSync(texFile.replace(/\.tex$/, '.log'), 'utf8'); } catch { /* none written */ }
-			const first = firstLatexError(log) || err?.message || 'no PDF was produced';
-			reject(new Error(`PDF via LaTeX failed — ${engineName(engine)} ran (${reason}). First error: ${first}`));
+			reject(new Error(pdfViaLatexFailure({ engine, reason, log, error: err?.message })));
 		});
 	});
 }

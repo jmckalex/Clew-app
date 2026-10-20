@@ -22,6 +22,8 @@ import { execFileSync } from 'node:child_process';
 
 const MODULES = [
 	'src/shared/citation-files.js',
+	'src/shared/latex-engine.js',
+	'src/shared/latex-engine-setting.js',
 ];
 
 const code = (file) => fs.readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/\s\/\/.*$/gm, '');
