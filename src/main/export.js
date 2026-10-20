@@ -39,7 +39,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { toolchainPath } from './render-service.js';
-import { bibliographyDirs, bibliographyList, vaultBiblify } from './citation-header.js';
+import { bibliographyDirs, bibliographyList, vaultBiblify } from '../shared/citation-files.js';
 import { printNoteToPdf } from './print-pdf.js';
 import { settings } from './settings.js';
 import { calloutsEnv } from './callout-types.js';
@@ -299,7 +299,7 @@ export async function exportNote({ win, vaults, sessionId, callerToken = null, r
 	// The engine's Obsidian links, on for every note export (runWorker): Clew's
 	// own wikilink handling is the preview's and the site's, never an export's,
 	// which runs the user's own config cascade. And the vault's citation
-	// settings as reading view has them (citation-header.js#vaultBiblify),
+	// settings as reading view has them (shared/citation-files.js#vaultBiblify),
 	// for an HTML export to cite alike.
 	const vault = { root: vaults.root, restricted: !trusted, biblify: vaultBiblify(vaultSettings, vaults.root) };
 

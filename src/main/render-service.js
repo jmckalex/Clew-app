@@ -29,7 +29,8 @@ import { engineExtensionEntries } from './plugins.js';
 import { inlineScriptHashes } from './preview-csp.js';
 import { writeFileAtomic, absoluteSearchPath } from './fs-utils.js';
 import { isDependentFragment } from '../shared/fragment-deps.js';
-import { citationHeader, bookCitationHeader, noteBibFiles, vaultBiblify } from './citation-header.js';
+import { citationHeader, bookCitationHeader } from './citation-header.js';
+import { noteBibFiles, vaultBiblify } from '../shared/citation-files.js';
 import { refusedNames } from '../shared/refused-names.js';
 import { calloutsEnv } from './callout-types.js';
 import { iconTable } from './callout-files.js';
@@ -345,7 +346,7 @@ export class RenderService {
 	// paths, so every note resolves citations without per-note properties.
 	// Per-note `Bibliography:` / `Bibliography style:` metadata still wins —
 	// the engine processes metadata headers after the config file. The same
-	// object an export is handed (citation-header.js#vaultBiblify).
+	// object an export is handed (shared/citation-files.js#vaultBiblify).
 	#biblifyConfig() {
 		const biblify = vaultBiblify(this.#vaultOptions, this.vaultRoot);
 		return biblify ? { 'Biblify': biblify } : {};

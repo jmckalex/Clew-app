@@ -11,7 +11,8 @@
 // A note's citation keys, for the blocks rendered on its behalf (src/main/citation-header.js).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { citationHeader, bookCitationHeader, noteBibFiles, bibliographyDirs, bibliographyList, vaultBiblify } from '../src/main/citation-header.js';
+import { citationHeader, bookCitationHeader } from '../src/main/citation-header.js';
+import { noteBibFiles, bibliographyDirs, bibliographyList, vaultBiblify } from '../src/shared/citation-files.js';
 
 const note = (header, body = '# Note\n\n![[Child]]\n') => `---\n${header}\n---\n${body}`;
 

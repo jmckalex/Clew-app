@@ -36,7 +36,7 @@ import { readMaster, laterNotice, placeWarnings } from '../shared/book.js';
 import { runWorker, compilePdf, configuredBibliographies, restrictedExportDir, figureCache, clearFigures, figureEngine, DEVICE_WORD } from './export.js';
 import { latexPdfRefusal } from './latex-engine.js';
 import { figuresFolder, explainFiguresWarnings } from './export-cache.js';
-import { bibliographyDirs, vaultBiblify } from './citation-header.js';
+import { bibliographyDirs, vaultBiblify } from '../shared/citation-files.js';
 import { calloutsEnv } from './callout-types.js';
 import { iconTable } from './callout-files.js';
 import { settings } from './settings.js';
@@ -99,7 +99,7 @@ export async function exportBook({ vaults, indexer, masterRel, format, trusted =
 	// The engine's Obsidian links on (export.js#runWorker): a [[link]] to a
 	// chapter becomes a chapter link, others print as text, ![[image]]s resolve
 	// across the vault. And the vault's citation settings as reading view has
-	// them (citation-header.js#vaultBiblify), for the HTML pages.
+	// them (shared/citation-files.js#vaultBiblify), for the HTML pages.
 	const vault = { root: vaults.root, restricted: !trusted, biblify: vaultBiblify(vaultSettings, vaults.root) };
 
 	const place = (raw) => {

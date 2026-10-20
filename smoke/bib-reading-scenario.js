@@ -1,5 +1,5 @@
 // Reading mode follows a .bib edit (render-service.js#onFileChanged,
-// main/citation-header.js#noteBibFiles; 2026-10-01 — before, a note
+// shared/citation-files.js#noteBibFiles; 2026-10-01 — before, a note
 // re-rendered only when IT changed, so its citations kept the old entry).
 // Fixture: `smoke/make-cite-vault.sh <dir>`; run with
 // CLEW_SMOKE_FRAME_SCRIPT=smoke/bib-reading-frame.js CLEW_SMOKE_FRAME_MATCH=vault/.

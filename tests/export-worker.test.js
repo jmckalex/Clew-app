@@ -14,7 +14,7 @@
 // `Note: remember this.` exported every note EMPTY (Clew-docs, 2026-10-20) —
 // and an HTML export cites as reading view does: the vault's bibliography
 // resolving, in the vault's style, over the user's config and under the
-// note's header (citation-header.js#vaultBiblify, the object both are given).
+// note's header (shared/citation-files.js#vaultBiblify, the object both are given).
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -22,7 +22,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fork } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { vaultBiblify } from '../src/main/citation-header.js';
+import { vaultBiblify } from '../src/shared/citation-files.js';
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'clew-export-worker-'));
 after(() => fs.rmSync(root, { recursive: true, force: true }));

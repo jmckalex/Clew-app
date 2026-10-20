@@ -108,7 +108,7 @@ process.once('message', async (msg) => {
 		// 2026-10-20). Notes and books alike (book.js reads it for chapters).
 		configManager.set('Header style', 'fenced');
 		// An HTML export cites as reading view does: the vault's `Biblify`
-		// (msg.biblify — citation-header.js#vaultBiblify, the object reading
+		// (msg.biblify — shared/citation-files.js#vaultBiblify, the object reading
 		// view's generated config carries, null when the vault names no file)
 		// set over the user's config as the engine merges that later config file
 		// over ~/.jmarkdown, key by key: `resolve` on (without it a note citing

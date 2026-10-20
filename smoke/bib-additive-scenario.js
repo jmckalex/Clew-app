@@ -13,7 +13,7 @@
 //   export-html plain: reading="(Vault, 2001)" export="(Vault, 2001)"
 //            — an HTML export cites as reading view does: the vault's file
 //            resolving and its style (apa) over the user's config
-//            (export-worker.mjs, citation-header.js#vaultBiblify). Until
+//            (export-worker.mjs, shared/citation-files.js#vaultBiblify). Until
 //            2026-10-20 export="\citep{vaultonly:2001}", unresolved
 //   restale: paper-updated=true                         (a vault.bib edit re-renders a
 //            note naming its OWN Bibliography — it draws on the vault's too now)
