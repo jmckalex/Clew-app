@@ -19,7 +19,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { columnEm } from '../src/renderer/editor/live/columns.js';
+import { columnEm, tabbedIndent } from '../src/renderer/editor/live/columns.js';
 
 test('a column is the space\'s width as an em of the font\'s size', () => {
 	assert.equal(columnEm(4, 16), '0.25em', 'Avenir Next at 16px');
@@ -33,4 +33,16 @@ test('live-edit.css counts every list line\'s columns in --le-col, never a fixed
 	const uses = css.match(/var\(--le-indent[^)]*\)\s*\*\s*[^)+;]+\)?/g) ?? [];
 	assert.ok(uses.length >= 3, `the hang, the quote in an item, the list in a callout: ${uses.length}`);
 	for (const use of uses) assert.match(use, /\*\s*var\(--le-col\b/, use);
+});
+
+test('an item\'s indentation holding a tab is a box of its own; spaces alone are left as they are', () => {
+	assert.deepEqual(tabbedIndent('\t'), { from: 0, to: 1 });
+	assert.deepEqual(tabbedIndent('\t\t'), { from: 0, to: 2 });
+	assert.deepEqual(tabbedIndent(' \t'), { from: 0, to: 2 }, 'a space then a tab: one run, its tab to the stop');
+	assert.equal(tabbedIndent('    '), null, 'spaces alone: drawn as always');
+	assert.equal(tabbedIndent(''), null);
+	// In a quote, counted from the end of its `>`s, as --le-indent is.
+	assert.deepEqual(tabbedIndent('> \t'), { from: 2, to: 3 });
+	assert.deepEqual(tabbedIndent('>\t\t'), { from: 2, to: 3 }, 'the tab after `>` is the quote\'s own');
+	assert.equal(tabbedIndent('>   '), null);
 });
