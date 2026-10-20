@@ -11,7 +11,7 @@
 // A note's citation keys, for the blocks rendered on its behalf (src/main/citation-header.js).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { citationHeader, bookCitationHeader, noteBibFiles, bibliographyDirs, bibliographyList } from '../src/main/citation-header.js';
+import { citationHeader, bookCitationHeader, noteBibFiles, bibliographyDirs, bibliographyList, vaultBiblify } from '../src/main/citation-header.js';
 
 const note = (header, body = '# Note\n\n![[Child]]\n') => `---\n${header}\n---\n${body}`;
 
@@ -113,4 +113,19 @@ test('a book whose master says replace but names no file keeps the configured fi
 	assert.equal(bookCitationHeader(master, [ch]), '---\nBibliography: /v/ch.bib\n---\n');
 	const own = { text: note('Bibliography: m.bib\nBibliography mode: replace'), dir: '/v' };
 	assert.equal(bookCitationHeader(own, [ch]), '---\nBibliography: /v/m.bib, /v/ch.bib\nBibliography mode: replace\n---\n');
+});
+
+test('vaultBiblify: the vault\'s citation settings as reading view\'s generated config has them, and an export is handed', () => {
+	assert.equal(vaultBiblify({}, '/v'), null);
+	assert.equal(vaultBiblify({ bibliographyStyle: 'apa' }, '/v'), null, 'a style with no file is no setting');
+	assert.deepEqual(vaultBiblify({ bibliography: ' Library/refs.bib ' }, '/v'), { bibliography: '/v/Library/refs.bib', resolve: true });
+	assert.deepEqual(vaultBiblify({ bibliography: '/elsewhere/refs.bib', bibliographyStyle: 'vancouver' }, '/v'),
+		{ bibliography: '/elsewhere/refs.bib', resolve: true, 'bibliography style': 'vancouver' });
+	for (const named of ['apa', 'chicago', 'harvard1', 'vancouver', 'bjps', 'ajp', 'econometrica', 'ergo']) {
+		assert.equal(vaultBiblify({ bibliography: 'r.bib', bibliographyStyle: named }, '/v')['bibliography style'], named);
+		assert.equal('template' in vaultBiblify({ bibliography: 'r.bib', bibliographyStyle: named }, '/v'), false);
+	}
+	// Any other style is a .csl file, registered by its basename.
+	assert.deepEqual(vaultBiblify({ bibliography: 'r.bib', bibliographyStyle: 'Styles/house.csl' }, '/v'),
+		{ bibliography: '/v/r.bib', resolve: true, 'bibliography style': 'house', template: { name: 'house', file: '/v/Styles/house.csl' } });
 });

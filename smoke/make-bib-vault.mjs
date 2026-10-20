@@ -15,6 +15,10 @@
 //   Notes/Merge.md      Bibliography: local.bib, ../Library/vault.bib — a key
 //                       in BOTH, so a LaTeX export names one merged file
 //   Notes/Cites.md      no header: the vault's bibliography alone
+//   Notes/Plain.md      truly no header — not even `Resolve citations` — so
+//                       only the vault's settings resolve it, in the vault's
+//                       style (apa): an HTML export must cite it as reading
+//                       view does
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -39,6 +43,7 @@ put('Notes/List.md', `---\nBibliography:\n  - local.bib\n  - ../Library/vault2.b
 put('Notes/Split.md', `---\nBibliography: local2.bib, ../Library/vault2.bib\nResolve citations: true\n---\n# Split\n\nNear \\cite{near:2004}, far \\cite{far:2003}.\n\n@bibliography\n`);
 put('Notes/Merge.md', `---\nBibliography: local.bib, ../Library/vault.bib\nResolve citations: true\n---\n# Merge\n\nShared \\cite{shared:1999}, vault \\cite{vaultonly:2001}, note \\cite{localonly:2002}.\n\n@bibliography\n`);
 put('Notes/Cites.md', `---\nResolve citations: true\n---\n# Cites\n\nThe vault's alone: \\cite{vaultonly:2001}.\n\n@bibliography\n`);
+put('Notes/Plain.md', '# Plain\n\nSee \\citep{vaultonly:2001}.\n\n@bibliography\n');
 put('Welcome.md', '# Welcome\n');
 fs.mkdirSync(path.join(dir, '.clew'), { recursive: true });
-fs.writeFileSync(path.join(dir, '.clew', 'vault-settings.json'), JSON.stringify({ bibliography: 'Library/vault.bib' }, null, '\t'));
+fs.writeFileSync(path.join(dir, '.clew', 'vault-settings.json'), JSON.stringify({ bibliography: 'Library/vault.bib', bibliographyStyle: 'apa' }, null, '\t'));

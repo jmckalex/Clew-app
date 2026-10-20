@@ -9,6 +9,11 @@
 //   list:    note=true far=true                         (a YAML list over two lines)
 //   split:   near=true far=true
 //   cites:   vault=true                                 (no header: the vault's alone)
+//   export-html plain: reading="(Vault, 2001)" export="(Vault, 2001)"
+//            — an HTML export cites as reading view does: the vault's file
+//            resolving and its style (apa) over the user's config
+//            (export-worker.mjs, citation-header.js#vaultBiblify). Until
+//            2026-10-20 export="\citep{vaultonly:2001}", unresolved
 //   restale: paper-updated=true                         (a vault.bib edit re-renders a
 //            note naming its OWN Bibliography — it draws on the vault's too now)
 //   export <engine> <note>: ok=… bibliography={…} undefined=N engine=…
@@ -37,6 +42,11 @@ doc = await html('Notes/Split.md');
 log(`split: near=${resolved(doc, 'near:2004')} far=${resolved(doc, 'far:2003')}`);
 doc = await html('Notes/Cites.md');
 log(`cites: vault=${resolved(doc, 'vaultonly:2001')}`);
+const seeText = (d) => /<p[^>]*>See ([\s\S]*?)\.<\/p>/.exec(String(d))?.[1].replace(/<[^>]*>/g, '') ?? null;
+doc = await html('Notes/Plain.md');
+await ipc.invoke('clew:export-note', { path: 'Notes/Plain.md', format: 'html', outFile: 'out/Plain.html' });
+const exported = await ipc.invoke('clew:note-read', { path: 'out/Plain.html' }).then((r) => r?.content ?? r).catch(() => '');
+log(`export-html plain: reading=${JSON.stringify(seeText(doc))} export=${JSON.stringify(seeText(exported))}`);
 
 // A vault.bib edit: does a note naming its own Bibliography re-render?
 const bib = await ipc.invoke('clew:note-read', { path: 'Library/vault.bib' });

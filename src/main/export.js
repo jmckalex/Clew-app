@@ -39,7 +39,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { toolchainPath } from './render-service.js';
-import { bibliographyDirs, bibliographyList } from './citation-header.js';
+import { bibliographyDirs, bibliographyList, vaultBiblify } from './citation-header.js';
 import { printNoteToPdf } from './print-pdf.js';
 import { settings } from './settings.js';
 import { calloutsEnv } from './callout-types.js';
@@ -125,7 +125,7 @@ export function runWorker({ file, options, cwd, callouts = '', vault = null }) {
 		child.stderr.on('data', (chunk) => { stderr += chunk; });
 		child.on('message', (msg) => {
 			if (msg?.type === 'ready') {
-				child.send({ type: 'build', file, options, latexStyle: latexStyle(options) });
+				child.send({ type: 'build', file, options, latexStyle: latexStyle(options), biblify: vault?.biblify ?? null });
 			} else if (msg?.type === 'done') {
 				resolve({
 					output: msg.output, warnings: Array.isArray(msg.warnings) ? msg.warnings : [],
@@ -298,8 +298,10 @@ export async function exportNote({ win, vaults, sessionId, callerToken = null, r
 	const bibliography = vaultBib ? [vaultBib] : [];
 	// The engine's Obsidian links, on for every note export (runWorker): Clew's
 	// own wikilink handling is the preview's and the site's, never an export's,
-	// which runs the user's own config cascade.
-	const vault = { root: vaults.root, restricted: !trusted };
+	// which runs the user's own config cascade. And the vault's citation
+	// settings as reading view has them (citation-header.js#vaultBiblify),
+	// for an HTML export to cite alike.
+	const vault = { root: vaults.root, restricted: !trusted, biblify: vaultBiblify(vaultSettings, vaults.root) };
 
 	// A relative outFile is vault-relative, not process-relative: the caller
 	// is a scenario inside the vault, and resolving against the working

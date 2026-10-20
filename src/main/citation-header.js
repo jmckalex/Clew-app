@@ -50,6 +50,41 @@ function absoluteList(value, dir) {
 	return bibliographyList(value).map((item) => (isUrl(item) || path.isAbsolute(item) ? item : path.resolve(dir, item)));
 }
 
+/**
+ * The vault's citation settings as the engine's `Biblify` configuration —
+ * vault-settings `bibliography` + `bibliographyStyle` — or null when the vault
+ * names no bibliography. Reading view's generated config carries it
+ * (render-service.js#biblifyConfig), loaded after ~/.jmarkdown and merged over
+ * it, the note's header after both; an export is handed the same object
+ * (export-worker.mjs), so a note cites alike in both. The files are absolute.
+ * A style is one of the engine's named ones (three from
+ * @citation-js/plugin-csl, five bundled as CSL files in its csl/ folder), or
+ * else a custom .csl file the engine registers by basename (`template`).
+ *
+ * @param {{ bibliography?: string, bibliographyStyle?: string }} vaultOptions
+ * @param {string} vaultRoot - absolute
+ * @returns {Record<string, unknown> | null}
+ */
+export function vaultBiblify(vaultOptions, vaultRoot) {
+	const bib = String(vaultOptions?.bibliography ?? '').trim();
+	if (!bib) return null;
+	const abs = (p) => (path.isAbsolute(p) ? p : path.join(vaultRoot, p));
+	const biblify = { 'bibliography': abs(bib), 'resolve': true };
+	const style = String(vaultOptions?.bibliographyStyle ?? '').trim();
+	if (style) {
+		const named = ['apa', 'chicago', 'harvard1', 'vancouver', 'bjps', 'ajp', 'econometrica', 'ergo'];
+		if (named.includes(style)) {
+			biblify['bibliography style'] = style;
+		} else {
+			const file = abs(style);
+			const name = path.basename(file, '.csl');
+			biblify['bibliography style'] = name;
+			biblify['template'] = { name, file };
+		}
+	}
+	return biblify;
+}
+
 /** As one header line: the engine reads a comma list as well as a YAML one. */
 const absolutise = (value, dir) => absoluteList(value, dir).join(', ');
 
