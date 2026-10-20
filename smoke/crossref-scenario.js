@@ -67,9 +67,9 @@ await sleep(300);
 const META = 4;
 const key = (k, modifiers = 0) => ({ combo: { key: k, modifiers } });
 window.__clewSmokeInput = [
-	{ move: W }, { wait: 1500 },                                   // 6
+	{ move: W }, { wait: 4500 },                                   // 6
 	{ move: { x: 5, y: 300 } }, { wait: 1200 },                    // → source mode
-	{ move: SRC }, { wait: 1500 },                                 // 7
+	{ move: SRC }, { wait: 4500 },                                 // 7
 	{ move: { x: 5, y: 300 } }, { wait: 1500 },                    // → live
 	{ click: W }, { wait: 1200 },                                  // 3
 	key('[', META), { wait: 1500 },                                // 3: back
@@ -82,16 +82,18 @@ window.__clewSmokeInput = [
 ];
 
 (async () => { try {
-	// 6
-	await until(() => P().visible && P().ready);
+	// 6 — read when the preview is ready, not after: a first render under
+	// load came after the old 1.5s window, and the pointer leaving closed it
+	// before a later read (preview=none with its label set, 2026-10-20).
+	const shown = await until(() => P().visible && P().ready);
+	log(`preview=${shown ? 'visible' : 'none'} label=${JSON.stringify(P().label)} pane-frame=${(P().src ?? '').split('/').pop().slice(0, 6)}`);
 	await sleep(400);
-	log(`preview=${P().visible ? 'visible' : 'none'} label=${JSON.stringify(P().label)} pane-frame=${(P().src ?? '').split('/').pop().slice(0, 6)}`);
 	await until(() => !P().visible);
 	workspaceStore.setTabMode(tab.id, 'source');
 
 	// 7
-	await until(() => P().visible, 5000);
-	log(`source-preview=${P().visible ? 'visible' : 'none'} label=${JSON.stringify(P().label)}`);
+	const shownSource = await until(() => P().visible, 8000);
+	log(`source-preview=${shownSource ? 'visible' : 'none'} label=${JSON.stringify(P().label)}`);
 	await until(() => !P().visible);
 	workspaceStore.setTabMode(tab.id, 'live');
 	await sleep(300);
