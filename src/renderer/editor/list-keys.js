@@ -225,7 +225,8 @@ export function newListItem(view) {
 /**
  * ⌘L, Obsidian's "Toggle checkbox status" (the owner's yes, 2026-10-20): on
  * each line the selection touches, a task is ticked or unticked (any status
- * but a space — Obsidian's `[/]`, `[-]` — unticks), a list item becomes a task
+ * Clew knows but a space — `[x]`, `[X]`, `[/]`, `[-]`, fill.js's set — unticks;
+ * `- [1] Smith` is no task, and becomes `- [ ] [1] Smith`, nothing lost), a list item becomes a task
  * (`- text` → `- [ ] text`, `1. text` → `1. [ ] text`, its marker kept), and
  * any other line — an empty one too — becomes `- [ ] ` and its text, after
  * its indentation and a quote's `>`s. A leading `*strong*` is the dialect's
@@ -248,7 +249,7 @@ export function toggleTaskSpec(state) {
 		const line = doc.line(n);
 		const lead = /^[ \t]*(?:>[ \t]*)*/.exec(line.text)[0].length;
 		const rest = line.text.slice(lead);
-		const task = /^([-*+]|\d+[.)])([ \t]+)\[(.)\]/.exec(rest);
+		const task = /^([-*+]|\d+[.)])([ \t]+)\[([ xX/-])\]/.exec(rest);
 		if (task) {
 			const at = line.from + lead + task[1].length + task[2].length + 1;
 			changes.push({ from: at, to: at + 1, insert: task[3] === ' ' ? 'x' : ' ' });

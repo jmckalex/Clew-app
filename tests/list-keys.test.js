@@ -195,7 +195,11 @@ test('⌘L makes a line a task, as Obsidian\'s Toggle checkbox status does — a
 	assert.equal(cmdL('- [ ] task|'), '- [x] task|');
 	assert.equal(cmdL('- [x] task|'), '- [ ] task|');
 	assert.equal(cmdL('- [X] task|'), '- [ ] task|');
-	assert.equal(cmdL('- [/] half done|'), '- [ ] half done|', 'any other status unticks');
+	assert.equal(cmdL('- [/] half done|'), '- [ ] half done|', 'any other status Clew knows unticks');
+	assert.equal(cmdL('- [-] dropped|'), '- [ ] dropped|');
+	// Only the statuses Clew knows (fill.js: [ xX/-]): a bracketed number is the item's text.
+	assert.equal(cmdL('- [1] Smith 2020|'), '- [ ] [1] Smith 2020|', 'nothing lost');
+	assert.equal(cmdL('1. [a] first|'), '1. [ ] [a] first|');
 	assert.equal(cmdL('1. [ ] first|'), '1. [x] first|');
 	assert.equal(cmdL('> quoted|'), '> - [ ] quoted|', 'after a quote\'s >');
 	assert.equal(cmdL('> - [ ] in a quote|'), '> - [x] in a quote|');

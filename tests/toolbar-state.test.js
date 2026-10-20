@@ -78,3 +78,27 @@ test('the Next item button is a touch-first host\'s alone (the iPad: lib/host.js
 	const plain = EditorState.create({ doc: 'prose\n', extensions: [noteMarkdown({})] });
 	assert.equal(deriveState(plain, liveModel(plain, {})).touchFirst, false);
 });
+
+test('the host reader (lib/host.js): exactly `window.clew.host.touchFirst === true` — what the iOS shim sets', async () => {
+	const { touchFirst } = await import('../src/renderer/lib/host.js');
+	const had = Object.prototype.hasOwnProperty.call(globalThis, 'window');
+	const was = globalThis.window;
+	try {
+		globalThis.window = { clew: { host: { touchFirst: true } } };
+		assert.equal(touchFirst(), true);
+		globalThis.window = { clew: { host: { touchFirst: 'yes' } } };
+		assert.equal(touchFirst(), false, 'true itself, not a truthy value');
+		globalThis.window = { clew: {} };
+		assert.equal(touchFirst(), false, 'no host: the desktop');
+		globalThis.window = { clew: { host: { touchfirst: true } } };
+		assert.equal(touchFirst(), false, 'the property\'s exact name');
+		delete globalThis.window;
+		assert.equal(touchFirst(), false, 'no window at all');
+		// deriveState reads it when not told.
+		globalThis.window = { clew: { host: { touchFirst: true } } };
+		const state = EditorState.create({ doc: '* item\n', extensions: [noteMarkdown({})] });
+		assert.equal(deriveState(state, liveModel(state, {})).touchFirst, true);
+	} finally {
+		if (had) globalThis.window = was; else delete globalThis.window;
+	}
+});

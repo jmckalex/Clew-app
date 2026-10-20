@@ -783,7 +783,7 @@ reaches (markdown's rule; the tree leaves blank lines out of every item),
 so Backspace over the indentation, then Enter, leaves the list.
 `editor:toggle-task` moved to **⌘L** (Obsidian's chord), and since 2026-10-20
 (the owner's yes) does what Obsidian's *Toggle checkbox status* does: a task
-ticked or unticked (any status but a space unticks), a list item made a task
+ticked or unticked (any status Clew knows but a space — `[xX/-]`, fill.js's set — unticks; `- [1] Smith` is no task and becomes `- [ ] [1] Smith`), a list item made a task
 (its marker kept, `[ ] ` after it), any other line — an empty one too —
 `- [ ] ` and its text, after its indentation and a quote's `>`s; every line a
 selection touches (`list-keys.js#toggleTaskSpec`). On the iPad, whose
