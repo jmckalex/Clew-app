@@ -275,7 +275,8 @@ test('compiled by LuaLaTeX: EB Garamond and Garamond-Math, the user\'s face set 
 
 // The title-page directives as LaTeX's own title: jmarkdown's `LaTeX
 // maketitle` (efd8a39, default off), which the export worker turns on for
-// every LaTeX build, the style's or not; a header's false wins.
+// every LaTeX build, the style's or not; a header's false wins. Under it the
+// block's title is the PDF's Title too, where the header names none (b0aa61b).
 const TITLE_BLOCK = [
 	'@title[Comments on “a Paper”]',
 	'@subtitle[A second look]',
@@ -310,6 +311,9 @@ test('the title block as \\title, \\author, \\date and \\maketitle — compiled 
 	assert.deepEqual(errors, []);
 	assert.ok(pdf);
 	for (const s of ['Comments on “a Paper”', 'A second look', 'A. Reader', 'University of Somewhere', 'B. Writer', '19 October 2026']) assert.ok(text.includes(s), s);
+	// The PDF's Title: the block's title as text, without its subtitle.
+	const { stdout: info } = await run(tool('pdfinfo'), ['Note.pdf'], dir);
+	assert.match(info, /^Title:\s+Comments on “a Paper”$/m);
 	// Each author set alike — the second too, which `\and` opens — on one
 	// line, the institution smaller under the first.
 	const { stdout: boxes } = await run(tool('pdftotext'), ['-bbox', '-l', '1', 'Note.pdf', '-'], dir);
@@ -337,6 +341,7 @@ test('a header\'s `LaTeX maketitle: false` wins: the title lines as before', asy
 		['LaTeX maketitle: false'], TITLE_BLOCK);
 	assert.doesNotMatch(tex, /\\maketitle|\\author\{/);
 	assert.match(tex, /\{\\noindent\\LARGE\\bfseries Comments on “a Paper”\\par\}/);
+	assert.doesNotMatch(tex, /pdftitle/, 'nor the PDF\'s Title');
 });
 
 test('with `latexExportStyle: none` the title block is still LaTeX\'s title — compiled as the engine\'s own document (LuaLaTeX, as latex-engine.js picks for the home\'s fontspec)', { skip }, async () => {
@@ -374,4 +379,5 @@ test('a book: the master\'s title block is the book\'s title page, a chapter\'s 
 	});
 	assert.match(tex, /\\title\{The Book\}\n\\author\{A\. Reader\}\n\\date\{\}\n\\maketitle/);
 	assert.match(tex, /\{\\noindent\\LARGE\\bfseries A chapter’s line\\par\}/);
+	assert.match(tex, /\\hypersetup\{pdftitle=\{The Book\}\}/, 'the PDF\'s Title the master\'s, never a chapter\'s line');
 });
