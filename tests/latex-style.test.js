@@ -148,16 +148,17 @@ const NOTE = [
 	'',
 ].join('\n');
 
-/** The note exported to LaTeX by the real export worker, with `latexStyle`
- *  (or none) — under a `---`-fenced header of `header`'s lines, if any. */
-function exportTex(dir, latexStyle, header = []) {
+/** The note (NOTE, or `body`) exported to LaTeX by the real export worker,
+ *  with `latexStyle` (or none) — under a `---`-fenced header of `header`'s
+ *  lines, if any. */
+function exportTex(dir, latexStyle, header = [], body = NOTE) {
 	const home = path.join(dir, 'home');
 	fs.mkdirSync(path.join(home, '.jmarkdown'), { recursive: true });
 	// The user's own config sets another face, as the owner's sets Optima.
 	fs.writeFileSync(path.join(home, '.jmarkdown', 'config.json'), JSON.stringify({
 		'LaTeX preamble': ['\\usepackage{fontspec}', '\\setmainfont{texgyrepagella-regular.otf}'],
 	}));
-	fs.writeFileSync(path.join(dir, 'Note.md'), header.length ? `---\n${header.join('\n')}\n---\n${NOTE}` : NOTE);
+	fs.writeFileSync(path.join(dir, 'Note.md'), header.length ? `---\n${header.join('\n')}\n---\n${body}` : body);
 	const worker = fork(path.resolve('src/engine/export-worker.mjs'), [createRequire(import.meta.url).resolve('jmarkdown/src/watch-worker.js')], {
 		cwd: dir, stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
 		env: { ...process.env, HOME: home, CLEW_VAULT_ROOT: dir, CLEW_VAULT_RESTRICTED: '0' },
@@ -250,4 +251,107 @@ test('compiled by LuaLaTeX: EB Garamond and Garamond-Math, the user\'s face set 
 	if (process.platform === 'darwin') assert.match(stdout, /AppleColorEmoji/, 'the emoji from the fallback');
 	const { stdout: info } = await run(tool('pdfinfo'), ['Note.pdf'], dir);
 	assert.match(info, /Page size:\s+595\.\d+ x 841\.\d+ pts \(A4\)/);
+});
+
+// The title-page directives as LaTeX's own title: jmarkdown's `LaTeX
+// maketitle` (efd8a39, default off), which the export worker turns on for
+// every LaTeX build, the style's or not; a header's false wins.
+const TITLE_BLOCK = [
+	'@title[Comments on “a Paper”]',
+	'@subtitle[A second look]',
+	'@author[A. Reader]',
+	'@institution[University of Somewhere]',
+	'@author[B. Writer]',
+	'@date[19 October 2026]',
+	'',
+	'# Introduction',
+	'',
+	'Text.',
+	'',
+].join('\n');
+const MONTH = /\b(January|February|March|April|May|June|July|August|September|October|November|December)\b/;
+
+/** Compiles `dir`/Note.tex with LuaLaTeX: the log's errors and the PDF's text. */
+async function compiled(dir) {
+	await run(tool('latexmk'), ['-lualatex', '-interaction=nonstopmode', '-quiet', 'Note.tex'], dir);
+	const log = fs.existsSync(path.join(dir, 'Note.log')) ? fs.readFileSync(path.join(dir, 'Note.log'), 'utf8') : '';
+	const { stdout: text } = await run(tool('pdftotext'), ['Note.pdf', '-'], dir);
+	return { errors: log.split('\n').filter((l) => l.startsWith('!')), pdf: fs.existsSync(path.join(dir, 'Note.pdf')), text };
+}
+
+test('the title block as \\title, \\author, \\date and \\maketitle — compiled in the style: authors side by side by \\and, in small capitals', { skip }, async () => {
+	const dir = fs.mkdtempSync(path.join(root, 'maketitle-'));
+	const tex = await exportTex(dir, { locale: 'en-GB', platform: process.platform }, [], TITLE_BLOCK);
+	assert.match(tex, /\\title\{Comments on “a Paper”\\\\\{\\large A second look\}\}\n\\author\{A\. Reader\\\\University of Somewhere \\and B\. Writer\}\n\\date\{19 October 2026\}\n\\maketitle/);
+	// titling's author line opens a tabular, which `\and` closes and opens again
+	// (without it: "Misplaced \crcr"), its first row in small capitals.
+	assert.match(tex, /\\preauthor\{[^\n]*\\begin\{tabular\}\[t\]\{c\}\\large\\scshape\}/);
+	const { errors, pdf, text } = await compiled(dir);
+	assert.deepEqual(errors, []);
+	assert.ok(pdf);
+	for (const s of ['Comments on “a Paper”', 'A second look', 'A. Reader', 'University of Somewhere', 'B. Writer', '19 October 2026']) assert.ok(text.includes(s), s);
+	// Each author set alike — the second too, which `\and` opens — on one
+	// line, the institution smaller under the first.
+	const { stdout: boxes } = await run(tool('pdftotext'), ['-bbox', '-l', '1', 'Note.pdf', '-'], dir);
+	const box = (word) => {
+		const m = new RegExp(`yMin="([\\d.]+)"[^>]*yMax="([\\d.]+)">${word}<`).exec(boxes);
+		return { top: Number(m[1]), height: Number(m[2]) - Number(m[1]) };
+	};
+	const [reader, writer, somewhere] = ['Reader', 'Writer', 'Somewhere'].map(box);
+	assert.ok(Math.abs(writer.height - reader.height) < 0.1 && Math.abs(writer.top - reader.top) < 0.1, `${JSON.stringify(writer)} vs ${JSON.stringify(reader)}`);
+	assert.ok(somewhere.height < reader.height - 1 && somewhere.top > reader.top);
+});
+
+test('a header\'s Title with no Date: \\date{}, so no date is printed', { skip }, async () => {
+	const dir = fs.mkdtempSync(path.join(root, 'maketitle-header-'));
+	const tex = await exportTex(dir, { locale: 'en-GB', platform: process.platform }, ['Title: Header Title', 'Author: H. Author'], '# Introduction\n\nText.\n');
+	assert.match(tex, /\\title\{Header Title\}\n\\author\{H\. Author\}\n\\date\{\}\n\\maketitle/);
+	const { errors, text } = await compiled(dir);
+	assert.deepEqual(errors, []);
+	assert.ok(text.includes('Header Title') && text.includes('H. Author'));
+	assert.doesNotMatch(text, MONTH, 'LaTeX\'s \\today left out');
+});
+
+test('a header\'s `LaTeX maketitle: false` wins: the title lines as before', async () => {
+	const tex = await exportTex(fs.mkdtempSync(path.join(root, 'maketitle-off-')), { locale: 'en-GB', platform: process.platform },
+		['LaTeX maketitle: false'], TITLE_BLOCK);
+	assert.doesNotMatch(tex, /\\maketitle|\\author\{/);
+	assert.match(tex, /\{\\noindent\\LARGE\\bfseries Comments on “a Paper”\\par\}/);
+});
+
+test('with `latexExportStyle: none` the title block is still LaTeX\'s title — compiled as the engine\'s own document (LuaLaTeX, as latex-engine.js picks for the home\'s fontspec)', { skip }, async () => {
+	const dir = fs.mkdtempSync(path.join(root, 'maketitle-plain-'));
+	const tex = await exportTex(dir, null, [], TITLE_BLOCK);
+	assert.match(tex, /^\\documentclass\{article\}/);
+	assert.match(tex, /\\author\{A\. Reader\\\\University of Somewhere \\and B\. Writer\}\n\\date\{19 October 2026\}\n\\maketitle/);
+	assert.doesNotMatch(tex, /titling|EBGaramond/);
+	const { errors, pdf, text } = await compiled(dir);
+	assert.deepEqual(errors, []);
+	assert.ok(pdf);
+	assert.ok(text.includes('B. Writer') && text.includes('19 October 2026'));
+});
+
+test('a book: the master\'s title block is the book\'s title page, a chapter\'s stays a line', async () => {
+	const dir = fs.mkdtempSync(path.join(root, 'maketitle-book-'));
+	const home = path.join(dir, 'home');
+	fs.mkdirSync(path.join(home, '.jmarkdown'), { recursive: true });
+	fs.writeFileSync(path.join(home, '.jmarkdown', 'config.json'), '{}');
+	fs.writeFileSync(path.join(dir, 'Book.md'), '---\nbook: true\n---\n@title[The Book]\n@author[A. Reader]\n\nPreface.\n');
+	fs.writeFileSync(path.join(dir, 'One.md'), '# One\n\n@title[A chapter\'s line]\n\nText.\n');
+	const worker = fork(path.resolve('src/engine/export-worker.mjs'), [createRequire(import.meta.url).resolve('jmarkdown/src/watch-worker.js')], {
+		cwd: dir, stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
+		env: { ...process.env, HOME: home, CLEW_VAULT_ROOT: dir, CLEW_VAULT_RESTRICTED: '0' },
+	});
+	const tex = await new Promise((resolve, reject) => {
+		worker.on('message', (msg) => {
+			if (msg?.type === 'ready') {
+				worker.send({ type: 'build', file: 'Book.md', options: { to: 'latex', output: 'Book.tex', chapters: ['One.md'] },
+					latexStyle: { locale: 'en-GB', platform: process.platform } });
+			} else if (msg?.type === 'done') resolve(fs.readFileSync(path.join(dir, 'Book.tex'), 'utf8'));
+			else if (msg?.type === 'error') reject(new Error(msg.message));
+		});
+		worker.on('error', reject);
+	});
+	assert.match(tex, /\\title\{The Book\}\n\\author\{A\. Reader\}\n\\date\{\}\n\\maketitle/);
+	assert.match(tex, /\{\\noindent\\LARGE\\bfseries A chapter’s line\\par\}/);
 });

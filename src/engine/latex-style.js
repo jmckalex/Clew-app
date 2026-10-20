@@ -203,9 +203,15 @@ function preamble({ babel, platform }) {
 		'  \\titlespacing*{\\subsection}{0pt}{2ex plus .5ex minus .2ex}{0.8ex plus .2ex}%',
 		'}{}',
 		ifLoaded('etoolbox', '\\AtBeginEnvironment{quote}{\\small}\\AtBeginEnvironment{quotation}{\\small}'),
+		// The title: jmarkdown's \maketitle under `LaTeX maketitle` (the
+		// title-page directives, which the export worker turns on) or the
+		// header's. Each author is a column, as LaTeX's own — `\and` closes one
+		// tabular and opens the next, so the authors' line needs them — its
+		// name in small capitals and the institution under it upright.
 		'\\@ifpackageloaded{titling}{%',
 		'  \\pretitle{\\begin{center}\\LARGE}\\posttitle{\\par\\end{center}\\vskip 1.2em}%',
-		'  \\preauthor{\\begin{center}\\large\\scshape}\\postauthor{\\par\\end{center}}%',
+		'  \\preauthor{\\begin{center}\\lineskip .5em\\def\\and{\\end{tabular}\\hskip 1em \\@plus.17fil\\begin{tabular}[t]{c}\\large\\scshape}\\begin{tabular}[t]{c}\\large\\scshape}%',
+		'  \\postauthor{\\end{tabular}\\par\\end{center}}%',
 		'  \\predate{\\begin{center}\\normalsize}\\postdate{\\par\\end{center}\\vskip 1.5em}%',
 		'}{}',
 		ifLoaded('hyperref', '\\hypersetup{hidelinks}'),

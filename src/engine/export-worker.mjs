@@ -100,6 +100,13 @@ process.once('message', async (msg) => {
 	building = msg;
 	try {
 		const options = { ...msg.options, obsidianLinks: { resolveEmbed, resolveLink: () => null }, ...figureFonts };
+		// The title-page directives as LaTeX's own title (jmarkdown's `LaTeX
+		// maketitle`, default off — the owner, 2026-10-20: "jmarkdown should
+		// write @title[…] and @author[…] and @date[…] … as \title{…} and
+		// \author{…} and \date{…} … and then add a \maketitle"; Clew turns it
+		// on): every LaTeX build, a note's or a book's, whatever the style
+		// setting. A header's `LaTeX maketitle: false` is merged later and wins.
+		if (options.to === 'latex') configManager.set('LaTeX maketitle', true);
 		// Clew's LaTeX style (latex-style.js): configuration added to what the
 		// user's config files gave the engine at import — decided before the
 		// build, and again when the engine merges the document's header
