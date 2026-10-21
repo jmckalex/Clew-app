@@ -174,6 +174,54 @@ out('SIL Open Font License. Reserved font names may not be reused, and the fonts
 out('may not be sold on their own. Bundling them in an application is expressly');
 out('permitted.');
 out();
+// makeindex's distribution notice, byte for byte as the release archive's
+// licenses/COPYING.makeindex carries it from TeX Live's source (its tabs as
+// \t, its trailing spaces kept) — what THIRD-PARTY-NOTICES.md holds between
+// the notice's ``` fences.
+const MAKEINDEX_NOTICE = [
+	'',
+	'\t\t\tMakeIndex Distribution Notice',
+	'',
+	'\t\t\t\t11/11/1989',
+	'',
+	'\tCopyright (C) 1989 by Chen & Harrison International Systems, Inc.  ',
+	'\tCopyright (C) 1988 by Olivetti Research Center',
+	'\tCopyright (C) 1987 by Regents of the University of California',
+	'',
+	'\tAuthor:\t',
+	'\t  \tPehong Chen',
+	'\t\tChen & Harrison International Systems, Inc.',
+	'\t\tPalo Alto, California',
+	'\t  \tUSA',
+	'',
+	'Permission is hereby granted to make and distribute original copies of',
+	'this program provided that the copyright notice and this permission',
+	'notice are preserved and provided that the recipient is not asked to',
+	'waive or limit his right to redistribute copies as allowed by this',
+	'permission notice and provided that anyone who receives an executable',
+	'form of this program is granted access to a machine-readable form of',
+	'the source code for this program at a cost not greater than reasonable',
+	'reproduction, shipping, and handling costs.  Executable forms of this',
+	'program distributed without the source code must be accompanied by a',
+	'conspicuous copy of this permission notice and a statement that tells',
+	'the recipient how to obtain the source code.',
+	'                                                                       ',
+	'Permission is granted to distribute modified versions of all or part',
+	'of this program under the conditions above with the additional',
+	'requirement that the entire modified work must be covered by a',
+	'permission notice identical to this permission notice.  Anything',
+	'distributed with and usable only in conjunction with something derived',
+	'from this program, whose useful purpose is to extend or adapt or add',
+	'capabilities to this program, is to be considered a modified version',
+	'of this program under the requirement above.  Ports of this program to',
+	'other systems not supported in the distribution are also considered',
+	'modified versions.  All modified versions should be reported back to',
+	'the author.',
+	'',
+	'This program is distributed with no warranty of any sort.  No',
+	'contributor accepts responsibility for the consequences of using this',
+	'program or for whether it serves any particular purpose.',
+].join('\n');
 // The figure engines: not an npm dependency, so no package manifest to read —
 // the staged tree (Resources/mptikz) is mp-tikz-wasm's release, and its own
 // NOTICE.md is the source of these rows. The pin names the release, and since
@@ -196,8 +244,12 @@ out('| MetaPost (`mplib.wasm`) | public domain; with `avl.c`, LGPL-3.0-or-later 
 out('| pdfTeX and kpathsea (`tex.wasm`) | GPL-2.0-or-later / LGPL-2.1-or-later | TeX Live 2025 (https://tug.org/texlive/) |');
 out('| LuaTeX (`luatex.wasm`) | GPL-2.0-or-later (with Lua 5.3, MIT, and others) | TeX Live 2025 |');
 out('| dvisvgm (`dvisvgm.wasm`) | GPL-3.0-or-later (with FreeType, potrace and others) | https://github.com/mgieseki/dvisvgm |');
+out('| BibTeX (`bibtex.wasm`) | BibTeX\'s own terms (as Knuth\'s TeX) / LGPL-2.1-or-later (kpathsea) | BibTeX 0.99d, TeX Live 2025, unmodified |');
+out('| makeindex (`makeindex.wasm`) | **MakeIndex Distribution Notice** (below) / LGPL-2.1-or-later (kpathsea) | makeindex 2.17, TeX Live 2025 (`texk/makeindexk`), unmodified |');
 out(`| Ghostscript (\`ghostscript/gs.mjs\`, \`gs.wasm\`), when present | **GNU AGPL v3** (\`ghostscript/COPYING\`, \`ghostscript/LICENSE\`) | ${gsSource ? `the corresponding source, ${gsSource.url} (SHA-256 ${gsSource.sha256}), and ` : ''}Ghostscript 10.08.0 (https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/tag/gs10080) and the port's build, as \`ghostscript/SOURCE.md\` pins them |`);
 out('| TeX macro packages and fonts (`bundles/`) | LPPL 1.3c and package-specific free licences; Knuth\'s, AMS and GUST font licences; dvips\'s headers GPL | TeX Live 2025 |');
+out('| EB Garamond and Garamond-Math (`bundles/latex-doc`) | SIL Open Font License 1.1 | The EB Garamond Project Authors (Georg Duffner, Octavio Pardo); Garamond-Math, Yuansheng Zhao — TeX Live\'s `ebgaramond` and `garamond-math`, unmodified |');
+out('| The `latex-doc` bundle\'s packages, BibTeX and makeindex styles, and hyphenation patterns (`bundles/latex-doc`) | LPPL 1.3c, 1.3 or 1.2; MIT (enumitem, titlesec, hyph-utf8); each pattern file\'s own free licence, stated in its header | TeX Live 2025, unmodified |');
 out();
 out('**Where the source is offered.** The corresponding source of every engine —');
 out('the upstream sources, the patches and a reproducible build — is in the');
@@ -206,6 +258,20 @@ out('(`src/shared/mptikz-manifest.json`: the archive and its SHA-256), and');
 out(`Ghostscript's${gsSource ? ` in the release's own source archive, \`${gsSource.archive}\`,` : ''} as`);
 out('`ghostscript/SOURCE.md` names it, beside the module in every copy of Clew');
 out('that ships it. mp-tikz-wasm\'s own `NOTICE.md` has the full table.');
+out();
+// makeindex's notice asks that an executable shipped without its source come
+// with a conspicuous copy of the notice and a statement of where the source
+// is: the staged tree carries makeindex.wasm (mp-tikz-wasm 0.5.0 and later)
+// but not the release's licenses/, so both are here.
+out('**makeindex** (`makeindex.wasm`) is distributed without its source. Its');
+out('source is makeindex 2.17 in TeX Live 2025\'s source tree, `texk/makeindexk`');
+out('(https://tug.org/texlive/), and in the mp-tikz-wasm repository above');
+out('(`vendor/texlive-source/texk/makeindexk` after `scripts/extract-vendor.sh`).');
+out('Its notice, as in TeX Live\'s source:');
+out();
+out('```');
+for (const line of MAKEINDEX_NOTICE.split('\n')) out(line);
+out('```');
 out();
 if (noText.length) {
 	out('### Components shipping no licence file');

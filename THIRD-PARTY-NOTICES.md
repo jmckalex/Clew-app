@@ -74,16 +74,71 @@ part keeps its own licence:
 | pdfTeX and kpathsea (`tex.wasm`) | GPL-2.0-or-later / LGPL-2.1-or-later | TeX Live 2025 (https://tug.org/texlive/) |
 | LuaTeX (`luatex.wasm`) | GPL-2.0-or-later (with Lua 5.3, MIT, and others) | TeX Live 2025 |
 | dvisvgm (`dvisvgm.wasm`) | GPL-3.0-or-later (with FreeType, potrace and others) | https://github.com/mgieseki/dvisvgm |
-| Ghostscript (`ghostscript/gs.mjs`, `gs.wasm`), when present | **GNU AGPL v3** (`ghostscript/COPYING`, `ghostscript/LICENSE`) | the corresponding source, https://github.com/jmckalex/mp-tikz-wasm/releases/download/v0.4.0/mp-tikz-wasm-ghostscript-0.4.0-source.tar.gz (SHA-256 2096e4fc00b79ec80d11a3984009c606907cadb92456f93ed62e56d0d494f84a), and Ghostscript 10.08.0 (https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/tag/gs10080) and the port's build, as `ghostscript/SOURCE.md` pins them |
+| BibTeX (`bibtex.wasm`) | BibTeX's own terms (as Knuth's TeX) / LGPL-2.1-or-later (kpathsea) | BibTeX 0.99d, TeX Live 2025, unmodified |
+| makeindex (`makeindex.wasm`) | **MakeIndex Distribution Notice** (below) / LGPL-2.1-or-later (kpathsea) | makeindex 2.17, TeX Live 2025 (`texk/makeindexk`), unmodified |
+| Ghostscript (`ghostscript/gs.mjs`, `gs.wasm`), when present | **GNU AGPL v3** (`ghostscript/COPYING`, `ghostscript/LICENSE`) | the corresponding source, https://github.com/jmckalex/mp-tikz-wasm/releases/download/v0.5.0/mp-tikz-wasm-ghostscript-0.5.0-source.tar.gz (SHA-256 2096e4fc00b79ec80d11a3984009c606907cadb92456f93ed62e56d0d494f84a), and Ghostscript 10.08.0 (https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/tag/gs10080) and the port's build, as `ghostscript/SOURCE.md` pins them |
 | TeX macro packages and fonts (`bundles/`) | LPPL 1.3c and package-specific free licences; Knuth's, AMS and GUST font licences; dvips's headers GPL | TeX Live 2025 |
+| EB Garamond and Garamond-Math (`bundles/latex-doc`) | SIL Open Font License 1.1 | The EB Garamond Project Authors (Georg Duffner, Octavio Pardo); Garamond-Math, Yuansheng Zhao — TeX Live's `ebgaramond` and `garamond-math`, unmodified |
+| The `latex-doc` bundle's packages, BibTeX and makeindex styles, and hyphenation patterns (`bundles/latex-doc`) | LPPL 1.3c, 1.3 or 1.2; MIT (enumitem, titlesec, hyph-utf8); each pattern file's own free licence, stated in its header | TeX Live 2025, unmodified |
 
 **Where the source is offered.** The corresponding source of every engine —
 the upstream sources, the patches and a reproducible build — is in the
 mp-tikz-wasm repository and attached to the GitHub release Clew pins
 (`src/shared/mptikz-manifest.json`: the archive and its SHA-256), and
-Ghostscript's in the release's own source archive, `mp-tikz-wasm-ghostscript-0.4.0-source.tar.gz`, as
+Ghostscript's in the release's own source archive, `mp-tikz-wasm-ghostscript-0.5.0-source.tar.gz`, as
 `ghostscript/SOURCE.md` names it, beside the module in every copy of Clew
 that ships it. mp-tikz-wasm's own `NOTICE.md` has the full table.
+
+**makeindex** (`makeindex.wasm`) is distributed without its source. Its
+source is makeindex 2.17 in TeX Live 2025's source tree, `texk/makeindexk`
+(https://tug.org/texlive/), and in the mp-tikz-wasm repository above
+(`vendor/texlive-source/texk/makeindexk` after `scripts/extract-vendor.sh`).
+Its notice, as in TeX Live's source:
+
+```
+
+			MakeIndex Distribution Notice
+
+				11/11/1989
+
+	Copyright (C) 1989 by Chen & Harrison International Systems, Inc.  
+	Copyright (C) 1988 by Olivetti Research Center
+	Copyright (C) 1987 by Regents of the University of California
+
+	Author:	
+	  	Pehong Chen
+		Chen & Harrison International Systems, Inc.
+		Palo Alto, California
+	  	USA
+
+Permission is hereby granted to make and distribute original copies of
+this program provided that the copyright notice and this permission
+notice are preserved and provided that the recipient is not asked to
+waive or limit his right to redistribute copies as allowed by this
+permission notice and provided that anyone who receives an executable
+form of this program is granted access to a machine-readable form of
+the source code for this program at a cost not greater than reasonable
+reproduction, shipping, and handling costs.  Executable forms of this
+program distributed without the source code must be accompanied by a
+conspicuous copy of this permission notice and a statement that tells
+the recipient how to obtain the source code.
+                                                                       
+Permission is granted to distribute modified versions of all or part
+of this program under the conditions above with the additional
+requirement that the entire modified work must be covered by a
+permission notice identical to this permission notice.  Anything
+distributed with and usable only in conjunction with something derived
+from this program, whose useful purpose is to extend or adapt or add
+capabilities to this program, is to be considered a modified version
+of this program under the requirement above.  Ports of this program to
+other systems not supported in the distribution are also considered
+modified versions.  All modified versions should be reported back to
+the author.
+
+This program is distributed with no warranty of any sort.  No
+contributor accepts responsibility for the consequences of using this
+program or for whether it serves any particular purpose.
+```
 
 ### Components shipping no licence file
 
