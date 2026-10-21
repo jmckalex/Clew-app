@@ -15,7 +15,7 @@ import { requirePackage } from './preamble.js';
 import { latexGraphic } from './latex-graphics.js';
 import { PYGMENTS_LEXERS } from './pygments-lexers.js';
 import { addWarning, getWarnings } from './warnings.js';
-import { escapeLatexText as escapeLatex, escapeTexText } from './latex-escape.js';
+import { escapeLatexText as escapeLatex, escapeLatexUrl, escapeTexText } from './latex-escape.js';
 import { commandForDepth } from './sectioning.js';
 import { marked } from './utils.js';
 import { highlightsCode, codeBlockLatex, inlineCodeLatex } from './latex-highlight.js';
@@ -74,6 +74,9 @@ function isBareAddress(token) {
 	return typeof token.text === 'string' && (token.raw === token.text || token.raw === `<${token.text}>`);
 }
 
+// How a bare address prints the characters prose treats as syntax.
+const ADDRESS_TEXT = { '%': '\\%', '_': '\\_', '~': '\\textasciitilde{}' };
+
 // A <style> element is the page's CSS, with nothing to print.
 const STYLE_ELEMENT = /<style\b[^>]*>[\s\S]*?<\/style>[ \t]*\n?/gi;
 
@@ -101,6 +104,15 @@ const blockText = {
 	},
 };
 marked.use({ extensions: [blockText] });
+
+// The environment a code block holding `\end{minted}` is set in (code(),
+// below): `jmdminted` and the language in letters only — an environment's name
+// fancyvrb can look for — lengthened until the code holds no end for it.
+function mintedEnvironment(lang, code) {
+	let name = 'jmdminted' + lang.replace(/[^A-Za-z]/g, (c) => 'Q' + c.charCodeAt(0).toString(16).replace(/[0-9]/g, (d) => 'ghijklmnop'[d]));
+	while (code.includes(`\\end{${name}}`)) name += 'x';
+	return name;
+}
 
 const latexRenderer = {
 
@@ -173,23 +185,32 @@ const latexRenderer = {
 		if (highlightsCode()) return codeBlockLatex(token.text, token.lang);
 		requirePackage('minted');
 		const lang = mintedLanguage(token.lang);
+		// A line holding `\end{minted}`, anywhere on it, ends minted's environment
+		// there (fancyvrb), so code that shows one — a LaTeX example — stopped
+		// the build. Such a block gets an environment of its own: minted's
+		// \newminted for its language, under a name the code holds no end for,
+		// defined where it is used, once, so a fragment carries it too.
+		if (token.text.includes('\\end{minted}')) {
+			const env = mintedEnvironment(lang, token.text);
+			return `\\ifcsname ${env}\\endcsname\\else\\newminted[${env}]{${lang}}{}\\fi\n\\begin{${env}}\n${token.text}\n\\end{${env}}\n\n`;
+		}
 		return `\\begin{minted}{${lang}}\n${token.text}\n\\end{minted}\n\n`;
 	},
 
 	link(token) {
 		requirePackage('hyperref');
 		const text = this.parser.parseInline(token.tokens);
-		const href = escapeLatex(token.href);
-		// A bare web address (`https://…`, `www.…`, `<…>`) prints itself, so
-		// its `%` — a percent-encoding, not a comment — reached the .tex raw
-		// and ended the line, link and all. Escaped in both arguments: hyperref
-		// writes `\%` into the link as `%`, at the top level and inside another
-		// command's argument (a footnote, a heading) alike.
-		if (isBareAddress(token)) return `\\href{${href.replaceAll('%', '\\%')}}{${text.replaceAll('%', '\\%')}}`;
-		// In a macro's argument (a title-block line under `LaTeX maketitle`,
-		// additional-directives.js) a `%` in the URL is read as a comment before
-		// \href can read it as a character: escaped there too.
-		if (token.jmdArgument) return `\\href{${href.replaceAll('%', '\\%')}}{${text}}`;
+		// A `%` in the URL — a percent-encoding — is written `\%`, as `&` and `#`
+		// always were: \href reads it as itself at the top level, but inside
+		// another command's argument (a footnote, emphasis, a heading, a title)
+		// it is a comment before \href can read it, and the line was lost.
+		// hyperref writes `\%` into the link as `%`. `_` and `~` it reads as
+		// themselves everywhere.
+		const href = escapeLatexUrl(token.href).replaceAll('%', '\\%');
+		// A bare web address (`https://…`, `www.…`, `<…>`) also PRINTS itself,
+		// where `%` is a comment, `_` a subscript (outside maths, an error) and
+		// `~` a space.
+		if (isBareAddress(token)) return `\\href{${href}}{${text.replace(/[%_~]/g, (c) => ADDRESS_TEXT[c])}}`;
 		return `\\href{${href}}{${text}}`;
 	},
 

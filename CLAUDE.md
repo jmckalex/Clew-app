@@ -1417,7 +1417,11 @@ except where the selection touches a construct. The durable design is
   highlight/FontAwesome via `/__clew_assets__/`.
 - Renders are file-mode full documents (`options.output` → `.clew/cache/`) —
   the ONLY mode that stamps `data-source-line` (1-based; engine commit
-  `aaa0dab`). Auto-save makes disk the source of truth.
+  `aaa0dab`), which scroll sync and ⌘-click inverse search read; a block
+  after a multi-paragraph inline note `[fn: …]` is stamped at its own line
+  since jmarkdown 74cf2b1 (it was early by the note's lines —
+  `smoke/reading-note-lines-scenario.js`). Auto-save makes disk the source
+  of truth.
 - Preview URLs carry the window's session id
   (`clew-preview://vault/<sid>/<path>`) because protocol handlers cannot
   see which window asked; the renderer builds them via

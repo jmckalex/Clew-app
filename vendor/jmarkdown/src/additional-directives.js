@@ -19,7 +19,7 @@
 */
 import { requirePackage, addPreamble } from './preamble.js';
 import { registerBlockEnvironment } from './begin-end-core.js';
-import { escapeLatexText, escapeTexText } from './latex-escape.js';
+import { escapeArgumentPercent, escapeLatexText, escapeTexText } from './latex-escape.js';
 import { configManager } from './config-manager.js';
 import { marked } from './utils.js';
 
@@ -109,9 +109,11 @@ const titlePageLatex = Object.fromEntries(Object.keys(TITLE_PAGE_LINES).map((kin
 
 	The run is found before anything renders (a processAllTokens hook); each line
 	then renders its content as always, and the last one writes the block. Every
-	part is a macro's argument, so the lines' inline code and links are marked as
-	a heading's are (token.jmdArgument, latex-renderer.js): \mintinline's
-	delimiters and a `%` in a URL break there. A paragraph break, which \title
+	part is a macro's argument, so the lines' inline code is marked as a
+	heading's is (token.jmdArgument, latex-renderer.js): \mintinline's
+	delimiters break there. (A link's URL is safe in any argument: its `%` is
+	always written `\%`.) A `%` the parts hold as text is written `\%` too
+	(escapeArgumentPercent, latex-escape.js). A paragraph break, which \title
 	cannot hold (an @begin(title) of two paragraphs), becomes \\.
 */
 function latexMaketitle() {
@@ -141,7 +143,7 @@ function titleLinesIn(token) {
 
 function markArgumentTokens(tokens) {
 	for (const token of tokens ?? []) {
-		if (token.type === 'codespan' || token.type === 'link') token.jmdArgument = true;
+		if (token.type === 'codespan') token.jmdArgument = true;
 		markArgumentTokens(token.tokens);
 	}
 }
@@ -176,10 +178,12 @@ marked.use({ hooks: { processAllTokens: markTitleRun } });
 
 function titleRunPart(kind, content, token) {
 	const run = token.jmdTitleRun;
+	// Each part is an argument (\title, \author, \date, pdftitle), where a
+	// raw `%` is a comment that swallows the closing brace: escaped.
 	run.parts.push({
 		kind,
-		content: content.trim().replace(/\s*\n\s*\n\s*/g, '\\\\\n'),
-		pdf: kind === 'title' ? pdfTitleText(token.tokens).replace(/\s+/g, ' ').trim() : ''
+		content: escapeArgumentPercent(content.trim().replace(/\s*\n\s*\n\s*/g, '\\\\\n')),
+		pdf: kind === 'title' ? escapeArgumentPercent(pdfTitleText(token.tokens).replace(/\s+/g, ' ').trim()) : ''
 	});
 	return token === run.last ? titleRunLatex(run.parts) : '';
 }
