@@ -696,6 +696,7 @@ commit `main` then fast-forwarded to.
 | dev.16 | `48aea4d` | 2026-10-21 | from `repin-0.5.0` (mp-tikz-wasm 0.5.0) |
 | dev.17 | `146107c` | 2026-10-22 | from `vendor-2928d5d` (jmarkdown 2928d5d) |
 | dev.18 | `cfdf3ef` | 2026-10-22 | from `vendor-d63a871` (jmarkdown d63a871) |
+| dev.19 | `461cc46` | 2026-10-22 | the first checked by `smoke/packaged-checks.sh` |
 
 ## 0.12.0 — released
 
