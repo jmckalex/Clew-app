@@ -22,7 +22,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { texMissingFiles, missingFileWarnings, BUILT_IN_TEX } from '../src/shared/latex-engine.js';
+import { texMissingFiles, texNotFoundLines, missingFileWarnings, BUILT_IN_TEX } from '../src/shared/latex-engine.js';
 import { latexmkCommand } from '../src/main/latex-engine.js';
 
 const repo = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -77,7 +77,8 @@ test('mp-tikz-wasm\'s diagnostics, where there is no log', () => {
 
 // A path with letters of two bytes, broken as each TeX breaks a transcript
 // line (measured, TeX Live 2025): pdfTeX after 79 BYTES, through a letter;
-// LuaTeX before a letter that would not fit in 79.
+// LuaTeX moving a letter of two or more bytes that would end on or past byte
+// 79 to the next line (mp-tikz-wasm's measurement).
 const ACCENTED = (pad) => `/Users/me/${'x'.repeat(pad)}Größe Bilder/Übersicht der Ergebnisse/äöü-abbildung-nummer-eins-${'é'.repeat(20)}.png`;
 const enc = new TextEncoder();
 function broken(text, tex) {
@@ -85,7 +86,14 @@ function broken(text, tex) {
 	const out = [];
 	for (let at = 0; at < bytes.length;) {
 		let end = Math.min(at + 79, bytes.length);
-		if (tex === 'luatex') while (end < bytes.length && (bytes[end] & 0xc0) === 0x80) end -= 1;
+		if (tex === 'luatex') {
+			end = at;
+			for (;;) {
+				const k = bytes[end] >= 0xf0 ? 4 : bytes[end] >= 0xe0 ? 3 : bytes[end] >= 0xc0 ? 2 : 1;
+				if (end >= bytes.length || end - at + k > 79 || (k >= 2 && end - at + k >= 79)) break;
+				end += k;
+			}
+		}
 		out.push(bytes.subarray(at, end), Uint8Array.of(0x0a));
 		at = end;
 	}
@@ -167,6 +175,7 @@ for (const engine of ['pdflatex', 'lualatex']) {
 		const { pdf, log } = await compile(`missing-${engine}`, engine, DOCUMENT(IMAGES));
 		assert.ok(pdf, 'nonstopmode goes on and writes the PDF — which compilePdf accepts');
 		assert.deepEqual(texMissingFiles(log), EXPECTED, 'the log as bytes, as compilePdf reads it');
+		for (const file of IMAGES.slice(0, -1)) assert.equal(texNotFoundLines(log).filter((f) => f.file === file).length, 2, `${file}: the warning's line and the driver error's, each read`);
 		if (engine === 'pdflatex') {
 			// Cut inside a letter on the warning's line AND the error's: from bytes
 			// it is read whole; from text first, it is lost.
@@ -191,6 +200,7 @@ test('mp-tikz-wasm\'s LuaLaTeX (the iPad): its log names each, accented paths wh
 		const r = await mp.latex(DOCUMENT(IMAGES), { engine: 'lualatex', output: 'pdf', date: BUILT_IN_TEX.date });
 		assert.ok(r.pdf?.length, `a PDF made without them (status ${r.status})`);
 		assert.deepEqual(texMissingFiles(r.log), EXPECTED, 'result.log, a string, whole under LuaLaTeX');
+		for (const file of IMAGES.slice(0, -1)) assert.equal(texNotFoundLines(r.log).filter((f) => f.file === file).length, 2, `${file}: the warning's line and the driver error's, each read`);
 		assert.ok(texMissingFiles(r.diagnostics).some((f) => f.file === 'relative-missing' && f.line === EXPECTED.at(-1).line));
 	} finally {
 		mp.dispose();

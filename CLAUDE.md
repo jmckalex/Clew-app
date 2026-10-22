@@ -1859,8 +1859,10 @@ except where the selection touches a construct. The durable design is
   so a long path is read whole, with the .tex line from `on input line N` or
   the error's `l.N`. TeX breaks at 79 BYTES of UTF-8, not characters
   (measured): pdfTeX after exactly 79, cutting a letter's bytes in two;
-  LuaTeX before a letter that would not fit (77–79), and its C-level lines
-  after 80. So the lines are joined as BYTES and then decoded — compilePdf
+  LuaTeX moving a letter of k ≥ 2 bytes that would END on or past byte 79
+  to the next line (lines of 79−k to 78 — mp-tikz-wasm's measurement, which
+  caught `> 79` for `>= 79` here), and its C-level lines after 80. So the
+  lines are joined as BYTES and then decoded — compilePdf
   reads the log as bytes; read as text, pdfTeX's halves are U+FFFD and an
   accented path cut on both lines that name it was lost (Clew-boss's catch,
   2026-10-22) — never into an empty, `l.N` or `<…>` line (mp-tikz-wasm

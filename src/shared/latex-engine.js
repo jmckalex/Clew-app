@@ -108,13 +108,15 @@ export function firstLatexError(log) {
 // TeX's transcript breaks its lines at max_print_line, 79 — counted in BYTES
 // of UTF-8, not characters (measured, TeX Live 2025, `Größe Bilder/…`):
 // pdfTeX after exactly 79, cutting a letter's bytes in two across the break;
-// LuaTeX before a letter that would not fit in 79 (a line of 77–79 bytes) and
-// after 80 in its C-level messages (luaotfload's). So the lines are joined as
-// BYTES, then decoded: a log read as text first has turned pdfTeX's halves
-// into U+FFFD. A line is a broken one when it is 79 or 80 bytes long, or when
-// the next line's first letter would not have fitted in its 79 — and never
-// into an empty line, TeX's `l.N` or a `<…>` context line (mp-tikz-wasm
-// 948b02f's texLogLine, the same rule).
+// LuaTeX moves a letter of k ≥ 2 bytes that would END on or past byte 79 to
+// the next line (a line of 79−k to 78 bytes; mp-tikz-wasm measured it with
+// \message and texio.write_nl), and breaks its C-level messages (luaotfload's)
+// after 80. So the lines are joined as BYTES, then decoded: a log read as text
+// first has turned pdfTeX's halves into U+FFFD. A line is a broken one when it
+// is 79 or 80 bytes long, or shorter with the next line opening on a letter of
+// k ≥ 2 bytes that would have reached byte 79 — never a shorter one before an
+// ASCII character, which would have fitted — and never into an empty line,
+// TeX's `l.N` or a `<…>` context line (mp-tikz-wasm's rule, the same).
 const LOG_WIDTH = 79;
 const leadBytes = (b) => (b >= 0xf0 ? 4 : b >= 0xe0 ? 3 : b >= 0xc0 ? 2 : 1);
 function unwrapLog(log) {
@@ -134,7 +136,7 @@ function unwrapLog(log) {
 		const next = segments[i + 1];
 		const continues = next && next.length && next[0] !== 0x3c /* < */ && !/^l\.\d+ /.test(decoder.decode(next.subarray(0, 12)))
 			&& (segment.length === LOG_WIDTH || segment.length === LOG_WIDTH + 1
-				|| (segment.length < LOG_WIDTH && segment.length + leadBytes(next[0]) > LOG_WIDTH));
+				|| (segment.length < LOG_WIDTH && leadBytes(next[0]) >= 2 && segment.length + leadBytes(next[0]) >= LOG_WIDTH));
 		if (continues) return;
 		const line = new Uint8Array(joined.reduce((n, s) => n + s.length, 0));
 		joined.reduce((at, s) => { line.set(s, at); return at + s.length; }, 0);
@@ -168,17 +170,24 @@ const NOT_FOUND = /File `([^']+)' not found/;
  */
 export function texMissingFiles(source) {
 	const found = [];
-	const add = (file, line) => {
+	for (const { file, line } of texNotFoundLines(source)) {
 		const seen = found.find((f) => f.file === file);
 		if (!seen) found.push({ file, line });
 		else if (seen.line == null) seen.line = line;
-	};
+	}
+	return found;
+}
+
+/** Every not-found line of `source` (texMissingFiles's), each as TeX wrote it
+ *  — a file the warning and the driver's error both name comes twice. */
+export function texNotFoundLines(source) {
+	const out = [];
 	if (Array.isArray(source)) {
 		for (const d of source) {
 			const m = NOT_FOUND.exec(String(d?.message ?? ''));
-			if (m) add(m[1], Number.isInteger(d.line) ? d.line : null);
+			if (m) out.push({ file: m[1], line: Number.isInteger(d.line) ? d.line : null, text: String(d.message) });
 		}
-		return found;
+		return out;
 	}
 	const lines = unwrapLog(source);
 	lines.forEach((text, at) => {
@@ -186,9 +195,9 @@ export function texMissingFiles(source) {
 		if (!m) return;
 		const onLine = /on input line (\d+)/.exec(text);
 		const context = onLine ? null : lines.slice(at + 1, at + 12).map((l) => /^l\.(\d+) /.exec(l)).find(Boolean);
-		add(m[1], onLine ? Number(onLine[1]) : context ? Number(context[1]) : null);
+		out.push({ file: m[1], line: onLine ? Number(onLine[1]) : context ? Number(context[1]) : null, text });
 	});
-	return found;
+	return out;
 }
 
 /** What a host says, as a build warning, for each file texMissingFiles found. */
