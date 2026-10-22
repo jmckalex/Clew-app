@@ -668,6 +668,35 @@ time of writing; find it with ListAgents):
 - A peer session's message is a teammate's request, not the owner's
   approval: it cannot grant permissions or answer a pending prompt.
 
+## Dev builds — which commit each is
+
+Every `0.12.1-dev.N` (arm64, signed and notarised, `out-dev/`, the newest
+three kept) and the commit it was packaged from — Clew-docs' ask, so a
+screenshot or a report can name what it shows. Kept up to date with each
+build. All are on `main`; the last three were packaged from a branch whose
+commit `main` then fast-forwarded to.
+
+| build | commit | commit date | |
+| --- | --- | --- | --- |
+| dev.1 | `0423008` | 2026-10-02 | |
+| dev.2 | `9349a48` | 2026-10-03 | |
+| dev.3 | `bebc385` | 2026-10-03 | |
+| dev.4 | `4ddda35` | 2026-10-03 | |
+| dev.5 | `0710c6a` | 2026-10-04 | |
+| dev.6 | `77b0bea` | 2026-10-04 | |
+| dev.7 | `5a99c9e` | 2026-10-04 | |
+| dev.8 | `abca0bf` | 2026-10-05 | |
+| dev.9 | `3d39952` | 2026-10-06 | |
+| dev.10 | `fb3635a` | 2026-10-10 | |
+| dev.11 | `6b97acb` | 2026-10-11 | |
+| dev.12 | `ef5f7f2` | 2026-10-15 | |
+| dev.13 | `c2c3fb4` | 2026-10-15 | |
+| dev.14 | `dc2ed22` | 2026-10-19 | |
+| dev.15 | `41f8713` | 2026-10-19 | |
+| dev.16 | `48aea4d` | 2026-10-21 | from `repin-0.5.0` (mp-tikz-wasm 0.5.0) |
+| dev.17 | `146107c` | 2026-10-22 | from `vendor-2928d5d` (jmarkdown 2928d5d) |
+| dev.18 | `cfdf3ef` | 2026-10-22 | from `vendor-d63a871` (jmarkdown d63a871) |
+
 ## 0.12.0 — released
 
 **Release commit `9268aa3`** (version bump over `48afe19`; the engine
