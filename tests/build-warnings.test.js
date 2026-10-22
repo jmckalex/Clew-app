@@ -11,6 +11,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { groupWarnings, warningSummary } from '../src/shared/build-warnings.js';
+import { missingFileWarnings } from '../src/shared/latex-engine.js';
 
 const lint = [
 	'latex-export [dollars]: "$5 and $10" is read as maths — two dollar amounts? Write \\$ for a dollar sign',
@@ -43,3 +44,12 @@ test('the engine\'s lint lines parse as written', async () => {
 	const codes = [...src.matchAll(/warn\('([a-z-]+)'/g)].map((m) => m[1]);
 	assert.deepEqual([...new Set(codes)].sort(), ['backslash', 'braces', 'display-math', 'dollars', 'mathjax-only', 'package']);
 });
+
+test('a file TeX could not find is named in the summary, not counted as other', () => {
+	const missing = missingFileWarnings([{ file: '/nonexistent/picture.png', line: 6 }]);
+	assert.equal(warningSummary(missing), 'TeX could not find picture.png');
+	const two = missingFileWarnings([{ file: '/a/x.png', line: 1 }, { file: 'y', line: 2 }]);
+	assert.equal(warningSummary([...two, 'latex-export [dollars]: a lone $', 'crossref: "x" is not defined']), 'TeX could not find 2 files · LaTeX export: dollars · 1 other');
+	assert.equal(groupWarnings(missing).items.length, 1, 'the ⚠ list still lists it');
+});
+
