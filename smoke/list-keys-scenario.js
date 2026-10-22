@@ -3,7 +3,7 @@
 // item takes several paragraphs; ⌘Enter starts the next item; the task box
 // moved to ⌘L. Writes its own ListKeys.md into any vault (CLEW_SMOKE_VAULT=
 // <an empty folder>, CLEW_SMOKE_LOG=1). Logs (smoke-list-keys:):
-//   paragraph lines=["  something so strong?","","  Second paragraph."] drawn=item
+//   paragraph lines=["  them ending here?","","  Second paragraph."] drawn=item
 //              Enter, Enter, typing at the end of a hard-wrapped item: a
 //              second paragraph in it, drawn as the item's text (le-li-cont)
 //   next-item lines=["  Second paragraph.","* Next item"] drawn=item
@@ -32,9 +32,9 @@ await ipc.invoke('clew:note-write', { path: 'ListKeys.md', content: [
 	'# Lists',
 	'',
 	'* First item.',
-	'* I wonder if the claim is stronger',
-	'  than it needs to be. Do you really need',
-	'  something so strong?',
+	'* A second item whose text is wrapped',
+	'  by hand over three lines, the last of',
+	'  them ending here?',
 	'',
 	'- [ ] a task',
 	'',
@@ -63,7 +63,7 @@ const endOf = (s) => {
 	view.dispatch({ selection: { anchor: line.to } });
 	view.focus();
 };
-endOf('something so strong?');
+endOf('them ending here?');
 
 const enter = { combo: { key: 'Enter', modifiers: 0, text: '\r' } };
 const cmdEnter = { combo: { key: 'Enter', modifiers: 4 } };

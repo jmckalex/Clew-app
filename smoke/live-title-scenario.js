@@ -7,16 +7,16 @@
 // CLEW_SMOKE_FRAME_MATCH=Title.md). Logs (smoke-title:), sizes as a ratio to
 // the note's text:
 //   title lines=2 size=1.8 weight=700 heading-colour=true plain=true
-//         underline=none starts=["Comments on “Agent-Based Models:","What They…"]
+//         underline=none starts=["Notes on “a Long Topic:","Its Second Line”]"]
 //   author size=1.15 plain=true underline=none   subtitle size=1 …
 //   institution size=1 …   date size=1.15 today=<D Month YYYY, as the engine>
-//   prose-date tp=false     the bare `19 October 2026` line is prose
+//   prose-date tp=false     the bare `1 March 2026` line is prose
 //   inline tp=false directive=true    `@author[…]` mid-sentence stays a directive
 //   sigil tp=true           `@<title>[…]` is the title (the sigils never change a
 //                           known name); colon tp=true (`::title[…]`); single tp=false
 //                           (`:title[…]`, a <title> element to the engine)
 // Then REAL input: a click on the title reveals its source, the line's
-// height unchanged — `revealed="@title[Comments on …" height-stable=true`;
+// height unchanged — `revealed="@title[Notes on “a Long " height-stable=true`;
 // then the tab goes to reading view, where the frame script measures.
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const { workspaceStore, editorPool, ipc } = window.__clew;
@@ -29,15 +29,15 @@ const until = async (test, ms = 10000) => {
 await ipc.invoke('clew:note-write', { path: 'Title.md', content: [
 	'{{TOC}}',
 	'',
-	'@title[Comments on “Agent-Based Models:',
-	'  What They are Good For”]',
-	'@author[J. McKenzie Alexander]',
-	'19 October 2026',
+	'@title[Notes on “a Long Topic:',
+	'  Its Second Line”]',
+	'@author[A. Writer]',
+	'1 March 2026',
 	'',
 	'@title+[A Block Title]',
 	'@subtitle+[A subtitle]',
 	'@author+[An Author]',
-	'@institution+[The LSE]',
+	'@institution+[A University]',
 	'@date+[@today]',
 	'',
 	'Written by @author[Someone Else] in a sentence.',
@@ -86,16 +86,16 @@ const report = (what, line, extra = '') => log(`${what} size=${size(line)} weigh
 
 const titleLines = lines().filter((l) => l.classList.contains('le-tp-title'));
 const t1 = titleLines[0];
-log(`title lines=${titleLines.filter((l) => l.textContent.includes('Agent-Based') || l.textContent.includes('What They')).length}`
+log(`title lines=${titleLines.filter((l) => l.textContent.includes('Long Topic') || l.textContent.includes('Second Line')).length}`
 	+ ` size=${size(t1)} weight=${getComputedStyle(t1).fontWeight} heading-colour=${getComputedStyle(t1).color === heading}`
 	+ ` plain=${titleLines.every(plain)} underline=${underline(t1)}`
 	+ ` starts=${JSON.stringify(titleLines.slice(0, 2).map((l) => l.textContent.slice(0, 32)))}`);
-report('author', lineWith('J. McKenzie Alexander'));
+report('author', lineWith('A. Writer'));
 report('subtitle', lineWith('A subtitle'));
-report('institution', lineWith('The LSE'));
+report('institution', lineWith('A University'));
 const dateLine = lines().find((l) => l.classList.contains('le-tp-date'));
 report('date', dateLine, ` today=${JSON.stringify(dateLine.textContent)} engine-form=${/^\d{1,2} [A-Z][a-z]+ \d{4}$/.test(dateLine.textContent)}`);
-log(`prose-date tp=${lineWith('19 October 2026').classList.contains('le-tp')}`);
+log(`prose-date tp=${lineWith('1 March 2026').classList.contains('le-tp')}`);
 const inline = lineWith('in a sentence');
 log(`inline tp=${inline.classList.contains('le-tp')} directive=${Boolean(inline.querySelector('.le-directive'))}`);
 log(`sigil tp=${lineWith('A sigil title').classList.contains('le-tp')}` + ` colon tp=${lineWith('A colon title').classList.contains('le-tp')}` + ` single tp=${lineWith('A single colon').classList.contains('le-tp')}`);
@@ -105,8 +105,8 @@ const height = t1.getBoundingClientRect().height;
 const r = t1.getBoundingClientRect();
 window.__clewSmokeInput = [{ click: { x: Math.round(r.left + 60), y: Math.round(r.top + r.height / 2) } }, { wait: 4000 }];
 setTimeout(async () => {
-	await until(() => lines().some((l) => l.textContent.startsWith('@title[Comments')), 2000);
-	const shown = lines().find((l) => l.textContent.startsWith('@title[Comments'));
+	await until(() => lines().some((l) => l.textContent.startsWith('@title[Notes')), 2000);
+	const shown = lines().find((l) => l.textContent.startsWith('@title[Notes'));
 	log(`revealed=${JSON.stringify(shown?.textContent.slice(0, 24))} height-stable=${Math.abs(shown?.getBoundingClientRect().height - height) < 0.5}`);
 	workspaceStore.setTabMode(tab.id, 'reading');
 	log('done');

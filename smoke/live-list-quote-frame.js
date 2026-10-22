@@ -19,7 +19,7 @@ const textLeft = (el) => {
 };
 const named = (s) => [...document.querySelectorAll('blockquote')].find((b) => b.textContent.includes(s));
 const top = getComputedStyle(document.body).color;
-for (const [name, s] of [['bullet', 'success conditions'], ['numbered', 'numbered item'], ['nested', 'nested item'], ['deep', 'three deep'], ['tabbed', 'tabbed item'], ['nine', 'item nine'], ['ten', 'item ten'], ['top', 'top-level']]) {
+for (const [name, s] of [['bullet', 'How many of the parts'], ['numbered', 'numbered item'], ['nested', 'nested item'], ['deep', 'three deep'], ['tabbed', 'tabbed item'], ['nine', 'item nine'], ['ten', 'item ten'], ['top', 'top-level']]) {
 	const quote = named(s);
 	const item = quote?.closest('li');
 	const border = quote.getBoundingClientRect().left;

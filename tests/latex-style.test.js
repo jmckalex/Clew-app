@@ -155,16 +155,16 @@ const run = (cmd, args, cwd) => new Promise((resolve) => {
 });
 
 const NOTE = [
-	'@title[Comments on “a Paper”]',
+	'@title[Notes on “a Topic”]',
 	'@author[A. Reader]',
-	'@date[19 October 2026]',
+	'@date[1 March 2026]',
 	'',
 	'# Introduction',
 	'',
-	'* I worry that this demands too much:',
-	'    > "What are the success conditions for $M_1, \\dots, M_n$?"',
+	'* A first point, with a quotation:',
+	'    > "How do $a_1, \\dots, a_k$ combine as $k$ grows?"',
 	'',
-	'    Taken literally, it is too strong. 😆',
+	'    A second paragraph of the point. 🙂',
 	'',
 ].join('\n');
 
@@ -200,11 +200,11 @@ test('through the export worker: the style\'s class, page, fonts after the user\
 	assert.doesNotMatch(styled, /\{inputenc\}/, 'LuaLaTeX: fontspec, no inputenc');
 	assert.ok(styled.indexOf('texgyrepagella') < styled.indexOf('\\setmainfont{EBGaramond}'), 'the style\'s face after the user\'s');
 	assert.ok(styled.indexOf('\\usepackage{titlesec}') < styled.indexOf('\\usepackage{hyperref}'), 'the style\'s packages before hyperref');
-	assert.match(styled, /“What are the success conditions/, 'smart quotes');
+	assert.match(styled, /“How do \$a_1/, 'smart quotes');
 	const plain = await exportTex(fs.mkdtempSync(path.join(root, 'plain-')), null);
 	assert.match(plain, /^\\documentclass\{article\}/);
 	assert.doesNotMatch(plain, /EBGaramond|titlesec|babel/);
-	assert.match(plain, /"What are the success conditions/);
+	assert.match(plain, /"How do \$a_1/);
 });
 
 test('through the export worker, the note\'s HEADER decides: its Lang, its pdflatex, its paperless class options', async () => {
@@ -278,12 +278,12 @@ test('compiled by LuaLaTeX: EB Garamond and Garamond-Math, the user\'s face set 
 // every LaTeX build, the style's or not; a header's false wins. Under it the
 // block's title is the PDF's Title too, where the header names none (b0aa61b).
 const TITLE_BLOCK = [
-	'@title[Comments on “a Paper”]',
+	'@title[Notes on “a Topic”]',
 	'@subtitle[A second look]',
 	'@author[A. Reader]',
 	'@institution[University of Somewhere]',
 	'@author[B. Writer]',
-	'@date[19 October 2026]',
+	'@date[1 March 2026]',
 	'',
 	'# Introduction',
 	'',
@@ -303,17 +303,17 @@ async function compiled(dir) {
 test('the title block as \\title, \\author, \\date and \\maketitle — compiled in the style: authors side by side by \\and, in small capitals', { skip }, async () => {
 	const dir = fs.mkdtempSync(path.join(root, 'maketitle-'));
 	const tex = await exportTex(dir, { locale: 'en-GB', platform: process.platform }, [], TITLE_BLOCK);
-	assert.match(tex, /\\title\{Comments on “a Paper”\\\\\{\\large A second look\}\}\n\\author\{A\. Reader\\\\University of Somewhere \\and B\. Writer\}\n\\date\{19 October 2026\}\n\\maketitle/);
+	assert.match(tex, /\\title\{Notes on “a Topic”\\\\\{\\large A second look\}\}\n\\author\{A\. Reader\\\\University of Somewhere \\and B\. Writer\}\n\\date\{1 March 2026\}\n\\maketitle/);
 	// titling's author line opens a tabular, which `\and` closes and opens again
 	// (without it: "Misplaced \crcr"), its first row in small capitals.
 	assert.match(tex, /\\preauthor\{[^\n]*\\begin\{tabular\}\[t\]\{c\}\\large\\scshape\}/);
 	const { errors, pdf, text } = await compiled(dir);
 	assert.deepEqual(errors, []);
 	assert.ok(pdf);
-	for (const s of ['Comments on “a Paper”', 'A second look', 'A. Reader', 'University of Somewhere', 'B. Writer', '19 October 2026']) assert.ok(text.includes(s), s);
+	for (const s of ['Notes on “a Topic”', 'A second look', 'A. Reader', 'University of Somewhere', 'B. Writer', '1 March 2026']) assert.ok(text.includes(s), s);
 	// The PDF's Title: the block's title as text, without its subtitle.
 	const { stdout: info } = await run(tool('pdfinfo'), ['Note.pdf'], dir);
-	assert.match(info, /^Title:\s+Comments on “a Paper”$/m);
+	assert.match(info, /^Title:\s+Notes on “a Topic”$/m);
 	// Each author set alike — the second too, which `\and` opens — on one
 	// line, the institution smaller under the first.
 	const { stdout: boxes } = await run(tool('pdftotext'), ['-bbox', '-l', '1', 'Note.pdf', '-'], dir);
@@ -340,7 +340,7 @@ test('a header\'s `LaTeX maketitle: false` wins: the title lines as before', asy
 	const tex = await exportTex(fs.mkdtempSync(path.join(root, 'maketitle-off-')), { locale: 'en-GB', platform: process.platform },
 		['LaTeX maketitle: false'], TITLE_BLOCK);
 	assert.doesNotMatch(tex, /\\maketitle|\\author\{/);
-	assert.match(tex, /\{\\noindent\\LARGE\\bfseries Comments on “a Paper”\\par\}/);
+	assert.match(tex, /\{\\noindent\\LARGE\\bfseries Notes on “a Topic”\\par\}/);
 	assert.doesNotMatch(tex, /pdftitle/, 'nor the PDF\'s Title');
 });
 
@@ -348,12 +348,12 @@ test('with `latexExportStyle: none` the title block is still LaTeX\'s title — 
 	const dir = fs.mkdtempSync(path.join(root, 'maketitle-plain-'));
 	const tex = await exportTex(dir, null, [], TITLE_BLOCK);
 	assert.match(tex, /^\\documentclass\{article\}/);
-	assert.match(tex, /\\author\{A\. Reader\\\\University of Somewhere \\and B\. Writer\}\n\\date\{19 October 2026\}\n\\maketitle/);
+	assert.match(tex, /\\author\{A\. Reader\\\\University of Somewhere \\and B\. Writer\}\n\\date\{1 March 2026\}\n\\maketitle/);
 	assert.doesNotMatch(tex, /titling|EBGaramond/);
 	const { errors, pdf, text } = await compiled(dir);
 	assert.deepEqual(errors, []);
 	assert.ok(pdf);
-	assert.ok(text.includes('B. Writer') && text.includes('19 October 2026'));
+	assert.ok(text.includes('B. Writer') && text.includes('1 March 2026'));
 });
 
 test('a book: the master\'s title block is the book\'s title page, a chapter\'s stays a line', async () => {

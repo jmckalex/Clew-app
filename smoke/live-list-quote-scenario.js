@@ -50,13 +50,13 @@ const until = async (test, ms = 10000) => {
 await ipc.invoke('clew:note-write', { path: 'ListQuote.md', content: [
 	'# Quotes in lists',
 	'',
-	'* I think it would be helpful if you included a quote showing what it means',
-	'  for a modeller to be opaque.',
-	'* I worry that this demands too much:',
-	'    > “What are the success conditions for a model playing the predictive',
-	'    > function and why do existing ABMs not meet them?”',
+	'* A first item whose text runs on past the end of its first line, so that it',
+	'  continues on a second.',
+	'* A second item, with a quotation:',
+	'    > “How many of the parts fit together, and which of them can be left',
+	'    > out without changing what the whole is for?”',
 	'',
-	'    Taken literally,',
+	'    A later paragraph,',
 	'',
 	'1. A numbered item:',
 	'   > a quote in a numbered item',
@@ -147,7 +147,7 @@ const measure = async (name, q, i) => {
 		+ ` colour=${colourOf(textEl(quote))} bar=${nameOf(getComputedStyle(quote).borderLeftColor)}`);
 };
 const PAIRS = {
-	bullet: ['success conditions', 'I worry that'], numbered: ['a quote in a numbered item', 'A numbered item'],
+	bullet: ['How many of the parts', 'A second item'], numbered: ['a quote in a numbered item', 'A numbered item'],
 	nested: ['a quote in a nested item', 'Inner item'], deep: ['a quote three deep', 'Third level'],
 	tabbed: ['a quote in a tabbed item', 'Tab inner'], nine: ['a quote in item nine', 'Ninth item'], ten: ['a quote in item ten', 'Tenth item'],
 };
@@ -157,7 +157,7 @@ const textOffset = async (a, b) => {
 	await show(b);
 	return Math.round(textLeft(lineWith(a)) - textLeft(lineWith(b)));
 };
-log(`after-quote item-text-aligned=${await textOffset('Taken literally', 'I worry that')}`);
+log(`after-quote item-text-aligned=${await textOffset('A later paragraph', 'A second item')}`);
 const nestedCont = () => textOffset('more of the inner item', 'Inner item');
 const tenCont = () => textOffset('more of item ten', 'Tenth item');
 log(`nested-cont item-text-aligned=${await nestedCont()} ten-cont item-text-aligned=${await tenCont()}`);
@@ -166,7 +166,7 @@ log(`nested-cont item-text-aligned=${await nestedCont()} ten-cont item-text-alig
 // move for it.
 const itemX = async () => {
 	const xs = [];
-	for (const s of ['I worry that', 'A numbered item', 'Ninth item', 'Tenth item', 'Inner item', 'Tab inner']) {
+	for (const s of ['A second item', 'A numbered item', 'Ninth item', 'Tenth item', 'Inner item', 'Tab inner']) {
 		await show(s);
 		xs.push((textLeft(lineWith(s)) - view.contentDOM.getBoundingClientRect().left).toFixed(1));
 	}
@@ -198,7 +198,7 @@ await sleep(100);
 // (revealed=true moved=0); then into item ten's text, 30px past its start —
 // the caret's offset in the line (ten-click=…, the same before and after a
 // change to the hang) — and into item ten's quote, which reveals in place too.
-const r = lineWith('success conditions').getBoundingClientRect();
+const r = lineWith('How many of the parts').getBoundingClientRect();
 const before = r.left;
 const tenText = lineWith('Tenth item');
 const tenY = Math.round(tenText.getBoundingClientRect().top + tenText.getBoundingClientRect().height / 2);
@@ -210,8 +210,8 @@ window.__clewSmokeInput = [
 ];
 const lineOfHead = () => view.state.doc.lineAt(view.state.selection.main.head);
 setTimeout(async () => {
-	await until(() => lineWith('success conditions')?.textContent.includes('>'), 3000);
-	const line = lineWith('success conditions');
+	await until(() => lineWith('How many of the parts')?.textContent.includes('>'), 3000);
+	const line = lineWith('How many of the parts');
 	log(`revealed=${line.textContent.includes('>')} moved=${Math.round(line.getBoundingClientRect().left - before)}`);
 	await until(() => lineOfHead().text.includes('Tenth item'), 3000);
 	log(`ten-click=${view.state.selection.main.head - lineOfHead().from}`);
