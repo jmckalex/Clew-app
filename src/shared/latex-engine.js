@@ -209,14 +209,61 @@ const MISSING_WARNING = /^PDF via LaTeX: TeX could not find the file "(.+)", so 
  *  says them by name, not as "other"). */
 export const missingFileOf = (warning) => MISSING_WARNING.exec(String(warning))?.[1] ?? null;
 
+// What TeX's help says to a person at a terminal, not to a reader of a
+// failure: dropped from the help paragraph.
+const HELP_BOILERPLATE = /^(Try typing\s+<return>\s+to proceed|If that doesn't work, type\s+X\s+<return>\s+to quit|For immediate help type\s+H|Type\s+H\s+<return>|See the (LaTeX manual|\S+ package documentation))/;
+const HELP_MAX = 280;
+
+/**
+ * The first error's help — what TeX says after an error to explain it — its
+ * first paragraph only, less TeX's terminal boilerplate (the owner's ask via
+ * Clew-boss, 2026-10-22), or ''. From a log (the desktop's latexmk .log;
+ * mp-tikz-wasm's result.log): in nonstop mode TeX writes it after the error's
+ * context, `l.N …` and the line under it, up to a blank line — `! Undefined
+ * control sequence.` has "The control sequence at the end of the top line of
+ * your error message was never \def'ed. …"; a LaTeX3 error (fontspec's) has
+ * none there, its message saying it all. Or from mp-tikz-wasm's diagnostics:
+ * the first error's `help`, the same lines.
+ *
+ * @param {string | { severity?: string, help?: string[] }[]} source
+ */
+export function firstLatexHelp(source) {
+	let lines = [];
+	if (Array.isArray(source)) {
+		lines = source.find((d) => d?.severity === 'error' && Array.isArray(d.help))?.help ?? [];
+	} else {
+		const log = String(source ?? '').split('\n');
+		const at = log.findIndex((l) => l.startsWith('!'));
+		if (at === -1) return '';
+		// The context must be the first error's own: one that only another
+		// error's has (a missing package's `! LaTeX Error: File … not found.`,
+		// then `! Emergency stop.`) has no help to give.
+		const next = log.slice(at + 1, at + 16).findIndex((l) => l.startsWith('!'));
+		const window = log.slice(at + 1, next === -1 ? at + 16 : at + 1 + next);
+		const context = window.findIndex((l) => /^l\.\d+ /.test(l)) + at + 1;
+		// TeX always writes a line under `l.N` (the rest of the source line,
+		// indented — spaces at least); an empty one there means no help.
+		if (context === at || !log[context + 1]) return '';
+		lines = log.slice(context + 2);
+	}
+	const end = lines.findIndex((l) => !String(l).trim());
+	const paragraph = (end === -1 ? lines : lines.slice(0, end)).map((l) => String(l).trim()).filter((l) => !HELP_BOILERPLATE.test(l));
+	const help = paragraph.join(' ').replace(/\s+/g, ' ').trim();
+	return help.length > HELP_MAX ? `${help.slice(0, HELP_MAX - 1).replace(/\s+\S*$/, '')}…` : help;
+}
+
 /**
  * What a failed PDF via LaTeX says, on every host: the engine, why it was
- * chosen, and the log's first error — else the run's own error, else that no
- * PDF came out.
+ * chosen, and the log's first error with its help's first paragraph — else
+ * the run's own error, else that no PDF came out. A host whose TeX reports
+ * diagnostics (mp-tikz-wasm's) passes them too: their help is read first.
  *
- * @param {{ engine: string, reason: string, log?: string, error?: string }} o
+ * @param {{ engine: string, reason: string, log?: string, error?: string,
+ *   diagnostics?: { severity?: string, help?: string[] }[] }} o
  */
-export function pdfViaLatexFailure({ engine, reason, log = '', error = '' }) {
-	const first = firstLatexError(log) || error || 'no PDF was produced';
-	return `PDF via LaTeX failed — ${engineName(engine)} ran (${reason}). First error: ${first}`;
+export function pdfViaLatexFailure({ engine, reason, log = '', error = '', diagnostics = null }) {
+	const logError = firstLatexError(log);
+	const first = logError || error || 'no PDF was produced';
+	const help = (diagnostics && firstLatexHelp(diagnostics)) || (logError ? firstLatexHelp(log) : '');
+	return `PDF via LaTeX failed — ${engineName(engine)} ran (${reason}). First error: ${first}${help ? ` — ${help}` : ''}`;
 }
