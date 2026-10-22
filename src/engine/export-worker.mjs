@@ -42,13 +42,16 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { resolveFileTarget } from './vault-files.js';
 import { familyFiles, readFontIndex } from './font-families.js';
-import { configureExportBuild, exportEmbedPath } from './export-config.js';
+import { configureExportBuild, exportEmbedPath, EXPORT_EXTENSIONS } from './export-config.js';
 
 const engineDir = path.dirname(process.argv[2]);
 const load = (name) => import(pathToFileURL(path.join(engineDir, name)).href);
 const { processFile } = await load('index.js');
 const { getWarnings } = await load('warnings.js');
 const { configManager, DEFAULT_CONFIG } = await load('config-manager.js');
+// Clew's own rules, which the preview's config loads and the user's does not
+// (export-config.js#EXPORT_EXTENSIONS): after the engine's, as there.
+(await load('utils.js')).registerExtensions(EXPORT_EXTENSIONS);
 
 let building = null;   // the build's message: its file and options
 const fontIndex = process.env.CLEW_FONT_INDEX ? readFontIndex(process.env.CLEW_FONT_INDEX) : null;
