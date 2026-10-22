@@ -103,7 +103,18 @@ test('a path of letters wider than a byte, broken as pdfTeX and LuaTeX break it,
 	}
 	const cut = broken(`LaTeX Warning: File \`${ACCENTED(2)}' not found on input line 6.`, 'pdftex');
 	assert.ok(new TextDecoder().decode(cut).includes('\uFFFD'), 'pdfTeX did cut a letter here: read as text first, it is lost');
-	// LuaTeX's own C-level lines break after 80; TeX's l.N and <…> lines are never joined to.
+	// LuaTeX's own C-level lines break after 80: such a line goes on, so a path
+	// cut there is whole only if it is joined. A line SHORTER than 79 whose next
+	// letter would have fitted ended there, and is not joined: joined, its `a`
+	// and the next line's `b` would make a file `ab` TeX never named.
+	const at80 = 'LaTeX Warning: File `/folder/';
+	const eighty = at80 + 'p'.repeat(80 - at80.length);
+	assert.equal(enc.encode(eighty).length, 80);
+	assert.deepEqual(texMissingFiles(`${eighty}\nart.png' not found on input line 3.\n`), [{ file: `/folder/${'p'.repeat(80 - at80.length)}art.png`, line: 3 }]);
+	const short = `${'w'.repeat(78 - 'File `a'.length)}File \`a`;
+	assert.equal(enc.encode(short).length, 78);
+	assert.deepEqual(texMissingFiles(`${short}\nb' not found on input line 3.\n`), [], 'a 78-byte line whose next letter would have fitted ends there');
+	// TeX's l.N and <…> lines are never joined to.
 	assert.deepEqual(texMissingFiles(`${'L'.repeat(80)}\n! LaTeX Error: File \`x' not found.\n`), [{ file: 'x', line: null }]);
 	assert.deepEqual(texMissingFiles(`! LaTeX Error: File \`gone' not found.\n\n${'.'.repeat(79)}\nl.12 \\includegraphics{gone}\n`), [{ file: 'gone', line: 12 }]);
 });
