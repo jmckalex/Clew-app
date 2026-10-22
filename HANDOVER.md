@@ -899,9 +899,9 @@ source edit during the boot test's load wait makes every run refuse):
   waits for load < 6 (raise `BOOT_TEST_WAIT` after packaging; Spotlight
   and the scanners read the new gigabyte) and ABORTS rather than run on a
   busy machine; figures, export-figures (restricted, no TeX), live edit.
-- The packaged checks every dev build has run since dev.13 (in the
-  session scratchpads as `inapp-devN.sh` until `smoke/packaged-checks.sh`
-  lands): the welcome screen's demo vault (`demo-sync fresh=true`); the
+- `smoke/packaged-checks.sh out/mac-arm64/Clew.app/Contents/MacOS/Clew` —
+  the packaged checks every dev build has run since dev.13: the welcome
+  screen's demo vault (`demo-sync fresh=true`); the
   trust prompt on an untrusted vault with code, answered Keep restricted;
   `latex-pdf-refusal-scenario.js` restricted (three refusals by name plus
   the menu's notice, `files=["lpr/Conventions.tex"]`) and trusted (every

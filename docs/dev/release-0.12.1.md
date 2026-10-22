@@ -108,7 +108,8 @@ pixels and fonts over 61 notes.
    `npm run gen-demo-history` (packaging refuses a stale history).
 2. A dev.N → commit table in HANDOVER.
 3. The harnesses into the repo (`smoke/export-identity/`,
-   `smoke/packaged-checks.sh`) — not user-facing; the RC's checks use them.
+   `smoke/packaged-checks.sh`) — not user-facing; the RC's checks use them
+   (done 2026-10-22).
 4. `pdfViaLatexFailure` adds the first error's help paragraph.
 5. Clew-docs: §2's lines, the manual's `%%` and TeX-not-found lines, the
    screenshot pass and the version grep (its HANDOVER's release checklist).
