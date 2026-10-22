@@ -816,30 +816,77 @@ owner's word.
   mp-tikz-wasm; Windows and Linux artefacts untested at runtime; the
   Windows installer unsigned.
 
-## Release recipe (as cut for 0.12.0)
+## Release recipe (as cut for 0.12.0, updated for 0.12.1)
 
-`npm version <v> --no-git-tag-version` + commit; `npm run sync-engine` and
-`npm run sync-embedpdf` (expect no change; `git status` after); npm test;
-`smoke/render-dump.sh` before and after the bump. Then, SEQUENTIALLY (they
-share `dist/` and the staging dirs), from bash or exactly as written — a
-zsh loop passing `$flags` hands package.js ONE argument and it quietly
-builds an unsigned `dir` (2026-10-01, caught a minute in):
+What blocks 0.12.1's RC, and the notes, are `docs/dev/release-0.12.1.md`.
+Before the build, on a clean `main`:
 
-    export MPTIKZ_SRC=/nonexistent   # stage the PINNED mp-tikz-wasm
+1. `npm version <v> --no-git-tag-version` + commit (package.json and the
+   lockfile only).
+2. `npm run sync-engine` and `npm run sync-embedpdf` — expect no change
+   (`git status` after). VENDOR.md's `Synced from:` names the jmarkdown
+   commit; `(dirty tree)` means the owner's uncommitted hunk ships with it
+   (docs/dev/release-0.12.1.md §3).
+3. `npm run notices` — expect no diff in THIRD-PARTY-NOTICES.md (it names
+   the pinned mp-tikz-wasm's source offer and makeindex's notice).
+4. `node scripts/gen-demo-history.mjs --check` (package.js runs it too and
+   refuses a stale history).
+5. npm test; `smoke/render-dump.sh` before and after the bump.
+
+Then, SEQUENTIALLY (they share `dist/` and the staging dirs), from bash or
+exactly as written — a zsh loop passing `$flags` hands package.js ONE
+argument and it quietly builds an unsigned `dir` (2026-10-01, caught a
+minute in). No `CLEW_PACKAGE_VERSION` / `CLEW_PACKAGE_OUT` (those are for
+dev builds into `out-dev/`):
+
+    export MPTIKZ_SRC=/nonexistent JMARKDOWN_SRC=/nonexistent EMBEDPDF_SRC=/nonexistent
     node scripts/package.js --dmg --sign --notarize          # arm64, ~20 min
     node scripts/package.js --dmg --sign --notarize --x64    # ~20 min
-    mv out/Clew-<v>.dmg out/Clew-<v>-x64.dmg                 # + its .blockmap
+    mv out/Clew-<v>.dmg out/Clew-<v>-x64.dmg                 # + its .blockmap (the feed names -x64)
     node scripts/package.js --win                            # < 1 min
     node scripts/package.js --linux                          # < 1 min
-    smoke/boot-test.sh out/mac-arm64/Clew.app/Contents/MacOS/Clew
 
 Check the arm64 log for `signing … Developer ID Application` in its first
-minute. Verify: `stapler validate` + `spctl -a -t open` on each image (after
-the rename — it does not touch a stapled ticket); `spctl -a -t exec`,
-`codesign -dv`, the entitlements, `lipo -archs`, the version and
-`mptikz/bundles/opentype` on each app. The boot test waits for load < 6
-(raise `BOOT_TEST_WAIT` after packaging; Spotlight and the scanners read the
-new gigabyte) and ABORTS rather than run on a busy machine.
+minute. Verify, on each Mac image and app: `xcrun notarytool` Accepted;
+`stapler validate` + `spctl -a -t open --context context:primary-signature`
+on the image (after the rename — it does not touch a stapled ticket);
+`spctl -a -t exec`, `codesign --verify --deep --strict`, `codesign -dvv`
+(Developer ID, runtime flag), the four entitlements, `lipo -archs`, the
+version; `npx asar list` shows `/dist/build-stamp.json` (never
+`asar extract-file` in the repo root); `Contents/Resources/mptikz/
+STAGED.json` says `source: release` and the pinned version, its
+`bundles/index.json` lists opentype, otf-fonts, latex-doc and ghostscript,
+`bibtex.wasm` and `makeindex.wasm` are there, `diff -rq` against
+`mptikz-assets/` differs by `.cache` alone, and `ghostscript/gs.wasm`'s
+sha256 equals its sealed hash in `_CodeSignature/CodeResources`;
+`engine/jmarkdown/VENDOR.md` names the vendored commit; `Resources/cli`
+holds the `clew` command.
+
+Then, on THIS machine's packaged arm64 app, hidden, each run a fresh
+profile, nothing else heavy running (the tree frozen until they end — a
+source edit during the boot test's load wait makes every run refuse):
+
+- `smoke/boot-test.sh out/mac-arm64/Clew.app/Contents/MacOS/Clew` — it
+  waits for load < 6 (raise `BOOT_TEST_WAIT` after packaging; Spotlight
+  and the scanners read the new gigabyte) and ABORTS rather than run on a
+  busy machine; figures, export-figures (restricted, no TeX), live edit.
+- The packaged checks every dev build has run since dev.13 (in the
+  session scratchpads as `inapp-devN.sh` until `smoke/packaged-checks.sh`
+  lands): the welcome screen's demo vault (`demo-sync fresh=true`); the
+  trust prompt on an untrusted vault with code, answered Keep restricted;
+  `latex-pdf-refusal-scenario.js` restricted (three refusals by name plus
+  the menu's notice, `files=["lpr/Conventions.tex"]`) and trusted (every
+  route builds); `postscript-scenario.js` (4 `mpw-ok`, gs.wasm fetched);
+  `smoke-net` 0 across all of them.
+- The x64 app, under Rosetta (`arch -x86_64` on its binary), at least
+  booted with the demo vault — no Intel build has run since 0.12.0.
+
+Release day, in this order: the binaries to Clew-docs' downloads; then
+`node scripts/write-latest-json.mjs out --version <v> --released <date>
+--out <Clew-docs>/site/downloads/latest.json` (sha512 and size per
+artifact; the notes link defaults to `whats-new.html#v<x-y-z>`), which
+Clew-docs uploads LAST, so the feed never names a file that is not there.
+0.12.1 is the first version that reads it.
 
 ## Owner's own actions
 
