@@ -10,6 +10,7 @@ import { htmlCachePath, cacheDir } from './figure-cache.js';
 import Mustache from 'mustache';
 import { noteCodeAllowed, refuseNoteCode, noteCodeError } from './note-code.js';
 import { escapeTexText } from './latex-escape.js';
+import { addWarning } from './warnings.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -70,6 +71,18 @@ function failureMessage(error) {
 	}
 	if (error?.signal) return `wolframscript was stopped (${error.signal})`;
 	return error?.code ?? 'unknown error';
+}
+
+// A run's log text with its cache folder written `<cache>`, in either spelling
+// (as given, and real: /var/… is /private/var/… on macOS), the longer first,
+// so the page names none of the user's folders.
+function withoutCacheFolder(text, folder) {
+	let real = folder;
+	try { real = fs.realpathSync(folder); } catch {}
+	for (const spelling of [...new Set([real, folder])].sort((a, b) => b.length - a.length)) {
+		text = text.split(spelling).join('<cache>');
+	}
+	return text;
 }
 
 /*
@@ -206,16 +219,21 @@ export function createMathematica(marker) {
 				}
 				catch (error) {
 					token['has_error'] = true;
-					// Try to read the log file
+					// What the build warning says (failureMessage: no folders).
+					token['failed'] = failureMessage(error);
+					// The error box's log says the same, then the run's log file if
+					// one was written, its cache folder written `<cache>`. It held
+					// execFileSync's message — the command line, whose .m file sits
+					// in the cache folder — which put the user's folders, base64,
+					// into the page.
+					token['error_log'] = token['failed'];
 					try {
 						const log_name = file_name.replace(/\.m$/, '.log');
 						if (fs.existsSync(log_name)) {
-							token['error_log'] = fs.readFileSync(log_name, 'utf8');
-						} else {
-							token['error_log'] = error.message || 'Unknown error';
+							token['error_log'] += '\n\n' + withoutCacheFolder(fs.readFileSync(log_name, 'utf8'), mathematica_directory);
 						}
 					} catch (logError) {
-						token['error_log'] = error.message || 'Unknown error, unable to read log file';
+						// The log could not be read: the message stands alone.
 					}
 
 					console.error(`Error processing Mathematica: ${error.message}`);
@@ -227,6 +245,10 @@ export function createMathematica(marker) {
 		renderer(token) {
 			if (token.meta.name === "Mathematica") {
 				if (token['refused']) return refuseNoteCode('Mathematica', { block: true });
+				// A failed run is warned, in the inline form's words (noteCodeError),
+				// in both outputs: the HTML shows its error box, but LaTeX leaves
+				// the block out, and the PDF lost it with nothing said.
+				if (token['has_error']) addWarning(`Mathematica failed: ${token['failed']}`);
 				// In LaTeX a text result prints, as the inline form's does
 				// (blockLaTeX); a graphic or a failed run is left out, rather
 				// than leaking its <img>/<div> into the .tex.
@@ -520,7 +542,6 @@ export const inlineMathematica = {
 			// A text result prints in LaTeX too, as the page shows it
 			// (resultLaTeX); a graphic is still left out.
 			if (global.isLatex) return text === null ? '' : resultLaTeX(text);
-			console.log(token.include);
 			// A text result is printed as the block form prints its own, as
 			// text (resultHTML), where it was an <img> of the .txt file, a
 			// broken image.
