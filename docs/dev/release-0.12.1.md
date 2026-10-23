@@ -114,21 +114,30 @@ pixels and fonts over 61 notes.
 5. Clew-docs: §2's lines, the manual's `%%` and TeX-not-found lines, the
    screenshot pass and the version grep (its HANDOVER's release checklist).
 
+Items 1, 2 and 4 are done (2026-10-22); 5 is Clew-docs'.
+
+**The owner's answers** (2026-10-23, "all recommendations", via Clew-boss):
+
+- **An unclosed `%%` stays text**, as built (42bb9c8). No change.
+- **The GitHub Actions workflow:** yes. `.github/workflows/test.yml` runs
+  `npm test` on every push to main and every pull request.
+- **mp-tikz-wasm 0.5.1 is released before 0.12.1**, and Clew re-pins to it
+  once Clew-boss has verified it. This blocks the RC; nothing is re-pinned
+  before then.
+
 **Waiting on the owner:**
 
-- **An unclosed `%%`.** Clew keeps it as text; Obsidian hides the rest of
-  the note (its own help). If the owner wants Obsidian's behaviour, it is a
-  change to `obsidian-comments.js` and to the draft's `%%` line before the
-  RC, not after.
 - **The engine's uncommitted hunk.** Every vendoring since 0.12.0 records
   `Synced from: at-migration@<sha> (dirty tree)`: the owner's own
   `src/index.js` hunk in the jmarkdown master is in no jmarkdown commit, so
-  0.12.1 would ship engine code that exists only in this mirror. Commit it
-  upstream (then re-vendor at a clean tree), or say it ships as is.
+  0.12.1 would ship engine code that exists only in this mirror. The hunk
+  turns off the Sublime ⌘-click script; without it a single note's HTML
+  export would carry that script. Under discussion (2026-10-23): until the
+  owner decides, nothing is vendored from the master and the mirror stays
+  as it is.
 - **Windows and Linux** builds remain unsigned and never run (as 0.12.0
   shipped them) — a release decision, restated.
-- Not blocking (Clew-boss): the GitHub Actions workflow; C2 (citation
-  style).
+- Not blocking (Clew-boss): C2 (citation style).
 
 **Risks to clear in the RC run itself:**
 
