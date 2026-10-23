@@ -88,6 +88,8 @@ wording and the section.
 | Live edit: tab-indented and numbered list items line up with their text, and so do quotes inside them, in any font | `89d6a8b`, `2fc3459`, `7c46c38` | Better |
 | A large vault stays responsive while its index is saved (written in slices, off the main thread) | `ef5f7f2` | Better |
 | A bare `:target` prints as written | `e8fdad2` (jmarkdown ff7facd) | Fixed |
+| A proof's ∎ ends its last line, where it sat after the proof and floated onto whatever came next | `58b8331` (jmarkdown e0c679c) | Fixed |
+| Mathematica: a failed inline ⟦…⟧ run is an error box in its line and a warning, not the end of the export; `InlineMath`/`DisplayMath` inline no longer stop an export; an inline text result shows as text (it was a broken image) and an inline graphic is found; results with `<` or `&` show as written; a text result prints in LaTeX and PDF too | `58b8331` (jmarkdown 1e51c1b, 18af46e, b4d2f68, dd8a963, 2ae14b8) | Fixed |
 
 To check before writing (whether 0.12.0 had the fault, or it came and went
 between releases): live edit's `@begin(equation)` showing its number twice
@@ -131,16 +133,17 @@ Items 1, 2 and 4 are done (2026-10-22); 5 is Clew-docs'.
   0.5.1's archives made with `COPYFILE_DISABLE=1` and `--no-xattrs`, or on
   Linux, carry neither.
 
+**The engine's hunk — decided** (2026-10-23, via Clew-boss: "Commit the
+switch, please"): the owner's own `src/index.js` hunk in the jmarkdown
+master turns off the Sublime ⌘-click script (without it a single note's HTML
+export would carry that script), and it stays. It is still in no jmarkdown
+commit — that commit needs the owner's own line — so every vendoring records
+`Synced from: at-migration@<sha> (dirty tree)` until it is made; the mirror
+keeps the hunk either way, as every build so far has. The hold on vendoring
+is lifted: jmarkdown 2ae14b8 is vendored (`58b8331`).
+
 **Waiting on the owner:**
 
-- **The engine's uncommitted hunk.** Every vendoring since 0.12.0 records
-  `Synced from: at-migration@<sha> (dirty tree)`: the owner's own
-  `src/index.js` hunk in the jmarkdown master is in no jmarkdown commit, so
-  0.12.1 would ship engine code that exists only in this mirror. The hunk
-  turns off the Sublime ⌘-click script; without it a single note's HTML
-  export would carry that script. Under discussion (2026-10-23): until the
-  owner decides, nothing is vendored from the master and the mirror stays
-  as it is.
 - **Windows and Linux** builds remain unsigned and never run (as 0.12.0
   shipped them) — a release decision, restated.
 - Not blocking (Clew-boss): C2 (citation style).
