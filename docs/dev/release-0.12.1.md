@@ -90,6 +90,7 @@ wording and the section.
 | A bare `:target` prints as written | `e8fdad2` (jmarkdown ff7facd) | Fixed |
 | A proof's ∎ ends its last line, where it sat after the proof and floated onto whatever came next | `58b8331` (jmarkdown e0c679c) | Fixed |
 | Mathematica: a failed inline ⟦…⟧ run is an error box in its line and a warning, not the end of the export; `InlineMath`/`DisplayMath` inline no longer stop an export; an inline text result shows as text (it was a broken image) and an inline graphic is found; results with `<` or `&` show as written; a text result prints in LaTeX and PDF too | `58b8331` (jmarkdown 1e51c1b, 18af46e, b4d2f68, dd8a963, 2ae14b8) | Fixed |
+| Mathematica: a failed block is a warning too, in HTML and LaTeX (a LaTeX export or PDF left it out without a word), and its error log no longer names your folders (the page carried the run's command line, with the profile's path) | `80b6f20` (jmarkdown 5a03576, 794cc9c) | Fixed |
 
 To check before writing (whether 0.12.0 had the fault, or it came and went
 between releases): live edit's `@begin(equation)` showing its number twice
@@ -140,7 +141,8 @@ export would carry that script), and it stays. It is still in no jmarkdown
 commit — that commit needs the owner's own line — so every vendoring records
 `Synced from: at-migration@<sha> (dirty tree)` until it is made; the mirror
 keeps the hunk either way, as every build so far has. The hold on vendoring
-is lifted: jmarkdown 2ae14b8 is vendored (`58b8331`).
+is lifted: jmarkdown 2ae14b8 is vendored (`58b8331`), then 794cc9c
+(`80b6f20`).
 
 **Waiting on the owner:**
 
