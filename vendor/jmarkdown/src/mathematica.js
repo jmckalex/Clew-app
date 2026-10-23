@@ -8,7 +8,8 @@ import { configManager } from './config-manager.js';
 import { registerBlockEnvironment } from './begin-end-core.js';
 import { htmlCachePath, cacheDir } from './figure-cache.js';
 import Mustache from 'mustache';
-import { noteCodeAllowed, refuseNoteCode } from './note-code.js';
+import { noteCodeAllowed, refuseNoteCode, noteCodeError } from './note-code.js';
+import { escapeTexText } from './latex-escape.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -54,6 +55,67 @@ function wolframscript(args, { cwd, outFile } = {}) {
 		// error still reaches the caller, as before.
 		if (failed) fs.rmSync(outFile, { force: true });
 	}
+}
+
+/*
+	What a failed inline run says, in the page and in the build warning. Not
+	execFileSync's message: that is the command line, whose file sits in the
+	cache folder, and it would have put the user's own folders into the page.
+*/
+function failureMessage(error) {
+	if (error?.code === 'ENOENT' && error?.syscall?.startsWith('spawn')) return 'wolframscript was not found';
+	if (typeof error?.status === 'number') {
+		const said = error.stderr?.toString().trim().split('\n')[0];
+		return `wolframscript exited with status ${error.status}${said ? `: ${said}` : ''}`;
+	}
+	if (error?.signal) return `wolframscript was stopped (${error.signal})`;
+	return error?.code ?? 'unknown error';
+}
+
+/*
+	A result's text is Wolfram Language's output, not HTML or markdown, so it
+	prints as text (the owner, 2026-10-23). In HTML its `&`, `<` and `>` are
+	escaped: `x<y` showed as `x` and a broken tag. Maths in it is unchanged,
+	since MathJax reads the text the browser shows. In LaTeX, maths in it —
+	what MathJax finds in the page: `$…$`, `$$…$$`, `\(…\)`, `\[…\]`; the
+	owner's notes build `$$…$$` strings — passes through as written, and the
+	rest is escaped as plain text (escapeTexText), so the PDF shows what the
+	page does and a `_` or `#` in it cannot stop the build. A `\$` outside
+	maths is a dollar, as MathJax reads it (processEscapes), and opens none.
+*/
+const RESULT_MATHS = /\\\$|\$\$[\s\S]+?\$\$|\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\)|\$[^$]+?\$/g;
+
+function resultHTML(text) {
+	return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function resultLaTeX(text) {
+	let latex = '';
+	let at = 0;
+	for (const maths of text.matchAll(RESULT_MATHS)) {
+		latex += escapeTexText(text.slice(at, maths.index)) + maths[0];
+		at = maths.index + maths[0].length;
+	}
+	return latex + escapeTexText(text.slice(at));
+}
+
+/*
+	A block's result in LaTeX, a paragraph of its own: a text result as the
+	page shows it (resultLaTeX), DisplayMath's and InlineMath's TeX as written,
+	as the page's MathJax reads them (the owner, 2026-10-23: "a text result
+	also prints in LaTeX/PDF, as it does in HTML"). A graphic (output=svg, png,
+	jpg) and a failed run are left out, as before; so is a result missing
+	from the cache.
+*/
+function blockLaTeX(token) {
+	const output = token.attrs?.output?.toLowerCase();
+	if (token['has_error'] || ['svg', 'png', 'jpg', 'jpeg'].includes(output)) return '';
+	const file = path.join(cacheDir('Mathematica'), path.basename(token['file name']).replace(/\.m$/, '.txt'));
+	if (!fs.existsSync(file)) return '';
+	const text = fs.readFileSync(file, 'utf8');
+	if (token['DisplayMath']) return `$$${text}$$\n\n`;
+	if (token['InlineMath']) return `$${text}$\n\n`;
+	return `${resultLaTeX(text.replace(/\n+$/, ''))}\n\n`;
 }
 
 function generateHash(string) {
@@ -165,25 +227,30 @@ export function createMathematica(marker) {
 		renderer(token) {
 			if (token.meta.name === "Mathematica") {
 				if (token['refused']) return refuseNoteCode('Mathematica', { block: true });
-				// The Mathematica directive emits an SVG <img>/<div>; suppress
-				// it in LaTeX mode rather than leaking raw HTML into the .tex.
-				if (global.isLatex) return '';
+				// In LaTeX a text result prints, as the inline form's does
+				// (blockLaTeX); a graphic or a failed run is left out, rather
+				// than leaking its <img>/<div> into the .tex.
+				if (global.isLatex) return blockLaTeX(token);
 				if (token['has_error']) {
-					// Create a button that opens the error log
+					// Create a button that opens the error log. The box is TikZ's
+					// (tikz.js), and kept its class for its style; it was copied with
+					// TikZ's words too, and named TikZ. Its log opens through a handler
+					// of its own, so on a page that also has a failed TikZ diagram each
+					// log opens under its own name.
 					const errorLogBase64 = Buffer.from(token['error_log']).toString('base64');
-					const errorLogId = `tikz-error-${Math.random().toString(36).substring(2, 9)}`;
+					const errorLogId = `mathematica-error-${Math.random().toString(36).substring(2, 9)}`;
 
 					return `<div class="tikz-error">
-				        <p class="tikz-error-message">Error processing TikZ diagram</p>
-				        <button onclick="showTikzError('${errorLogId}')">Show Error Log</button>
+				        <p class="tikz-error-message">Error processing Mathematica</p>
+				        <button onclick="showMathematicaError('${errorLogId}')">Show Error Log</button>
 				        <script>
-				            if (!window.tikzErrorHandlerAdded) {
-				            window.tikzErrorHandlerAdded = true;
-				            window.showTikzError = function(id) {
+				            if (!window.mathematicaErrorHandlerAdded) {
+				            window.mathematicaErrorHandlerAdded = true;
+				            window.showMathematicaError = function(id) {
 				                const logData = document.getElementById(id).dataset.log;
 				                const logContent = atob(logData);
-				                const errorWindow = window.open('', 'TikZ Error Log', 'width=800,height=600');
-				                errorWindow.document.write('<html><head><title>TikZ Error Log</title>');
+				                const errorWindow = window.open('', 'Mathematica Error Log', 'width=800,height=600');
+				                errorWindow.document.write('<html><head><title>Mathematica Error Log</title>');
 				                errorWindow.document.write('<style>body { font-family: monospace; white-space: pre; }</style>');
 				                errorWindow.document.write('</head><body>');
 				                errorWindow.document.write(logContent.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'));
@@ -271,7 +338,8 @@ export function createMathematica(marker) {
 						}
 					}
 					else {
-						obj = fs.readFileSync(svg_full_path.replace(/\.svg$/, '.txt'), 'utf8');
+						// Text, escaped (resultHTML): it was printed as markup.
+						obj = resultHTML(fs.readFileSync(svg_full_path.replace(/\.svg$/, '.txt'), 'utf8'));
 					}
 
 					if (token['DisplayMath'] == true) {
@@ -385,20 +453,36 @@ export const inlineMathematica = {
 			//send_code_to_mathematica(code_to_evaluate);
 			console.log(code_to_evaluate);
 			console.log(`Attempting to write file ${file_name} to disk`);
-			fs.writeFileSync(file_name, code_to_evaluate);
+			// A run that fails no longer stops the build: the result is marked
+			// where it stands (the renderer's noteCodeError), as a failed block
+			// shows its error box, and nothing is cached, so the next build asks
+			// again.
+			try {
+				fs.writeFileSync(file_name, code_to_evaluate);
 
-			const output = wolframscript(['-f', file_name, '-print']).toString();
-			console.log(output);
-			if (output.includes("-Graphics-") || output.includes("-Graphics3D-") ) {
-				console.log("Attempting to generate SVG output for inline Mathematica code.");
-				wolframscript(['-f', file_name, '-print', '-format', 'SVG'], { cwd: opts.cwd, outFile: svg_name });
-				output_file = `${hash}.svg`;
+				const output = wolframscript(['-f', file_name, '-print']).toString();
+				console.log(output);
+				if (output.includes("-Graphics-") || output.includes("-Graphics3D-") ) {
+					console.log("Attempting to generate SVG output for inline Mathematica code.");
+					wolframscript(['-f', file_name, '-print', '-format', 'SVG'], { cwd: opts.cwd, outFile: svg_name });
+					output_file = `${hash}.svg`;
+				}
+				else {
+					wolframscript(['-f', file_name, '-print'], { cwd: opts.cwd, outFile: txt_name });
+					output_file = `${hash}.txt`;
+				}
 			}
-			else {
-				wolframscript(['-f', file_name, '-print'], { cwd: opts.cwd, outFile: txt_name });
-				output_file = `${hash}.txt`;
+			catch (error) {
+				console.error(`Error processing Mathematica: ${error.message}`);
+				return {
+					type: 'inlineMathematica',
+					raw: match[0],
+					code: match[1],
+					failed: failureMessage(error),
+					text: ''
+				};
 			}
-			
+
 			const token = {
                 type: 'inlineMathematica',
                 raw: match[0],
@@ -411,18 +495,39 @@ export const inlineMathematica = {
 	},
 	renderer(token) {
 		if (token.refused) return refuseNoteCode('Mathematica');
+		if (token.failed) return noteCodeError('Mathematica', token.failed);
+		// `include` is the cached result's file NAME, so it is read, and
+		// referred to, in the cache folder, as the block form's results are.
+		// Read by its name alone it was looked for in the working folder, and
+		// InlineMath and DisplayMath stopped the build; an <img> of
+		// `Mathematica/<name>` held only for a page written beside the note.
+		const cached = path.join(cacheDir('Mathematica'), token.include);
+		// The maths is TeX: as it is in LaTeX, escaped in HTML (resultHTML).
+		const tex = () => {
+			const text = fs.readFileSync(cached, 'utf8');
+			return global.isLatex ? text : resultHTML(text);
+		};
 		if (token.code.includes("InlineMath")) {
-			return "$" + fs.readFileSync(token.include, 'utf8') + "$";	
+			return "$" + tex() + "$";
 		}
 		else if (token.code.includes("DisplayMath")) {
-			return "$$" + fs.readFileSync(token.include, 'utf8') + "$$";
+			return "$$" + tex() + "$$";
 		}
 		else {
 			// Embedding SVG code from mathematica is generally a bad idea
 			// as it doesn't generate unique IDs for the output
-			if (global.isLatex) return '';
+			const text = token.include.endsWith('.txt') ? fs.readFileSync(cached, 'utf8').replace(/\n+$/, '') : null;
+			// A text result prints in LaTeX too, as the page shows it
+			// (resultLaTeX); a graphic is still left out.
+			if (global.isLatex) return text === null ? '' : resultLaTeX(text);
 			console.log(token.include);
-			return `<img class='mathematica svg' src='Mathematica/${token.include}'>`;
+			// A text result is printed as the block form prints its own, as
+			// text (resultHTML), where it was an <img> of the .txt file, a
+			// broken image.
+			if (text !== null) {
+				return `<span class='mathematica txt'>${resultHTML(text)}</span>`;
+			}
+			return `<img class='mathematica svg' src='${htmlCachePath(cached)}'>`;
 			//return fs.readFileSync(token.include, 'utf8');
 		}
 
