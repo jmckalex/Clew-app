@@ -1,0 +1,49 @@
+# npm test on every push to main and every pull request (the owner's yes,
+# 2026-10-23).
+#
+# Linux, because no test needs a Mac: the one that reads macOS's own Avenir
+# Next skips elsewhere, as do those that need TeX Live (latexmk, LuaLaTeX,
+# pdfLaTeX, biber, poppler) or the jmarkdown master's checkout — each by name
+# in the log. The pinned mp-tikz-wasm (src/shared/mptikz-manifest.json) is
+# staged from its GitHub release, which the staging script checks against
+# the pinned sha256, so the built-in TeX's tests (Clew-iOS's PDF via LaTeX)
+# run here as on a Mac. zeta-assets/ is never needed: no test opens an
+# office document. Measured before the first run, from a fresh shallow clone
+# on a case-sensitive disk under Node 24 with TeX hidden: 1381 pass, 14 skip.
+#
+# Every action is pinned to a full commit SHA. The workflow only reads the
+# repository and uses no secrets.
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24 # Electron 43's Node is 24.x
+          cache: npm
+      # No test starts Electron, so its binary is not downloaded.
+      - run: npm ci --no-audit --no-fund
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: 1
+      # MPTIKZ_SRC names no folder, so the RELEASE is staged; the script
+      # prefers a local mp-tikz-wasm master build wherever one exists.
+      # Fetched each run, so a run also shows the pinned URL still serves the
+      # pinned bytes.
+      - run: node scripts/stage-mptikz.js --require
+        env:
+          MPTIKZ_SRC: /nonexistent
+      - run: npm test
