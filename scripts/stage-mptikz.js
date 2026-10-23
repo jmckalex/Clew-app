@@ -147,6 +147,33 @@ there), adding the packages that provide them.`;
 	console.warn(message);
 }
 
+/**
+ * Remove the macOS metadata a release archive may carry. An archive made by
+ * macOS's tar without COPYFILE_DISABLE gives every entry an AppleDouble twin,
+ * `._<name>`, holding its extended attributes (0.5.0's hold
+ * com.apple.provenance). macOS's tar folds these back into attributes as it
+ * extracts, but GNU tar writes them out as files. Staged on Linux, 0.5.0 held
+ * 5,516 of them beside its 4,880 files (the first CI run, 2026-10-23).
+ * A file is removed only if it is one: its name starts with `._` and it
+ * begins with AppleDouble's magic number. A Mac staging has none, so it is
+ * unchanged.
+ */
+function removeAppleDouble(dir) {
+	let n = 0;
+	for (const entry of fs.readdirSync(dir, { withFileTypes: true, recursive: true })) {
+		if (!entry.isFile() || !entry.name.startsWith('._')) continue;
+		const file = path.join(entry.parentPath, entry.name);
+		const head = Buffer.alloc(4);
+		const fd = fs.openSync(file, 'r');
+		try { fs.readSync(fd, head, 0, 4, 0); } finally { fs.closeSync(fd); }
+		if (head.readUInt32BE(0) === 0x00051607) {
+			fs.rmSync(file);
+			n += 1;
+		}
+	}
+	return n;
+}
+
 function countFiles(dir) {
 	let n = 0;
 	for (const entry of fs.readdirSync(dir, { withFileTypes: true, recursive: true })) {
@@ -226,6 +253,8 @@ try {
 	for (const asset of assets) {
 		execFileSync('tar', ['xzf', path.join(cache, asset.archive), '-C', dest, '--strip-components=2', asset.unpackedDir], { stdio: 'inherit' });
 	}
+	const strays = removeAppleDouble(dest);
+	if (strays) console.log(`stage-mptikz: removed ${strays} AppleDouble files (._*) that this tar wrote out from the archive's macOS metadata`);
 	report({
 		source: 'release', version: manifest.version, from: manifest.url,
 		describe: `pinned ${manifest.tag}${manifest.ghostscript ? ' + ghostscript' : ''}`,

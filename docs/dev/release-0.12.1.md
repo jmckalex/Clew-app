@@ -123,7 +123,13 @@ Items 1, 2 and 4 are done (2026-10-22); 5 is Clew-docs'.
   `npm test` on every push to main and every pull request.
 - **mp-tikz-wasm 0.5.1 is released before 0.12.1**, and Clew re-pins to it
   once Clew-boss has verified it. This blocks the RC; nothing is re-pinned
-  before then.
+  before then. 0.5.0's archives were made by macOS's tar with its metadata:
+  every entry has an AppleDouble `._` twin and a com.apple.provenance
+  header. GNU tar writes the twins out as files (5,516 on the first CI run)
+  and prints a warning for each header, 5,559 lines of the log.
+  `stage-mptikz.js` now removes the twins on any platform. For upstream:
+  0.5.1's archives made with `COPYFILE_DISABLE=1` and `--no-xattrs`, or on
+  Linux, carry neither.
 
 **Waiting on the owner:**
 
