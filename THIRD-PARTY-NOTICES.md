@@ -76,7 +76,7 @@ part keeps its own licence:
 | dvisvgm (`dvisvgm.wasm`) | GPL-3.0-or-later (with FreeType, potrace and others) | https://github.com/mgieseki/dvisvgm |
 | BibTeX (`bibtex.wasm`) | BibTeX's own terms (as Knuth's TeX) / LGPL-2.1-or-later (kpathsea) | BibTeX 0.99d, TeX Live 2025, unmodified |
 | makeindex (`makeindex.wasm`) | **MakeIndex Distribution Notice** (below) / LGPL-2.1-or-later (kpathsea) | makeindex 2.17, TeX Live 2025 (`texk/makeindexk`), unmodified |
-| Ghostscript (`ghostscript/gs.mjs`, `gs.wasm`), when present | **GNU AGPL v3** (`ghostscript/COPYING`, `ghostscript/LICENSE`) | the corresponding source, https://github.com/jmckalex/mp-tikz-wasm/releases/download/v0.5.0/mp-tikz-wasm-ghostscript-0.5.0-source.tar.gz (SHA-256 2096e4fc00b79ec80d11a3984009c606907cadb92456f93ed62e56d0d494f84a), and Ghostscript 10.08.0 (https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/tag/gs10080) and the port's build, as `ghostscript/SOURCE.md` pins them |
+| Ghostscript (`ghostscript/gs.mjs`, `gs.wasm`), when present | **GNU AGPL v3** (`ghostscript/COPYING`, `ghostscript/LICENSE`) | the corresponding source, https://github.com/jmckalex/mp-tikz-wasm/releases/download/v0.5.1/mp-tikz-wasm-ghostscript-0.5.1-source.tar.gz (SHA-256 2096e4fc00b79ec80d11a3984009c606907cadb92456f93ed62e56d0d494f84a), and Ghostscript 10.08.0 (https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/tag/gs10080) and the port's build, as `ghostscript/SOURCE.md` pins them |
 | TeX macro packages and fonts (`bundles/`) | LPPL 1.3c and package-specific free licences; Knuth's, AMS and GUST font licences; dvips's headers GPL | TeX Live 2025 |
 | EB Garamond and Garamond-Math (`bundles/latex-doc`) | SIL Open Font License 1.1 | The EB Garamond Project Authors (Georg Duffner, Octavio Pardo); Garamond-Math, Yuansheng Zhao — TeX Live's `ebgaramond` and `garamond-math`, unmodified |
 | The `latex-doc` bundle's packages, BibTeX and makeindex styles, and hyphenation patterns (`bundles/latex-doc`) | LPPL 1.3c, 1.3 or 1.2; MIT (enumitem, titlesec, hyph-utf8); each pattern file's own free licence, stated in its header | TeX Live 2025, unmodified |
@@ -85,7 +85,7 @@ part keeps its own licence:
 the upstream sources, the patches and a reproducible build — is in the
 mp-tikz-wasm repository and attached to the GitHub release Clew pins
 (`src/shared/mptikz-manifest.json`: the archive and its SHA-256), and
-Ghostscript's in the release's own source archive, `mp-tikz-wasm-ghostscript-0.5.0-source.tar.gz`, as
+Ghostscript's in the release's own source archive, `mp-tikz-wasm-ghostscript-0.5.1-source.tar.gz`, as
 `ghostscript/SOURCE.md` names it, beside the module in every copy of Clew
 that ships it. mp-tikz-wasm's own `NOTICE.md` has the full table.
 

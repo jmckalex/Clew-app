@@ -412,8 +412,10 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   addFiles` BEFORE the loader is injected, and named to the render worker
   through `CLEW_NOTE_FONTS`. A site export bakes such figures as OUTLINES
   (`figure-bake.js`), never embedding Apple's or Microsoft's face in a
-  published page. The manifest pins mp-tikz-wasm 0.5.0 (published 2026-10-21,
-  with its Ghostscript archive, whose module is 0.4.0's — the opt-in
+  published page. The manifest pins mp-tikz-wasm 0.5.1 (published 2026-11-05,
+  with its Ghostscript archive, whose module is 0.4.0's — 0.5.0's engines,
+  formats and bundles, its JavaScript saying a failed document's errors
+  whole, and `result.texLogBytes`; 0.5.0, 2026-10-21, brought the opt-in
   `latex-doc` bundle, BibTeX and makeindex as wasm, `latex()`'s `date`;
   figures render as under 0.4.0; 0.3.0, 2026-09-28, was the first release
   carrying the `opentype` bundle), so the

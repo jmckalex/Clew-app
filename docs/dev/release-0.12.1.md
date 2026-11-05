@@ -125,14 +125,19 @@ Items 1, 2 and 4 are done (2026-10-22); 5 is Clew-docs'.
 - **The GitHub Actions workflow:** yes. `.github/workflows/test.yml` runs
   `npm test` on every push to main and every pull request.
 - **mp-tikz-wasm 0.5.1 is released before 0.12.1**, and Clew re-pins to it
-  once Clew-boss has verified it. This blocks the RC; nothing is re-pinned
-  before then. 0.5.0's archives were made by macOS's tar with its metadata:
-  every entry has an AppleDouble `._` twin and a com.apple.provenance
-  header. GNU tar writes the twins out as files (5,516 on the first CI run)
-  and prints a warning for each header, 5,559 lines of the log.
-  `stage-mptikz.js` now removes the twins on any platform. For upstream:
-  0.5.1's archives made with `COPYFILE_DISABLE=1` and `--no-xattrs`, or on
-  Linux, carry neither.
+  once Clew-boss has verified it — **done, no longer a blocker**: 0.5.1 was
+  published 2026-11-05 (tag v0.5.1 = 596c278), Clew-boss checked every asset
+  byte for byte, and the manifest pins it. Only its JavaScript changed (a
+  failed document's errors and their help whole, `result.texLogBytes`,
+  `engine: 'tex'`); measured here, five files of the staged tree differ from
+  0.5.0's (core, tex/bridge, types), none added or removed, and npm test is
+  1397/1397 against it. 0.5.0's archives were made by macOS's tar with its
+  metadata: every entry has an AppleDouble `._` twin and a
+  com.apple.provenance header. GNU tar writes the twins out as files (5,516
+  on the first CI run) and prints a warning for each header, 5,559 lines of
+  the log. 0.5.1's carry neither (5,550 and 9 members, no `._`, no macOS
+  pax header), and staging removed nothing; `stage-mptikz.js` still removes
+  any twin on any platform, as a guard.
 
 **The engine's hunk — decided** (2026-10-23, via Clew-boss: "Commit the
 switch, please"): the owner's own `src/index.js` hunk in the jmarkdown
@@ -164,11 +169,13 @@ is lifted: jmarkdown 2ae14b8 is vendored (`58b8331`), then 794cc9c
 - Clew-iOS syncs `obsidian-comments.js` (`EXPORT_EXTENSIONS`),
   `texMissingFiles` and `mathFontOnlyWithMaths` — its release, not this
   one, but the shared code is what both ship. For `texMissingFiles` it
-  passes `result.texLogBytes ?? result.log`: mp-tikz-wasm has the byte log
-  on latex-doc `190ccb1` and byte-joined diagnostics on `662aae9` (CI
-  green, unreleased — a release is the owner's call); the pinned 0.5.0
-  has the string alone, which under its pdfTeX has already lost a letter
-  cut at a line break.
+  passes `result.texLogBytes ?? result.log`. mp-tikz-wasm has the byte log
+  and byte-joined diagnostics from 0.5.1, the pin. Measured through it, under
+  LuaLaTeX and pdfLaTeX alike, the byte log and the diagnostics each name
+  every missing file of tests/tex-missing-files.test.js's fixture whole (the
+  long path, the accented ones and the one pdfTeX cuts inside a letter).
+  0.5.0 had the string alone, and its diagnostics named only the bare name;
+  under pdfTeX the string loses a letter cut at a line break, in 0.5.1 too.
 
 ## 4. The checklist
 
