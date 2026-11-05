@@ -1903,13 +1903,14 @@ except where the selection touches a construct. The durable design is
   LaTeX: TeX could not find the file "…", so the PDF was made without it."),
   added to a note's, a book's and a proof's warnings; the export's notice
   names them first (`build-warnings.js#warningSummary`: "TeX could not find
-  picture.png"). Shared so Clew-iOS reads mp-tikz-wasm's `result.log` the
-  same way — a string, whole under LuaLaTeX; under its pdfTeX, 0.5.0's string
-  has already lost a letter cut at a break (`äöÀ��`), which no rule recovers
-  (its `diagnostics` are taken too, but 0.5.0 cuts their messages at TeX's
-  line break). `tests/tex-missing-files.test.js` (accented paths broken as
+  picture.png"). Shared so Clew-iOS reads mp-tikz-wasm's log the same way —
+  from 0.5.1 its `result.texLogBytes`, the log as bytes, whole under both
+  TeXs, and its `diagnostics`, their lines joined (0.5.0 cut them); its
+  `result.log` is a string, whole under LuaLaTeX, but under pdfTeX it has
+  already lost a letter cut at a break (`äöÀ��`), which no rule recovers.
+  `tests/tex-missing-files.test.js` (accented paths broken as
   each TeX breaks them; the real latexmk under pdfLaTeX and LuaLaTeX, and the
-  pinned mp-tikz-wasm), `smoke/tex-missing-scenario.js` (run with an empty
+  pinned mp-tikz-wasm's byte log and diagnostics under both), `smoke/tex-missing-scenario.js` (run with an empty
   HOME: the user's global fontspec preamble would choose LuaLaTeX). **latexmk and the biber it runs take the USER's configuration
   only** (`latex-engine.js#latexmkCommand`, 2026-10-15): `-norc`, then
   latexmk's own system and user rc files by `-r` (its search, less the

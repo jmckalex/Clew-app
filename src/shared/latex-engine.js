@@ -146,7 +146,7 @@ function unwrapLog(log) {
 	return lines;
 }
 // Every way a TeX run that went on says a file was not there (measured, TeX
-// Live 2025 and mp-tikz-wasm 0.5.0, pdfLaTeX and LuaLaTeX): graphicx's
+// Live 2025 and mp-tikz-wasm 0.5.0 and 0.5.1, pdfLaTeX and LuaLaTeX): graphicx's
 // `LaTeX Warning: File `x' not found on input line N.`, the driver's
 // `! Package luatex.def Error: File `x' not found: using draft setting.`, and
 // `! LaTeX Error: File `x' not found.` for a name it tried every extension on.
@@ -160,12 +160,12 @@ const NOT_FOUND = /File `([^']+)' not found/;
  * read (`on input line N`, or the error's `l.N`).
  *
  * @param {Uint8Array | string | { message: string, line?: number }[]} source -
- *   the run's .log AS BYTES where it can be read so (latexmk's on a desktop:
- *   pdfTeX cuts a letter's bytes at a line break), else as text
- *   (mp-tikz-wasm's `result.log` on the iPad: whole under LuaLaTeX; under its
- *   pdfTeX a letter cut at a break is already lost in 0.5.0's string), or
- *   else mp-tikz-wasm's `diagnostics`, whose messages 0.5.0 cuts at TeX's line
- *   break (a long path then reads short)
+ *   the run's .log AS BYTES where it can be read so (latexmk's on a desktop,
+ *   mp-tikz-wasm's `result.texLogBytes` from 0.5.1: pdfTeX cuts a letter's
+ *   bytes at a line break), else as text (mp-tikz-wasm's `result.log`: whole
+ *   under LuaLaTeX; under its pdfTeX a letter cut at a break is already lost
+ *   in the string), or else mp-tikz-wasm's `diagnostics` (whole from 0.5.1;
+ *   0.5.0 cut their messages at TeX's line break, and a long path read short)
  * @returns {{ file: string, line: number | null }[]}
  */
 export function texMissingFiles(source) {

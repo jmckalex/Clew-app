@@ -12,9 +12,9 @@
 // warning (shared/latex-engine.js#texMissingFiles, the owner's A1): from a log
 // as TeX writes it — lines broken at 79 columns, a long path cut anywhere —
 // then through the real tools, the desktop's latexmk (export.js#compilePdf
-// runs it so) and the pinned mp-tikz-wasm's LuaLaTeX (Clew-iOS's PDF via
-// LaTeX: its result.log, and its diagnostics as a fallback). Each skipped
-// where the tool is absent.
+// runs it so) and the pinned mp-tikz-wasm's LuaLaTeX and pdfLaTeX (Clew-iOS's
+// PDF via LaTeX: its result.texLogBytes, else its result.log, and its
+// diagnostics as a fallback). Each skipped where the tool is absent.
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -193,15 +193,28 @@ for (const engine of ['pdflatex', 'lualatex']) {
 const assets = process.env.CLEW_MPTIKZ_DIR ?? path.join(repo, 'mptikz-assets');
 const staged = fs.existsSync(path.join(assets, 'index.js'));
 
-test('mp-tikz-wasm\'s LuaLaTeX (the iPad): its log names each, accented paths whole, and its diagnostics the short ones', { skip: staged ? false : 'no mp-tikz-wasm build staged (npm run sync-mptikz)' }, async () => {
+// From 0.5.1 the build hands back the log as bytes (`result.texLogBytes`,
+// which Clew-iOS reads first) and joins its diagnostics' broken lines; its
+// `result.log` is the decoded text, whole under LuaLaTeX only.
+test('mp-tikz-wasm (the iPad), LuaLaTeX and pdfLaTeX: its byte log and its diagnostics name each, accented paths whole', { skip: staged ? false : 'no mp-tikz-wasm build staged (npm run sync-mptikz)' }, async () => {
 	const { MetaPost, DEFAULT_BUNDLES } = await import(pathToFileURL(path.join(assets, 'index.js')).href);
 	const mp = await MetaPost.create({ bundles: [...DEFAULT_BUNDLES, ...BUILT_IN_TEX.bundles] });
 	try {
-		const r = await mp.latex(DOCUMENT(IMAGES), { engine: 'lualatex', output: 'pdf', date: BUILT_IN_TEX.date });
-		assert.ok(r.pdf?.length, `a PDF made without them (status ${r.status})`);
-		assert.deepEqual(texMissingFiles(r.log), EXPECTED, 'result.log, a string, whole under LuaLaTeX');
-		for (const file of IMAGES.slice(0, -1)) assert.equal(texNotFoundLines(r.log).filter((f) => f.file === file).length, 2, `${file}: the warning's line and the driver error's, each read`);
-		assert.ok(texMissingFiles(r.diagnostics).some((f) => f.file === 'relative-missing' && f.line === EXPECTED.at(-1).line));
+		for (const engine of ['lualatex', 'latex']) {
+			const r = await mp.latex(DOCUMENT(IMAGES), { engine, output: 'pdf', date: BUILT_IN_TEX.date });
+			assert.ok(r.pdf?.length, `${engine}: a PDF made without them (status ${r.status})`);
+			assert.ok(r.texLogBytes instanceof Uint8Array, `${engine}: result.texLogBytes`);
+			assert.deepEqual(texMissingFiles(r.texLogBytes), EXPECTED, `${engine}: the log as bytes`);
+			for (const file of IMAGES.slice(0, -1)) assert.equal(texNotFoundLines(r.texLogBytes).filter((f) => f.file === file).length, 2, `${engine}, ${file}: the warning's line and the driver error's, each read`);
+			assert.deepEqual(texMissingFiles(r.diagnostics), EXPECTED, `${engine}: the diagnostics, their lines joined`);
+			if (engine === 'lualatex') assert.deepEqual(texMissingFiles(r.log), EXPECTED, 'result.log, a string, whole under LuaLaTeX');
+		}
+		// Cut inside a letter, as the desktop's pdfLaTeX cuts it: whole from the
+		// bytes and the diagnostics, lost from the string.
+		const cut = await mp.latex(DOCUMENT([CUT]), { engine: 'latex', output: 'pdf', date: BUILT_IN_TEX.date });
+		assert.deepEqual(texMissingFiles(cut.texLogBytes), [{ file: CUT, line: 6 }]);
+		assert.deepEqual(texMissingFiles(cut.diagnostics), [{ file: CUT, line: 6 }]);
+		assert.ok(!texMissingFiles(cut.log).some((f) => f.file === CUT), 'from the string the path is lost (read as two others): why a host reads texLogBytes first');
 	} finally {
 		mp.dispose();
 	}
