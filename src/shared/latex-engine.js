@@ -97,12 +97,28 @@ function chooseEngine(tex, setting) {
 	return { engine: 'pdflatex', reason: 'nothing in the document needs a Unicode engine' };
 }
 
-/** The first error in a TeX log (`! …` and the line after), or ''. */
+// A package's or class's error goes on over lines marked with its name —
+// `(fontspec)` and the message's next words — LaTeX3's and \PackageError's.
+const CONTINUED = /^! (?:Fatal )?(?:(?:Package|Class|Module) (\S+)|(LaTeX)) Error:/;
+
+/** The first error in a TeX log (`! …` and up to two lines after it, to a
+ *  blank line — a primitive error's `l.N` context), or '': its message whole
+ *  over its `(name)` lines, joined without the marker. TeX writes its terminal
+ *  instructions after that blank line ("Type X to quit or <RETURN> to
+ *  proceed," under a missing package), so none is in it. */
 export function firstLatexError(log) {
 	const lines = String(log ?? '').split('\n');
 	const at = lines.findIndex((l) => l.startsWith('!'));
 	if (at === -1) return '';
-	return lines.slice(at, at + 3).map((l) => l.trim()).filter(Boolean).join(' ').replace(/\s+/g, ' ').slice(0, 300);
+	const name = CONTINUED.exec(lines[at]);
+	const marker = name ? `(${name[1] ?? name[2]})` : null;
+	let end = at + 1;
+	while (marker && end < lines.length && lines[end].startsWith(marker)) end++;
+	const message = [lines[at], ...lines.slice(at + 1, end).map((l) => l.slice(marker.length))];
+	const after = lines.slice(end, end + 2);
+	const blank = after.findIndex((l) => !l.trim());
+	return [...message, ...(blank === -1 ? after : after.slice(0, blank))].map((l) => l.trim()).filter(Boolean)
+		.join(' ').replace(/\s+/g, ' ').slice(0, 300);
 }
 
 // TeX's transcript breaks its lines at max_print_line, 79 — counted in BYTES
@@ -209,19 +225,40 @@ const MISSING_WARNING = /^PDF via LaTeX: TeX could not find the file "(.+)", so 
  *  says them by name, not as "other"). */
 export const missingFileOf = (warning) => MISSING_WARNING.exec(String(warning))?.[1] ?? null;
 
-// What TeX's help says to a person at a terminal, not to a reader of a
-// failure: dropped from the help paragraph.
-const HELP_BOILERPLATE = /^(Try typing\s+<return>\s+to proceed|If that doesn't work, type\s+X\s+<return>\s+to quit|For immediate help type\s+H|Type\s+H\s+<return>|See the (LaTeX manual|\S+ package documentation))/;
+// What TeX says to a person at a terminal, not to a reader of a failure — how
+// to answer it there, which in nonstop mode no one does: dropped from the help,
+// line by line, each a whole sentence (LaTeX writes "You're in trouble here.
+// Try typing  <return>  to proceed." on one line, and the first sentence
+// stays). TeX's explanatory sentences stay as written ("type `I' and the
+// correct spelling" among them).
+const TERMINAL_INSTRUCTIONS = new RegExp([
+	String.raw`Try typing\s+<return>\s+to proceed\.?`,
+	String.raw`If that doesn't work, type\s+X\s+<return>\s+to quit\.?`,
+	String.raw`For immediate help type\s+H\s+<return>\.?`,
+	String.raw`Type\s+H\s+<return>\s+for immediate help\.?`,
+	String.raw`See the (?:LaTeX manual or LaTeX Companion|\S+ (?:package|class) documentation) for explanation\.?`,
+	String.raw`Type\s+I\s+<command>\s+<return>\s+to replace it with another command,?`,
+	String.raw`or\s+<return>\s+to continue without it\.?`,
+	String.raw`Type\s+X\s+to quit or\s+<RETURN>\s+to proceed,?`,
+	String.raw`or enter new name\.\s*\(Default extension: [^)]*\)`,
+	String.raw`Enter file name:`,
+	String.raw`Type\s+<return>\s+to continue\.?`,
+	String.raw`\(Press Enter to retry, or Control-D to exit\)`,
+	String.raw`Please type another input file name:?`,
+].join('|'), 'g');
+/** A log line less TeX's terminal instructions, trimmed ('' when that was all). */
+const withoutInstructions = (line) => String(line).replace(TERMINAL_INSTRUCTIONS, '').trim();
 const HELP_MAX = 280;
 
 /**
  * The first error's help — what TeX says after an error to explain it — its
- * first paragraph only, less TeX's terminal boilerplate (the owner's ask via
- * Clew-boss, 2026-10-22), or ''. From a log (the desktop's latexmk .log;
- * mp-tikz-wasm's result.log): in nonstop mode TeX writes it after the error's
- * context, `l.N …` and the line under it, up to a blank line — `! Undefined
- * control sequence.` has "The control sequence at the end of the top line of
- * your error message was never \def'ed. …"; a LaTeX3 error (fontspec's) has
+ * first paragraph only, less TeX's terminal instructions (the owner's ask via
+ * Clew-boss, 2026-10-22; every instruction, 2026-11-06), or ''. From a log
+ * (the desktop's latexmk .log; mp-tikz-wasm's result.log): in nonstop mode TeX
+ * writes it after the error's context, `l.N …` and the line under it, up to a
+ * blank line or the next error — `! Undefined control sequence.` has "The
+ * control sequence at the end of the top line of your error message was never
+ * \def'ed. …"; a LaTeX3 error (fontspec's) has
  * none there, its message saying it all. Or from mp-tikz-wasm's diagnostics:
  * the first error's `help`, the same lines.
  *
@@ -246,8 +283,10 @@ export function firstLatexHelp(source) {
 		if (context === at || !log[context + 1]) return '';
 		lines = log.slice(context + 2);
 	}
-	const end = lines.findIndex((l) => !String(l).trim());
-	const paragraph = (end === -1 ? lines : lines.slice(0, end)).map((l) => String(l).trim()).filter((l) => !HELP_BOILERPLATE.test(l));
+	// To a blank line, or the next error's `!` (a missing \input's prompt runs
+	// straight on into its Emergency stop).
+	const end = lines.findIndex((l) => !String(l).trim() || String(l).startsWith('!'));
+	const paragraph = (end === -1 ? lines : lines.slice(0, end)).map(withoutInstructions).filter(Boolean);
 	const help = paragraph.join(' ').replace(/\s+/g, ' ').trim();
 	return help.length > HELP_MAX ? `${help.slice(0, HELP_MAX - 1).replace(/\s+\S*$/, '')}…` : help;
 }
