@@ -245,6 +245,13 @@ const TERMINAL_INSTRUCTIONS = new RegExp([
 ].join('|'), 'g');
 /** A log line less TeX's terminal instructions, trimmed ('' when that was all). */
 const withoutInstructions = (line) => String(line).replace(TERMINAL_INSTRUCTIONS, '').trim();
+// How a LaTeX3 error (\msg_error: fontspec's, siunitx's, l3keys') says, under
+// its message, where its help is — LaTeX2e writes "Type  H <return>  for
+// immediate help." there, a primitive error nothing. A fatal one (\msg_fatal,
+// "Type <return> to continue.") has only LaTeX3's "LaTeX does not know
+// anything more about this error, sorry." after its context, and the pinned
+// mp-tikz-wasm's log and diagnostics not even that: it gives none.
+const LATEX3_ERROR = /^For immediate help type H <return>\.$/;
 const HELP_MAX = 280;
 
 /**
@@ -255,9 +262,11 @@ const HELP_MAX = 280;
  * writes it after the error's context, `l.N …` and the line under it, up to a
  * blank line or the next error — `! Undefined control sequence.` has "The
  * control sequence at the end of the top line of your error message was never
- * \def'ed. …"; a LaTeX3 error (fontspec's) has
- * none there, its message saying it all. Or from mp-tikz-wasm's diagnostics:
- * the first error's `help`, the same lines.
+ * \def'ed. …"; a LaTeX3 error writes a blank line first (fontspec's "A font
+ * might not be found for many reasons. …", the owner's "TeX's own help where
+ * TeX gives one", 2026-11-06; until then the Mac showed none, and the iPad,
+ * from 0.5.1's diagnostics, did). Or from mp-tikz-wasm's diagnostics: the
+ * first error's `help`, the same lines.
  *
  * @param {string | { severity?: string, help?: string[] }[]} source
  */
@@ -282,7 +291,10 @@ export function firstLatexHelp(source) {
 		// TeX always writes a line under `l.N` (the rest of the source line,
 		// indented — spaces at least); an empty one there means no help.
 		if (context === at || !log[context + 1]) return '';
-		lines = log.slice(context + 2);
+		// A LaTeX3 error — LATEX3_ERROR under its message — writes a blank line
+		// after its context and then its help: read past that one line.
+		const latex3 = log.slice(at + 1, context).some((l) => LATEX3_ERROR.test(l));
+		lines = log.slice(context + (latex3 && !log[context + 2]?.trim() ? 3 : 2));
 	}
 	// To a blank line, or the next error's `!` (a missing \input's prompt runs
 	// straight on into its Emergency stop).

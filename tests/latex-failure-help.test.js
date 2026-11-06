@@ -184,7 +184,7 @@ test('a log: the first error\'s help, its first paragraph', () => {
 	assert.equal(firstLatexError(XCOLOR), '! Package xcolor Error: Undefined color `nosuchcolourxyz\'.');
 	assert.equal(firstLatexHelp(UNDEFINED), UNDEFINED_HELP);
 	assert.equal(firstLatexHelp(ENVIRONMENT), 'Your command was ignored.', 'how to answer at a terminal is left out');
-	assert.equal(firstLatexHelp(FONTSPEC), '', 'a LaTeX3 error writes no help after its context: its message says it');
+	assert.equal(firstLatexHelp(FONTSPEC), '', 'a LaTeX3 error with nothing after the blank line: none');
 	assert.equal(firstLatexHelp('! Emergency stop.\n<*> x.tex\n\n*** (job aborted, no legal \\end found)\n'), '', 'no l.N context: none');
 	assert.equal(firstLatexHelp('all fine'), '');
 	assert.equal(firstLatexHelp(`${UNDEFINED}\n${ENVIRONMENT}`), UNDEFINED_HELP, 'the FIRST error\'s');
@@ -328,12 +328,71 @@ test('the built-in TeX (the iPad) and the Mac\'s latexmk: the same whole message
 			assert.equal(said({ log: r.log, diagnostics: r.diagnostics }), words, `${what}: the iPad`);
 			assert.equal(said({ log: macLog }), words, `${what}: the Mac`);
 		}
-		// fontspec's help (a LaTeX3 error's) is in the iPad's diagnostics; the
-		// Mac's log has it after a blank line, where no help is read.
+		// fontspec's help (a LaTeX3 error's): the iPad's from its diagnostics,
+		// the Mac's from its log, after the blank line LaTeX3 writes first.
 		const r = await mp.latex(FAMILY_DOC, { engine: 'lualatex', output: 'pdf', date: BUILT_IN_TEX.date });
 		assert.equal(said({ log: r.log, diagnostics: r.diagnostics }), `${FAMILY_ERROR} — ${FAMILY_HELP}`, 'a missing family: the iPad');
-		assert.equal(said({ log: MISSING_FONT }), FAMILY_ERROR, 'a missing family: the Mac');
+		assert.equal(said({ log: MISSING_FONT }), `${FAMILY_ERROR} — ${FAMILY_HELP}`, 'a missing family: the Mac');
 	} finally {
 		mp.dispose();
 	}
 });
+
+// LaTeX3's own errors (\msg_error), as latexmk wrote them under LuaLaTeX: an
+// unknown key (l3keys, the kernel's "! LaTeX Error:") and a package's.
+const SIUNITX_KEY = [
+	'! LaTeX Error: The key \'siunitx/nosuchkeyxyz\' is unknown and is being ignored.',
+	'',
+	'For immediate help type H <return>.',
+	' ...                                              ',
+	'                                                  ',
+	'l.3 \\sisetup{nosuchkeyxyz=1}',
+	'                          ',
+	'',
+	'The module \'siunitx\' does not have a key called \'siunitx/nosuchkeyxyz\'.',
+	'Check that you have spelled the key name correctly.',
+	'',
+].join('\n');
+const SIUNITX_NUMBER = [
+	'! Package siunitx Error: Invalid number \'1x2\'.',
+	'',
+	'For immediate help type H <return>.',
+	' ...                                              ',
+	'                                                  ',
+	'l.4 \\num{1x2}',
+	'           ',
+	'',
+	'The input \'1x2\' could not be parsed as a number following the format defined',
+	'in module documentation.',
+	'',
+].join('\n');
+
+test('a LaTeX3 error\'s help, after the blank line it writes under its context (the owner\'s "TeX\'s own help where TeX gives one")', () => {
+	assert.equal(firstLatexHelp(MISSING_FONT), FAMILY_HELP, 'fontspec\'s: its first paragraph');
+	assert.equal(firstLatexHelp(SIUNITX_KEY), 'The module \'siunitx\' does not have a key called \'siunitx/nosuchkeyxyz\'. Check that you have spelled the key name correctly.');
+	assert.equal(firstLatexHelp(SIUNITX_NUMBER), 'The input \'1x2\' could not be parsed as a number following the format defined in module documentation.');
+	// A fatal one has only LaTeX3's "LaTeX does not know anything more about
+	// this error, sorry." there (the iPad's TeX not even that): none.
+	assert.equal(firstLatexHelp(FATAL_FONTSPEC), '');
+	// Nothing else reads past a blank line: every LaTeX2e and primitive error
+	// says what it said before.
+	for (const [log, help] of [[UNDEFINED, UNDEFINED_HELP], [ENVIRONMENT, 'Your command was ignored.'], [MISSING_BEGIN, 'You\'re in trouble here.'], [XCOLOR, ''], [PRIMITIVE_INPUT, ''], [MISSING_STY, '']]) {
+		assert.equal(firstLatexHelp(log), help, log.split('\n')[0]);
+	}
+});
+
+const SIUNITX_DOC = '\\documentclass{article}\n\\usepackage{siunitx}\n\\sisetup{nosuchkeyxyz=1}\n\\begin{document}\nText.\n\\end{document}\n';
+for (const engine of ['pdflatex', 'lualatex']) {
+	test(`the desktop's latexmk and ${engine}: a LaTeX3 error's failure carries its help`, { skip: latexmk && tool(engine) ? false : `latexmk and ${engine} are not installed` }, async () => {
+		const dir = path.join(root, `latex3-${engine}`);
+		fs.mkdirSync(dir, { recursive: true });
+		const { args, env } = latexmkCommand({ engine, texFile: 'Note.tex', env: process.env, isFile });
+		const run = async (tex) => {
+			fs.writeFileSync(path.join(dir, 'Note.tex'), tex);
+			await new Promise((resolve) => execFile(latexmk, args, { cwd: dir, timeout: 120000, env: { ...process.env, ...env, PATH: `${TEX_DIRS.join(':')}:${process.env.PATH}` } }, resolve));
+			return pdfViaLatexFailure({ engine, reason: 'r', log: fs.readFileSync(path.join(dir, 'Note.log'), 'utf8') });
+		};
+		assert.match(await run(SIUNITX_DOC), / — The module 'siunitx' does not have a key called 'siunitx\/nosuchkeyxyz'\. Check that you have spelled the key name correctly\.$/);
+		if (engine === 'lualatex') assert.ok((await run(FAMILY_DOC)).endsWith(`${FAMILY_ERROR} — ${FAMILY_HELP}`), 'a missing family: as the iPad says it');
+	});
+}
