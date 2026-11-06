@@ -88,6 +88,14 @@ const FATAL_FONTSPEC = [
 	'                                                  ',
 	'l.101 \\msg_fatal:nn {fontspec} {cannot-use-pdftex}',
 	'                                                  ',
+	'',
+	'LaTeX does not know anything more about this error, sorry.',
+	'',
+	'Try typing <return> to proceed.',
+	'If that doesn\'t work, type X <return> to quit.',
+	'',
+	'This is a fatal error: LaTeX will abort.',
+	'',
 ].join('\n');
 const MISSING_FONT = [
 	'! Package fontspec Error: ',
@@ -103,6 +111,12 @@ const MISSING_FONT = [
 	'                                                  ',
 	'l.4 \\begin',
 	'        {document}',
+	'',
+	'A font might not be found for many reasons.',
+	' Check the spelling, where the font is installed etc. etc.',
+	'',
+	' When in doubt, ask someone for help!',
+	'',
 ].join('\n');
 const MISSING_STY = [
 	'! LaTeX Error: File `nosuchpackagexyz.sty\' not found.',
@@ -118,18 +132,19 @@ const MISSING_STY = [
 	'        {document}\r',
 ].join('\n');
 
-// A primitive \input of a file that is not there: TeX's prompt, then the
-// next error at once. And LaTeX's own instruction sharing a line with its
-// prose.
+// LuaLaTeX's, as latexmk wrote them: a primitive \input of a file that is not
+// there (TeX's prompt, then the next error at once); LaTeX's own instruction
+// sharing a line with its prose; a LaTeX2e \PackageError, whose help is
+// instructions alone.
 const PRIMITIVE_INPUT = [
 	'! I can\'t find file `nosuchfilexyz\'.',
 	'l.3 \\input nosuchfilexyz',
-	'                        ',
+	'                      ',
 	'(Press Enter to retry, or Control-D to exit)',
 	'Please type another input file name',
 	'! Emergency stop.',
 	'l.3 \\input nosuchfilexyz',
-	'                        ',
+	'                      ',
 	'*** (job aborted, file error in nonstop mode)',
 	'',
 ].join('\n');
@@ -141,8 +156,21 @@ const MISSING_BEGIN = [
 	' ...                                              ',
 	'                                                  ',
 	'l.2 T',
-	'     ext.',
+	'   ext.',
 	'You\'re in trouble here.  Try typing  <return>  to proceed.',
+	'If that doesn\'t work, type  X <return>  to quit.',
+	'',
+].join('\n');
+const XCOLOR = [
+	'! Package xcolor Error: Undefined color `nosuchcolourxyz\'.',
+	'',
+	'See the xcolor package documentation for explanation.',
+	'Type  H <return>  for immediate help.',
+	' ...                                              ',
+	'                                                  ',
+	'l.4 \\textcolor{nosuchcolourxyz}{Text.}',
+	'                                    ',
+	'Try typing  <return>  to proceed.',
 	'If that doesn\'t work, type  X <return>  to quit.',
 	'',
 ].join('\n');
@@ -152,6 +180,8 @@ test('a log: the first error\'s help, its first paragraph', () => {
 	assert.equal(firstLatexHelp(MISSING_BEGIN), 'You\'re in trouble here.', 'an instruction sharing a line with prose: the prose stays');
 	assert.equal(firstLatexError(PRIMITIVE_INPUT), '! I can\'t find file `nosuchfilexyz\'. l.3 \\input nosuchfilexyz');
 	assert.equal(firstLatexError(MISSING_BEGIN), '! LaTeX Error: Missing \\begin{document}.');
+	assert.equal(firstLatexHelp(XCOLOR), '', 'a \\PackageError whose help is instructions alone: none');
+	assert.equal(firstLatexError(XCOLOR), '! Package xcolor Error: Undefined color `nosuchcolourxyz\'.');
 	assert.equal(firstLatexHelp(UNDEFINED), UNDEFINED_HELP);
 	assert.equal(firstLatexHelp(ENVIRONMENT), 'Your command was ignored.', 'how to answer at a terminal is left out');
 	assert.equal(firstLatexHelp(FONTSPEC), '', 'a LaTeX3 error writes no help after its context: its message says it');
@@ -179,13 +209,16 @@ test('TeX\'s terminal boilerplate is left out; a long paragraph is cut at a word
 	assert.ok(help.length <= 280 && help.endsWith('…') && !help.includes('wor…'), help);
 });
 
-test('mp-tikz-wasm\'s diagnostics: the first error\'s help', () => {
-	const diagnostics = [
-		{ severity: 'warning', source: 'tex', message: 'Overfull \\hbox', help: ['not this'] },
-		{ severity: 'error', source: 'tex', message: 'Package fontspec Error: ', line: 4 },
-		{ severity: 'error', source: 'tex', message: 'Undefined control sequence.', line: 5, help: UNDEFINED.split('\n').slice(3, 8) },
-	];
-	assert.equal(firstLatexHelp(diagnostics), UNDEFINED_HELP);
+test('mp-tikz-wasm\'s diagnostics: the first error\'s help, or none — never a later error\'s', () => {
+	const undefinedError = { severity: 'error', source: 'tex', message: 'Undefined control sequence.', line: 5, help: UNDEFINED.split('\n').slice(3, 8) };
+	assert.equal(firstLatexHelp([{ severity: 'warning', source: 'tex', message: 'Overfull \\hbox', help: ['not this'] }, undefinedError]), UNDEFINED_HELP, 'a warning\'s is not an error\'s');
+	assert.equal(firstLatexHelp([{ severity: 'error', source: 'tex', message: 'Package fontspec Error: ', line: 4 }, undefinedError]), '', 'the first has none');
+	// The pinned 0.5.1 under a missing package: the first error has none, the
+	// Emergency stop's is TeX's notice that it cannot ask.
+	assert.equal(firstLatexHelp([
+		{ severity: 'error', source: 'tex', message: 'LaTeX Error: File `nosuchpackagexyz.sty\' not found.' },
+		{ severity: 'error', source: 'tex', message: 'Emergency stop.', line: 3, help: ['*** (cannot \\read from terminal in nonstop modes)'] },
+	]), '');
 	assert.equal(firstLatexHelp([]), '');
 });
 
@@ -264,6 +297,42 @@ test('the built-in TeX (the iPad): its diagnostics carry the same help', { skip:
 		const inBody = await mp.latex(IN_BODY, { engine: 'lualatex', output: 'pdf', date: BUILT_IN_TEX.date });
 		assert.equal(pdfViaLatexFailure({ engine: 'lualatex', reason: 'r', log: inBody.log, diagnostics: inBody.diagnostics }),
 			'PDF via LaTeX failed — LuaLaTeX ran (r). First error: ! LaTeX Error: Can be used only in preamble. — Your command was ignored.', 'the iPad\'s words, as the Mac\'s');
+	} finally {
+		mp.dispose();
+	}
+});
+
+// The iPad's whole message beside the Mac's (Clew-boss's probe, 2026-11-06):
+// each document through the pinned build, and the log latexmk wrote for it.
+// Under a missing package the iPad's said the Emergency stop's "*** (cannot
+// \read from terminal in nonstop modes)" as help, a later error's.
+const SIDE_BY_SIDE = [
+	['a missing package', '\\documentclass{article}\n\\usepackage{nosuchpackagexyz}\n\\begin{document}\nText.\n\\end{document}\n', MISSING_STY,
+		'First error: ! LaTeX Error: File `nosuchpackagexyz.sty\' not found.'],
+	['no \\begin{document}', '\\documentclass{article}\nText.\n\\end{document}\n', MISSING_BEGIN,
+		'First error: ! LaTeX Error: Missing \\begin{document}. — You\'re in trouble here.'],
+	['a primitive \\input of a missing file', INPUT_DOC, PRIMITIVE_INPUT,
+		'First error: ! I can\'t find file `nosuchfilexyz\'. l.3 \\input nosuchfilexyz'],
+];
+const FAMILY_DOC = '\\documentclass{article}\n\\usepackage{fontspec}\n\\setmainfont{NoSuchFamilyXyz}\n\\begin{document}\nText.\n\\end{document}\n';
+const FAMILY_ERROR = 'First error: ! Package fontspec Error: The font "NoSuchFamilyXyz" cannot be found; this may be but usually is not a fontspec bug. Either there is a typo in the font name/file, the font is not installed (correctly), or there is a bug in the underlying font loading engine (XeTeX/luaotfload).';
+const FAMILY_HELP = 'A font might not be found for many reasons. Check the spelling, where the font is installed etc. etc.';
+const said = (o) => pdfViaLatexFailure({ engine: 'lualatex', reason: 'r', ...o }).replace('PDF via LaTeX failed — LuaLaTeX ran (r). ', '');
+
+test('the built-in TeX (the iPad) and the Mac\'s latexmk: the same whole message', { skip: fs.existsSync(path.join(assets, 'index.js')) ? false : 'no mp-tikz-wasm build staged (npm run sync-mptikz)' }, async () => {
+	const { MetaPost, DEFAULT_BUNDLES } = await import(pathToFileURL(path.join(assets, 'index.js')).href);
+	const mp = await MetaPost.create({ bundles: [...DEFAULT_BUNDLES, ...BUILT_IN_TEX.bundles] });
+	try {
+		for (const [what, doc, macLog, words] of SIDE_BY_SIDE) {
+			const r = await mp.latex(doc, { engine: 'lualatex', output: 'pdf', date: BUILT_IN_TEX.date });
+			assert.equal(said({ log: r.log, diagnostics: r.diagnostics }), words, `${what}: the iPad`);
+			assert.equal(said({ log: macLog }), words, `${what}: the Mac`);
+		}
+		// fontspec's help (a LaTeX3 error's) is in the iPad's diagnostics; the
+		// Mac's log has it after a blank line, where no help is read.
+		const r = await mp.latex(FAMILY_DOC, { engine: 'lualatex', output: 'pdf', date: BUILT_IN_TEX.date });
+		assert.equal(said({ log: r.log, diagnostics: r.diagnostics }), `${FAMILY_ERROR} — ${FAMILY_HELP}`, 'a missing family: the iPad');
+		assert.equal(said({ log: MISSING_FONT }), FAMILY_ERROR, 'a missing family: the Mac');
 	} finally {
 		mp.dispose();
 	}

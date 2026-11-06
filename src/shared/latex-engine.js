@@ -230,19 +230,16 @@ export const missingFileOf = (warning) => MISSING_WARNING.exec(String(warning))?
 // line by line, each a whole sentence (LaTeX writes "You're in trouble here.
 // Try typing  <return>  to proceed." on one line, and the first sentence
 // stays). TeX's explanatory sentences stay as written ("type `I' and the
-// correct spelling" among them).
+// correct spelling" among them). Only what a real log or the pinned
+// mp-tikz-wasm's diagnostics put where the help is read (2026-11-06): the
+// rest of TeX's terminal lines — "Type  H <return>  for immediate help.",
+// "Type X to quit or <RETURN> to proceed," and the like — stand before an
+// error's context or between two errors, where no help is read.
 const TERMINAL_INSTRUCTIONS = new RegExp([
 	String.raw`Try typing\s+<return>\s+to proceed\.?`,
 	String.raw`If that doesn't work, type\s+X\s+<return>\s+to quit\.?`,
-	String.raw`For immediate help type\s+H\s+<return>\.?`,
-	String.raw`Type\s+H\s+<return>\s+for immediate help\.?`,
-	String.raw`See the (?:LaTeX manual or LaTeX Companion|\S+ (?:package|class) documentation) for explanation\.?`,
 	String.raw`Type\s+I\s+<command>\s+<return>\s+to replace it with another command,?`,
 	String.raw`or\s+<return>\s+to continue without it\.?`,
-	String.raw`Type\s+X\s+to quit or\s+<RETURN>\s+to proceed,?`,
-	String.raw`or enter new name\.\s*\(Default extension: [^)]*\)`,
-	String.raw`Enter file name:`,
-	String.raw`Type\s+<return>\s+to continue\.?`,
 	String.raw`\(Press Enter to retry, or Control-D to exit\)`,
 	String.raw`Please type another input file name:?`,
 ].join('|'), 'g');
@@ -267,7 +264,11 @@ const HELP_MAX = 280;
 export function firstLatexHelp(source) {
 	let lines = [];
 	if (Array.isArray(source)) {
-		lines = source.find((d) => d?.severity === 'error' && Array.isArray(d.help))?.help ?? [];
+		// The FIRST error's, or none — never a later one's, as from a log: under
+		// a missing package the first has none, and the Emergency stop's is
+		// "*** (cannot \read from terminal in nonstop modes)".
+		const first = source.find((d) => d?.severity === 'error');
+		lines = Array.isArray(first?.help) ? first.help : [];
 	} else {
 		const log = String(source ?? '').split('\n');
 		const at = log.findIndex((l) => l.startsWith('!'));
