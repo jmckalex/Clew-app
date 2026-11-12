@@ -56,7 +56,7 @@ const spdx = (pkg) => {
 /** vendor/ folders that ship as they are (no npm install). The stamp
  *  tool's default library (pdf-core.js) declares no licence field in its
  *  package.json; its LICENSE file is MIT. */
-const VENDORED = ['default-stamps', 'embedpdf'];
+const VENDORED = ['default-stamps', 'embedpdf', 'material-icons'];
 const VENDORED_LICENCE = { 'default-stamps': 'MIT' };
 /** A vendored build with no package.json of its own: what to call it. The
  *  PDF viewer is EmbedPDF built from the owner's OCG/layers fork
@@ -64,6 +64,14 @@ const VENDORED_LICENCE = { 'default-stamps': 'MIT' };
  *  @embedpdf packages fell out of this list until it was named here. */
 const VENDORED_META = {
 	embedpdf: { name: 'EmbedPDF (OCG/layers fork)', version: '2.15.0', license: 'MIT', homepage: 'https://github.com/embedpdf/embed-pdf-viewer' },
+	// The file explorer's icons, an SVG subset (scripts/vendor-file-icons.js);
+	// its version is the one the generated table records.
+	'material-icons': {
+		name: 'Material Icon Theme (file icons)',
+		version: (await import('../src/renderer/lib/file-icons-data.js')).FILE_ICONS.version,
+		license: 'MIT',
+		homepage: 'https://github.com/material-extensions/vscode-material-icon-theme',
+	},
 };
 
 /** Every runtime package reachable from `dependencies`, plus Electron. */

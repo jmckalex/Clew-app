@@ -162,6 +162,9 @@ export const staticDirs = [
 	// a reader can see it. Clew's colours are applied as an xterm theme
 	// object, not by overriding this file (clew-shell-panel.js).
 	{ from: path.join(root, 'node_modules/@xterm/xterm/css/xterm.css'), to: path.join(root, 'dist/renderer/vendor/xterm.css') },
+	// The file explorer's icons (lib/file-icons.js), Material Icon Theme's
+	// SVGs with their licence, written by scripts/vendor-file-icons.js.
+	{ from: path.join(root, 'vendor/material-icons'), to: path.join(root, 'dist/renderer/file-icons') },
 	{ from: path.join(root, 'src/engine'), to: path.join(root, 'dist/engine') },
 ];
 
