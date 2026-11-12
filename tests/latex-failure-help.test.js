@@ -15,7 +15,9 @@
 // `(name)` lines joined (#firstLatexError): from a log's lines as TeX writes
 // them in nonstop mode, then through the real tools — the desktop's latexmk
 // and the pinned mp-tikz-wasm's log and diagnostics (Clew-iOS's). Each
-// skipped where the tool is absent.
+// skipped where the tool is absent. Since 2026-11-12 a log's lines are TeX's
+// (unwrapLog): a first error or a help line TeX broke at 79 bytes is read
+// whole, from the log's bytes where a host has them.
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -288,6 +290,9 @@ for (const engine of ['pdflatex', 'lualatex']) {
 }
 
 const assets = process.env.CLEW_MPTIKZ_DIR ?? path.join(repo, 'mptikz-assets');
+// What Clew-iOS passes as the log: the .log's bytes where the build gives
+// them, else the .log decoded (`texLog`) — never `log`, the terminal's.
+const iPadLog = (r) => r.texLogBytes ?? r.texLog;
 test('the built-in TeX (the iPad): its diagnostics carry the same help', { skip: fs.existsSync(path.join(assets, 'index.js')) ? false : 'no mp-tikz-wasm build staged (npm run sync-mptikz)' }, async () => {
 	const { MetaPost, DEFAULT_BUNDLES } = await import(pathToFileURL(path.join(assets, 'index.js')).href);
 	const mp = await MetaPost.create({ bundles: [...DEFAULT_BUNDLES, ...BUILT_IN_TEX.bundles] });
@@ -295,7 +300,7 @@ test('the built-in TeX (the iPad): its diagnostics carry the same help', { skip:
 		const r = await mp.latex(DOC, { engine: 'lualatex', output: 'pdf', date: BUILT_IN_TEX.date });
 		assert.equal(firstLatexHelp(r.diagnostics), UNDEFINED_HELP);
 		const inBody = await mp.latex(IN_BODY, { engine: 'lualatex', output: 'pdf', date: BUILT_IN_TEX.date });
-		assert.equal(pdfViaLatexFailure({ engine: 'lualatex', reason: 'r', log: inBody.log, diagnostics: inBody.diagnostics }),
+		assert.equal(pdfViaLatexFailure({ engine: 'lualatex', reason: 'r', log: iPadLog(inBody), diagnostics: inBody.diagnostics }),
 			'PDF via LaTeX failed — LuaLaTeX ran (r). First error: ! LaTeX Error: Can be used only in preamble. — Your command was ignored.', 'the iPad\'s words, as the Mac\'s');
 	} finally {
 		mp.dispose();
@@ -325,13 +330,13 @@ test('the built-in TeX (the iPad) and the Mac\'s latexmk: the same whole message
 	try {
 		for (const [what, doc, macLog, words] of SIDE_BY_SIDE) {
 			const r = await mp.latex(doc, { engine: 'lualatex', output: 'pdf', date: BUILT_IN_TEX.date });
-			assert.equal(said({ log: r.log, diagnostics: r.diagnostics }), words, `${what}: the iPad`);
+			assert.equal(said({ log: iPadLog(r), diagnostics: r.diagnostics }), words, `${what}: the iPad`);
 			assert.equal(said({ log: macLog }), words, `${what}: the Mac`);
 		}
 		// fontspec's help (a LaTeX3 error's): the iPad's from its diagnostics,
 		// the Mac's from its log, after the blank line LaTeX3 writes first.
 		const r = await mp.latex(FAMILY_DOC, { engine: 'lualatex', output: 'pdf', date: BUILT_IN_TEX.date });
-		assert.equal(said({ log: r.log, diagnostics: r.diagnostics }), `${FAMILY_ERROR} — ${FAMILY_HELP}`, 'a missing family: the iPad');
+		assert.equal(said({ log: iPadLog(r), diagnostics: r.diagnostics }), `${FAMILY_ERROR} — ${FAMILY_HELP}`, 'a missing family: the iPad');
 		assert.equal(said({ log: MISSING_FONT }), `${FAMILY_ERROR} — ${FAMILY_HELP}`, 'a missing family: the Mac');
 	} finally {
 		mp.dispose();
@@ -396,3 +401,196 @@ for (const engine of ['pdflatex', 'lualatex']) {
 		if (engine === 'lualatex') assert.ok((await run(FAMILY_DOC)).endsWith(`${FAMILY_ERROR} — ${FAMILY_HELP}`), 'a missing family: as the iPad says it');
 	});
 }
+
+// TeX breaks a log's lines at 79 bytes (80 for LuaTeX's C-level messages),
+// and until 2026-11-12 the first error and its help were read across that
+// break with a space in it — "…/Devices/90 DCB612-…" for a simulator
+// container's path on the iPad (Clew-iOS's catch, reproduced by Clew-boss
+// with pdfLaTeX). As latexmk wrote them (TeX Live 2025, an empty HOME).
+const enc = (s) => new TextEncoder().encode(s);
+const bytes = (...parts) => {
+	const all = parts.map((p) => (typeof p === 'string' ? enc(p) : Uint8Array.from(p)));
+	const out = new Uint8Array(all.reduce((n, p) => n + p.length, 0));
+	all.reduce((at, p) => { out.set(p, at); return at + p.length; }, 0);
+	return out;
+};
+const LONG_PATH = '/Users/somebody/Library/Developer/CoreSimulator/Devices/90DCB612-1B85-4C2E-9F11-0123456789AB/data/Containers/secret.tex';
+const longPathLog = (engine) => [
+	'! LaTeX Error: File `/Users/somebody/Library/Developer/CoreSimulator/Devices/90',
+	'DCB612-1B85-4C2E-9F11-0123456789AB/data/Containers/secret.tex\' not found.',
+	'',
+	'Type X to quit or <RETURN> to proceed,',
+	'or enter new name. (Default extension: tex)',
+	'',
+	'Enter file name: ',
+	'! Emergency stop.',
+	'<read *> ',
+	engine === 'pdflatex' ? '         ' : '   ',
+	engine === 'pdflatex' ? 'l.3 ...11-0123456789AB/data/Containers/secret.tex}' : 'l.3 ...9F11-0123456789AB/data/Containers/secret.tex}',
+	`${' '.repeat(50)}${engine === 'pdflatex' ? '^^M' : '\r'}`,
+	'*** (cannot \\read from terminal in nonstop modes)',
+	'',
+].join('\n');
+// The é a 79th byte: pdfTeX breaks after exactly 79, its two bytes either
+// side of the break; LuaTeX moves it whole to the next line.
+const ACCENT_PATH = '/Users/somebody/Library/Developer/CoreSimulator/Devices/9é0DCB612-1B85/data/secret.tex';
+const ACCENT_HEAD = '! LaTeX Error: File `/Users/somebody/Library/Developer/CoreSimulator/Devices/9';
+const ACCENT_TAIL = '0DCB612-1B85/data/secret.tex\' not found.\n\nType X to quit or <RETURN> to proceed,\n';
+const accentLog = (engine) => (engine === 'pdflatex'
+	? bytes(ACCENT_HEAD, [0xc3, 0x0a, 0xa9], ACCENT_TAIL)
+	: bytes(ACCENT_HEAD, '\né', ACCENT_TAIL));
+// A \PackageError whose help is one long line (both engines alike).
+const LONG_HELP = [
+	'! Package sample Error: Something went wrong.',
+	'',
+	'See the sample package documentation for explanation.',
+	'Type  H <return>  for immediate help.',
+	' ...                                              ',
+	'                                                  ',
+	'l.3 ... and TeX breaks it where the line is full.}',
+	'                                                  ',
+	'The explanation of what went wrong is one long sentence, and TeX breaks it wher',
+	'e the line is full.',
+	'',
+].join('\n');
+// LuaTeX's own message for a font it could not load, broken after 80 bytes.
+const FONT_80 = [
+	'! Font \\TU/lmr/m/n/10=[lmroman10-regular]:+tlig; at 10pt not loadable: metric da',
+	'ta not found or bad.',
+	'<to be read again> ',
+	'                   relax ',
+	'l.54 \\normalsize',
+	'                ',
+	'I wasn\'t able to read the size data for this font,',
+	'so I will ignore the font specification.',
+	'[Wizards can fix TFM files using TFtoPL/PLtoTF.]',
+	'You might try inserting a different font spec;',
+	'e.g., type `I\\font<same font id>=<substitute font name>\'.',
+	'',
+].join('\n');
+
+const LONG_PATH_ERROR = `! LaTeX Error: File \`${LONG_PATH}' not found.`;
+const ENGINE_NAMES = { pdflatex: 'pdfLaTeX', lualatex: 'LuaLaTeX' };
+
+test('a first error past TeX\'s 79 bytes is read whole: a long path, under each engine, as bytes or text', () => {
+	for (const engine of ['pdflatex', 'lualatex']) {
+		const log = longPathLog(engine);
+		assert.equal(firstLatexError(log), LONG_PATH_ERROR, `${engine}, text`);
+		assert.equal(firstLatexError(enc(log)), LONG_PATH_ERROR, `${engine}, bytes`);
+		assert.equal(firstLatexHelp(enc(log)), '', `${engine}: the Emergency stop's context is not the first error's`);
+		assert.equal(pdfViaLatexFailure({ engine, reason: 'r', log: enc(log) }),
+			`PDF via LaTeX failed — ${ENGINE_NAMES[engine]} ran (r). First error: ${LONG_PATH_ERROR}`);
+	}
+	assert.equal(firstLatexError(FONT_80), '! Font \\TU/lmr/m/n/10=[lmroman10-regular]:+tlig; at 10pt not loadable: metric data not found or bad. <to be read again> relax',
+		'LuaTeX\'s C-level message, broken after 80: whole, and its context the two lines after it');
+});
+
+test('a letter pdfTeX cut in two at the break is whole from the log\'s bytes', () => {
+	assert.equal(enc(ACCENT_HEAD).length, 78, 'the é\'s bytes are the 79th and 80th');
+	const want = `! LaTeX Error: File \`${ACCENT_PATH}' not found.`;
+	assert.equal(firstLatexError(accentLog('pdflatex')), want, 'pdfTeX\'s bytes');
+	assert.equal(firstLatexError(accentLog('lualatex')), want, 'LuaTeX\'s bytes');
+	assert.equal(firstLatexError(new TextDecoder().decode(accentLog('lualatex'))), want, 'LuaTeX\'s text: it moved the letter whole');
+	// Decoded first, pdfTeX's halves are two U+FFFD: why a host passes bytes.
+	assert.doesNotMatch(firstLatexError(new TextDecoder().decode(accentLog('pdflatex'))), /9é0/);
+});
+
+test('a help line past TeX\'s 79 bytes is read whole', () => {
+	const help = 'The explanation of what went wrong is one long sentence, and TeX breaks it where the line is full.';
+	assert.equal(firstLatexHelp(LONG_HELP), help);
+	assert.equal(firstLatexHelp(enc(LONG_HELP)), help);
+	assert.equal(firstLatexError(LONG_HELP), '! Package sample Error: Something went wrong.');
+	assert.equal(firstLatexHelp(FONT_80), 'I wasn\'t able to read the size data for this font, so I will ignore the font specification. [Wizards can fix TFM files using TFtoPL/PLtoTF.] You might try inserting a different font spec; e.g., type `I\\font<same font id>=<substitute font name>\'.');
+});
+
+// What is NOT a broken line, though 79 bytes long (TeX starts each of these
+// with print_nl, which starts no line after one that ended at the width): an
+// error after a line that filled it, and a context's second line, which
+// show_context holds to error_line, 79 — in a long source line it is 79
+// bytes ending "...", and the help follows at once. As pdfLaTeX wrote them;
+// LuaLaTeX's the same in kind (the real tools below).
+const AFTER_FULL_LINE = [
+	'x'.repeat(79),
+	'! Undefined control sequence.',
+	'l.3 ...xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx}\\foo',
+	' '.repeat(50),
+	...UNDEFINED.split('\n').slice(3),
+].join('\n');
+const LONG_SOURCE_LINE = [
+	'! Undefined control sequence.',
+	'l.3 Text \\foo',
+	'              and then a good deal more text that runs on past the end of th...',
+	...UNDEFINED.split('\n').slice(3),
+].join('\n');
+// The document on TeX's command line: the base context is the terminal's
+// `<*>`, and the help follows ITS second line.
+const TERMINAL_CONTEXT = [
+	'! Undefined control sequence.',
+	'<*> \\documentclass{article}\\begin{document}\\foo',
+	'                                               \\ and then a good deal more t...',
+	...UNDEFINED.split('\n').slice(3),
+].join('\n');
+
+test('a line that only filled TeX\'s width is not joined: an error after it, a context\'s second line', () => {
+	assert.equal(AFTER_FULL_LINE.split('\n')[0].length, 79);
+	assert.equal(firstLatexError(AFTER_FULL_LINE), '! Undefined control sequence. l.3 ...xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx}\\foo');
+	assert.equal(firstLatexHelp(AFTER_FULL_LINE), UNDEFINED_HELP);
+	assert.equal(LONG_SOURCE_LINE.split('\n')[2].length, 79);
+	assert.equal(firstLatexError(LONG_SOURCE_LINE), '! Undefined control sequence. l.3 Text \\foo and then a good deal more text that runs on past the end of th...');
+	assert.equal(firstLatexHelp(LONG_SOURCE_LINE), UNDEFINED_HELP);
+	assert.equal(TERMINAL_CONTEXT.split('\n')[2].length, 79);
+	assert.equal(firstLatexError(TERMINAL_CONTEXT), '! Undefined control sequence. <*> \\documentclass{article}\\begin{document}\\foo \\ and then a good deal more t...');
+	// The package messages and their (name) lines, as bytes: as before.
+	assert.equal(firstLatexError(enc(MISSING_FONT)), firstLatexError(MISSING_FONT));
+	assert.equal(firstLatexError(enc(FATAL_FONTSPEC)), firstLatexError(FATAL_FONTSPEC));
+	assert.equal(firstLatexHelp(enc(MISSING_FONT)), FAMILY_HELP);
+});
+
+const LONG_PATH_DOC = `\\documentclass{article}\n\\begin{document}\n\\input{${LONG_PATH}}\n\\end{document}\n`;
+const ACCENT_DOC = `\\documentclass{article}\n\\begin{document}\n\\input{${ACCENT_PATH}}\n\\end{document}\n`;
+const LONG_LINE_DOC = '\\documentclass{article}\n\\begin{document}\nText \\foo and then a good deal more text that runs on past the end of the context window, as a paragraph does.\n\\end{document}\n';
+const AFTER_FULL_DOC = `\\documentclass{article}\n\\begin{document}\n\\message{${'x'.repeat(79)}}\\foo\nText.\n\\end{document}\n`;
+const LONG_HELP_DOC = '\\documentclass{article}\n\\makeatletter\n\\PackageError{sample}{Something went wrong}{The explanation of what went wrong is one long sentence, and TeX breaks it where the line is full.}\n\\makeatother\n\\begin{document}\nText.\n\\end{document}\n';
+for (const engine of ['pdflatex', 'lualatex']) {
+	test(`the desktop's latexmk and ${engine}: a first error and a help line past 79 bytes, read whole from the log's bytes`, { skip: latexmk && tool(engine) ? false : `latexmk and ${engine} are not installed` }, async () => {
+		const dir = path.join(root, `wrap-${engine}`);
+		fs.mkdirSync(dir, { recursive: true });
+		const { args, env } = latexmkCommand({ engine, texFile: 'Note.tex', env: process.env, isFile });
+		const run = async (tex) => {
+			fs.writeFileSync(path.join(dir, 'Note.tex'), tex);
+			await new Promise((resolve) => execFile(latexmk, args, { cwd: dir, timeout: 120000, env: { ...process.env, ...env, PATH: `${TEX_DIRS.join(':')}:${process.env.PATH}` } }, resolve));
+			// As export.js#compilePdf reads it.
+			return fs.readFileSync(path.join(dir, 'Note.log'));
+		};
+		const prefix = `PDF via LaTeX failed — ${ENGINE_NAMES[engine]} ran (r). First error: `;
+		assert.equal(pdfViaLatexFailure({ engine, reason: 'r', log: await run(LONG_PATH_DOC) }), `${prefix}${LONG_PATH_ERROR}`);
+		const accent = await run(ACCENT_DOC);
+		assert.ok(accent.includes(engine === 'pdflatex' ? Uint8Array.from([0xc3, 0x0a, 0xa9]) : enc('/9\né0')), 'TeX broke the line at the letter, as the fixture has it');
+		assert.equal(pdfViaLatexFailure({ engine, reason: 'r', log: accent }), `${prefix}! LaTeX Error: File \`${ACCENT_PATH}' not found.`);
+		const longLine = await run(LONG_LINE_DOC);
+		assert.match(pdfViaLatexFailure({ engine, reason: 'r', log: longLine }), /^PDF via LaTeX failed — \S+ ran \(r\)\. First error: ! Undefined control sequence\. l\.3 Text \\foo and then a good deal more text that runs on past the end of (?:the |th)\.\.\. — The control sequence at the end of the top line of your error message was never \\def'ed\./);
+		assert.ok(pdfViaLatexFailure({ engine, reason: 'r', log: await run(LONG_HELP_DOC) }).endsWith(' — The explanation of what went wrong is one long sentence, and TeX breaks it where the line is full.'));
+		const afterFull = await run(AFTER_FULL_DOC);
+		assert.ok(afterFull.includes(enc(`${'x'.repeat(79)}\n! Undefined control sequence.`)), 'the error at once after a line that filled the width');
+		assert.match(pdfViaLatexFailure({ engine, reason: 'r', log: afterFull }), /First error: ! Undefined control sequence\. l\.3 \.\.\.x+\}\\foo — The control sequence at the end of the top line/);
+	});
+}
+
+test('the built-in TeX (the iPad): a long path and a letter at the break, whole from texLogBytes, as the Mac says them', { skip: fs.existsSync(path.join(assets, 'index.js')) ? false : 'no mp-tikz-wasm build staged (npm run sync-mptikz)' }, async () => {
+	const { MetaPost, DEFAULT_BUNDLES } = await import(pathToFileURL(path.join(assets, 'index.js')).href);
+	const mp = await MetaPost.create({ bundles: [...DEFAULT_BUNDLES, ...BUILT_IN_TEX.bundles] });
+	try {
+		// pdfLaTeX is the build's engine 'latex' with a PDF out.
+		for (const [engine, wasmEngine] of [['pdflatex', 'latex'], ['lualatex', 'lualatex']]) {
+			const words = (r) => pdfViaLatexFailure({ engine, reason: 'r', log: iPadLog(r), diagnostics: r.diagnostics });
+			const long = await mp.latex(LONG_PATH_DOC, { engine: wasmEngine, output: 'pdf', date: BUILT_IN_TEX.date });
+			assert.equal(words(long), pdfViaLatexFailure({ engine, reason: 'r', log: enc(longPathLog(engine)) }), `${engine}: a long path, as the Mac's`);
+			const accent = await mp.latex(ACCENT_DOC, { engine: wasmEngine, output: 'pdf', date: BUILT_IN_TEX.date });
+			assert.ok(accent.texLogBytes, 'the pinned build gives the log\'s bytes');
+			assert.equal(words(accent), pdfViaLatexFailure({ engine, reason: 'r', log: accentLog(engine) }), `${engine}: a letter at the break, as the Mac's`);
+			assert.match(words(accent), /Devices\/9é0DCB612/);
+		}
+	} finally {
+		mp.dispose();
+	}
+});
