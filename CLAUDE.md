@@ -95,7 +95,11 @@ note API, plugins, and every settings key.
   hangs fails within a minute, by name, instead of stalling the run; files
   in `tests/`; a test's temp files go under ONE `mkdtemp` root of its own,
   removed in an `after` hook, and no fixture links outside that root —
-  app-calls' once linked the whole system temp folder, 429 times over):
+  app-calls' once linked the whole system temp folder, 429 times over;
+  a test waits for what the code waits on — its frames run by the test
+  (pdf-size's own requestAnimationFrame), a promise, a bounded poll —
+  never a fixed sleep: pdf-size's 5ms "frame" lost to a slow runner's
+  late measure on GitHub, 2026-11-12):
   workspace tree,
   note-metadata extractor, BibTeX parser, the ported jmarkdown-scan suite,
   canvas model, diary, frontmatter, plugins discovery, query/leaflet/exif

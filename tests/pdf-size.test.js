@@ -6,7 +6,18 @@
 // (and in Clew-iOS's simulator).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { pdfSizeOptions, plainTitle, onePageHeight, estimateHeight, sizePdfHost, fitPdfToPage, pdfPageOption, pageTop, messageHeight, MESSAGE_CARD } from '../src/preview-client/pdf-size.js';
+
+// The frames are the test's own: pdf-size.js asks requestAnimationFrame for
+// its next frame where the page has one (read once, as it is imported), so
+// one is put here first and `frame()` runs them. Under Node it would be a
+// 1ms timer, and the tests waited a fixed 5ms — on GitHub's slow runner a
+// frame the fitter asked for (the measure that sees the viewer arrive at its
+// page) came after the 5ms, and the reader's place was taken from them
+// (run 43218895651, 2026-11-12: 1672.14 for 1234).
+const frames = [];
+globalThis.requestAnimationFrame = (fn) => frames.push(fn);
+const { pdfSizeOptions, plainTitle, onePageHeight, estimateHeight, sizePdfHost, fitPdfToPage, pdfPageOption, pageTop, messageHeight, MESSAGE_CARD } = await import('../src/preview-client/pdf-size.js');
+delete globalThis.requestAnimationFrame;
 
 test('pdfSizeOptions: none by default; height and width from the fragment, Obsidian-style', () => {
 	const none = { height: null, width: null };
@@ -202,7 +213,18 @@ function fakeViewer(host, { pages, chrome = 50, gap = 10, status = 'loaded' }) {
 	return { handle, resize, emit, listeners, events, view, calls, disposed: () => disposed };
 }
 
-const frame = () => new Promise((resolve) => setTimeout(resolve, 5));
+/** The frames to come: each one the fitter asked for, and each it asks for in
+ *  turn, until it asks for none — what a page's next frames bring, with no
+ *  clock to race. Bounded: a fitter that asks for frames for ever fails here. */
+const frame = async () => {
+	const turn = () => new Promise((resolve) => setImmediate(resolve));
+	await turn();
+	for (let n = 0; frames.length; n++) {
+		assert.ok(n < 100, 'the fitter asked for a hundred frames in a row');
+		for (const fn of frames.splice(0)) fn(performance.now());
+		await turn();
+	}
+};
 
 const fitted = (host, pages, chrome, gap = 10) =>
 	chrome + Math.floor(onePageHeight({ spreads: single(...pages), pageGap: 10, viewportGap: gap, width: host.clientWidth - 2 }));
