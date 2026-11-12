@@ -48,6 +48,10 @@ test('a file gets its icon by its whole name, else its longest known extension, 
 		'site.tar.gz': 'zip',
 		'README.md': 'readme', // the theme's whole-name table wins
 		'Makefile': 'makefile',
+		'CLAUDE.md': 'claude', // the theme's mixed-case keys, matched lowercased
+		'CNAME': 'http',
+		'Caddyfile': 'caddy',
+		'grammar.tmLanguage': 'xml',
 		'notes.xyzzy': 'file',
 		'LICENCE-ish': 'file',
 		'': 'file',
@@ -57,6 +61,13 @@ test('a file gets its icon by its whole name, else its longest known extension, 
 	// Inherited keys are not names: a file called "constructor" is a file.
 	assert.equal(fileIconName('constructor'), 'file');
 	assert.equal(fileIconName('x.__proto__'), 'file');
+});
+
+test('every key in the table is lowercase, as the lookup asks for it', () => {
+	for (const table of ['fileNames', 'extensions']) {
+		const mixed = Object.keys(FILE_ICONS[table]).filter((key) => key !== key.toLowerCase());
+		assert.deepEqual(mixed, [], `${table}: a key the lowercased name never matches`);
+	}
 });
 
 test('a folder is open or closed, nothing else', () => {

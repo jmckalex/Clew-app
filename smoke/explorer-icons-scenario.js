@@ -19,7 +19,7 @@
 // folder's, siblings' icons in one column, each name after its icon),
 // guides-ok=true (a row's guide band is its depth × 16px), loaded-ok=true,
 // probe-ok=true (the measured row height is a real row's), the kinds line
-// naming each fixture file's icon, light-variant=page_light.svg→page.svg (a
+// naming each fixture file's icon, light-variant=jinja_light.svg→jinja.svg (a
 // theme switch repaints the icons), and cached=N/N control-cached=false: an
 // icon on screen is the page's already — a new <img> of it is complete the
 // moment its src is set, as each row windowing rebuilds is — while one never

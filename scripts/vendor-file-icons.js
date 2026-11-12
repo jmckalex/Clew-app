@@ -57,8 +57,24 @@ const { MATERIAL_ICONS: M } = await import(pathToFileURL(srcData).href);
 const version = /material-icon-theme (\d+\.\d+\.\d+)/.exec(fs.readFileSync(srcData, 'utf8'))?.[1];
 if (!version) throw new Error(`No material-icon-theme version in ${srcData}`);
 
-const extensions = { ...M.extensions, ...CLEW_EXTENSIONS };
-const fileNames = { ...M.fileNames };
+/** The table's keys as the lookup asks for them: lowercased (lib/file-icons.js
+ *  lowercases the name). The theme keeps some mixed-case — `CLAUDE.md`,
+ *  `CNAME`, `Caddyfile`, `tmLanguage` — which a lowercased name never
+ *  matched. Two keys differing only in case would leave one icon unreachable,
+ *  so that refuses: none does in 5.35.0. */
+const lowerKeys = (table, what) => {
+	const out = {};
+	for (const [key, icon] of Object.entries(table)) {
+		const lower = key.toLowerCase();
+		if (Object.hasOwn(out, lower) && out[lower] !== icon) {
+			throw new Error(`Two ${what} keys differ only in case (${lower}): ${out[lower]} and ${icon}`);
+		}
+		out[lower] = icon;
+	}
+	return out;
+};
+const extensions = lowerKeys({ ...M.extensions, ...CLEW_EXTENSIONS }, 'extension');
+const fileNames = lowerKeys(M.fileNames, 'whole-name');
 const used = new Set([M.default, M.folder, M.folderOpen, ...Object.values(extensions), ...Object.values(fileNames)]);
 
 /** The source file of an icon: the table names the odd one (`x.clone.svg`). */
