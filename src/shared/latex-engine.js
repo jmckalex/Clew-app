@@ -356,11 +356,21 @@ export function firstLatexHelp(source) {
 /**
  * What a failed PDF via LaTeX says, on every host: the engine, why it was
  * chosen, and the log's first error with its help's first paragraph — else
- * the run's own error, else that no PDF came out. A host whose TeX reports
- * diagnostics (mp-tikz-wasm's) passes them too: their help is read first.
- * The log as BYTES where it can be read so — latexmk's .log, mp-tikz-wasm's
- * `texLogBytes` — since pdfTeX cuts a letter's bytes at a line break; else
- * as text (`texLog`).
+ * the run's own error, else that no PDF came out. The log as BYTES where it
+ * can be read so — latexmk's .log, mp-tikz-wasm's `texLogBytes` — since
+ * pdfTeX cuts a letter's bytes at a line break; else as text (`texLog`).
+ *
+ * A host whose TeX reports diagnostics (mp-tikz-wasm's) passes them too, and
+ * their help is read only where the log has no first error, or there is no
+ * log: the help is the LOG's (Clew-boss, 2026-11-12, reversing 8ea4594's
+ * diagnostics first). Once the log's lines were TeX's own — a LaTeX3 error's
+ * help read (21d6d0f), lines joined as bytes (f094a58), the empty line a full
+ * line leaves dropped (245f41c) — the diagnostics' help was never better and
+ * sometimes worse: over 128 pinned-build runs with an error under both
+ * engines, 17 differed and in none did the diagnostics have help the log had
+ * not; 0.5.1's cut a help line at TeX's break ("ful l", "ta il", a letter as
+ * two U+FFFD) and stopped a help at a 79-byte line's empty one. So the iPad
+ * says what the Mac says, from the same bytes through the same function.
  *
  * @param {{ engine: string, reason: string, log?: Uint8Array | string, error?: string,
  *   diagnostics?: { severity?: string, help?: string[] }[] }} o
@@ -368,6 +378,6 @@ export function firstLatexHelp(source) {
 export function pdfViaLatexFailure({ engine, reason, log = '', error = '', diagnostics = null }) {
 	const logError = firstLatexError(log);
 	const first = logError || error || 'no PDF was produced';
-	const help = (diagnostics && firstLatexHelp(diagnostics)) || (logError ? firstLatexHelp(log) : '');
+	const help = logError ? firstLatexHelp(log) : (diagnostics ? firstLatexHelp(diagnostics) : '');
 	return `PDF via LaTeX failed — ${engineName(engine)} ran (${reason}). First error: ${first}${help ? ` — ${help}` : ''}`;
 }

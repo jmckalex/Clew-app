@@ -777,3 +777,41 @@ test('the built-in TeX (the iPad): a LaTeX error\'s help in a long source line, 
 		mp.dispose();
 	}
 });
+
+// The help is the LOG's; a host's diagnostics only where the log has no first
+// error, or there is no log (Clew-boss, 2026-11-12, reversing 8ea4594's
+// diagnostics first). Over 128 runs with an error through the pinned
+// mp-tikz-wasm, under 'latex' and 'lualatex', 17 differed and none lost help
+// the diagnostics had; 0.5.1's diagnostics cut a help line at TeX's break and
+// stop a help at a 79-byte line's empty one.
+test('the help is the log\'s; a host\'s diagnostics only where the log has no first error', () => {
+	const cut = [{ severity: 'error', source: 'tex', message: 'Package sample Error: Something went wrong.', help: ['The explanation of what went wrong is one long sentence, and TeX breaks it wher', 'e the line is full.'] }];
+	assert.equal(pdfViaLatexFailure({ engine: 'pdflatex', reason: 'r', log: enc(LONG_HELP), diagnostics: cut }),
+		'PDF via LaTeX failed — pdfLaTeX ran (r). First error: ! Package sample Error: Something went wrong. — The explanation of what went wrong is one long sentence, and TeX breaks it where the line is full.');
+	// A log with a first error and no help: none, though the diagnostics have some.
+	assert.equal(pdfViaLatexFailure({ engine: 'lualatex', reason: 'r', log: FONTSPEC, diagnostics: [{ severity: 'error', help: ['Not the log\'s.'] }] }),
+		'PDF via LaTeX failed — LuaLaTeX ran (r). First error: ! Package fontspec Error: The font "NoSuchFont" cannot be found; this may be but usually is not a fontspec bug.');
+	// No first error in the log, or no log: the diagnostics' help.
+	assert.equal(pdfViaLatexFailure({ engine: 'lualatex', reason: 'r', log: 'nothing', error: 'exit 12', diagnostics: [{ severity: 'error', help: ['A word of help.'] }] }),
+		'PDF via LaTeX failed — LuaLaTeX ran (r). First error: exit 12 — A word of help.');
+	assert.equal(pdfViaLatexFailure({ engine: 'lualatex', reason: 'r', error: 'exit 12', diagnostics: [{ severity: 'error', help: ['A word of help.'] }] }),
+		'PDF via LaTeX failed — LuaLaTeX ran (r). First error: exit 12 — A word of help.');
+});
+
+test('the built-in TeX (the iPad): the help from its log, whole where its diagnostics cut it, as the Mac\'s', { skip: fs.existsSync(path.join(assets, 'index.js')) ? false : 'no mp-tikz-wasm build staged (npm run sync-mptikz)' }, async () => {
+	const { MetaPost, DEFAULT_BUNDLES } = await import(pathToFileURL(path.join(assets, 'index.js')).href);
+	const mp = await MetaPost.create({ bundles: [...DEFAULT_BUNDLES, ...BUILT_IN_TEX.bundles] });
+	try {
+		for (const [engine, wasmEngine] of [['pdflatex', 'latex'], ['lualatex', 'lualatex']]) {
+			const words = (r) => pdfViaLatexFailure({ engine, reason: 'r', log: iPadLog(r), diagnostics: r.diagnostics }).replace(/^.*? First error: /, '');
+			const long = await mp.latex(LONG_HELP_DOC, { engine: wasmEngine, output: 'pdf', date: BUILT_IN_TEX.date });
+			assert.match(firstLatexHelp(long.diagnostics), /wher e the line/, `${engine}: the diagnostics cut the help line at TeX's break`);
+			assert.equal(words(long), '! Package sample Error: Something went wrong. — The explanation of what went wrong is one long sentence, and TeX breaks it where the line is full.', `${engine}: a help line past 79 bytes`);
+			const full = await mp.latex(helpDoc(79), { engine: wasmEngine, output: 'pdf', date: BUILT_IN_TEX.date });
+			assert.equal(firstLatexHelp(full.diagnostics), 'x'.repeat(79), `${engine}: the diagnostics stop at the 79-byte line's empty one`);
+			assert.equal(words(full), `! Package sample Error: Something went wrong. — ${'x'.repeat(79)} second help line`, `${engine}: a help line of 79 bytes`);
+		}
+	} finally {
+		mp.dispose();
+	}
+});
