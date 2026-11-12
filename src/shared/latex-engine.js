@@ -146,13 +146,30 @@ export function firstLatexError(log) {
 // `! Undefined control sequence.` at once; and show_context holds a context's
 // second line to error_line, 79, so in a long source line (a paragraph) it is
 // 79 bytes ending "...", and a primitive error's help follows it at once.
+//
+// And a line its engine ended ITSELF, at its width, leaves an empty line when
+// TeX then ends it again (2026-11-12, Clew-boss's go; measured, TeX Live 2025
+// and the pinned mp-tikz-wasm, every case in both engines and XeTeX): a
+// print_ln or a \MessageBreak always writes a newline, and the engine has
+// already written one. So after a context's second line cut at the width,
+// \errhelp's print_ln (a LaTeX error's help: LaTeX2e's "Your command was
+// ignored." read as none under pdfLaTeX); after a message line of exactly 79
+// bytes, its \MessageBreak (a package error's message stopped at its first
+// line, a warning's "on input line N" a paragraph away); after a help line
+// of 79 bytes, the next (the help stopped there). That empty line is not one
+// TeX meant, and is dropped — one, never two. The width: pdfTeX's 79 bytes;
+// LuaTeX's 79 for its TeX-level text, 80 for a context's lines (printed as
+// its C-level lines are: an ASCII one is held to 79 and never ends itself,
+// one of wider letters can reach 80); XeTeX's 79 characters. The log's first
+// line names the engine; a log naming none is read as pdfTeX's.
 const LOG_WIDTH = 79;
 const leadBytes = (b) => (b >= 0xf0 ? 4 : b >= 0xe0 ? 3 : b >= 0xc0 ? 2 : 1);
 // A context's first line: `l.N …`, or `<argument> …`, `<to be read again> …`,
 // `<*> …`, `<read *> …` and the like — never an image's `<use ./x.png>`.
 const CONTEXT_FIRST = /^(?:l\.\d+ |<(?:[a-z][a-z ]*|\*|read (?:\*|\d+))>(?: |$))/;
 /** A TeX log's lines as TeX meant them: a line it broke at the width joined
- *  again. Bytes or text. */
+ *  again, the empty line a line ended at the width left dropped. Bytes or
+ *  text. */
 function unwrapLog(log) {
 	const bytes = log instanceof Uint8Array ? log : new TextEncoder().encode(String(log ?? ''));
 	const segments = [];
@@ -163,22 +180,32 @@ function unwrapLog(log) {
 		start = end + 1;
 	}
 	const decoder = new TextDecoder('utf-8');
+	const head = (s) => decoder.decode(s.subarray(0, 24));
+	const banner = segments.length ? head(segments[0]) : '';
+	const luatex = /^This is Lua(?:HB|JIT)?TeX\b/.test(banner);
+	const xetex = /^This is XeTeX\b/.test(banner);
+	const contextSecond = (i) => i > 0 && CONTEXT_FIRST.test(head(segments[i - 1]));
+	const endedAtWidth = (i) => {
+		if (xetex) return [...decoder.decode(segments[i])].length === LOG_WIDTH;
+		return segments[i].length === (luatex && contextSecond(i) ? LOG_WIDTH + 1 : LOG_WIDTH);
+	};
 	const lines = [];
 	let joined = [];
-	const head = (s) => decoder.decode(s.subarray(0, 24));
-	segments.forEach((segment, i) => {
+	for (let i = 0; i < segments.length; i++) {
+		const segment = segments[i];
 		joined.push(segment);
 		const next = segments[i + 1];
 		const continues = next && next.length && next[0] !== 0x3c /* < */ && !/^l\.\d+ /.test(head(next))
-			&& !(next[0] === 0x21 && next[1] === 0x20) /* "! " */ && !(i > 0 && CONTEXT_FIRST.test(head(segments[i - 1])))
+			&& !(next[0] === 0x21 && next[1] === 0x20) /* "! " */ && !contextSecond(i)
 			&& (segment.length === LOG_WIDTH || segment.length === LOG_WIDTH + 1
 				|| (segment.length < LOG_WIDTH && leadBytes(next[0]) >= 2 && segment.length + leadBytes(next[0]) >= LOG_WIDTH));
-		if (continues) return;
+		if (continues) continue;
 		const line = new Uint8Array(joined.reduce((n, s) => n + s.length, 0));
 		joined.reduce((at, s) => { line.set(s, at); return at + s.length; }, 0);
 		lines.push(decoder.decode(line));
 		joined = [];
-	});
+		if (next && !next.length && i + 2 < segments.length && endedAtWidth(i)) i++;
+	}
 	return lines;
 }
 // Every way a TeX run that went on says a file was not there (measured, TeX
@@ -287,7 +314,8 @@ const HELP_MAX = 280;
  * TeX gives one", 2026-11-06; until then the Mac showed none, and the iPad,
  * from 0.5.1's diagnostics, did). Or from mp-tikz-wasm's diagnostics: the
  * first error's `help`, the same lines. A log's lines are TeX's (unwrapLog),
- * as firstLatexError's.
+ * as firstLatexError's — the empty line a line ended at its engine's width
+ * leaves is not one (a LaTeX error's help in a long source line, 2026-11-12).
  *
  * @param {Uint8Array | string | { severity?: string, help?: string[] }[]} source
  */

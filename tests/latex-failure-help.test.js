@@ -594,3 +594,186 @@ test('the built-in TeX (the iPad): a long path and a letter at the break, whole 
 		mp.dispose();
 	}
 });
+
+// A line its engine ENDED ITSELF at its width — pdfTeX's 79 bytes, LuaTeX's 79
+// (80 for a context's lines), XeTeX's 79 characters — leaves an empty line
+// when TeX then ends it again: a print_ln or a \MessageBreak always writes a
+// newline. Until 2026-11-12 that line was read as a paragraph's end
+// (Clew-boss's go, with mp-tikz-wasm's X3–X9): a LaTeX error's help after a
+// context line cut in a long source line (pdfLaTeX's "Environment …
+// undefined." said nothing more), a package error's message after a line of
+// exactly 79 bytes, a help after its first line. As latexmk wrote them (TeX
+// Live 2025); the first line names the engine, as every log's does.
+const BANNER = {
+	pdflatex: 'This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex 2025.8.21)',
+	lualatex: 'This is LuaHBTeX, Version 1.22.0 (TeX Live 2025)  (format=lualatex 2025.8.21)',
+	xelatex: 'This is XeTeX, Version 3.141592653-2.6-0.999997 (TeX Live 2025) (preloaded format=xelatex 2025.8.21)',
+};
+const ENV_HEAD = [
+	'! LaTeX Error: Environment nosuchenv undefined.',
+	'',
+	'See the LaTeX manual or LaTeX Companion for explanation.',
+	'Type  H <return>  for immediate help.',
+	' ...                                              ',
+	'                                                  ',
+	'l.3 \\begin{nosuchenv}',
+];
+const ENV_HELP = ['Your command was ignored.', 'Type  I <command> <return>  to replace it with another command,', 'or  <return>  to continue without it.', ''];
+const envLog = (engine, second, blank) => [BANNER[engine], '', ...ENV_HEAD, second, ...(blank ? [''] : []), ...ENV_HELP].join('\n');
+const ENV_FILLED = {
+	pdflatex: envLog('pdflatex', '                     x and then a good deal more text that runs on past the ...', true),
+	lualatex: envLog('lualatex', '                   x and then a good deal more text that runs on past the en...', false),
+};
+const SIUNITX_FILLED = (engine) => [
+	BANNER[engine], '',
+	'! LaTeX Error: The key \'siunitx/nosuchkeyxyz\' is unknown and is being ignored.',
+	'',
+	'For immediate help type H <return>.',
+	' ...                                              ',
+	'                                                  ',
+	'l.4 \\sisetup{nosuchkeyxyz=1}',
+	engine === 'pdflatex'
+		? '                            and then a good deal more text that runs on past...'
+		: '                          and then a good deal more text that runs on past t...',
+	'',
+	...(engine === 'pdflatex' ? [''] : []),
+	'The module \'siunitx\' does not have a key called \'siunitx/nosuchkeyxyz\'.',
+	'Check that you have spelled the key name correctly.',
+	'',
+].join('\n');
+// Wider letters: pdfTeX cut one (79 bytes, the é's first byte last before
+// "..."), LuaTeX's line reached 80, XeTeX's 79 characters (134 bytes).
+const envBytes = (engine, second) => bytes(envLog(engine, '@', true).split('@')[0], second, envLog(engine, '@', true).split('@')[1]);
+const ENV_WIDE = {
+	pdflatex: envBytes('pdflatex', bytes(' '.repeat(21), 'é'.repeat(27), [0xc3], '...')),
+	lualatex: envBytes('lualatex', bytes(' '.repeat(19), 'é'.repeat(29), '...')),
+	xelatex: envBytes('xelatex', bytes(' '.repeat(21), 'é'.repeat(55), '...')),
+};
+// A help that begins with a blank line of its own, after a full ASCII context:
+// pdfTeX's empty line and then the help's; LuaTeX, its line short of 80, the
+// help's alone — read past neither, as for any help but LaTeX3's.
+const BLANK_FIRST_HEAD = [
+	'! Package sample Error: Something went wrong.',
+	'',
+	'See the sample package documentation for explanation.',
+	'Type  H <return>  for immediate help.',
+	' ...                                              ',
+	'                                                  ',
+];
+const BLANK_FIRST_FILLED = {
+	pdflatex: [BANNER.pdflatex, '', ...BLANK_FIRST_HEAD, 'l.3 ...t wrong}{\\MessageBreak Text after a blank.}', `${' '.repeat(50)}and then a good deal more ...`, '', '', 'Text after a blank.', ''].join('\n'),
+	lualatex: [BANNER.lualatex, '', ...BLANK_FIRST_HEAD, 'l.3 ...ent wrong}{\\MessageBreak Text after a blank.}', `${' '.repeat(50)}and then a good deal more ...`, '', 'Text after a blank.', ''].join('\n'),
+};
+
+// A message line and a help line of exactly 79 bytes, then a \MessageBreak
+// (mp-tikz-wasm's X6, X9; pdfLaTeX's, and LuaLaTeX's the same) — and the
+// 78-byte control, which leaves no empty line.
+const messageLog = (width) => [
+	BANNER.pdflatex, '',
+	`! Package sample Error: ${'x'.repeat(width - 24)}`,
+	...(width === 79 ? [''] : []),
+	'(sample)                second part.',
+	'',
+	'See the sample package documentation for explanation.',
+	'Type  H <return>  for immediate help.',
+	' ...                                              ',
+	'                                                  ',
+	'l.3 ...xxxxxx\\MessageBreak second part}{The help.}',
+	'                                                  ',
+	'The help.',
+	'',
+].join('\n');
+const helpLog = (width) => [
+	BANNER.pdflatex, '',
+	...BLANK_FIRST_HEAD,
+	'l.3 ...xxxxxxxxxxxx\\MessageBreak second help line}',
+	'                                                  ',
+	'x'.repeat(width),
+	...(width === 79 ? [''] : []),
+	'second help line',
+	'',
+].join('\n');
+
+test('a line its engine ended at its width: the empty line it left is not a paragraph\'s end', () => {
+	assert.equal(Buffer.byteLength(messageLog(79).split('\n')[2]), 79);
+	for (const width of [79, 78]) {
+		assert.equal(firstLatexError(messageLog(width)), `! Package sample Error: ${'x'.repeat(width - 24)} second part.`, `a message line of ${width} bytes`);
+		assert.equal(firstLatexHelp(helpLog(width)), `${'x'.repeat(width)} second help line`, `a help line of ${width} bytes`);
+	}
+	// Dropped once, never twice: a 79-byte line, then an empty line TeX meant.
+	assert.equal(firstLatexHelp(helpLog(79).replace('\n\nsecond', '\n\n\nsecond')), 'x'.repeat(79));
+});
+
+test('a LaTeX error\'s help after a context line its engine ended itself: past the empty line that line left', () => {
+	assert.equal(Buffer.byteLength(ENV_FILLED.pdflatex.split('\n')[9]), 79);
+	for (const engine of ['pdflatex', 'lualatex']) {
+		assert.equal(firstLatexHelp(ENV_FILLED[engine]), 'Your command was ignored.', `${engine}: LaTeX2e's`);
+		assert.equal(firstLatexHelp(enc(ENV_FILLED[engine])), 'Your command was ignored.', `${engine}: as bytes`);
+		assert.equal(firstLatexHelp(SIUNITX_FILLED(engine)), 'The module \'siunitx\' does not have a key called \'siunitx/nosuchkeyxyz\'. Check that you have spelled the key name correctly.', `${engine}: LaTeX3's, its own blank line too`);
+	}
+	for (const engine of ['pdflatex', 'lualatex', 'xelatex']) {
+		assert.equal(firstLatexHelp(ENV_WIDE[engine]), 'Your command was ignored.', `${engine}: a line of wider letters, at its engine's width`);
+	}
+	assert.equal(ENV_WIDE.pdflatex.length - ENV_WIDE.pdflatex.indexOf(0xc3) > 0, true);
+	// Decoded first, pdfTeX's cut letter is U+FFFD — three bytes, not the one
+	// TeX counted: the width is the log's own.
+	assert.equal(firstLatexHelp(new TextDecoder().decode(ENV_WIDE.pdflatex)), '', 'pdfTeX\'s cut letter, from text: its width is lost, and nothing is read past — why a host passes bytes');
+	// A log that names no engine is read as pdfTeX's: LuaTeX's 80 bytes then
+	// end nothing, and the help is not read — as before.
+	assert.equal(firstLatexHelp(ENV_WIDE.lualatex.subarray(ENV_WIDE.lualatex.indexOf(0x0a) + 1)), '');
+	// Read past that line only: a help with a blank line of its own, a
+	// primitive error's help (print_nl'd, no empty line), as before.
+	assert.equal(firstLatexHelp(BLANK_FIRST_FILLED.pdflatex), '');
+	assert.equal(firstLatexHelp(BLANK_FIRST_FILLED.lualatex), '', 'LuaTeX\'s 79 bytes are short of its width: the blank is the help\'s');
+	assert.equal(firstLatexHelp(LONG_SOURCE_LINE), UNDEFINED_HELP);
+	assert.equal(pdfViaLatexFailure({ engine: 'pdflatex', reason: 'r', log: enc(ENV_FILLED.pdflatex) }),
+		'PDF via LaTeX failed — pdfLaTeX ran (r). First error: ! LaTeX Error: Environment nosuchenv undefined. — Your command was ignored.');
+});
+
+const ENV_LONG_DOC = '\\documentclass{article}\n\\begin{document}\n\\begin{nosuchenv}x and then a good deal more text that runs on past the end of the context window.\\end{nosuchenv}\n\\end{document}\n';
+const ENV_WIDE_DOC = `\\documentclass{article}\n\\begin{document}\n\\begin{nosuchenv}${'é'.repeat(60)}\\end{nosuchenv}\n\\end{document}\n`;
+const PKG_LONG_DOC = '\\documentclass{article}\n\\begin{document}\n\\PackageError{sample}{Something went wrong}{The explanation of what went wrong.}and then a good deal more text that runs on past the end of the context window.\n\\end{document}\n';
+const SIUNITX_LONG_DOC = '\\documentclass{article}\n\\usepackage{siunitx}\n\\begin{document}\n\\sisetup{nosuchkeyxyz=1}and then a good deal more text that runs on past the end of the context window.\n\\end{document}\n';
+const BLANK_FIRST_DOC = '\\documentclass{article}\n\\begin{document}\n\\PackageError{sample}{Something went wrong}{\\MessageBreak Text after a blank.}and then a good deal more text that runs on past the end of the context window.\n\\end{document}\n';
+// "! Package sample Error: " is 24 bytes: a message line of `width`.
+const messageDoc = (width) => `\\documentclass{article}\n\\begin{document}\n\\PackageError{sample}{${'x'.repeat(width - 24)}\\MessageBreak second part}{The help.}\n\\end{document}\n`;
+const helpDoc = (width) => `\\documentclass{article}\n\\begin{document}\n\\PackageError{sample}{Something went wrong}{${'x'.repeat(width)}\\MessageBreak second help line}\n\\end{document}\n`;
+for (const engine of ['pdflatex', 'lualatex', 'xelatex']) {
+	test(`the desktop's latexmk and ${engine}: a LaTeX error's help in a long source line, a message and a help line of 79 bytes`, { skip: latexmk && tool(engine) ? false : `latexmk and ${engine} are not installed` }, async () => {
+		const dir = path.join(root, `errhelp-${engine}`);
+		fs.mkdirSync(dir, { recursive: true });
+		const { args, env } = latexmkCommand({ engine, texFile: 'Note.tex', env: process.env, isFile });
+		const run = async (tex) => {
+			fs.writeFileSync(path.join(dir, 'Note.tex'), tex);
+			await new Promise((resolve) => execFile(latexmk, args, { cwd: dir, timeout: 120000, env: { ...process.env, ...env, PATH: `${TEX_DIRS.join(':')}:${process.env.PATH}` } }, resolve));
+			return fs.readFileSync(path.join(dir, 'Note.log'));
+		};
+		const words = async (tex) => pdfViaLatexFailure({ engine, reason: 'r', log: await run(tex) }).replace(/^.*? First error: /, '');
+		assert.equal(await words(ENV_LONG_DOC), '! LaTeX Error: Environment nosuchenv undefined. — Your command was ignored.');
+		assert.equal(await words(ENV_WIDE_DOC), '! LaTeX Error: Environment nosuchenv undefined. — Your command was ignored.');
+		assert.equal(await words(PKG_LONG_DOC), '! Package sample Error: Something went wrong. — The explanation of what went wrong.');
+		if (engine !== 'xelatex') assert.ok((await words(SIUNITX_LONG_DOC)).endsWith(' — The module \'siunitx\' does not have a key called \'siunitx/nosuchkeyxyz\'. Check that you have spelled the key name correctly.'));
+		assert.equal(await words(BLANK_FIRST_DOC), '! Package sample Error: Something went wrong.', 'a help beginning with its own blank line: none, as before');
+		for (const width of [79, 78]) {
+			const message = await run(messageDoc(width));
+			assert.equal(message.includes(enc(`${'x'.repeat(width - 24)}\n\n(sample)`)), width === 79, `${width}: TeX's empty line, where it ended the line itself`);
+			assert.equal(pdfViaLatexFailure({ engine, reason: 'r', log: message }).replace(/^.*? First error: /, ''), `! Package sample Error: ${'x'.repeat(width - 24)} second part. — The help.`);
+			assert.equal(await words(helpDoc(width)), `! Package sample Error: Something went wrong. — ${'x'.repeat(width)} second help line`);
+		}
+	});
+}
+
+test('the built-in TeX (the iPad): a LaTeX error\'s help in a long source line, from its log as the Mac\'s', { skip: fs.existsSync(path.join(assets, 'index.js')) ? false : 'no mp-tikz-wasm build staged (npm run sync-mptikz)' }, async () => {
+	const { MetaPost, DEFAULT_BUNDLES } = await import(pathToFileURL(path.join(assets, 'index.js')).href);
+	const mp = await MetaPost.create({ bundles: [...DEFAULT_BUNDLES, ...BUILT_IN_TEX.bundles] });
+	try {
+		for (const [engine, wasmEngine] of [['pdflatex', 'latex'], ['lualatex', 'lualatex']]) {
+			for (const [doc, want] of [[ENV_LONG_DOC, '! LaTeX Error: Environment nosuchenv undefined. — Your command was ignored.'], [PKG_LONG_DOC, '! Package sample Error: Something went wrong. — The explanation of what went wrong.']]) {
+				const r = await mp.latex(doc, { engine: wasmEngine, output: 'pdf', date: BUILT_IN_TEX.date });
+				assert.equal(pdfViaLatexFailure({ engine, reason: 'r', log: iPadLog(r), diagnostics: r.diagnostics }).replace(/^.*? First error: /, ''), want, `${engine}`);
+			}
+		}
+	} finally {
+		mp.dispose();
+	}
+});
