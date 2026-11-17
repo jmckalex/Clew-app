@@ -17,6 +17,12 @@ const { workspaceStore, vaultStore } = window.__clew;
 for (let i = 0; i < 150 && !vaultStore.vault?.sessionId; i++) await sleep(100);
 workspaceStore.setSidebar('left', { open: true, activeTool: 'files' });
 const row = (path) => document.querySelector(`clew-file-explorer .tree-item[data-path="${CSS.escape(path)}"]`);
+// Every folder starts closed (2026-11-17): open the two this run needs.
+for (let i = 0; i < 100 && !(row('Notes') && row('Tools')); i++) await sleep(100);
+for (const folder of ['Notes', 'Tools']) {
+	if (!workspaceStore.expandedFolders.includes(folder)) row(folder)?.click();
+	await sleep(150);
+}
 for (let i = 0; i < 100 && !(row('Notes/Paper.pdf') && row('Tools/run.sh')); i++) await sleep(100);
 
 /** Right-click a row; the menu's labels; the menu left open. */

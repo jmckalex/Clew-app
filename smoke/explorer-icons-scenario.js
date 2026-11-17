@@ -24,7 +24,8 @@
 // icon on screen is the page's already — a new <img> of it is complete the
 // moment its src is set, as each row windowing rebuilds is — while one never
 // shown is not (resource timing records no clew-app:// load, so this is the
-// measure). The scenario leaves Many closed whatever it found.
+// measure). Every folder starts closed (2026-11-17): the scenario opens each
+// but Many, and leaves Many closed whatever it found.
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const { settingsStore, workspaceStore } = window.__clew;
 const explorer = document.querySelector('clew-file-explorer');
@@ -34,10 +35,11 @@ const iconOf = (row) => row.querySelector('img.tree-icon');
 const base = (src) => src.split('/').pop();
 
 await sleep(1500);
-// Close the long folder first, so every other row is on screen at once —
-// from whatever state the vault's workspace kept.
-if (!workspaceStore.collapsedFolders.includes('Many')) {
-	explorer.querySelector('.tree-item.is-folder[data-path="Many"]')?.click();
+// Every folder but the long one open, so every other row is on screen at
+// once — from whatever state the vault's workspace kept.
+for (const path of ['Lectures', 'Lectures/Week 1', 'Lectures/Week 2', 'Pictures', 'Office', 'Boards', 'Many']) {
+	if (workspaceStore.expandedFolders.includes(path) === (path !== 'Many')) continue;
+	explorer.querySelector(`.tree-item.is-folder[data-path="${CSS.escape(path)}"]`)?.click();
 	await sleep(300);
 }
 

@@ -698,6 +698,7 @@ commit `main` then fast-forwarded to.
 | dev.18 | `cfdf3ef` | 2026-10-22 | from `vendor-d63a871` (jmarkdown d63a871) |
 | dev.19 | `461cc46` | 2026-10-22 | the first checked by `smoke/packaged-checks.sh` |
 | dev.20 | `cb0231e` | 2026-11-05 | mp-tikz-wasm 0.5.1; jmarkdown 794cc9c |
+| dev.21 | `88b495d` | 2026-11-12 | TeX log fixes, pdf-size test fix |
 
 ## 0.12.0 — released
 
