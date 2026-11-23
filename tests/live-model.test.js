@@ -78,6 +78,41 @@ test('wikilinks: alias shown, target hidden; same-note heading shows the heading
 	assert.deepEqual(one('[[#Setup]]\n', 'wikilink').hiddenText, ['[[#', ']]']);
 });
 
+/** A wikilink's text as live edit shows it: what lies between its hidden pieces. */
+const shownOf = (c) => c.hidden.slice(1).map((h, i) => c.text.slice(c.hidden[i].to - c.from, h.from - c.from)).join('');
+
+test('a wikilink\'s |external is hidden as reading view drops it — never shown as text (the owner, 2026-11-23)', () => {
+	const c = one('[[Files/paper.pdf|Read the paper|external]]\n', 'wikilink');
+	assert.deepEqual(c.hiddenText, ['[[Files/paper.pdf|', '|external]]']);
+	assert.equal(shownOf(c), 'Read the paper');
+	// The engine's rule (engine/wikilinks.js): every part that is `external`,
+	// in any case, wherever it stands; the rest shown as written.
+	assert.equal(shownOf(one('[[paper.pdf|External|Read it]]\n', 'wikilink')), 'Read it');
+	const mid = one('[[paper.pdf|Read|external|now]]\n', 'wikilink');
+	assert.deepEqual(mid.hiddenText, ['[[paper.pdf|', '|external', ']]']);
+	assert.equal(shownOf(mid), 'Read|now');
+	// Nothing left: the target's name, as reading view's label.
+	const bare = one('[[paper.pdf|external]]\n', 'wikilink');
+	assert.deepEqual(bare.hiddenText, ['[[', '|external]]']);
+	assert.equal(shownOf(bare), 'paper.pdf');
+	assert.equal(shownOf(one('[[paper.pdf#Intro|external]]\n', 'wikilink')), 'paper.pdf');
+	// A caption that only contains the word is a caption.
+	assert.deepEqual(one('[[Note|external notes]]\n', 'wikilink').hiddenText, ['[[Note|', ']]']);
+	assert.equal(one('[[Note|external notes]]\n', 'wikilink').external, false);
+	assert.equal(c.external, true);
+	// In a table the pipes are escaped, and the backslash is the table's.
+	const cell = one('| a | b |\n| --- | --- |\n| x | [[paper.pdf\\|In a table\\|external]] |\n', 'wikilink');
+	assert.equal(shownOf(cell), 'In a table');
+	assert.equal(shownOf(one('| a |\n| --- |\n| [[paper.pdf\\|external]] |\n', 'wikilink')), 'paper.pdf');
+	assert.equal(shownOf(one('| a |\n| --- |\n| [[paper.pdf\\|external\\|Caption]] |\n', 'wikilink')), 'Caption');
+});
+
+test('nothing inside what the engine reads as text is formatted: a link\'s path, a citation\'s keys, a {{var}} (the owner, 2026-11-23)', () => {
+	const doc = '[[Course_2026/Week_1 notes.pdf|Notes_2]] and H_2O.\n\n![[Pics/a_1.png]]\n\n\\cite{smith_2020} and {{var_1}}.\n\n@reveal[https://a.com/x_1/]\n';
+	// One subscript: the paragraph's own H_2O, outside them all.
+	assert.deepEqual(model(doc).filter((c) => c.kind === 'sub').map((c) => c.from), [doc.indexOf('_2O')]);
+});
+
 test('images and embeds: tier B image, tier C embed, chip when inline', () => {
 	const m = model('![[pic.png|300]]\n\n![[Other#Part]]\n\n![alt](a.png)\n\nText ![[Other]] inline.\n');
 	assert.deepEqual(m.map((c) => [c.kind, c.tier, c.level, c.text]), [
