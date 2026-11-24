@@ -53,7 +53,7 @@ const { configManager, DEFAULT_CONFIG } = await load('config-manager.js');
 // Clew's own rules, which the preview's config loads and the user's does not
 // (export-config.js#EXPORT_EXTENSIONS): after the engine's, as there.
 (await load('utils.js')).registerExtensions(EXPORT_EXTENSIONS);
-// …and its named environments (EXPORT_ENVIRONMENTS: `@begin(noprint)`), in
+// …and its named environments (EXPORT_ENVIRONMENTS: `@begin(clew-only)`), in
 // the engine's own registry.
 const { registerBlockEnvironment } = await load('begin-end-core.js');
 for (const [name, handler] of Object.entries(EXPORT_ENVIRONMENTS)) registerBlockEnvironment(name, handler);

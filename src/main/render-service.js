@@ -324,10 +324,12 @@ export class RenderService {
 				// @app[…] — an app in a note (app-embed.js marks the place;
 				// main resolves it as the document is served).
 				`app from ${path.join(engineAssets, 'app-embed.js')}`,
-				// @begin(noprint) — for the screen only: the reading-view PDF
-				// leaves it out (noprint.js; every export registers it too,
-				// export-config.js#EXPORT_ENVIRONMENTS).
-				`noprint from ${path.join(engineAssets, 'noprint.js')}`,
+				// @begin(clew-only) — Clew's own views only: the reading-view
+				// PDF and a site export leave it out (clew-only.js, its default
+				// export: a hyphenated name has no `from` form; every note and
+				// book export registers its own, export-config.js#
+				// EXPORT_ENVIRONMENTS).
+				path.join(engineAssets, 'clew-only.js'),
 			],
 			...this.#biblifyConfig(),
 			// dvisvgm needs ghostscript to convert MetaPost EPS output (and

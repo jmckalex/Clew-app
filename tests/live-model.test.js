@@ -286,11 +286,11 @@ test('@begin(game|Mathematica|markdown-demo) are frames, as their ::: twins; @be
 	assert.equal(one('@begin(<name>)\nx\n@end(name)\n', 'environment').name, 'name', 'the sigil is not the name');
 });
 
-test('@begin(noprint) is screen only: a generic environment whose markdown body is drawn', () => {
-	const m = model('@begin(noprint)\nGrade: *A*\n@end(noprint)\n');
+test('@begin(clew-only) is Clew only: a generic environment whose markdown body is drawn', () => {
+	const m = model('@begin(clew-only)\nGrade: *A*\n@end(clew-only)\n');
 	assert.deepEqual(m.map((c) => [c.kind, c.tier]), [['environment', 'A'], ['strong', 'A']]);
-	assert.deepEqual([m[0].name, m[0].screenOnly, m[0].htmlOnly], ['noprint', true, false]);
-	assert.equal(one('@begin(web)\nx\n@end(web)\n', 'environment').screenOnly, false);
+	assert.deepEqual([m[0].name, m[0].clewOnly, m[0].htmlOnly], ['clew-only', true, false]);
+	assert.equal(one('@begin(web)\nx\n@end(web)\n', 'environment').clewOnly, false);
 });
 
 test(':::TeX and @begin(TeX) bodies are opaque; math environments are display math', () => {

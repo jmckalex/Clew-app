@@ -1,4 +1,4 @@
-// "Export notes as PDF (reading view)" and `@begin(noprint)` (the owner's ask,
+// "Export notes as PDF (reading view)" and `@begin(clew-only)` (the owner's ask,
 // 2026-11-24: a folder of marked essays, a PDF each, without the marking
 // controls at the top of each). By REAL input: a folder's explorer menu opens
 // the sheet with its notes ticked, the filter and "Untick all shown" leave one
@@ -6,7 +6,7 @@
 // for the whole vault (none ticked), the filter and "Tick all shown" pick the
 // three, and the two PDFs already there are replaced (their old copies to the
 // Trash). The single note's "Export as PDF (reading view)" of the same essay
-// comes first — what `@begin(noprint)` did before this change.
+// comes first — what `@begin(clew-only)` did before this change.
 //
 // Writes its own notes into any empty vault. Run with CLEW_SMOKE_VAULT=<it>,
 // CLEW_SMOKE_LOG=1, a CLEW_USER_DATA of its own, CLEW_SMOKE_EXPORT_DIR=<an
@@ -46,22 +46,22 @@ const paragraphs = () => [...sheet().querySelectorAll('.clew-sheet-body > p')].m
 const essay = (name) => [
 	`# Essay by ${name}`,
 	'',
-	'@begin(noprint)',
+	'@begin(clew-only)',
 	'Marking: <button class="mark-done">MARKED-BUTTON</button> <input class="grade" size="4">',
 	'',
 	'SCREEN-NOTE for the marker.',
-	'@end(noprint)',
+	'@end(clew-only)',
 	'',
 	`The essay's own text, ESSAY-${name.toUpperCase()}.`,
 	'',
-	'A remark @noprint[INLINE-SCREEN] in passing, KEPT.',
+	'A remark @clew-only[INLINE-SCREEN] in passing, KEPT.',
 	'',
 ].join('\n');
 for (const name of ['Ann', 'Ben']) await ipc.invoke('clew:note-write', { path: `Essays/${name}.md`, content: essay(name) });
 await ipc.invoke('clew:note-write', { path: 'Essays/Late/Cat.md', content: essay('Cat') });
 await ipc.invoke('clew:note-write', { path: 'Other.md', content: '# Other\n\nNot an essay.\n' });
 
-// What @begin(noprint) did before: the single note's reading-view PDF.
+// What @begin(clew-only) did before: the single note's reading-view PDF.
 const single = await ipc.invoke('clew:export-note', { path: 'Essays/Ann.md', format: 'print-pdf', outFile: 'Single/Ann.pdf' });
 log(`single ${single?.output}`);
 for (let i = 0; i < 200 && !$('.tree-item[data-path="Essays"]'); i++) await sleep(50);

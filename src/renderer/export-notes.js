@@ -141,7 +141,7 @@ async function pick(sheet, notes, ticked, folder) {
 	none.addEventListener('click', () => tickShown(false));
 
 	sheet.body(
-		h('p', 'clew-sheet-explain', 'Each note is printed as reading view draws it, to a PDF of its own named after the note, in a folder you choose next. What a note marks @begin(noprint) is left out.'),
+		h('p', 'clew-sheet-explain', 'Each note is printed as reading view draws it, to a PDF of its own named after the note, in a folder you choose next. What a note marks @begin(clew-only) is left out.'),
 		tools, list,
 	);
 	const choice = sheet.choose([
