@@ -324,6 +324,10 @@ export class RenderService {
 				// @app[…] — an app in a note (app-embed.js marks the place;
 				// main resolves it as the document is served).
 				`app from ${path.join(engineAssets, 'app-embed.js')}`,
+				// @begin(noprint) — for the screen only: the reading-view PDF
+				// leaves it out (noprint.js; every export registers it too,
+				// export-config.js#EXPORT_ENVIRONMENTS).
+				`noprint from ${path.join(engineAssets, 'noprint.js')}`,
 			],
 			...this.#biblifyConfig(),
 			// dvisvgm needs ghostscript to convert MetaPost EPS output (and

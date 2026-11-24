@@ -22,6 +22,7 @@
 import path from 'node:path';
 import { latexStyleConfig, headerValues, STYLE_KEYS } from './latex-style.js';
 import { obsidianComment, obsidianInlineComment } from './obsidian-comments.js';
+import { noprint } from './noprint.js';
 
 /**
  * Clew's own engine rules an export registers, as the preview's generated
@@ -33,6 +34,16 @@ import { obsidianComment, obsidianInlineComment } from './obsidian-comments.js';
  * (obsidian-comments.js).
  */
 export const EXPORT_EXTENSIONS = Object.freeze([obsidianComment, obsidianInlineComment]);
+
+/**
+ * Clew's own named environments an export registers, as the preview's
+ * generated config loads them (render-service.js `Environments`), by name —
+ * with the engine's registerBlockEnvironment (begin-end-core.js), after
+ * importing the engine and before processFile. `@begin(noprint)`
+ * (noprint.js): LaTeX leaves it out, HTML keeps it. Only the environments an
+ * export needs: the preview's figures, `@reveal` and `@app` are the preview's.
+ */
+export const EXPORT_ENVIRONMENTS = Object.freeze({ noprint });
 
 /**
  * Set an export's configuration on the engine's own configManager, after the

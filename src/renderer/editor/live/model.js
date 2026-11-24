@@ -165,6 +165,8 @@ function build(doc, tree, config) {
 						name, body: s.body, content: s.content, attrs: s.attrs,
 						openLine: open, closeLine: close,
 						texOnly: name === 'TeX', htmlOnly: name === 'HTML', comment: name === 'comment',
+						// `@begin(noprint)` (engine/noprint.js): drawn, never printed.
+						screenOnly: name === 'noprint',
 						extents: close ? [open, close] : [open],
 					});
 					if (name === 'TeX') opaque.push({ from: s.start, to: s.end });

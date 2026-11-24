@@ -286,6 +286,13 @@ test('@begin(game|Mathematica|markdown-demo) are frames, as their ::: twins; @be
 	assert.equal(one('@begin(<name>)\nx\n@end(name)\n', 'environment').name, 'name', 'the sigil is not the name');
 });
 
+test('@begin(noprint) is screen only: a generic environment whose markdown body is drawn', () => {
+	const m = model('@begin(noprint)\nGrade: *A*\n@end(noprint)\n');
+	assert.deepEqual(m.map((c) => [c.kind, c.tier]), [['environment', 'A'], ['strong', 'A']]);
+	assert.deepEqual([m[0].name, m[0].screenOnly, m[0].htmlOnly], ['noprint', true, false]);
+	assert.equal(one('@begin(web)\nx\n@end(web)\n', 'environment').screenOnly, false);
+});
+
 test(':::TeX and @begin(TeX) bodies are opaque; math environments are display math', () => {
 	assert.deepEqual(kinds(':::TeX\n\\textbf{*x*}\n:::\n'), ['directive']);
 	assert.deepEqual(kinds('@begin(TeX)\n*x*\n@end(TeX)\n'), ['environment']);
