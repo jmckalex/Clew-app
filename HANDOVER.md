@@ -699,6 +699,7 @@ commit `main` then fast-forwarded to.
 | dev.19 | `461cc46` | 2026-10-22 | the first checked by `smoke/packaged-checks.sh` |
 | dev.20 | `cb0231e` | 2026-11-05 | mp-tikz-wasm 0.5.1; jmarkdown 794cc9c |
 | dev.21 | `88b495d` | 2026-11-12 | TeX log fixes, pdf-size test fix |
+| dev.22 | `c37ce1c` | 2026-11-24 | `@begin(clew-only)`, Export notes as PDF (reading view), folders start closed, live edit's `\|external` |
 
 ## 0.12.0 — released
 
