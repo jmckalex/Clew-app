@@ -270,7 +270,10 @@ title bar is drawn by the page), so macOS's automatic list said nothing.
   immune to a spent budget — and so does EVERY Clew write of a new file
   (2026-09-30, the owner's PDF exported into ph341 and invisible for 6+
   minutes): `writeNote` when the file is new, `saveAttachment`, the
-  kv-store's first clewdata.json, and `vaults.refreshIfInside(abs)` after a
+  kv-store's first clewdata.json, and `vaults.refreshIfInside(abs)` (a file or
+  a folder — the vault's root counts: until 2026-11-26 a batch of PDFs into
+  the root that replaced one never showed it, `smoke/print-batch-root-
+  scenario.js`) after a
   note export, a site export or a canvas PNG lands wherever the user chose.
   A new writer of vault files does the same. **Across windows**
   (2026-09-30, measured by `smoke/watch-repro.mjs`): a window's SCAN takes

@@ -313,12 +313,18 @@ export class VaultManager {
 	 * watcher is not to be waited for (a 300 ms debounce at best, and in a
 	 * vault whose watch budget is spent, a message that never comes — the
 	 * owner's PDF export into ph341, 2026-09-30). Outside, nothing.
+	 *
+	 * `abs` may be a FOLDER — "Export notes as PDF"'s — and the vault's own
+	 * root is inside: until 2026-11-26 it counted as outside, and a batch into
+	 * the root that replaced a PDF left it out of the explorer for good (the
+	 * trash had refreshed it in between, and chokidar reads a file trashed and
+	 * written again at once as one `change`; the owner's report on dev.22).
 	 */
 	refreshIfInside(abs) {
 		if (!this.root || !abs) return;
 		const inside = (root, target) => {
 			const rel = path.relative(root, target);
-			return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
+			return rel === '' || (rel !== '..' && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel));
 		};
 		const target = path.resolve(abs);
 		let real = target;
