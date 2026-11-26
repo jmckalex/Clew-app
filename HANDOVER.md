@@ -700,6 +700,7 @@ commit `main` then fast-forwarded to.
 | dev.20 | `cb0231e` | 2026-11-05 | mp-tikz-wasm 0.5.1; jmarkdown 794cc9c |
 | dev.21 | `88b495d` | 2026-11-12 | TeX log fixes, pdf-size test fix |
 | dev.22 | `c37ce1c` | 2026-11-24 | `@begin(clew-only)`, Export notes as PDF (reading view), folders start closed, live edit's `\|external` |
+| dev.23 | `33c0f7a` | 2026-11-26 | Export notes as PDF into the vault's root shown in the explorer; live edit's environments a rule per level with a └ foot, `@begin(clew-only)`'s head |
 
 ## 0.12.0 — released
 
