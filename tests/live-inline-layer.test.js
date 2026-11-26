@@ -95,10 +95,13 @@ function frames(doc, anchor) {
 	return { lines, styles, heads };
 }
 
-/** A line's environment rules and feet, from its style (env-rules.js). */
+/** A line's environment rules, top feet (┌) and feet (└), from its style
+ *  (env-rules.js): a foot is a 10px × 2px layer, at the line's top or bottom. */
 const rules = (style = '') => {
 	const sizes = /background-size: ([^;]+)/.exec(style)?.[1].split(', ') ?? [];
-	return [sizes.filter((x) => x === '2px 100%').length, sizes.filter((x) => x === '10px 2px').length];
+	const places = /background-position: ([^;]+)/.exec(style)?.[1].split(', ') ?? [];
+	const feet = (end) => sizes.filter((x, i) => x === '10px 2px' && places[i]?.endsWith(end)).length;
+	return [sizes.filter((x) => x === '2px 100%').length, feet(' 0'), feet('100%')];
 };
 
 test('an environment\'s concealed closer is its frame\'s foot, a pad; `@begin(clew-only)` says what it is once', () => {
@@ -114,13 +117,13 @@ test('an environment\'s concealed closer is its frame\'s foot, a pad; `@begin(cl
 	assert.match(revealed.lines.get(9), /\ble-env-foot-line\b/, 'another environment stays concealed');
 });
 
-test('nested environments draw a rule per level, each ending in its own foot', () => {
+test('nested environments draw a rule per level, each starting and ending in its own foot', () => {
 	const doc = '# Note\n\n@begin(clew-only)\nOuter.\n@begin(theorem)\nInner.\n@end(theorem)\nOuter again.\n@end(clew-only)\n\nAfter.\n';
 	const { styles } = frames(doc, 0);
 	const at = (n) => rules(styles.get(n));
 	assert.deepEqual([3, 4, 5, 6, 7, 8, 9, 11].map(at),
-		[[1, 0], [1, 0], [2, 0], [2, 0], [2, 1], [1, 0], [1, 1], [0, 0]],
-		'head, text, inner head and text, inner foot, the outer again, the outer foot, after both');
+		[[1, 1, 0], [1, 0, 0], [2, 1, 0], [2, 0, 0], [2, 0, 1], [1, 0, 0], [1, 0, 1], [0, 0, 0]],
+		'head and its ┌, text, inner head and its ┌, inner text, inner └, the outer again, the outer └, after both');
 	assert.match(styles.get(6), /--le-env-x: 44px/);
 	assert.match(styles.get(8), /--le-env-x: 22px/, '"Outer again." back at the outer level');
 	const inks = (n) => [(styles.get(n).match(/repeating-linear-gradient\(/g) ?? []).length, (styles.get(n).match(/(?<!repeating-)linear-gradient\(/g) ?? []).length];

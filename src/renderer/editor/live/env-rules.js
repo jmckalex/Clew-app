@@ -1,10 +1,12 @@
 // Live edit's environment frames, one rule per LEVEL (the owner's ask,
 // 2026-11-26: "without the @end marker shown, it will remain ambiguous").
 // Every line inside `@begin(x)` … `@end(x)` (or a `:::x` directive) carries a
-// rule for each environment around it, outermost first, a step apart, and an
+// rule for each environment around it, outermost first, a step apart; an
 // environment's closing line ends its own rule in a foot — └ — so where each
-// one ends reads with its `@end` concealed. `@begin(clew-only)`'s rule is
-// dashed, on its own level only.
+// one ends reads with its `@end` concealed, and its opening line starts it
+// with one turned over — ┌ — (the owner's ask the same day: a foot at the
+// bottom alone looked odd). `@begin(clew-only)`'s rule is dashed, on its own
+// level only; its feet are solid.
 //
 // Until then each environment drew a border on its lines, and a line has one
 // border: a theorem inside a clew-only block shared the block's rule at the
@@ -81,8 +83,9 @@ export function envStacks(frames, wanted = () => true) {
 /**
  * The style of line `n` inside `stack`: `--le-env-x`, how far its text stands
  * in (live-edit.css pads by it), and one rule per level as background layers —
- * with a foot along the bottom where `n` is that level's closer. A block's is
- * asked with no line (`n` null): no foot.
+ * with a foot along the top where `n` is that level's opener (┌) and along the
+ * bottom where it is its closer (└; none for an unclosed environment). A
+ * block's is asked with no line (`n` null): no foot.
  */
 export function envRuleStyle(stack, n) {
 	const images = [];
@@ -93,6 +96,11 @@ export function envRuleStyle(stack, n) {
 		images.push(f.dashed ? DASHED : SOLID);
 		sizes.push('2px 100%');
 		positions.push(`${x} 0`);
+		if (n === f.open) {
+			images.push(SOLID);
+			sizes.push('10px 2px');
+			positions.push(`${x} 0`);
+		}
 		if (f.foot && n === f.close) {
 			images.push(SOLID);
 			sizes.push('10px 2px');

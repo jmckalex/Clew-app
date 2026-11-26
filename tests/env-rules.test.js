@@ -40,6 +40,17 @@ test('a level ends in a foot on its own closer, and only there', () => {
 	assert.doesNotMatch(envRuleStyle([outer, inner], null), /10px 2px/, 'a block has none');
 });
 
+test('a level starts with a foot turned over on its own opener, closed or not', () => {
+	const innerOpen = envRuleStyle([outer, inner], 5);
+	assert.match(innerOpen, /background-size: 2px 100%, 2px 100%, 10px 2px;/, 'the outer level runs on through it');
+	assert.match(innerOpen, new RegExp(`background-position: ${ENV_RULE_X}px 0, ${ENV_RULE_X + ENV_STEP}px 0, ${ENV_RULE_X + ENV_STEP}px 0;`), 'along the top, at the inner level\'s rule');
+	const outerOpen = envRuleStyle([outer], 3);
+	assert.match(outerOpen, /background-size: 2px 100%, 10px 2px;/);
+	assert.match(outerOpen, /background-image: repeating-linear-gradient\(.*\), linear-gradient\(/, 'a dashed level\'s foot solid');
+	assert.match(envRuleStyle([{ ...outer, foot: false }], 3), /10px 2px/, 'an unclosed environment still starts');
+	assert.doesNotMatch(envRuleStyle([outer, inner], 6), /10px 2px/, 'a body line has none');
+});
+
 test('a block is inside the environments opened above it and closed below it', () => {
 	assert.deepEqual(framesAround([inner, outer], 6, 7), [outer, inner]);
 	assert.deepEqual(framesAround([inner, outer], 9, 9), [outer]);

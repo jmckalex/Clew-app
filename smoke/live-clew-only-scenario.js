@@ -17,10 +17,11 @@
 //          foot: the concealed `@end` line's height
 //   revealed foot=<px> text=<the @end line's text>
 //          the caret on the `@end` line
-//   nested [<line>:<text's x>/<rules>/<feet>, …]
+//   nested [<line>:<text's x>/<rules>/<tops>/<feet>, …]
 //          each line of the nested block: where its text starts (px from the
-//          content's left), how many rules it draws, how many feet; a block
-//          (the display equation) `block <x>/<rules>/0`, its content's x
+//          content's left), how many rules it draws, how many top feet (┌, a
+//          level's opener) and feet (└, its closer); a block (the display
+//          equation) `block <x>/<rules>/0/0`, its content's x
 //   frame boxed=<bool> rules=<n> iframe-left=<px> body-left=<px> same=<bool> right-of-rule=<bool>
 //          a mermaid diagram inside a clew-only block (Figure.md): its iframe
 //          laid over its boxed placeholder, right of the rule
@@ -118,11 +119,15 @@ for (let n = view.state.doc.lineAt(from).number - 1; n <= view.state.doc.lines; 
 	const el = at?.closest?.('.cm-line, .le-env-block');
 	if (!el) { nested.push(`${n}:block-unframed`); continue; }
 	const layers = el.style.backgroundSize.split(',').map((x) => x.trim()).filter(Boolean);
+	const places = el.style.backgroundPosition.split(',').map((x) => x.trim());
+	// A foot is a 10px × 2px layer: at the line's bottom (`… 100%`) a └, else
+	// at its top (`… 0px` — the browser writes back `0` as `0px`) a ┌.
+	const feet = (bottom) => layers.filter((l, i) => l === '10px 2px' && places[i]?.endsWith('100%') === bottom).length;
 	// A line's text starts at its padding; a block's content inside its box.
 	const inner = el.classList.contains('le-env-block') ? el.firstElementChild : el;
 	const cs = getComputedStyle(inner);
 	const x = Math.round(rect(inner).left - left + parseFloat(cs.borderLeftWidth) + parseFloat(cs.paddingLeft));
-	nested.push(`${n}:${el.classList.contains('le-env-block') ? 'block ' : ''}${x}/${layers.filter((l) => l === '2px 100%').length}/${layers.filter((l) => l === '10px 2px').length}`);
+	nested.push(`${n}:${el.classList.contains('le-env-block') ? 'block ' : ''}${x}/${layers.filter((l) => l === '2px 100%').length}/${feet(false)}/${feet(true)}`);
 }
 log(`nested [${nested.join(', ')}]`);
 
