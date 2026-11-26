@@ -293,6 +293,14 @@ test('@begin(clew-only) is Clew only: a generic environment whose markdown body 
 	assert.equal(one('@begin(web)\nx\n@end(web)\n', 'environment').clewOnly, false);
 });
 
+test('a list item ends at an environment\'s @end: what lezer reads past it as the item\'s is prose', () => {
+	const doc = '@begin(theorem)\n- an item\nmore of it\n@end(theorem)\nAfter.\n';
+	const m = model(doc);
+	assert.deepEqual(m.filter((c) => c.kind === 'listText').map((c) => doc.slice(c.from, c.to)), ['more of it'], 'the item\'s own text');
+	assert.deepEqual(m.filter((c) => c.kind === 'listEnded').map((c) => doc.slice(c.from, c.to)), ['@end(theorem)', 'After.'], 'past its environment\'s edge, not');
+	assert.deepEqual(model('- an item\nmore of it\n').map((c) => c.kind).filter((k) => k === 'listEnded'), [], 'no environment, no change');
+});
+
 test(':::TeX and @begin(TeX) bodies are opaque; math environments are display math', () => {
 	assert.deepEqual(kinds(':::TeX\n\\textbf{*x*}\n:::\n'), ['directive']);
 	assert.deepEqual(kinds('@begin(TeX)\n*x*\n@end(TeX)\n'), ['environment']);

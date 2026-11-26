@@ -75,3 +75,55 @@ test('numbers that cannot be counted cost only the constructs that show one', (t
 		setBookNumbering(null);
 	}
 });
+
+/** Every line class and head widget the layer gives `doc`, the caret at `anchor`. */
+function frames(doc, anchor) {
+	const state = EditorState.create({
+		doc, selection: { anchor },
+		extensions: [noteMarkdown({}), liveConfigFacet.of({ ...DEFAULT_LIVE_CONFIG }), liveStateField],
+	});
+	const set = inlineDecorations({ state, visibleRanges: [{ from: 0, to: doc.length }] });
+	const lines = new Map();
+	const styles = new Map();
+	const heads = [];
+	set.between(0, doc.length, (from, to, deco) => {
+		const n = state.doc.lineAt(from).number;
+		if (deco.spec.class && from === to) lines.set(n, `${lines.get(n) ?? ''} ${deco.spec.class}`.trim());
+		if (deco.spec.attributes?.style && from === to) styles.set(n, `${styles.get(n) ?? ''};${deco.spec.attributes.style}`);
+		if (deco.spec.widget?.constructor.name === 'EnvHeadWidget') heads.push([deco.spec.widget.name, deco.spec.widget.note]);
+	});
+	return { lines, styles, heads };
+}
+
+/** A line's environment rules and feet, from its style (env-rules.js). */
+const rules = (style = '') => {
+	const sizes = /background-size: ([^;]+)/.exec(style)?.[1].split(', ') ?? [];
+	return [sizes.filter((x) => x === '2px 100%').length, sizes.filter((x) => x === '10px 2px').length];
+};
+
+test('an environment\'s concealed closer is its frame\'s foot, a pad; `@begin(clew-only)` says what it is once', () => {
+	const doc = '# Note\n\n@begin(clew-only)\nGrade: A\n@end(clew-only)\n\n@begin(theorem)\nA claim.\n@end(theorem)\n';
+	const concealed = frames(doc, 0);
+	assert.match(concealed.lines.get(5), /\ble-env-close\b.*\ble-env-foot-line\b/, 'the clew-only closer a pad');
+	assert.match(concealed.lines.get(9), /\ble-env-foot-line\b/, 'and every environment\'s');
+	assert.doesNotMatch(concealed.lines.get(4), /foot-line/, 'a body line is a line');
+	assert.deepEqual(concealed.heads, [['Clew only', 'left out of PDFs and exports'], ['theorem', '']]);
+	const revealed = frames(doc, doc.indexOf('@end(clew-only)'));
+	assert.match(revealed.lines.get(5), /\ble-env-close\b/);
+	assert.doesNotMatch(revealed.lines.get(5), /foot-line/, 'revealed, the closer is a line showing @end(…)');
+	assert.match(revealed.lines.get(9), /\ble-env-foot-line\b/, 'another environment stays concealed');
+});
+
+test('nested environments draw a rule per level, each ending in its own foot', () => {
+	const doc = '# Note\n\n@begin(clew-only)\nOuter.\n@begin(theorem)\nInner.\n@end(theorem)\nOuter again.\n@end(clew-only)\n\nAfter.\n';
+	const { styles } = frames(doc, 0);
+	const at = (n) => rules(styles.get(n));
+	assert.deepEqual([3, 4, 5, 6, 7, 8, 9, 11].map(at),
+		[[1, 0], [1, 0], [2, 0], [2, 0], [2, 1], [1, 0], [1, 1], [0, 0]],
+		'head, text, inner head and text, inner foot, the outer again, the outer foot, after both');
+	assert.match(styles.get(6), /--le-env-x: 44px/);
+	assert.match(styles.get(8), /--le-env-x: 22px/, '"Outer again." back at the outer level');
+	const inks = (n) => [(styles.get(n).match(/repeating-linear-gradient\(/g) ?? []).length, (styles.get(n).match(/(?<!repeating-)linear-gradient\(/g) ?? []).length];
+	assert.deepEqual(inks(4), [1, 0], 'clew-only dashed');
+	assert.deepEqual(inks(6), [1, 1], 'inside it, the theorem solid');
+});

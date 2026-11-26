@@ -121,8 +121,18 @@ function build(doc, tree, config) {
 	/** Ranges whose inside is not markdown for live edit's purposes. */
 	const opaque = [];
 	const inOpaque = (pos) => opaque.some((r) => pos >= r.from && pos < r.to);
+	/** Where a `@begin(x)`/`@end(x)` or `:::x`/`:::` line starts: no list
+	 *  item's text runs past one (listText). The engine takes environments
+	 *  before markdown, so an item ends there; lezer, which knows none, reads
+	 *  `@end(theorem)` and every line after it up to a blank one as the item's
+	 *  lazy continuation. */
+	const frameEdges = new Set();
 
 	for (const s of scan.constructs) {
+		if (s.kind === 'directiveBlock' || s.kind === 'environment') {
+			frameEdges.add(lineOf(s.start).from);
+			if (s.close) frameEdges.add(lineOf(s.close.start).from);
+		}
 		switch (s.kind) {
 			case 'metaHeader':
 				add('frontmatter', 'A', 'block', s.start, s.end, { body: s.body, closed: Boolean(s.close) });
@@ -480,10 +490,19 @@ function build(doc, tree, config) {
 	function listText(node, first, depth, mark, numberMark) {
 		const quoted = ancestors(node, 'Blockquote') > 0;
 		const paragraphs = [...childrenNamed(node, 'Paragraph'), ...childrenNamed(node, 'Task')];
+		// Past an environment's edge the item has ended (frameEdges): what lezer
+		// still holds as its text is drawn as prose, at the margin.
+		let ended = false;
 		for (const para of paragraphs) {
 			for (let n = lineOf(para.from).number; n <= lineOf(para.to).number; n += 1) {
 				const line = doc.line(n);
-				if (line.from <= first.from || inOpaque(line.from)) continue;
+				if (line.from <= first.from) continue;
+				ended ||= frameEdges.has(line.from);
+				if (ended) {
+					add('listEnded', 'A', 'line', line.from, line.to);
+					continue;
+				}
+				if (inOpaque(line.from)) continue;
 				const marks = quoted ? (/^(?:[ \t]*>)+[ \t]?/.exec(line.text)?.[0].length ?? 0) : 0;
 				const lead = marks + /^[ \t]*/.exec(line.text.slice(marks))[0].length;
 				add('listText', 'A', 'line', line.from, line.to, {

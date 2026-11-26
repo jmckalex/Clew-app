@@ -274,15 +274,33 @@
    again, showing its backticks — the one line whose height changes. */
 .cm-line.le-fence-foot-line { font-size: 0; line-height: 10px; height: 10px; }
 
-/* ---- directives and environments: a captioned frame ---- */
-.le-env { border-left: 2px solid var(--clew-accent); padding-left: 20px !important; margin-left: 24px; }
+/* ---- directives and environments: a captioned frame ----
+   One rule per LEVEL, a step apart, each ending in a foot at its closer
+   (live/env-rules.js — background layers in an inline style, never a border:
+   a line has one border, and a nested frame shared its outer's). Its text
+   stands in past the innermost rule, by --le-env-x; a list keeps its hang
+   past that, and a quote inside is drawn as the frame's text (its bar would
+   stand where the rules are). */
+.le-env { padding-left: calc(24px + var(--le-env-x, 22px)) !important; }
+.le-env.le-li, .le-env.le-li-cont { padding-left: calc(24px + var(--le-env-x, 22px) + var(--le-hang)) !important; }
+.le-env.le-quote { margin-left: 0; border-left: none; padding-left: calc(24px + var(--le-env-x, 22px)) !important; }
+/* A block inside one (block-field.js, widgets/framed-block.js): boxed with
+   the same rules, its own 24px inside them. */
+.le-env-block { padding-left: var(--le-env-x, 22px); }
 .le-env-open { padding-top: 2px !important; }
 .le-env-head { font-family: var(--clew-ui-font); font-size: 0.8em; color: var(--clew-accent); cursor: pointer; }
 .le-env-name { font-weight: 700; text-transform: capitalize; }
 .le-env-caption { margin-left: 0.6em; color: var(--clew-text-normal); font-weight: 600; }
 .le-env-note { margin-left: 0.6em; color: var(--clew-text-faint); }
 .le-env-foot { display: inline-block; }
+/* The concealed closer: the frame's foot, a pad, not a blank line at the
+   bottom of the box. Revealed (the caret on the opener or the closer) it is
+   full height again, showing `@end(…)` — as a fence's closer is. */
+.cm-line.le-env-foot-line { font-size: 0; line-height: 6px; height: 6px; }
 .le-tex-only-block, .le-env-comment { opacity: 0.55; }
+/* `@begin(clew-only)`: its head "Clew only" as written (no capital after a
+   hyphen); its rule is dashed (env-rules.js). */
+.le-env-clew-only .le-env-name { text-transform: none; }
 .le-dt { font-weight: 600; }
 /* The concealed `::` becomes a dash between the term and its definition. */
 .le-dt-sep.le-chip { background: none; padding: 0 0.45em; color: var(--clew-text-faint); }
@@ -315,7 +333,7 @@
 }
 /* Source mode tints a whole list item with the list face; in live edit the
    bullet carries the colour and the item reads as prose — every line of it. */
-.cm-live .le-li .cmt-list, .cm-live .le-li-cont .cmt-list { color: inherit; }
+.cm-live .le-li .cmt-list, .cm-live .le-li-cont .cmt-list, .cm-live .le-li-ended .cmt-list { color: inherit; }
 
 /* CodeMirror puts a 1em, `vertical-align: text-top` image either side of a
    replaced range (a caret anchor). On a large-font line that image pokes

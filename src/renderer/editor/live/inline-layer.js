@@ -43,6 +43,7 @@ import { FullciteWidget } from './widgets/fullcite.js';
 import { localCiteText } from './cite-label.js';
 import { calloutColor } from '#jmarkdown/callout-table.js';
 import { guarded } from './guarded.js';
+import { envStacks, envRuleStyle, frameOf } from './env-rules.js';
 
 const HIDE = Decoration.replace({});
 const markCache = new Map();
@@ -312,7 +313,13 @@ function build(view) {
 			const box = c.numberMark ? numberWidth(doc.sliceString(c.numberMark.from, c.numberMark.to)) : null;
 			return `--le-indent: ${listIndent(c)}${box ? `; --le-mark: ${box}` : ''}`;
 		};
-		for (const c of model) guarded(c, () => lineConstruct(c), out, replaced);
+		// Each environment's lines (env-rules.js): drawn after them all, one
+		// rule per level on every line inside one, from the whole stack.
+		const frames = [];
+		for (const c of model) guarded(c, () => lineConstruct(c), out, replaced, frames);
+		for (const [n, stack] of envStacks(frames, (n) => inView(doc.line(n).from, doc.line(n).to))) {
+			out.push(Decoration.line({ attributes: { style: envRuleStyle(stack, n) } }).range(doc.line(n).from));
+		}
 
 		function lineConstruct(c) {
 			if (c.tier !== 'A' || !inView(c.lineFrom, c.lineTo)) return;
@@ -408,6 +415,11 @@ function build(view) {
 					lineClass(c.from, 'le-li-cont', { style: listStyle(c) });
 					hide(c.indent);
 					break;
+				case 'listEnded':
+					// What lezer reads as an item's lazy text past an environment's
+					// `@begin`/`@end` (model.js#listText): prose, not the list's colour.
+					lineClass(c.from, 'le-li-ended');
+					break;
 				case 'codeFence': {
 					const last = c.closeLine ?? lineRange(doc.lineAt(c.to).from, c.to);
 					for (let n = doc.lineAt(c.openLine.from).number; n <= doc.lineAt(last.from).number; n += 1) {
@@ -431,7 +443,11 @@ function build(view) {
 					const bodyFrom = c.body.start ?? c.body.from;
 					const bodyTo = c.body.end ?? c.body.to;
 					lineClass(c.openLine.from, `${kindCls} le-env-open`);
-					if (c.closeLine) lineClass(c.closeLine.from, `${kindCls} le-env-close`);
+					// Concealed, the closer is the frame's foot, a pad — not a blank
+					// line at the bottom of the box (the fence's rule; the owner's
+					// report on `@begin(clew-only)`, 2026-11-26).
+					if (c.closeLine) lineClass(c.closeLine.from, `${kindCls} le-env-close${hidden ? ' le-env-foot-line' : ''}`);
+					frames.push(frameOf(c, doc));
 					if (bodyTo > bodyFrom || doc.lineAt(bodyFrom).from === bodyFrom) {
 						for (let n = doc.lineAt(bodyFrom).number; n <= doc.lineAt(bodyTo).number; n += 1) {
 							const line = doc.line(n);
@@ -444,8 +460,9 @@ function build(view) {
 					const caption = c.content ? doc.sliceString(c.content.start ?? c.content.from, c.content.end ?? c.content.to) : '';
 					const attrs = c.attrs ? doc.sliceString(c.attrs.start ?? c.attrs.from, c.attrs.end ?? c.attrs.to) : '';
 					const entry = numbers().lines.get(doc.lineAt(c.openLine.from).number);
-					widget(c.openLine.from, c.openLine.to, new EnvHeadWidget(name, caption, attrs,
-						c.texOnly ? 'LaTeX only' : c.htmlOnly ? 'HTML only' : c.clewOnly ? 'Clew only' : '', entry ? headText(entry) : ''));
+					// `@begin(clew-only)` says what it is once, and what that means.
+					widget(c.openLine.from, c.openLine.to, new EnvHeadWidget(c.clewOnly ? 'Clew only' : name, caption, attrs,
+						c.texOnly ? 'LaTeX only' : c.htmlOnly ? 'HTML only' : c.clewOnly ? 'left out of PDFs and exports' : '', entry ? headText(entry) : ''));
 					if (c.closeLine && c.closeLine.to > c.closeLine.from) widget(c.closeLine.from, c.closeLine.to, new EnvFootWidget());
 					break;
 				}

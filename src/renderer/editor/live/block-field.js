@@ -39,6 +39,8 @@ import { numberingFor } from './numbering-source.js';
 import { mathEnvironmentTex } from '../jmd/math-segments.js';
 import { ChipWidget } from './widgets/chip.js';
 import { guarded } from './guarded.js';
+import { frameOf, framesAround, envRuleStyle } from './env-rules.js';
+import { FramedBlockWidget } from './widgets/framed-block.js';
 
 /** Toggle a foldable callout: `{ id, folded }`. */
 export const setCalloutFold = StateEffect.define();
@@ -92,9 +94,15 @@ function build(state) {
 		}).range(c.from, c.to));
 	}, out);
 	const inNote = (c) => notes.some((n) => c.from >= n.from && c.to <= n.to && n !== c);
+	// The environments a block may stand inside (env-rules.js): inside any,
+	// its widget is boxed with their rules and indent (widgets/framed-block.js).
+	const frames = model.filter((c) => c.tier === 'A' && (c.kind === 'environment' || c.kind === 'directive') && c.openLine)
+		.map((c) => frameOf(c, doc));
 	const block = (c, widget) => {
 		if (inNote(c)) return;
-		out.push(Decoration.replace({ widget, block: true }).range(c.lineFrom, c.lineTo));
+		const around = frames.length ? framesAround(frames, doc.lineAt(c.lineFrom).number, doc.lineAt(c.lineTo).number) : [];
+		const drawn = around.length ? new FramedBlockWidget(widget, envRuleStyle(around, null)) : widget;
+		out.push(Decoration.replace({ widget: drawn, block: true }).range(c.lineFrom, c.lineTo));
 	};
 
 	const headings = tocHeadings(state).map(({ depth, text }) => ({ depth, text }));
