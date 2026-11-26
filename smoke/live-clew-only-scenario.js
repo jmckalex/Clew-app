@@ -25,7 +25,7 @@
 //          a mermaid diagram inside a clew-only block (Figure.md): its iframe
 //          laid over its boxed placeholder, right of the rule
 //   table framed=<bool> rules=<n>
-//   typed line=<the table's row> same-node=<bool> framed=<bool>
+//   typed line=<the table's row> same-node=<bool> td-same=<bool> wrap-same=<bool> framed=<bool>
 //          a table inside a theorem, edited by REAL input (Table.md)
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const { workspaceStore, editorPool, ipc } = window.__clew;
@@ -153,9 +153,12 @@ await sleep(300);
 
 // A table inside an environment is boxed with its rules (widgets/
 // framed-block.js) and still edited IN PLACE: REAL input clicks a cell and
-// types, and the cell editor must be the same node after the keystrokes
-// (the wrapper hands each update to the table's own updateDOM).
-//   table framed=true rules=1 → typed line="| a1 | b1xyz |" same-node=true framed=true
+// types, and the active cell's <td> and the table's .le-table-wrap must be
+// the same nodes after the keystrokes — the wrapper hands each update to the
+// table's own updateDOM. (The cell editor alone proves nothing: table-cell-
+// editor.js moves the one editor into whichever cell is active, even after a
+// full rebuild — Clew-boss's catch, 2026-11-26.)
+//   table framed=true rules=1 → typed line="| a1 | b1xyz |" same-node=true td-same=true wrap-same=true framed=true
 await ipc.invoke('clew:note-write', { path: 'Table.md', content: [
 	'# Table', '', '@begin(theorem)', 'Cells:', '', '| A | B |', '| --- | --- |', '| a1 | b1 |', '', '@end(theorem)', '', 'Done.', '',
 ].join('\n') });
@@ -170,16 +173,25 @@ log(`table framed=${Boolean(boxOf())} rules=${rulesOf(boxOf())}`);
 const b1 = [...document.querySelectorAll('.le-table td')].find((t) => t.textContent === 'b1');
 const r = b1.getBoundingClientRect();
 let editor0 = null;
+let td0 = null;
+let wrap0 = null;
 window.__clewSmokeInput = [
 	{ click: { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) } },
 	{ wait: 800 },
 	{ text: 'xyz' },
 	{ wait: 800 },
 ];
-setTimeout(() => { editor0 = document.querySelector('.le-cell-editor'); }, 600);
+setTimeout(() => {
+	editor0 = document.querySelector('.le-cell-editor');
+	td0 = document.querySelector('.le-table-wrap [data-le-active]');
+	wrap0 = document.querySelector('.le-table-wrap');
+}, 600);
 setTimeout(() => {
 	const line = tableView.state.doc.toString().split('\n').find((l) => l.includes('a1'));
-	log(`typed line=${JSON.stringify(line)} same-node=${Boolean(editor0) && document.querySelector('.le-cell-editor') === editor0} framed=${Boolean(boxOf())}`);
+	const same = (was, now) => Boolean(was) && now === was;
+	log(`typed line=${JSON.stringify(line)} same-node=${same(editor0, document.querySelector('.le-cell-editor'))}`
+		+ ` td-same=${same(td0, document.querySelector('.le-table-wrap [data-le-active]'))}`
+		+ ` wrap-same=${same(wrap0, document.querySelector('.le-table-wrap'))} framed=${Boolean(boxOf())}`);
 	// The screenshot: the nested block.
 	workspaceStore.activateTab(tab.id);
 	setTimeout(() => view.dispatch({ selection: { anchor: view.state.doc.length }, scrollIntoView: true }), 150);
