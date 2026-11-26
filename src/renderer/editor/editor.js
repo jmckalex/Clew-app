@@ -20,6 +20,7 @@ import { indentOnInput, bracketMatching } from '@codemirror/language';
 import { autocompletion, closeBrackets } from '@codemirror/autocomplete';
 import { search } from '@codemirror/search';
 import { noteKeys } from './note-keys.js';
+import { envNameEntry } from './env-insert.js';
 import { clewEditorTheme, clewHighlighting } from './theme.js';
 import { wikilinkCompletions } from './complete/wikilinks.js';
 import { slashCompletions } from './complete/slash-commands.js';
@@ -100,6 +101,9 @@ export function makeNoteState(doc, handlerRef, { normalSyntax = false } = {}) {
 			// The keys, in order (note-keys.js — lang-markdown's keymap among
 			// them, after Enter in a list item).
 			noteKeys(),
+			// ⌥⌘E's name field: its Enter, Tab and Esc ahead of every key
+			// above while it is open (env-insert.js).
+			envNameEntry(),
 			EditorView.lineWrapping,
 			EditorView.updateListener.of((update) => onUpdate?.(update)),
 		],

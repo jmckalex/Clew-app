@@ -34,6 +34,20 @@ export const clewEditorTheme = EditorView.theme({
 	'.cm-line': { padding: '0 24px' },
 	'&.cm-focused': { outline: 'none' },
 	'.cm-cursor': { borderLeftColor: 'var(--clew-accent)' },
+	// ⌥⌘E's name field (env-insert.js): the opener's name and the closer's.
+	'.cm-env-name': {
+		backgroundColor: 'color-mix(in srgb, var(--clew-accent) 18%, transparent)',
+		outline: '1px solid color-mix(in srgb, var(--clew-accent) 55%, transparent)',
+		borderRadius: '2px',
+	},
+	'.cm-env-name-hint': {
+		color: 'var(--clew-text-faint)',
+		fontStyle: 'italic',
+		outline: '1px dashed color-mix(in srgb, var(--clew-accent) 55%, transparent)',
+		borderRadius: '2px',
+		padding: '0 2px',
+		pointerEvents: 'none',
+	},
 	'.cm-selectionBackground, &.cm-focused .cm-selectionBackground': {
 		backgroundColor: 'var(--clew-selection) !important',
 	},

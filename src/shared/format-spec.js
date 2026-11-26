@@ -108,6 +108,7 @@ export const FORMAT_MENU = [
 	{
 		label: 'Block',
 		items: [
+			{ id: 'format:begin-end', label: 'Environment — @begin(…) … @end(…)' },
 			{ id: 'format:code-fence', label: 'Code Fence — ```' },
 			{ id: 'format:math-block', label: 'Math Block — $$…$$' },
 			{ separator: true },

@@ -17,6 +17,7 @@ import { startCompletion } from '@codemirror/autocomplete';
 import { indentMore, indentLess, undo, redo } from '@codemirror/commands';
 import { toggleWrapSpec } from '../editor/toggle-wrap.js';
 import { newListItem, toggleTask } from '../editor/list-keys.js';
+import { insertEnvironmentField } from '../editor/env-insert.js';
 import { vaultSettingsStore } from '../state/vault-settings-store.js';
 import { saveAndInsert } from '../editor/attachments.js';
 import { CALLOUT_TYPES, BUILTIN_CALLOUT_TYPES } from '#jmarkdown/callout-table.js';
@@ -551,6 +552,10 @@ export function registerFormatCommands() {
 		{ id: 'format:today', name: "Insert today's date (@today)", fn: (v) => insertInline(v, TODAY_INSERT, '') },
 
 		// Blocks.
+		// An environment whose name is typed once, into the opener and the
+		// closer together (editor/env-insert.js; the owner's ask 2026-11-26).
+		{ id: 'format:begin-end', name: 'Insert environment (@begin/@end, name typed once)', hotkeys: ['Mod-Alt-e'],
+			fn: (v) => insertEnvironmentField(v) },
 		{ id: 'format:code-fence', name: 'Insert code fence',
 			fn: (v) => wrapContainer(v, '```', '```', 'code') },
 		{ id: 'format:math-block', name: 'Insert math block ($$…$$)',

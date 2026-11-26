@@ -44,7 +44,7 @@ test('every block Insert is @begin(name) … @end(name), the generic container @
 
 test('the Block group\'s environments are the table\'s, and no menu label shows a colon form', () => {
 	const block = FORMAT_MENU.find((g) => g.label === 'Block').items.filter((i) => i.id).map((i) => i.id);
-	assert.deepEqual(block.filter((id) => !['format:code-fence', 'format:math-block'].includes(id)).sort(), Object.keys(BLOCK_INSERTS).sort());
+	assert.deepEqual(block.filter((id) => !['format:begin-end', 'format:code-fence', 'format:math-block'].includes(id)).sort(), Object.keys(BLOCK_INSERTS).sort());
 	for (const item of FORMAT_MENU.flatMap((g) => g.items).filter((i) => i.label)) {
 		assert.equal(COLON.test(item.label.replace(/^[^—]*—\s*/, '')), false, item.label);
 	}
