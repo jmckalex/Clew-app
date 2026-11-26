@@ -6,7 +6,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Text } from '@codemirror/state';
-import { envStacks, envRuleStyle, framesAround, frameOf, ENV_RULE_X, ENV_STEP } from '../src/renderer/editor/live/env-rules.js';
+import { envStacks, envRuleStyle, framesAround, frameOf, bodyIndents, ENV_RULE_X, ENV_STEP } from '../src/renderer/editor/live/env-rules.js';
 
 const outer = { open: 3, close: 10, foot: true, dashed: true };
 const inner = { open: 5, close: 8, foot: true, dashed: false };
@@ -65,4 +65,22 @@ test('an environment construct as a frame', () => {
 	const c = { openLine: line(2), closeLine: line(4), body: { from: doc.line(3).from, to: doc.line(3).to }, clewOnly: true };
 	assert.deepEqual(frameOf(c, doc), { open: 2, close: 4, foot: true, dashed: true });
 	assert.deepEqual(frameOf({ ...c, closeLine: null, clewOnly: false }, doc), { open: 2, close: 3, foot: false, dashed: false });
+});
+
+test('an environment\'s body loses what the engine dedents: the common indentation of its non-blank lines', () => {
+	const doc = (lines) => Text.of(lines);
+	const frame = (open, close, foot = true) => ({ open, close, foot, dashed: false });
+	// Flush left: nothing.
+	assert.deepEqual([...bodyIndents([frame(1, 3)], doc(['@begin(a)', 'x', '@end(a)']))], []);
+	// Mixed: the common part; a blank line counts for nothing, and is given it.
+	assert.deepEqual([...bodyIndents([frame(1, 6)], doc(['@begin(a)', '  x', '    y', '', '\ty', '@end(a)']))], [], 'spaces and a tab share nothing');
+	assert.deepEqual([...bodyIndents([frame(1, 5)], doc(['@begin(a)', '  x', '    y', '  ', '@end(a)']))], [[2, '  '], [3, '  '], [4, '  ']]);
+	// A body of blank lines alone (⌥⌘E's): theirs.
+	assert.deepEqual([...bodyIndents([frame(1, 3)], doc(['@begin(a)', '  ', '@end(a)']))], [[2, '  ']]);
+	// Nested: the inner body its own prefix, the inner opener and closer the outer's.
+	const nested = doc(['@begin(o)', '  Outer.', '  @begin(i)', '    Inner.', '  @end(i)', '@end(o)']);
+	assert.deepEqual([...bodyIndents([frame(3, 5), frame(1, 6)], nested)].sort((a, b) => a[0] - b[0]),
+		[[2, '  '], [3, '  '], [4, '    '], [5, '  ']]);
+	// An unclosed environment is literal: nothing.
+	assert.deepEqual([...bodyIndents([frame(1, 2, false)], doc(['@begin(a)', '  x']))], []);
 });

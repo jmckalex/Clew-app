@@ -43,7 +43,7 @@ import { FullciteWidget } from './widgets/fullcite.js';
 import { localCiteText } from './cite-label.js';
 import { calloutColor } from '#jmarkdown/callout-table.js';
 import { guarded } from './guarded.js';
-import { envStacks, envRuleStyle, frameOf } from './env-rules.js';
+import { envStacks, envRuleStyle, frameOf, bodyIndents } from './env-rules.js';
 
 const HIDE = Decoration.replace({});
 const markCache = new Map();
@@ -99,7 +99,10 @@ function build(view) {
 	const concealedNotes = model.filter((c) => c.kind === 'footnote' && c.multiline && !live.revealed.has(c.id));
 	const inNote = (from, to) => concealedNotes.some((n) => from >= n.from && to <= n.to && !(from === n.from && to === n.to));
 
-	const hide = (r) => { if (r.to > r.from) out.push(HIDE.range(r.from, r.to)); };
+	// Where a hide starts: a line whose start a construct hides itself is not
+	// hidden again by an environment's dedent (lines(), below).
+	const hiddenAt = new Set();
+	const hide = (r) => { if (r.to > r.from) { out.push(HIDE.range(r.from, r.to)); hiddenAt.add(r.from); } };
 	const mark = (from, to, cls, attributes) => {
 		if (to <= from) return;
 		out.push((attributes ? Decoration.mark({ class: cls, attributes }) : markOf(cls)).range(from, to));
@@ -297,13 +300,25 @@ function build(view) {
 		const lineClass = (pos, cls, attributes) =>
 			out.push(Decoration.line(attributes ? { class: cls, attributes } : { class: cls }).range(doc.lineAt(pos).from));
 		const lineRange = (from, to) => ({ from, to });
+		// An environment's body is drawn without the indentation the engine
+		// strips from it (env-rules.js#bodyIndents; the owner's ask,
+		// 2026-11-26): hidden after the constructs below, in both states, as a
+		// list line's is, and taken off a list's columns, so an item in an
+		// indented body stands where reading view puts it.
+		const indents = bodyIndents(model.filter((c) => c.tier === 'A' && c.kind === 'environment' && c.openLine)
+			.map((c) => frameOf(c, doc)), doc);
+		const indentOf = (line) => {
+			const prefix = indents.get(line.number);
+			return prefix && line.text.startsWith(prefix) ? prefix : '';
+		};
 		// A list line's --le-indent: the COLUMN of its item's marker (a tab to
 		// its stop, as drawn), counted from the end of a quote's `>`s — a list
-		// in a callout indents from the callout's text, not from the margin.
+		// in a callout indents from the callout's text, not from the margin —
+		// or from the end of its environment's hidden indentation.
 		const listIndent = (c) => {
 			const line = doc.lineAt(c.listMark.from);
 			const quoted = /^(?:[ \t]*>)+[ \t]?/.exec(line.text)?.[0].length ?? 0;
-			return countColumn(line.text.slice(quoted, c.listMark.from - line.from), state.tabSize);
+			return countColumn(line.text.slice(quoted || indentOf(line).length, c.listMark.from - line.from), state.tabSize);
 		};
 		// A list line's style: its --le-indent, and for a numbered item's every
 		// line its marker box (columns.js#numberWidth), so the hang counts the
@@ -319,6 +334,19 @@ function build(view) {
 		for (const c of model) guarded(c, () => lineConstruct(c), out, replaced, frames);
 		for (const [n, stack] of envStacks(frames, (n) => inView(doc.line(n).from, doc.line(n).to))) {
 			out.push(Decoration.line({ attributes: { style: envRuleStyle(stack, n) } }).range(doc.line(n).from));
+		}
+		// The bodies' indentation, last: never where a construct hid the line's
+		// start itself (a list's later line, a quote in an item — their columns
+		// already less it) or replaced it (a concealed head or foot), nor inside
+		// a block the block field draws.
+		const drawnBlocks = model.filter((c) => c.tier !== 'A' && c.level === 'block' && !live.revealed.has(c.id));
+		for (const [n] of indents) {
+			const line = doc.line(n);
+			const prefix = indentOf(line);
+			if (!prefix || !inView(line.from, line.to) || hiddenAt.has(line.from)) continue;
+			if (replaced.some((r) => r.from <= line.from && r.to > line.from)) continue;
+			if (drawnBlocks.some((c) => c.from <= line.from && c.to >= line.from)) continue;
+			hide({ from: line.from, to: line.from + prefix.length });
 		}
 
 		function lineConstruct(c) {
@@ -396,8 +424,9 @@ function build(view) {
 					// (columns.js#tabbedIndent): CSS's stops are moved by the hang.
 					{
 						const line = doc.lineAt(c.listMark.from);
-						const run = tabbedIndent(line.text.slice(0, c.listMark.from - line.from));
-						if (run) mark(line.from + run.from, line.from + run.to, 'le-indent-tabs');
+						const skip = indentOf(line).length;
+						const run = tabbedIndent(line.text.slice(skip, c.listMark.from - line.from));
+						if (run) mark(line.from + skip + run.from, line.from + skip + run.to, 'le-indent-tabs');
 					}
 					if (c.kind === 'numbered') mark(c.numberMark.from, c.numberMark.to, 'le-num');
 					if (!hidden) break;

@@ -46,6 +46,51 @@ export function frameOf(c, doc) {
 	};
 }
 
+/** The whitespace every non-blank line of `lines` starts with — the actual
+ *  characters, as begin-end-core.js#dedent takes them; of blank lines alone
+ *  (a body ⌥⌘E has just written), the whitespace they share. */
+function commonIndent(lines) {
+	const blank = (text) => text.trim() === '';
+	const counted = lines.some((text) => !blank(text)) ? lines.filter((text) => !blank(text)) : lines;
+	let prefix = null;
+	for (const text of counted) {
+		const ws = /^[ \t]*/.exec(text)[0];
+		if (prefix === null) { prefix = ws; continue; }
+		let i = 0;
+		while (i < prefix.length && i < ws.length && prefix[i] === ws[i]) i += 1;
+		prefix = prefix.slice(0, i);
+	}
+	return prefix ?? '';
+}
+
+/**
+ * What the engine strips from each line of an environment's BODY before it
+ * renders it (begin-end-core.js#dedent: the common leading whitespace of the
+ * body's non-blank lines), which live edit hides as reading view drops it
+ * (the owner's ask, 2026-11-26) — by line number. A line in a nested body
+ * takes its innermost environment's prefix: the outer dedent strips what all
+ * the outer's lines share, the inner its own body's beyond that, and the two
+ * together are the inner body's own prefix. A closed environment only — an
+ * unclosed opener is left literal, its lines never dedented.
+ *
+ * @param {{open: number, close: number, foot: boolean}[]} frames - frameOf's
+ * @param {import('@codemirror/state').Text} doc
+ * @returns {Map<number, string>}
+ */
+export function bodyIndents(frames, doc) {
+	const indents = new Map();
+	for (const f of [...frames].filter((x) => x.foot).sort((a, b) => a.open - b.open)) {
+		const lines = [];
+		for (let n = f.open + 1; n < f.close; n += 1) lines.push(doc.line(n).text);
+		const prefix = commonIndent(lines);
+		for (let n = f.open + 1; n < f.close; n += 1) {
+			if (prefix) indents.set(n, prefix);
+			else indents.delete(n);
+		}
+	}
+	return indents;
+}
+
 /** The frames around a block on lines `first`…`last`, outermost first:
  *  opened above it and closed below it (an unclosed one runs to its body's
  *  last line, which may be the block's). */
