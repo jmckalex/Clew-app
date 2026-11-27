@@ -21,13 +21,15 @@
 // scanner and the engine, and theorem syntax shown in one was counted
 // (Clew-boss's catch).
 //
-// The rule, CommonMark's as marked (the engine's parser) reads it, except
-// that any indentation is allowed (a nested environment's body is still
-// indented where it is read): a line that starts with three or more tildes,
-// or three or more backticks with no backtick after them on the line, opens
-// a fence; a line holding nothing but a run of the same character at least
-// as long, and spaces, closes it; an unclosed fence runs to the end. Both
-// fence lines are code. So "```` ```query ```` filters notes…" — an inline
+// The rule, marked's (the engine's parser, 15 and 16 alike), except that any
+// indentation is allowed (a nested environment's body is still indented
+// where it is read): a line that starts with three or more tildes, or three
+// or more backticks with no backtick after them on the line, opens a fence;
+// a line holding the opener's exact run, then any further backticks or
+// tildes, then spaces only, closes it (marked's `\1[~`]* *` — so "````~~"
+// closes a ```` fence and "```" with a tab after it closes nothing; Clew
+// reads files as written, so a CRLF line's \r is allowed too); an unclosed
+// fence runs to the end. Both fence lines are code. So "```` ```query ```` filters notes…" — an inline
 // code span starting a paragraph — opens nothing, and "```js" inside a fence
 // closes nothing (Clew-boss's catch on the first version, 2026-11-27: the
 // demo's Features/Queries.md lost its "## Tasks across the vault" heading
@@ -36,8 +38,9 @@
 /** A fence's opening line: group 1 a run of backticks with no backtick after
  *  it on the line, or group 2 a run of tildes. */
 export const FENCE_OPEN = /^\s*(?:(`{3,})(?=[^`]*$)|(~{3,}))/;
-/** A closing line: group 1 the run, nothing but spaces around it. */
-export const FENCE_CLOSE = /^\s*(`{3,}|~{3,})\s*$/;
+/** A closing line: group 1 a run of backticks and tildes, spaces only
+ *  after it — a closer when it starts with the opener's run. */
+export const FENCE_CLOSE = /^\s*([`~]+) *\r?$/;
 
 /**
  * The indices of `lines` inside fenced code, the fence lines included.
@@ -47,21 +50,19 @@ export const FENCE_CLOSE = /^\s*(`{3,}|~{3,})\s*$/;
  */
 export function fencedLines(lines) {
 	const out = new Set();
-	let char = '';
-	let len = 0;
+	/** The open fence's opening run ('' when none is open). */
+	let run = '';
 	for (let i = 0; i < lines.length; i += 1) {
-		if (len > 0) {
+		if (run) {
 			out.add(i);
 			const close = FENCE_CLOSE.exec(lines[i]);
-			if (close && close[1][0] === char && close[1].length >= len) len = 0;
+			if (close && close[1].startsWith(run)) run = '';
 			continue;
 		}
 		const open = FENCE_OPEN.exec(lines[i]);
 		if (!open) continue;
 		out.add(i);
-		const run = open[1] ?? open[2];
-		char = run[0];
-		len = run.length;
+		run = open[1] ?? open[2];
 	}
 	return out;
 }

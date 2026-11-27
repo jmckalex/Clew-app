@@ -45,6 +45,19 @@ test('as CommonMark (marked) reads them: a backtick run with a backtick after it
 	assert.deepEqual(fenced(['```', 'a', '  ```  ', 'after']), [0, 1, 2], 'a closer indented, spaces after it');
 });
 
+test('a closer as marked reads one: the opener\'s exact run, then any backticks or tildes, then spaces only', () => {
+	// Clew-boss's catch, 2026-11-27 (marked's `\1[~`]* *`, jmarkdown 85eefad).
+	assert.deepEqual(fenced(['````', 'a', '````~~', 'after']), [0, 1, 2], '"````~~" closes a ```` fence');
+	assert.deepEqual(fenced(['~~~', 'a', '~~~`', 'after']), [0, 1, 2], '"~~~`" closes a ~~~ fence');
+	assert.deepEqual(fenced(['```', 'a', '```~', 'after']), [0, 1, 2], '"```~" closes a ``` fence');
+	assert.deepEqual(fenced(['```', 'a', '```\t', 'b', '```', 'after']), [0, 1, 2, 3, 4], '"```" and a tab closes nothing');
+	assert.deepEqual(fenced(['````', 'a', '```', 'b', '````', 'after']), [0, 1, 2, 3, 4], 'a shorter run closes nothing');
+	assert.deepEqual(fenced(['```', 'a', '``~``', 'b', '```', 'after']), [0, 1, 2, 3, 4], 'a run not starting with the opener\'s closes nothing, however long');
+	assert.deepEqual(fenced(['```\r', 'a\r', '```\r', 'after']), [0, 1, 2], 'a CRLF closer closes');
+	// Clew-boss's differential example: marked fences every line.
+	assert.deepEqual(fenced(['````', '````~~', '````', '', '~~~`', '~~~', '~~~ x `y`', '````']), [0, 1, 2, 3, 4, 5, 6, 7]);
+});
+
 test('maskFences blanks fenced lines and keeps every offset; maskMarkdownCode masks the same lines', () => {
 	const text = 'a\n  ```\n  @end(x)\n  ```\nb `c` d';
 	const masked = maskFences(text);
