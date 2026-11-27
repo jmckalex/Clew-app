@@ -2426,9 +2426,9 @@ except where the selection touches a construct. The durable design is
   and programmatic changes are left alone, and so is ⌥⌘E's own name field,
   which copies its edits itself — CodeMirror runs transaction filters last
   to first, and the explicit stand-aside keeps either order safe. Live edit
-  only (`live/index.js`'s list, the owner's words "in live-edit mode");
-  registering it in `editor.js` instead would give source mode it too, the
-  owner's call. `smoke/env-link-scenario.js`.
+  ONLY (`live/index.js`'s list): the owner asked for it "in live-edit mode"
+  and said no to source mode (2026-11-27, "No to linked editing in source
+  code") — do not register it in `editor.js`. `smoke/env-link-scenario.js`.
 - **Markdown tables are editable** (`editor/tables.js`): Tab/Shift-Tab walk
   the cells, Enter walks the rows, both adding a row at the end, and the
   table reflows so the pipes line up. Registered with `Prec.high` so Tab
