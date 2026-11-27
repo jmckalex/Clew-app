@@ -8,6 +8,8 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { fencedLines } from '../../../shared/code-fences.js';
+
 /**
  * @file Math-segment scanning.
  *
@@ -563,27 +565,10 @@ function scanToDollar(text, from, wantDouble, limit, comments) {
 export function maskMarkdownCode(text) {
 	if (typeof text !== 'string' || text.length === 0) return text;
 	const lines = text.split('\n');
-	const out = [];
-	let fenceLen = 0; // >0 while inside a fence; the opener's run length
-	let fenceChar = '';
-	for (const line of lines) {
-		const fence = /^\s*(`{3,}|~{3,})/.exec(line);
-		if (fenceLen > 0) {
-			out.push(' '.repeat(line.length));
-			if (fence && fence[1][0] === fenceChar && fence[1].length >= fenceLen) {
-				fenceLen = 0;
-			}
-			continue;
-		}
-		if (fence) {
-			out.push(' '.repeat(line.length));
-			fenceLen = fence[1].length;
-			fenceChar = fence[1][0];
-			continue;
-		}
-		out.push(maskInlineCode(line));
-	}
-	return out.join('\n');
+	// The fence rule is shared/code-fences.js's — numbering, the note index
+	// and the engine's @begin/@end pairing read code the same way.
+	const fenced = fencedLines(lines);
+	return lines.map((line, i) => (fenced.has(i) ? ' '.repeat(line.length) : maskInlineCode(line))).join('\n');
 }
 
 /**

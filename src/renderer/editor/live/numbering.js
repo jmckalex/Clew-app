@@ -45,6 +45,7 @@
 import { typedRefText as engineTypedRefText } from '#jmarkdown/crossref.js';
 import { attrLabel, THEOREM_KINDS } from '../../../shared/note-metadata.js';
 import { pairingEntries, pairer } from '../../../shared/env-pairing.js';
+import { maskFences } from '../../../shared/code-fences.js';
 
 /** The engine's sectioning ladder (sectioning.js — asserted equal by
  *  tests/numbering.test.js, which reads the vendored file). */
@@ -122,8 +123,7 @@ function headerMeta(lines) {
 /** Code fences, inline code and `$…$` blanked, offsets kept. */
 function masked(text) {
 	const blank = (m) => m.replace(/[^\n]/g, ' ');
-	return text
-		.replace(/^(```|~~~).*$[\s\S]*?^\1[ \t]*$/gm, blank)
+	return maskFences(text)
 		.replace(/\$\$[\s\S]*?\$\$/g, blank)
 		.replace(/`[^`\n]*`/g, blank)
 		.replace(/\$[^$\n]+\$/g, blank);

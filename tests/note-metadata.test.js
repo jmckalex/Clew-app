@@ -106,6 +106,22 @@ test('labels: environments pair as the engine pairs them — an opener nothing c
 	assert.deepEqual(more.t.host, { from: 1, to: 5 });
 });
 
+test('labels: code is code (shared/code-fences.js) — a closer in a fence closes nothing, theorem syntax in an indented or a longer fence is no environment', () => {
+	// Clew-boss's catch, 2026-11-27: the index knew only column-0, three-
+	// character fences, so these were prose to it and code to the engine.
+	const text = [
+		'@begin(theorem){#t}', 'A', '```', '@end(theorem)', '```', 'B @label[after]', '@end(theorem)', '',
+		'@begin(lemma){#l}', 'x', '@end(lemma)', '',
+		'@begin(proof)', '  ```', '  @begin(theorem){#hidden}', '  y', '  @end(theorem)', '  ```', '@end(proof)', '',
+		'````md', '```', '@begin(theorem){#hidden2}', 'z', '@end(theorem)', '```', '````', '',
+	].join('\n');
+	const by = Object.fromEntries(extractNoteMetadata(text).labels.map((l) => [l.key, l]));
+	assert.deepEqual(Object.keys(by).sort(), ['after', 'l', 't']);
+	assert.equal(by.after.kind, 'theorem', 'still inside the theorem: the fenced @end closed nothing');
+	assert.deepEqual(by.t.host, { from: 1, to: 7 });
+	assert.equal(by.l.kind, 'lemma', 'the lemma after it counted');
+});
+
 test('labels: the @begin sigils (`.name`, `<name>`) keep a known name\'s kind', () => {
 	const text = '@begin(<figure>)[Cap]{#f}\nx @label[inner]\n@end(figure)\n\n@begin( .theorem )[T]{#t}\ny\n@end(<theorem>)\n\n@begin(<note>){#n}\nz\n@end(note)\n';
 	const by = Object.fromEntries(extractNoteMetadata(text).labels.map((l) => [l.key, l]));

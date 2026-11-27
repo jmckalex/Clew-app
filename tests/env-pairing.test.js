@@ -130,18 +130,36 @@ for (const [name, lines] of Object.entries(NOTES)) {
 // with nothing (the owner's yes, 2026-11-27: shared/env-pairing.js) — each
 // numbered environment's line and number, from the engine's HTML
 // (`data-source-line` with `data-xref-number`) and from numberDocument.
-test('live edit numbers environments as the engine does, openers that pair with nothing counting for nothing', async () => {
-	const note = [
+const NUMBER_NOTES = {
+	// Openers that pair with nothing: a stray one, a crossed pair, two openers
+	// and one closer, a closer with text after it.
+	unpaired: [
 		'# Numbers', '',
 		'@begin(theorem){#stray}', 'Never closed.', '',
 		'@begin(theorem){#t}', 'A claim.', '@end(theorem)', '',
 		'@begin(lemma){#l}', '@begin(corollary)', 'Crossed.', '@end(lemma)', '@end(corollary)', '',
 		'@begin(theorem)', 'Two openers,', '@begin(theorem)', 'one closer.', '@end(theorem)', '',
 		'@begin(corollary){#c}', 'x', '@end(theorem) and more', '@end(corollary)', '',
-	].join('\n');
-	const html = await engineHtml('numbers', note);
+	],
+	// Code is code (shared/code-fences.js, the engine's rule since fd9df17): a
+	// closer in a fence, theorem syntax in an INDENTED fence and in a ````
+	// fence holding ``` lines — until 2026-11-27 live edit's numbering read
+	// the last two as prose and counted them (Clew-boss's catch).
+	fences: [
+		'# Fences', '',
+		'@begin(theorem){#t1}', 'A', '```', '@end(theorem)', '```', 'B', '@end(theorem)', '',
+		'@begin(lemma){#l1}', 'x', '@end(lemma)', '',
+		'@begin(proof)', '  ```', '  @begin(theorem)', '  y', '  @end(theorem)', '  ```', '@end(proof)', '',
+		'````markdown', '```', '@begin(theorem)', 'z', '@end(theorem)', '```', '````', '',
+		'@begin(corollary){#c1}', 'w', '@end(corollary)', '',
+	],
+};
+
+for (const [name, lines] of Object.entries(NUMBER_NOTES)) test(`live edit numbers environments as the engine does: ${name}`, async () => {
+	const note = lines.join('\n');
+	const html = await engineHtml(`numbers-${name}`, note);
 	const engine = [...html.matchAll(/<[a-z]+\b[^>]*data-source-line="(\d+)"[^>]*data-xref-number="([^"]+)"/g)].map((m) => [Number(m[1]), m[2]]);
-	assert.ok(engine.length >= 4, `the engine numbered them: ${JSON.stringify(engine)}`);
+	assert.ok(engine.length >= 3, `the engine numbered them: ${JSON.stringify(engine)}`);
 	const clew = [...numberDocument(note).lines.entries()].filter(([, e]) => e.kind !== 'heading').map(([line, e]) => [line, e.number]);
 	assert.deepEqual(clew, engine);
 });

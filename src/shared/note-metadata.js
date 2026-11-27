@@ -19,8 +19,8 @@
 // structural parse as everything else in this file.
 import { parseExcalidraw, drawingText } from './excalidraw-file.js';
 import { pairingEntries, pairer } from './env-pairing.js';
+import { fencedLines, maskFences } from './code-fences.js';
 
-const FENCE_RE = /^(```|~~~).*$[\s\S]*?^\1\s*$/gm;
 const INLINE_CODE_RE = /`[^`\n]*`/g;
 const MATH_BLOCK_RE = /\$\$[\s\S]*?\$\$/g;
 const INLINE_MATH_RE = /\$[^$\n]+\$/g;
@@ -28,8 +28,7 @@ const INLINE_MATH_RE = /\$[^$\n]+\$/g;
 /** Blank out masked spans (preserving offsets/line structure). */
 export function maskSource(text) {
 	const blank = (match) => match.replace(/[^\n]/g, ' ');
-	return text
-		.replace(FENCE_RE, blank)
+	return maskFences(text)
 		.replace(MATH_BLOCK_RE, blank)
 		.replace(INLINE_CODE_RE, blank)
 		.replace(INLINE_MATH_RE, blank);
@@ -186,13 +185,7 @@ export function extractNoteMetadata(text) {
 	// Line indices covered by a fenced block. A blank line INSIDE a fence is
 	// content, not a block boundary, and the backward walk that locates a
 	// block from its marker has to know the difference.
-	const fenced = new Set();
-	FENCE_RE.lastIndex = 0;
-	for (const fence of text.matchAll(FENCE_RE)) {
-		const first = text.slice(0, fence.index).split('\n').length - 1;
-		const count = fence[0].split('\n').length;
-		for (let k = 0; k < count; k++) fenced.add(first + k);
-	}
+	const fenced = fencedLines(rawLines);
 	const isBoundary = (n) => rawLines[n].trim() === '' && !fenced.has(n);
 	// `@begin`/`@end` pair as the engine pairs them (env-pairing.js): an
 	// opener nothing closes is text, its label none — reading view prints a
