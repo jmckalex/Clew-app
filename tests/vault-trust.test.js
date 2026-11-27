@@ -184,8 +184,14 @@ test('a different vault at a trusted path inherits none of its enablements', () 
 	const store = createTrustStore({ file });
 	store.migrate([]);
 	store.trust(a, 'user', { plugins: ['charts'], noteApi: true, network: true });
-	fs.rmSync(a, { recursive: true });
+	// The old folder moved aside first, so the new one cannot be given its
+	// inode: removed outright, Linux reused it at once, and with a birth time
+	// in the same millisecond the new folder WAS the old one to the
+	// fingerprint (GitHub run 45996694157, 2026-11-27 — the test, not the
+	// store: a real vault is not replaced within a millisecond).
+	fs.renameSync(a, `${a}-old`);
 	fs.mkdirSync(a);
+	fs.rmSync(`${a}-old`, { recursive: true });
 	assert.deepEqual(store.accessFor(a), { trusted: false, scripts: false, plugins: [], noteApi: false, dataviewJs: false, network: false, decided: false });
 	store.revoke(a);
 	assert.deepEqual(store.enablements(a).plugins, [], 'the old vault\'s list is not carried over');
