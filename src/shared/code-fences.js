@@ -21,14 +21,23 @@
 // scanner and the engine, and theorem syntax shown in one was counted
 // (Clew-boss's catch).
 //
-// The rule: a line that starts — after any indentation — with three or more
-// backticks or tildes opens a fence; the next such line of the same
-// character and at least the same length closes it; an unclosed fence runs to
-// the end. Both fence lines are code. Pure: the renderer, main and Clew-iOS
-// import it.
+// The rule, CommonMark's as marked (the engine's parser) reads it, except
+// that any indentation is allowed (a nested environment's body is still
+// indented where it is read): a line that starts with three or more tildes,
+// or three or more backticks with no backtick after them on the line, opens
+// a fence; a line holding nothing but a run of the same character at least
+// as long, and spaces, closes it; an unclosed fence runs to the end. Both
+// fence lines are code. So "```` ```query ```` filters notes…" — an inline
+// code span starting a paragraph — opens nothing, and "```js" inside a fence
+// closes nothing (Clew-boss's catch on the first version, 2026-11-27: the
+// demo's Features/Queries.md lost its "## Tasks across the vault" heading
+// from the index). Pure: the renderer, main and Clew-iOS import it.
 
-/** A fence line: group 1 its run of backticks or tildes. */
-export const FENCE_LINE = /^\s*(`{3,}|~{3,})/;
+/** A fence's opening line: group 1 a run of backticks with no backtick after
+ *  it on the line, or group 2 a run of tildes. */
+export const FENCE_OPEN = /^\s*(?:(`{3,})(?=[^`]*$)|(~{3,}))/;
+/** A closing line: group 1 the run, nothing but spaces around it. */
+export const FENCE_CLOSE = /^\s*(`{3,}|~{3,})\s*$/;
 
 /**
  * The indices of `lines` inside fenced code, the fence lines included.
@@ -41,15 +50,18 @@ export function fencedLines(lines) {
 	let char = '';
 	let len = 0;
 	for (let i = 0; i < lines.length; i += 1) {
-		const fence = FENCE_LINE.exec(lines[i]);
 		if (len > 0) {
 			out.add(i);
-			if (fence && fence[1][0] === char && fence[1].length >= len) len = 0;
-		} else if (fence) {
-			out.add(i);
-			char = fence[1][0];
-			len = fence[1].length;
+			const close = FENCE_CLOSE.exec(lines[i]);
+			if (close && close[1][0] === char && close[1].length >= len) len = 0;
+			continue;
 		}
+		const open = FENCE_OPEN.exec(lines[i]);
+		if (!open) continue;
+		out.add(i);
+		const run = open[1] ?? open[2];
+		char = run[0];
+		len = run.length;
 	}
 	return out;
 }

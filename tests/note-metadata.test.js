@@ -106,6 +106,13 @@ test('labels: environments pair as the engine pairs them — an opener nothing c
 	assert.deepEqual(more.t.host, { from: 1, to: 5 });
 });
 
+test('a paragraph starting with an inline code span of backticks is no fence: the heading after it is indexed', () => {
+	// Clew-boss's catch on the first shared fence rule, 2026-11-27: the
+	// demo's Features/Queries.md lost "## Tasks across the vault".
+	const text = ['# Queries', '', '```` ```query ```` filters notes.', '', '```query', 'from: Notes', '```', '', '## Tasks across the vault', '', '```` ```tasks ```` gathers tasks.', ''].join('\n');
+	assert.deepEqual(extractNoteMetadata(text).headings.map((h) => h.text), ['Queries', 'Tasks across the vault']);
+});
+
 test('labels: code is code (shared/code-fences.js) — a closer in a fence closes nothing, theorem syntax in an indented or a longer fence is no environment', () => {
 	// Clew-boss's catch, 2026-11-27: the index knew only column-0, three-
 	// character fences, so these were prose to it and code to the engine.

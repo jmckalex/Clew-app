@@ -28,6 +28,23 @@ test('a fence: three or more backticks or tildes after any indentation, closed b
 	assert.deepEqual(fenced(['`` not a fence', 'text']), []);
 });
 
+test('as CommonMark (marked) reads them: a backtick run with a backtick after it opens nothing; a closer holds nothing but its run', () => {
+	// Clew-boss's catch, 2026-11-27: the demo's Features/Queries.md starts a
+	// paragraph with an inline code span, and the first version read it as a
+	// four-backtick fence, hiding the note to the next such line — its
+	// "## Tasks across the vault" heading among it.
+	const queries = [
+		'# Queries', '', '```` ```query ```` filters notes by their fields.', '',
+		'```query', 'from: Notes', '```', '',
+		'## Tasks across the vault', '', '```` ```tasks ```` gathers every task.', '',
+	];
+	assert.deepEqual(fenced(queries), [4, 5, 6], 'only the real fence');
+	assert.equal(maskMarkdownCode(queries.join('\n')).split('\n')[8], '## Tasks across the vault', 'the scanner keeps the heading');
+	assert.deepEqual(fenced(['```', 'a', '```js', 'b', '```', 'after']), [0, 1, 2, 3, 4], '"```js" closes nothing');
+	assert.deepEqual(fenced(['~~~ `x` ~~~', 'code', '~~~', 'after']), [0, 1, 2], 'a tilde opener may hold backticks');
+	assert.deepEqual(fenced(['```', 'a', '  ```  ', 'after']), [0, 1, 2], 'a closer indented, spaces after it');
+});
+
 test('maskFences blanks fenced lines and keeps every offset; maskMarkdownCode masks the same lines', () => {
 	const text = 'a\n  ```\n  @end(x)\n  ```\nb `c` d';
 	const masked = maskFences(text);
