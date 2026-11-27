@@ -90,10 +90,20 @@ test('nested: an inner name edits its own closer only', () => {
 	assert.deepEqual(envLines(s), ['@begin(clew-only)', '@begin(proofs)', '@end(proofs)', '@end(clew-only)']);
 });
 
-test('the names alone are linked: a sigil and spaces stay as written', () => {
+test('the names alone are linked: a sigil and spaces stay as written, on either side, edited from either', () => {
 	const doc = '@begin( <aside> )\nAside.\n@end(aside)\n';
 	const s = type(make(doc, '@begin( <aside'), 'x');
 	assert.deepEqual(envLines(s), ['@begin( <asidex> )', '@end(asidex)']);
+	// The closer spaced, and the closer with its sigil (Clew-boss's gap,
+	// 2026-11-27: the closer's name read after them, or neither linked).
+	for (const closer of ['@end( aside )', '@end(<aside>)', '@end( < aside > )']) {
+		const text = `@begin(aside)\nAside.\n${closer}\n`;
+		const fromOpener = type(make(text, '@begin(aside'), 'y');
+		assert.deepEqual(envLines(fromOpener), ['@begin(asidey)', closer.replace('aside', 'asidey')], `${closer}, the opener edited`);
+		const inCloser = text.indexOf('aside', text.indexOf('@end(')) + 'aside'.length;
+		const fromCloser = type(make(text, inCloser), 'z');
+		assert.deepEqual(envLines(fromCloser), ['@begin(asidez)', closer.replace('aside', 'asidez')], `${closer}, the closer edited`);
+	}
 });
 
 test('nothing is linked off a name, or for a pair the engine would not make, or with two cursors', () => {
@@ -113,6 +123,12 @@ test('nothing is linked off a name, or for a pair the engine would not make, or 
 test('a bracket or a line break in a name links nothing, and ends the link', () => {
 	let s = type(make(DOC, '@begin(theorem'), ')');
 	assert.deepEqual(envLines(s), ['@begin(theorem))', '@end(theorem)'], 'not copied');
+	assert.equal(s.field(envLinkField), null, 'and the link is gone');
+	// Enter inside a name, as CodeMirror's Enter makes it (Clew-boss's gap,
+	// 2026-11-27: without the line break in NOT_A_NAME it reached the closer).
+	s = make(DOC, '@begin(theo');
+	s = s.update(s.replaceSelection('\n'), { userEvent: 'input' }).state;
+	assert.deepEqual(s.doc.toString().split('\n').slice(2, 6), ['@begin(theo', 'rem)', 'A claim.', '@end(theorem)'], 'the line break not copied');
 	assert.equal(s.field(envLinkField), null, 'and the link is gone');
 });
 
