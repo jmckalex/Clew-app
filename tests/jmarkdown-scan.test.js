@@ -288,6 +288,8 @@ test('environments pair by NAME, nested like well-formed parentheses, as the eng
 	assert.deepEqual(pairs(['@begin(a)', '@end(a) and more']), [], 'a closer is alone on its line, as the engine reads one');
 	assert.deepEqual(pairs(['@begin(a)', '<section>', '@end(a)', '</section>', '', '@begin(b)', 'x', '@end(b)']), [['a', 1, 3], ['b', 6, 8]],
 		'a closer inside an HTML block another rule took whole still closes its environment (measured: the engine\'s too), and what follows pairs as ever');
+	assert.deepEqual(pairs(['@begin(a)', '<div>', 'x', '@end(a)', '</div>']), [['a', 1, 4]],
+		'and when that block runs to the end of the note, the environment still closes (Clew-boss\'s case, 2026-11-27: the scan\'s last closePassed)');
 });
 
 test('an unnamed @begin(…) inside an environment: its own unnamed @end(…) does not close the one around it, and a named closer passes it by', () => {
