@@ -76,6 +76,14 @@ test('numbers that cannot be counted cost only the constructs that show one', (t
 	}
 });
 
+test('an @begin(…) holding no name is drawn as written: no chip, its `@` shown', () => {
+	// ⌥⌘E's opener before a name is typed (the owner's report on dev.24,
+	// 2026-11-27: a chip "begin", its `@` hidden).
+	const d = drawn('# Note\n\n@begin()\n  \n@end()\n\nAfter.\n');
+	assert.ok(!d.widgets.includes('ChipWidget'), `no chip: ${d.widgets}`);
+	assert.deepEqual(d.hidden.filter((h) => h.includes('@')), [], 'no `@` hidden');
+});
+
 /** Every line class and head widget the layer gives `doc`, the caret at `anchor`. */
 function frames(doc, anchor) {
 	const state = EditorState.create({

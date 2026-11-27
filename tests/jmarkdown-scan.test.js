@@ -223,6 +223,25 @@ test('@begin/@end environments nest on a stack', () => {
 	assert.ok(sorted[0].end > sorted[1].end, 'outer fold wraps inner');
 });
 
+test('an @begin(…) holding no name is source in the environment\'s colours — never the directive "begin" — and no environment', () => {
+	// ⌥⌘E's opener before a name is typed (the owner's report on dev.24,
+	// 2026-11-27: live edit drew a chip "begin", its `@` hidden).
+	const text = '@begin()\n  \n@end()\n';
+	const scan = scanJmarkdown(text);
+	assert.equal(faceOf(scan, text, '@begin'), 'jmd-env-keyword');
+	assert.equal(faceOf(scan, text, '()'), 'jmd-env-paren');
+	assert.equal(faceOf(scan, text, '@end'), 'jmd-env-keyword');
+	assert.deepEqual(scan.constructs, [], 'no environment, no directive');
+	assert.equal(scan.folds.length, 0);
+});
+
+test('an unnamed @begin(…) inside an environment: its own unnamed @end(…) does not close the one around it, and a named closer passes it by', () => {
+	const closers = (text) => scanJmarkdown(text).constructs.map((c) => [c.kind, text.slice(c.close.start, c.close.end)]);
+	assert.deepEqual(closers('@begin(a)\n@begin()\n  x\n@end()\nmore\n@end(a)\n'), [['environment', '@end(a)']]);
+	assert.deepEqual(closers('@begin(a)\n@begin()\nx\n@end(a)\n'), [['environment', '@end(a)']], 'one being typed, no closer yet');
+	assert.deepEqual(closers('@begin(a)\nx\n@end()\n'), [['environment', '@end()']], 'an unnamed closer still closes a named opener, as before');
+});
+
 /* ── inline constructs ───────────────────────────────────────────────── */
 
 test('mustache variables', () => {

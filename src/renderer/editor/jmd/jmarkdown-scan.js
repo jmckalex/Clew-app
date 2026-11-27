@@ -541,11 +541,29 @@ function scanBlocks(ctx, from) {
 			continue;
 		}
 
+		// --- @begin(…) holding no name (yet) ---
+		// `@begin()` as ⌥⌘E writes it, a name being typed: the engine leaves
+		// it literal, and it is drawn as source in the environment's colours,
+		// as an unmatched `@end(…)` is — never the bare directive "begin",
+		// which live edit drew as a chip, its `@` hidden (the owner's report
+		// on dev.24, 2026-11-27). It holds a place on the stack, so its own
+		// unnamed `@end(…)` does not close the environment around it (which
+		// the engine never does either); a named closer passes it by.
+		if ((m = /^[ \t]*(@begin)(\()([^)]*)(\))/.exec(line))) {
+			const end = environmentZones(ctx, k, m);
+			envStack.push({ start: ls, construct: null, line: k });
+			region(ctx, ls, end);
+			blank(ctx.buf, ls, end);
+			k += 1;
+			continue;
+		}
+
 		// --- @end(…) ---
 		if ((m = /^[ \t]*(@end)(\()([^)]*)(\))/.exec(line))) {
 			const end = environmentZones(ctx, k, m);
-			const open = envStack.pop();
-			if (open !== undefined) {
+			let open = envStack.pop();
+			if (/\S/.test(m[3])) while (open && !open.construct) open = envStack.pop();
+			if (open?.construct) {
 				// A *block* fold: collapsing keeps both the `@begin(…)` and the
 				// `@end(…)` lines visible, with a vertical ellipsis between them —
 				// rather than swallowing the closing line (`@end(…)` is not a

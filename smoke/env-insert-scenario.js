@@ -9,8 +9,9 @@
 // Run with CLEW_SMOKE_VAULT=<an empty folder>, CLEW_SMOKE_LOG=1 and a
 // CLEW_USER_DATA of its own.
 // Logs (smoke-env-insert:):
-//   field lines=<the block's lines> hints=<n> marks=<names>
-//          after ⌥⌘E: the empty field, a "name" hint in the opener and closer
+//   field lines=<the block's lines> hints=<n> marks=<names> drawn=[<opener line's text>, <closer line's text>] chips=<n>
+//          after ⌥⌘E: the empty field, a "name" hint in the opener and closer,
+//          both lines drawn as source — `@begin(name)`, no directive chip
 //   typed lines=<…> marks=<the highlighted names> closer=<the @end line's text> concealed=<bool>
 //          after typing "lemma": copied into the closer, which live edit shows
 //   entered line=<the cursor's line> col=<n> marks=<n> concealed=<bool>
@@ -74,13 +75,20 @@ const cursor = (v) => {
 	const line = v.state.doc.lineAt(head);
 	return `line=${JSON.stringify(line.text)} col=${head - line.from}`;
 };
+const lineDom = (pos) => {
+	let n = view.domAtPos(pos).node;
+	while (n && !n.classList?.contains('cm-line')) n = n.parentNode;
+	return n;
+};
 const closerLine = (name) => [...view.contentDOM.querySelectorAll('.cm-line')]
 	.find((l) => l.textContent.includes(`@end(${name})`) || (l.classList.contains('le-env-close') && l.classList.contains(`le-env-${name}`)));
 
 (async () => {
 	await until(() => doc().includes('@begin('));
 	await sleep(100);
-	log(`field lines=${blockLines(view)} hints=${view.contentDOM.querySelectorAll('.cm-env-name-hint').length} marks=${marks(view)}`);
+	const drawn = ['@begin(', '@end('].map((w) => lineDom(doc().indexOf(w))?.textContent ?? null);
+	log(`field lines=${blockLines(view)} hints=${view.contentDOM.querySelectorAll('.cm-env-name-hint').length} marks=${marks(view)}`
+		+ ` drawn=${JSON.stringify(drawn)} chips=${view.contentDOM.querySelectorAll('.le-directive-chip').length}`);
 	step(1);
 
 	await until(() => doc().includes('@end(lemma)'));
