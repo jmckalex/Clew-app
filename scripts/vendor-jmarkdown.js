@@ -22,6 +22,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { installEngineDeps } from './engine-deps.js';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const source = process.env.JMARKDOWN_SRC
@@ -30,6 +31,8 @@ const dest = path.join(root, 'vendor', 'jmarkdown');
 
 if (!fs.existsSync(path.join(source, 'src', 'watch-worker.js'))) {
 	console.log(`vendor-jmarkdown: master not found at ${source}; keeping committed mirror.`);
+	// The engine still runs on its own lockfile (engine-deps.js).
+	installEngineDeps(dest);
 	process.exit(0);
 }
 
@@ -41,8 +44,18 @@ try {
 	describe = `${branch}@${hash}${dirty}`;
 } catch { /* master may not be a git checkout */ }
 
+// The engine's installed dependencies (engine-deps.js) are not the
+// master's: they are parked across the wholesale mirror and reinstalled
+// below only when the mirrored package.json or lockfile changed.
+const parked = path.join(root, 'node_modules', '.cache', 'jmarkdown-node_modules');
+fs.rmSync(parked, { recursive: true, force: true });
+if (fs.existsSync(path.join(dest, 'node_modules'))) {
+	fs.mkdirSync(path.dirname(parked), { recursive: true });
+	fs.renameSync(path.join(dest, 'node_modules'), parked);
+}
 fs.rmSync(dest, { recursive: true, force: true });
 fs.mkdirSync(dest, { recursive: true });
+if (fs.existsSync(parked)) fs.renameSync(parked, path.join(dest, 'node_modules'));
 fs.cpSync(path.join(source, 'src'), path.join(dest, 'src'), { recursive: true });
 for (const file of ['package.json', 'package-lock.json', 'LICENSE', 'LICENSE.md', 'README.md']) {
 	const from = path.join(source, file);
@@ -59,3 +72,4 @@ Synced from: ${describe}
 `);
 
 console.log(`vendor-jmarkdown: mirrored ${describe} → vendor/jmarkdown`);
+installEngineDeps(dest);

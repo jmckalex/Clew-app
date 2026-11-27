@@ -52,6 +52,7 @@ import { execSync, execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { installEngineDeps } from './engine-deps.js';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const run = (cmd, cwd = root, env = undefined) => {
@@ -138,15 +139,12 @@ run('node scripts/build.js');
 const staging = path.join(root, 'build-engine', 'jmarkdown');
 fs.rmSync(path.join(root, 'build-engine'), { recursive: true, force: true });
 fs.mkdirSync(staging, { recursive: true });
-fs.cpSync(path.join(root, 'vendor', 'jmarkdown'), staging, { recursive: true });
-// --legacy-peer-deps matches the golden master's own installed reality
-// (marked-emoji's peer range trails the marked the engine actually uses).
-try {
-	run('npm ci --omit=dev --ignore-scripts --no-audit --no-fund --legacy-peer-deps', staging);
-} catch {
-	console.log('npm ci failed (lockfile drift?); falling back to npm install');
-	run('npm install --omit=dev --ignore-scripts --no-audit --no-fund --legacy-peer-deps', staging);
-}
+// The mirror without the dev tree's own install of its dependencies: the
+// staging gets a fresh one, by the command dev and CI run too
+// (engine-deps.js), and no stamp — the app ships the engine's files only.
+const devModules = path.join(root, 'vendor', 'jmarkdown', 'node_modules');
+fs.cpSync(path.join(root, 'vendor', 'jmarkdown'), staging, { recursive: true, filter: (src) => !src.startsWith(devModules) });
+installEngineDeps(staging, { force: true, stamp: false });
 
 if (!fs.existsSync(path.join(root, 'build-resources', 'icon.icns'))) {
 	run('npx electron scripts/make-icon.js');
