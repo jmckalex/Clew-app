@@ -293,31 +293,37 @@ export function createBeginEnd(options = {}) {
 			// environment there, breaking the fence, and a same-name `@begin(name)`
 			// shown in one added a level the real closer then paid off (the owner,
 			// 2026-11-27: "the quirk in the engine regarding `@end(x)` appearing in
-			// a code block").  A fence opens at a line that starts — after any
-			// indentation, since a nested body is still indented here — with three
-			// or more backticks or tildes, and closes at the next such line of the
-			// same character and at least the same length; unclosed, it runs to
-			// the end of src.  This is Clew's live-edit rule (math-segments.js
-			// maskMarkdownCode), so the editor and the engine pair the same lines.
-			// Indented code is not skipped: indentation is how nested blocks are
-			// written.  The scan is the old one; a match inside a fence is passed
-			// over.  inFence(index) advances the fence state line by line up to
-			// the line starting at `index`.
-			let fencePos = openLen, fenceChar = '', fenceLen = 0;
+			// a code block").  A fence is read as marked reads one (its `fences`
+			// rule), so what is passed over is what the page shows as code.  It
+			// opens at a line that starts — after any indentation, since a nested
+			// body is still indented here — with three or more backticks or
+			// tildes; a backtick run only when no backtick follows it on the line,
+			// so a paragraph starting with ```` ```x``` ```` (inline code) opens
+			// nothing.  It closes at a line holding nothing but a run that starts
+			// with the opener's (same character, at least as long; marked lets
+			// further backticks or tildes follow) and spaces, so ```` ```js ````
+			// inside a fence is code, not its end; unclosed, it runs to the end of
+			// src.  (Clew-boss, 2026-11-27: the first rule, Clew's simpler one,
+			// read both of those lines as fences.)  Indented code is not skipped:
+			// indentation is how nested blocks are written.  The scan is the old
+			// one; a match inside a fence is passed over.  inFence(index) advances
+			// the fence state line by line up to the line starting at `index`.
+			let fencePos = openLen, fenceRun = '';
 			const inFence = (index) => {
 				while (fencePos < index) {
 					let nl = src.indexOf('\n', fencePos);
 					if (nl === -1) nl = src.length;
-					const fence = /^\s*(`{3,}|~{3,})/.exec(src.slice(fencePos, nl));
-					if (fenceLen > 0) {
-						if (fence && fence[1][0] === fenceChar && fence[1].length >= fenceLen) fenceLen = 0;
-					} else if (fence) {
-						fenceLen = fence[1].length;
-						fenceChar = fence[1][0];
+					const line = src.slice(fencePos, nl);
+					if (fenceRun) {
+						const close = /^\s*([`~]+) *$/.exec(line);
+						if (close && close[1].startsWith(fenceRun)) fenceRun = '';
+					} else {
+						const open = /^\s*(`{3,}|~{3,})([\s\S]*)$/.exec(line);
+						if (open && !(open[1][0] === '`' && open[2].includes('`'))) fenceRun = open[1];
 					}
 					fencePos = nl + 1;
 				}
-				return fenceLen > 0;
+				return fenceRun !== '';
 			};
 
 			let depth = 0, closeStart = -1, closeEnd = -1, m;

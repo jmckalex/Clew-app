@@ -151,6 +151,12 @@ const NUMBER_NOTES = {
 		'@begin(lemma){#l1}', 'x', '@end(lemma)', '',
 		'@begin(proof)', '  ```', '  @begin(theorem)', '  y', '  @end(theorem)', '  ```', '@end(proof)', '',
 		'````markdown', '```', '@begin(theorem)', 'z', '@end(theorem)', '```', '````', '',
+		// An inline code span of four backticks starting a paragraph is no
+		// fence, and "```js" closes none (marked's rule; the engine's pairing
+		// reads them alike since jmarkdown 85eefad — before it, this theorem
+		// never closed).
+		'@begin(theorem){#t2}', '```` ```q ```` filters notes.', '@end(theorem)', '',
+		'@begin(lemma){#l2}', '```', '@end(lemma)', '```js', '```', '@end(lemma)', '',
 		'@begin(corollary){#c1}', 'w', '@end(corollary)', '',
 	],
 };
