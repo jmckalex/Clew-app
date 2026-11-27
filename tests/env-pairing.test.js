@@ -101,14 +101,15 @@ const NOTES = {
 		'@begin(aa)', 'ten', '@begin(bb)', 'eleven', '@begin(aa)', 'twelve', '@end(bb)', 'thirteen', '@end(aa)', 'fourteen', '@end(aa)', '',
 		'fifteen', '',
 	],
-	// Well nested, same names nested, spaces and sigils, a closer with text
-	// after it (none). (A closer inside fenced code is the one difference:
-	// the engine's search does not skip code and closes there, breaking the
-	// fence; the scanner, which masks code, does not — jmarkdown-scan.test.js.)
+	// Well nested, same names nested, spaces and sigils, a closer in fenced
+	// code (code, not a closer — the engine's too since jmarkdown fd9df17,
+	// the owner's ask 2026-11-27; until then it closed there and broke the
+	// fence), a closer with text after it (none).
 	nested: [
 		'# Nested', '',
 		'@begin(aa)', 'one', '@begin(bb)', 'two', '@begin(cc)', 'three', '@end(cc)', '@end(bb)', '@end(aa)', '',
 		'@begin( aa )', 'four', '@begin(.aa)', 'five', '@end( aa )', '@end(aa)', '',
+		'@begin(bb)', '', '```', '@end(bb)', '```', '', '@end(bb)', '',
 		'@begin(cc)', 'six', '@end(cc) and more', '', 'seven', '',
 	],
 };

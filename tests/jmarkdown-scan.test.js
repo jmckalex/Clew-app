@@ -281,9 +281,8 @@ test('environments pair by NAME, nested like well-formed parentheses, as the eng
 		'an inner same-name opener counts for the outer, so the outer closes at the last @end(a); the inner a, its closer outside b, is text');
 	assert.deepEqual(pairs(['@begin(theorem)', '@begin(align)', 'a = b', '@end(theorem)']), [['theorem', 1, 4]], 'a TeX body closes only at its own name');
 	assert.deepEqual(pairs(['@begin(align)', 'a = b', '@end(theorem)', 'c', '@end(align)']), [['align', 1, 5]], 'its own closer, past another name\'s (until 2026-11-27 the first @end of any name)');
-	// The one place the ENGINE differs: its closer search does not skip
-	// fenced code, so it closes `a` inside the fence and breaks the fence
-	// (measured 2026-11-27); the scanner masks code first and does not.
+	// Fenced code masked first: the engine passes over it too since jmarkdown
+	// fd9df17 (until then it closed `a` inside the fence and broke the fence).
 	assert.deepEqual(pairs(['@begin(a)', '```', '@end(a)', '```', '@end(a)']), [['a', 1, 5]], 'a closer in fenced code is code');
 	assert.deepEqual(pairs(['@begin(a)', '@end(a) and more']), [], 'a closer is alone on its line, as the engine reads one');
 	assert.deepEqual(pairs(['@begin(a)', '<section>', '@end(a)', '</section>', '', '@begin(b)', 'x', '@end(b)']), [['a', 1, 3], ['b', 6, 8]],

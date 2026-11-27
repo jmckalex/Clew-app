@@ -43,10 +43,15 @@ registerBlockEnvironment('feedback', {
 	mode: 'markdown',
 	html: (ctx) => renderFeedback(ctx.inner)
 });
+// TeX's LaTeX is its body as written.  @begin(TeX)'s body keeps its own line
+// end (decided 2026-10-11), and the inline @TeX[…] sits inside its sentence;
+// the block @TeX+[…]'s body is the bracket, with no line end, so the next
+// paragraph ran on from it (`\noindentThird.`).  It gets one line end, as
+// :::TeX does (additional-directives.js; the owner, 2026-11-15).
 registerBlockEnvironment('TeX', {
 	mode: 'verbatim',          // raw LaTeX: $, _, \ etc. survive untouched
 	html: () => '',
-	latex: (ctx) => ctx.rawText
+	latex: (ctx) => ctx.block ? ctx.rawText + '\n' : ctx.rawText
 });
 registerBlockEnvironment('HTML', {
 	mode: 'markdown',          // markdown prose, emitted only in HTML output

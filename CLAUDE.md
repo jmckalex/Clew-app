@@ -1389,10 +1389,11 @@ except where the selection touches a construct. The durable design is
   is drawn as written, as reading view prints it. Until then any `@end`
   closed whatever was open, and an opener nothing closed was framed to the
   end of the note. A TeX or diagram body (`align`, `TiKZ`, …) closes at its
-  own name too (it closed at the first `@end(…)` of any). One difference,
-  kept on purpose: the engine's closer search does not skip fenced code, so
-  an `@end(name)` in a code block inside its environment closes it there and
-  breaks the fence; the scanner masks code, so live edit does not.
+  own name too (it closed at the first `@end(…)` of any). A line inside
+  fenced code is code, not an opener or a closer — the scanner masks code
+  first, and the engine passes over it the same way since jmarkdown fd9df17
+  (the owner's ask, 2026-11-27: until then an `@end(name)` shown in a code
+  block closed its environment there and broke the fence).
   `tests/env-pairing.test.js` (the real engine), `smoke/live-env-nesting-
   scenario.js`.
 - **Tables are edited in place** (live edit §5.5a): the active cell is note

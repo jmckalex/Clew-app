@@ -484,7 +484,14 @@ const additionalDirectives = [
 		},
 		renderer(token) {
 			if (token.meta.name === "TeX") {
-				return global.isLatex ? token.text : '';
+				// The line end: token.text has none, so whatever followed
+				// the block ran on from its last line — `content.Both ends`,
+				// `\end{equation}After` (the owner, 2026-11-15: "fix the TeX
+				// run-on").  A line end, not a paragraph break, so the next
+				// line is as TeX reads it after @begin(TeX), which keeps its
+				// body's own line end: a sentence after `\noindent` or a
+				// display is still that paragraph.
+				return global.isLatex ? token.text + '\n' : '';
 			}
 			return false;
 		}

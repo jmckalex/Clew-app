@@ -40,9 +40,10 @@
 	Nesting: differently-named blocks nest for free (the inner block is just part
 	of the outer block's markdown content and is re-lexed normally).  Only
 	*same-name* nesting needs care, so the tokenizer depth-counts `@begin(name)`
-	against `@end(name)` to find the right closer.  An opener with no matching
-	closer is left literal (with a warning) rather than swallowing the rest of the
-	document or throwing.
+	against `@end(name)` to find the right closer, passing over lines inside
+	fenced code (``` or ~~~), which are code, not openers or closers.  An opener
+	with no matching closer is left literal (with a warning) rather than
+	swallowing the rest of the document or throwing.
 
 	Indentation: openers and closers may sit at any indentation — `@begin`/`@end`
 	are found regardless of leading whitespace — so nested blocks can be indented
@@ -286,8 +287,42 @@ export function createBeginEnd(options = {}) {
 				'gm'
 			);
 			scanRe.lastIndex = openLen;
+
+			// Lines inside fenced code are code, not openers or closers: an
+			// `@end(name)` shown in a code block in the body used to close the
+			// environment there, breaking the fence, and a same-name `@begin(name)`
+			// shown in one added a level the real closer then paid off (the owner,
+			// 2026-11-27: "the quirk in the engine regarding `@end(x)` appearing in
+			// a code block").  A fence opens at a line that starts — after any
+			// indentation, since a nested body is still indented here — with three
+			// or more backticks or tildes, and closes at the next such line of the
+			// same character and at least the same length; unclosed, it runs to
+			// the end of src.  This is Clew's live-edit rule (math-segments.js
+			// maskMarkdownCode), so the editor and the engine pair the same lines.
+			// Indented code is not skipped: indentation is how nested blocks are
+			// written.  The scan is the old one; a match inside a fence is passed
+			// over.  inFence(index) advances the fence state line by line up to
+			// the line starting at `index`.
+			let fencePos = openLen, fenceChar = '', fenceLen = 0;
+			const inFence = (index) => {
+				while (fencePos < index) {
+					let nl = src.indexOf('\n', fencePos);
+					if (nl === -1) nl = src.length;
+					const fence = /^\s*(`{3,}|~{3,})/.exec(src.slice(fencePos, nl));
+					if (fenceLen > 0) {
+						if (fence && fence[1][0] === fenceChar && fence[1].length >= fenceLen) fenceLen = 0;
+					} else if (fence) {
+						fenceLen = fence[1].length;
+						fenceChar = fence[1][0];
+					}
+					fencePos = nl + 1;
+				}
+				return fenceLen > 0;
+			};
+
 			let depth = 0, closeStart = -1, closeEnd = -1, m;
 			while ((m = scanRe.exec(src)) !== null) {
+				if (inFence(m.index)) continue;               // code, not a closer
 				if (m[1]) {                                   // nested @begin(name)
 					depth++;
 				} else if (depth === 0) {                     // our matching @end(name)
