@@ -52,3 +52,12 @@ test('dev, CI and packaging install them by the one helper', () => {
 	assert.match(src('.github/workflows/test.yml'), /run: npm run engine-deps/, 'CI');
 	assert.equal(read(path.join(repo, 'package.json')).scripts['engine-deps'], 'node scripts/engine-deps.js');
 });
+
+test('only `npm ci`\'s install counts as current: a fallback is tried again, and its drift said again, every run', async () => {
+	const { stampIsCurrent } = await import('../scripts/engine-deps.js');
+	assert.equal(stampIsCurrent({ hash: 'h', how: 'ci' }, 'h'), true);
+	assert.equal(stampIsCurrent({ hash: 'h', how: 'fallback' }, 'h'), false, 'a fallback install');
+	assert.equal(stampIsCurrent({ hash: 'old', how: 'ci' }, 'h'), false, 'package.json or the lockfile changed');
+	assert.equal(stampIsCurrent(null, 'h'), false, 'no stamp');
+});
+

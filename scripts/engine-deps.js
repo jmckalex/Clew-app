@@ -49,6 +49,21 @@ function sourceHash(dir) {
 }
 
 /**
+ * Whether a stamp says node_modules is the lockfile's install of this
+ * package.json and lockfile: `npm ci`'s only. A stamp left by the FALLBACK
+ * is never current, so every later run tries `npm ci` again and repeats the
+ * drift banner until the lockfile is fixed (Clew-boss's nit, 2026-11-27: a
+ * fallback stamped as current went quiet after its first run).
+ *
+ * @param {{ hash?: string, how?: string } | null} stamp
+ * @param {string} hash - sourceHash of the package now
+ * @returns {boolean}
+ */
+export function stampIsCurrent(stamp, hash) {
+	return Boolean(stamp) && stamp.hash === hash && stamp.how === 'ci';
+}
+
+/**
  * Install `dir`'s production dependencies from its lockfile.
  *
  * @param {string} dir - the engine package (holding package.json + lockfile)
@@ -61,12 +76,12 @@ export function installEngineDeps(dir, { force = false, stamp = true, log = cons
 	const want = sourceHash(dir);
 	const stampFile = path.join(dir, 'node_modules', STAMP);
 	if (!force && fs.existsSync(stampFile)) {
-		try {
-			if (JSON.parse(fs.readFileSync(stampFile, 'utf8')).hash === want) {
-				log(`engine-deps: ${path.relative(root, dir) || dir} is current`);
-				return 'current';
-			}
-		} catch { /* reinstall */ }
+		let stamp = null;
+		try { stamp = JSON.parse(fs.readFileSync(stampFile, 'utf8')); } catch { /* reinstall */ }
+		if (stampIsCurrent(stamp, want)) {
+			log(`engine-deps: ${path.relative(root, dir) || dir} is current`);
+			return 'current';
+		}
 	}
 	let how = 'ci';
 	try {
