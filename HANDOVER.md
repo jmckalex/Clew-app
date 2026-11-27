@@ -702,6 +702,7 @@ commit `main` then fast-forwarded to.
 | dev.22 | `c37ce1c` | 2026-11-24 | `@begin(clew-only)`, Export notes as PDF (reading view), folders start closed, live edit's `\|external` |
 | dev.23 | `33c0f7a` | 2026-11-26 | Export notes as PDF into the vault's root shown in the explorer; live edit's environments a rule per level with a └ foot, `@begin(clew-only)`'s head |
 | dev.24 | `d751de3` | 2026-11-27 | ⌥⌘E inserts an environment whose name is typed once; live edit's environments get a ┌ foot at each opener and draw a body without the indentation the engine strips |
+| dev.25 | `5a2b534` | 2026-11-27 | Live edit: `@begin`/`@end` paired by name as the engine pairs them (an opener nothing closes is text, its number and label none), spaces around a name ignored, an unnamed `@begin()` drawn as written, an environment's two names edited as one; jmarkdown fd9df17 (fenced code skipped when pairing) |
 
 ## 0.12.0 — released
 
