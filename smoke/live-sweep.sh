@@ -43,6 +43,7 @@ mkdir -p $S/v-fh && printf '%s\n' '# Footnotes' '' 'One line[^one: a short note 
 mkdir -p $S/v-mh && printf '%s\n' '# Math' '' 'Star: the notation $R^*$ is incomplete, and here we need $R_w^*(S)$ instead.' '' 'Control: this *is strong* and this **is intense** in ordinary prose.' '' 'Delimiters: $x$, $$y$$, \(z\) and \[w\] all count.' '' 'Code: the shell `$PATH` and `$HOME` are not math.' '' 'Escaped: it costs \$5 and \$10 today.' > $S/v-mh/Math.md; run math-highlight $S/v-mh
 mkdir -p $S/v-co; run live-clew-only $S/v-co
 mkdir -p $S/v-ei; run env-insert $S/v-ei
+mkdir -p $S/v-el2; run env-link $S/v-el2
 mkdir -p $S/v-dd; run live-env-dedent $S/v-dd
 mkdir -p $S/v-es; run live-env-spaces $S/v-es
 mkdir -p $S/v-en; run live-env-nesting $S/v-en

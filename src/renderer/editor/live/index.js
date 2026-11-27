@@ -29,6 +29,7 @@ import { tableEditing } from './table-cell-editor.js';
 import { liveKeys } from './keys.js';
 import { sidenotes } from './sidenotes.js';
 import { columnWidth } from './columns.js';
+import { envLinkedNames } from '../env-link.js';
 
 /** The compartment every note state carries (empty in source mode). */
 export const liveCompartment = new Compartment();
@@ -57,5 +58,8 @@ export function liveEdit(config) {
 		sidenotes,
 		// A list's indentation column, the font's space (live-edit.css's --le-col).
 		columnWidth,
+		// An environment's two names edited as one (env-link.js; the owner's ask
+		// 2026-11-27, "in live-edit mode" — source mode is theirs to choose).
+		envLinkedNames(),
 	];
 }
