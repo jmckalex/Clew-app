@@ -522,7 +522,11 @@ function scanBlocks(ctx, from) {
 		}
 
 		// --- @begin(…) environments ---
-		if ((m = /^[ \t]*(@begin)(\()(\.|<)?([A-Za-z][\w-]*\*?)(>)?(\))/.exec(line))) {
+		// Spaces and tabs around the name and its sigils are nothing, as in
+		// the engine (begin-end-core.js trims them): `@begin( theorem )` is
+		// `@begin(theorem)` — until 2026-11-27 no environment here (the
+		// owner's ask).
+		if ((m = /^[ \t]*(@begin)(\()[ \t]*(\.|<)?[ \t]*([A-Za-z][\w-]*\*?)[ \t]*(>)?[ \t]*(\))/.exec(line))) {
 			if (LATEX_ENVIRONMENTS.test(m[4]) && !m[3]) {
 				k = verbatimEnvironment(ctx, k, 'latex', m);
 				continue;
@@ -684,7 +688,9 @@ function directiveBlock(ctx, k, colons, m, parts) {
 function environment(ctx, k, m, parts, openEnd) {
 	const ls = ctx.lineStarts[k];
 	const at = ls + m[0].indexOf('@');
-	const nameAt = ls + m[0].indexOf('(') + 1 + (m[3] ? 1 : 0);
+	// The name's first letter: past the `(`, its spaces and a sigil, none of
+	// which can begin a name.
+	const nameAt = ls + m[0].indexOf(m[4], m[0].indexOf('(') + 1);
 	const construct = {
 		kind: 'environment', start: ls, end: ctx.text.length,
 		open: { start: at, end: openEnd }, close: null,
@@ -819,21 +825,19 @@ function environmentZones(ctx, k, m, parts) {
 	at += m[1].length;
 	cap(ctx, at, at + 1, 'jmd-env-paren'); // (
 	at += 1;
-	// Optional sigil, the name, optional closing sigil — group layout
-	// differs between the begin and end regexes, so re-parse the span.
-	const inner = /^(\.|<)?([A-Za-z][\w-]*\*?)?(>)?/.exec(
+	// Optional sigil, the name, optional closing sigil, spaces around each —
+	// group layout differs between the begin and end regexes, so re-parse
+	// the span.
+	const inner = /^([ \t]*)(\.|<)?([ \t]*)([A-Za-z][\w-]*\*?)?([ \t]*)(>)?/.exec(
 		ctx.text.slice(at, ls + m[0].length - 1)
 	);
 	if (inner) {
-		if (inner[1]) cap(ctx, at, at + 1, 'jmd-env-paren');
-		if (inner[2]) {
-			const s = at + (inner[1] ? 1 : 0);
-			cap(ctx, s, s + inner[2].length, 'jmd-env-name');
-		}
-		if (inner[3]) {
-			const s = at + inner[0].length - 1;
-			cap(ctx, s, s + 1, 'jmd-env-paren');
-		}
+		let p = at + inner[1].length;
+		if (inner[2]) { cap(ctx, p, p + 1, 'jmd-env-paren'); p += 1; }
+		p += inner[3].length;
+		if (inner[4]) { cap(ctx, p, p + inner[4].length, 'jmd-env-name'); p += inner[4].length; }
+		p += inner[5].length;
+		if (inner[6]) cap(ctx, p, p + 1, 'jmd-env-paren');
 	}
 	const close = ls + m[0].length - 1;
 	cap(ctx, close, close + 1, 'jmd-env-paren'); // )

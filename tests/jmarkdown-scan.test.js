@@ -235,6 +235,33 @@ test('an @begin(…) holding no name is source in the environment\'s colours —
 	assert.equal(scan.folds.length, 0);
 });
 
+test('spaces and tabs around an environment\'s name are nothing, as in the engine: the same environment, its name the name', () => {
+	// The owner's ask, 2026-11-27: begin-end-core.js trims them.
+	const read = (text) => {
+		const scan = scanJmarkdown(text);
+		return {
+			constructs: scan.constructs.map((c) => [c.kind, text.slice(c.name.start, c.name.end), text.slice(c.close.start, c.close.end).replace(/\s/g, '')]),
+			folds: scan.folds.length,
+			latex: scan.injections.filter((i) => i.language === 'latex').length,
+		};
+	};
+	for (const [plain, spaced] of [
+		['@begin(theorem)\nx\n@end(theorem)\n', '@begin( theorem )\nx\n@end( theorem )\n'],
+		['@begin(lemma)\nx\n@end(lemma)\n', '@begin(  lemma)\nx\n@end(lemma)\n'],
+		['@begin(proof)\nx\n@end(proof)\n', '@begin(\tproof\t)\nx\n@end(proof)\n'],
+		['@begin(<aside>)\nx\n@end(aside)\n', '@begin( < aside > )\nx\n@end( aside )\n'],
+		['@begin(.note)\nx\n@end(note)\n', '@begin( .note )\nx\n@end(note)\n'],
+		['@begin(align)\na = b\n@end(align)\n', '@begin( align )\na = b\n@end( align )\n'],
+	]) assert.deepEqual(read(spaced), read(plain), JSON.stringify(spaced));
+	const text = '@begin( < aside > )\nx\n@end( aside )\n';
+	const scan = scanJmarkdown(text);
+	assert.equal(faceOf(scan, text, 'aside'), 'jmd-env-name');
+	assert.equal(faceOf(scan, text, '<'), 'jmd-env-paren');
+	assert.equal(faceOf(scan, text, '>'), 'jmd-env-paren');
+	assert.equal(faceOf(scan, text, 'aside', 1), 'jmd-env-name', 'the closer\'s name too');
+	assert.deepEqual(read('@begin( )\nx\n@end( )\n'), { constructs: [], folds: 0, latex: 0 }, 'only spaces: no name, no environment');
+});
+
 test('an unnamed @begin(…) inside an environment: its own unnamed @end(…) does not close the one around it, and a named closer passes it by', () => {
 	const closers = (text) => scanJmarkdown(text).constructs.map((c) => [c.kind, text.slice(c.close.start, c.close.end)]);
 	assert.deepEqual(closers('@begin(a)\n@begin()\n  x\n@end()\nmore\n@end(a)\n'), [['environment', '@end(a)']]);

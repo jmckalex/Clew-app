@@ -125,6 +125,18 @@ test('an environment\'s concealed closer is its frame\'s foot, a pad; `@begin(cl
 	assert.match(revealed.lines.get(9), /\ble-env-foot-line\b/, 'another environment stays concealed');
 });
 
+test('spaces around an environment\'s name are nothing: `@begin( theorem )` drawn as `@begin(theorem)` — head, line classes, rules', () => {
+	// The owner's ask, 2026-11-27: the engine trims them (begin-end-core.js).
+	const plain = '# Note\n\n@begin(clew-only)\nOuter.\n@begin(theorem)\nA claim.\n@end(theorem)\n@end(clew-only)\n\n@begin(<aside>)\nAside.\n@end(aside)\n\nAfter.\n';
+	const spaced = '# Note\n\n@begin( clew-only )\nOuter.\n@begin(\ttheorem  )\nA claim.\n@end( theorem )\n@end(clew-only)\n\n@begin( < aside > )\nAside.\n@end( aside )\n\nAfter.\n';
+	const a = frames(plain, 0);
+	const b = frames(spaced, 0);
+	assert.deepEqual(b.heads, a.heads);
+	assert.deepEqual(a.heads.map(([name]) => name), ['Clew only', 'theorem', 'aside']);
+	assert.deepEqual([...b.lines], [...a.lines]);
+	assert.deepEqual([...b.styles], [...a.styles]);
+});
+
 test('nested environments draw a rule per level, each starting and ending in its own foot', () => {
 	const doc = '# Note\n\n@begin(clew-only)\nOuter.\n@begin(theorem)\nInner.\n@end(theorem)\nOuter again.\n@end(clew-only)\n\nAfter.\n';
 	const { styles } = frames(doc, 0);

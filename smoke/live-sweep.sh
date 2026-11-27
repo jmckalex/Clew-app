@@ -44,6 +44,7 @@ mkdir -p $S/v-mh && printf '%s\n' '# Math' '' 'Star: the notation $R^*$ is incom
 mkdir -p $S/v-co; run live-clew-only $S/v-co
 mkdir -p $S/v-ei; run env-insert $S/v-ei
 mkdir -p $S/v-dd; run live-env-dedent $S/v-dd
+mkdir -p $S/v-es; run live-env-spaces $S/v-es
 mkdir -p $S/v-tb && printf '%s\n' '# Toolbar' '' 'alpha beta gamma' '' 'delta epsilon zeta' '' 'Last line.' > $S/v-tb/Toolbar.md; run live-toolbar $S/v-tb
 rsync -a --exclude .clew demo-vault/ $S/v-pf/ && node -e "const f=require('fs');const s=f.readFileSync('$S/v-pf/Features/Diagrams.md','utf8');f.writeFileSync('$S/v-pf/Big.md', s.repeat(17))"; run live-perf $S/v-pf
 c=$(grep -o 'clew-refs=.*' $S/crossref.log | cut -d= -f2-); e=$(grep -o 'engine-refs=.*' $S/crossref.log | cut -d= -f2-); ct=$(grep -o 'clew-targets=.*' $S/crossref.log | cut -d= -f2-); et=$(grep -o 'engine-targets=.*' $S/crossref.log | cut -d= -f2-)
