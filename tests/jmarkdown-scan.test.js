@@ -262,11 +262,39 @@ test('spaces and tabs around an environment\'s name are nothing, as in the engin
 	assert.deepEqual(read('@begin( )\nx\n@end( )\n'), { constructs: [], folds: 0, latex: 0 }, 'only spaces: no name, no environment');
 });
 
+test('environments pair by NAME, nested like well-formed parentheses, as the engine pairs them: @end(b) never closes @begin(a)', () => {
+	// The owner's rule, 2026-11-27. Each case's pairs as [name, opener line,
+	// closer line]; the engine's own output for these is held by
+	// tests/env-pairing.test.js.
+	const pairs = (lines) => {
+		const text = lines.join('\n');
+		const line = (o) => text.slice(0, o).split('\n').length;
+		return scanJmarkdown(text).constructs.filter((c) => c.kind === 'environment')
+			.map((c) => [text.slice(c.name.start, c.name.end), line(c.start), c.close ? line(c.close.start) : null]);
+	};
+	assert.deepEqual(pairs(['@begin(a)', '@begin(b)', 'x', '@end(b)', '@end(a)']), [['a', 1, 5], ['b', 2, 4]], 'well nested');
+	assert.deepEqual(pairs(['@begin(a)', '@begin(b)', 'x', '@end(a)', '@end(b)']), [['a', 1, 4]], 'crossed: a closes at its own; b, its closer outside a, is text');
+	assert.deepEqual(pairs(['@begin(a)', 'x', '@end(b)', 'y']), [], 'a stray closer closes nothing; the opener is text');
+	assert.deepEqual(pairs(['@begin(a)', 'x', '@begin(a)', 'y', '@end(a)', 'z']), [['a', 3, 5]], 'two openers, one closer: the inner pairs, the outer is text');
+	assert.deepEqual(pairs(['@begin(a)', '@begin(a)', 'x', '@end(a)', '@end(a)']), [['a', 1, 5], ['a', 2, 4]], 'same name nested');
+	assert.deepEqual(pairs(['@begin(a)', '@begin(b)', '@begin(a)', 'x', '@end(b)', '@end(a)', '@end(a)']), [['a', 1, 7], ['b', 2, 5]],
+		'an inner same-name opener counts for the outer, so the outer closes at the last @end(a); the inner a, its closer outside b, is text');
+	assert.deepEqual(pairs(['@begin(theorem)', '@begin(align)', 'a = b', '@end(theorem)']), [['theorem', 1, 4]], 'a TeX body closes only at its own name');
+	assert.deepEqual(pairs(['@begin(align)', 'a = b', '@end(theorem)', 'c', '@end(align)']), [['align', 1, 5]], 'its own closer, past another name\'s (until 2026-11-27 the first @end of any name)');
+	// The one place the ENGINE differs: its closer search does not skip
+	// fenced code, so it closes `a` inside the fence and breaks the fence
+	// (measured 2026-11-27); the scanner masks code first and does not.
+	assert.deepEqual(pairs(['@begin(a)', '```', '@end(a)', '```', '@end(a)']), [['a', 1, 5]], 'a closer in fenced code is code');
+	assert.deepEqual(pairs(['@begin(a)', '@end(a) and more']), [], 'a closer is alone on its line, as the engine reads one');
+	assert.deepEqual(pairs(['@begin(a)', '<section>', '@end(a)', '</section>', '', '@begin(b)', 'x', '@end(b)']), [['a', 1, 3], ['b', 6, 8]],
+		'a closer inside an HTML block another rule took whole still closes its environment (measured: the engine\'s too), and what follows pairs as ever');
+});
+
 test('an unnamed @begin(…) inside an environment: its own unnamed @end(…) does not close the one around it, and a named closer passes it by', () => {
 	const closers = (text) => scanJmarkdown(text).constructs.map((c) => [c.kind, text.slice(c.close.start, c.close.end)]);
 	assert.deepEqual(closers('@begin(a)\n@begin()\n  x\n@end()\nmore\n@end(a)\n'), [['environment', '@end(a)']]);
 	assert.deepEqual(closers('@begin(a)\n@begin()\nx\n@end(a)\n'), [['environment', '@end(a)']], 'one being typed, no closer yet');
-	assert.deepEqual(closers('@begin(a)\nx\n@end()\n'), [['environment', '@end()']], 'an unnamed closer still closes a named opener, as before');
+	assert.deepEqual(closers('@begin(a)\nx\n@end()\n'), [], 'an unnamed closer closes nothing (the engine\'s rule; until 2026-11-27 it closed a named opener)');
 });
 
 /* ── inline constructs ───────────────────────────────────────────────── */

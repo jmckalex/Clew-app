@@ -482,11 +482,26 @@ function headerBody(ctx, from) {
 function scanBlocks(ctx, from) {
 	/** @type {{ colons: number, start: number, construct: object, line: number }[]} */
 	const dirStack = [];
-	/** @type {{ start: number, construct: object, line: number }[]} */
+	/** Open environments, each with the line that closes it (closerOf).
+	 *  @type {{ start: number, construct: object, line: number, closeLine: number }[]} */
 	const envStack = [];
+	const pairing = pairingLines(ctx, from);
 	let k = from;
+	// An environment whose closer lay inside a run another block took whole
+	// (an HTML block, a `:::TiKZ` body) closes there all the same, as the
+	// engine closes it — or every closer after it would find it in the way.
+	const closePassed = (before) => {
+		while (envStack.length && envStack[envStack.length - 1].closeLine < before) {
+			const open = envStack.pop();
+			const c = open.closeLine;
+			const cs = ctx.lineStarts[c];
+			ctx.out.folds.push({ start: open.start, end: lineEnd(ctx, c), block: true });
+			closeBlock(ctx, open.construct, open.line, c, { start: cs + Math.max(0, ctx.text.slice(cs, lineEnd(ctx, c)).indexOf('@')), end: lineEnd(ctx, c) });
+		}
+	};
 
 	while (k < ctx.lineCount) {
+		closePassed(k);
 		const ls = ctx.lineStarts[k];
 		const line = lineAt(ctx, k);
 		let m;
@@ -527,35 +542,41 @@ function scanBlocks(ctx, from) {
 		// `@begin(theorem)` — until 2026-11-27 no environment here (the
 		// owner's ask).
 		if ((m = /^[ \t]*(@begin)(\()[ \t]*(\.|<)?[ \t]*([A-Za-z][\w-]*\*?)[ \t]*(>)?[ \t]*(\))/.exec(line))) {
-			if (LATEX_ENVIRONMENTS.test(m[4]) && !m[3]) {
-				k = verbatimEnvironment(ctx, k, 'latex', m);
+			// Paired by name, as the engine pairs them (closerOf), inside the
+			// environment around it. One that pairs with nothing is text in
+			// the engine, and drawn as written here, below — no head, no frame
+			// running on to the end of the note.
+			const top = envStack[envStack.length - 1];
+			const c = closerOf(pairing, k, m[4], top ? top.closeLine : ctx.lineCount);
+			if (c >= 0) {
+				if (LATEX_ENVIRONMENTS.test(m[4]) && !m[3]) {
+					k = verbatimEnvironment(ctx, k, 'latex', m, c);
+					continue;
+				}
+				if (m[4] === 'mermaid' && !m[3]) {
+					k = verbatimEnvironment(ctx, k, 'mermaid', m, c);
+					continue;
+				}
+				const parts = {};
+				const end = environmentZones(ctx, k, m, parts);
+				const construct = environment(ctx, k, m, parts, end);
+				envStack.push({ start: ls, construct, line: k, closeLine: c });
+				region(ctx, ls, end);
+				blank(ctx.buf, ls, end);
+				k += 1;
 				continue;
 			}
-			if (m[4] === 'mermaid' && !m[3]) {
-				k = verbatimEnvironment(ctx, k, 'mermaid', m);
-				continue;
-			}
-			const parts = {};
-			const end = environmentZones(ctx, k, m, parts);
-			const construct = environment(ctx, k, m, parts, end);
-			envStack.push({ start: ls, construct, line: k });
-			region(ctx, ls, end);
-			blank(ctx.buf, ls, end);
-			k += 1;
-			continue;
 		}
 
-		// --- @begin(…) holding no name (yet) ---
-		// `@begin()` as ⌥⌘E writes it, a name being typed: the engine leaves
-		// it literal, and it is drawn as source in the environment's colours,
-		// as an unmatched `@end(…)` is — never the bare directive "begin",
-		// which live edit drew as a chip, its `@` hidden (the owner's report
-		// on dev.24, 2026-11-27). It holds a place on the stack, so its own
-		// unnamed `@end(…)` does not close the environment around it (which
-		// the engine never does either); a named closer passes it by.
+		// --- @begin(…) that opens nothing ---
+		// One no `@end` of its name closes (above), or one holding no name
+		// (yet) — `@begin()` as ⌥⌘E writes it, a name being typed. The engine
+		// leaves either literal; drawn as source in the environment's
+		// colours, as an unmatched `@end(…)` is — never the bare directive
+		// "begin", which live edit drew as a chip, its `@` hidden (the owner's
+		// report on dev.24, 2026-11-27).
 		if ((m = /^[ \t]*(@begin)(\()([^)]*)(\))/.exec(line))) {
 			const end = environmentZones(ctx, k, m);
-			envStack.push({ start: ls, construct: null, line: k });
 			region(ctx, ls, end);
 			blank(ctx.buf, ls, end);
 			k += 1;
@@ -563,11 +584,13 @@ function scanBlocks(ctx, from) {
 		}
 
 		// --- @end(…) ---
+		// It closes the environment on top only when it is that one's own
+		// closer (closerOf): `@end(b)` never closes `@begin(a)` (the owner's
+		// rule, 2026-11-27 — until then any `@end` closed whatever was open).
 		if ((m = /^[ \t]*(@end)(\()([^)]*)(\))/.exec(line))) {
 			const end = environmentZones(ctx, k, m);
-			let open = envStack.pop();
-			if (/\S/.test(m[3])) while (open && !open.construct) open = envStack.pop();
-			if (open?.construct) {
+			const open = envStack[envStack.length - 1]?.closeLine === k ? envStack.pop() : null;
+			if (open) {
 				// A *block* fold: collapsing keeps both the `@begin(…)` and the
 				// `@end(…)` lines visible, with a vertical ellipsis between them —
 				// rather than swallowing the closing line (`@end(…)` is not a
@@ -648,6 +671,69 @@ function scanBlocks(ctx, from) {
 
 		k += 1;
 	}
+	closePassed(ctx.lineCount);
+}
+
+/**
+ * The line that closes the `@begin(name)` on line `k`, paired as the engine
+ * pairs them (begin-end-core.js's tokenizer): the first `@end(name)` of the
+ * SAME name after it — alone on its line, a sigil and spaces allowed — each
+ * same-name `@begin(name)` on the way needing an `@end(name)` of its own;
+ * other names are its body's business. `bound` is the line that closes the
+ * environment around it, which an inner pair never crosses. Fenced code and
+ * maths are masked blank, so a closer inside them is none. -1 when there is
+ * none: the opener is then text, in the engine and here.
+ *
+ * @param {{ line: number, begin: boolean, name: string }[]} pairing - pairingLines'.
+ * @param {number} k - The opener's line index.
+ * @param {string} name
+ * @param {number} bound - The first line index not searched.
+ * @returns {number}
+ */
+function closerOf(pairing, k, name, bound) {
+	// The first listed line after `k` (the list is in line order).
+	let lo = 0;
+	let hi = pairing.length;
+	while (lo < hi) {
+		const mid = (lo + hi) >> 1;
+		if (pairing[mid].line <= k) lo = mid + 1; else hi = mid;
+	}
+	let depth = 0;
+	for (let i = lo; i < pairing.length && pairing[i].line < bound; i += 1) {
+		const p = pairing[i];
+		if (p.name !== name) continue;
+		if (p.begin) depth += 1;
+		else if (depth === 0) return p.line;
+		else depth -= 1;
+	}
+	return -1;
+}
+
+/**
+ * Every line from `from` on that closerOf weighs, in order: an `@begin(name)`
+ * (anything after it) or an `@end(name)` alone on its line, each with its
+ * name — read once per scan, not once per opener.
+ *
+ * @param {object} ctx
+ * @param {number} from
+ * @returns {{ line: number, begin: boolean, name: string }[]}
+ */
+function pairingLines(ctx, from) {
+	const out = [];
+	// One pass of a native regex over the text, not a line rebuilt from the
+	// masked copy per line (that cost Big.md's scan 1.2 ms of 10.6): a match
+	// whose `@` the copy has blanked is in code or maths, and none.
+	const re = /^[ \t]*@(?:(begin)\([ \t]*[.<]?[ \t]*([A-Za-z][\w-]*\*?)[ \t]*>?[ \t]*\)|end\([ \t]*[.<]?[ \t]*([A-Za-z][\w-]*\*?)[ \t]*>?[ \t]*\)[ \t\r]*$)/gm;
+	re.lastIndex = from < ctx.lineCount ? ctx.lineStarts[from] : ctx.text.length;
+	let line = from;
+	let m;
+	while ((m = re.exec(ctx.text))) {
+		const at = m.index + m[0].indexOf('@');
+		if (ctx.buf[at] !== '@') continue;
+		while (line + 1 < ctx.lineCount && ctx.lineStarts[line + 1] <= m.index) line += 1;
+		out.push({ line, begin: Boolean(m[1]), name: m[2] ?? m[3] });
+	}
+	return out;
 }
 
 /**
@@ -757,28 +843,27 @@ function verbatimDirective(ctx, k, kind, m) {
  * @param {number} k - The opener's line index.
  * @param {'latex'|'mermaid'} kind
  * @param {RegExpExecArray} m - The opener match.
+ * @param {number} c - Its closer's line index (closerOf): the first
+ *   `@end(name)` of its own name — until 2026-11-27 the first `@end(…)` of
+ *   any name, and with none the body ran to the end of the note.
  * @returns {number} The next line index to scan.
  */
-function verbatimEnvironment(ctx, k, kind, m) {
+function verbatimEnvironment(ctx, k, kind, m, c) {
 	const ls = ctx.lineStarts[k];
 	const parts = {};
 	const openEnd = environmentZones(ctx, k, m, parts);
 	const construct = environment(ctx, k, m, parts, openEnd);
 	consumeLine(ctx, k);
 
-	let c = k + 1;
-	while (c < ctx.lineCount && !/^[ \t]*@end\(/.test(lineAt(ctx, c))) c += 1;
 	verbatimBody(ctx, k, c, kind);
-	if (c < ctx.lineCount) {
-		const em = /^[ \t]*(@end)(\()([^)]*)(\))/.exec(lineAt(ctx, c));
-		const cs = ctx.lineStarts[c];
-		const closeEnd = em ? environmentZones(ctx, c, em) : lineEnd(ctx, c);
-		ctx.out.folds.push({ start: ls, end: lineEnd(ctx, c) });
-		closeBlock(ctx, construct, k, c, {
-			start: cs + lineAt(ctx, c).indexOf('@'), end: closeEnd,
-		});
-		consumeLine(ctx, c);
-	}
+	const em = /^[ \t]*(@end)(\()([^)]*)(\))/.exec(lineAt(ctx, c));
+	const cs = ctx.lineStarts[c];
+	const closeEnd = em ? environmentZones(ctx, c, em) : lineEnd(ctx, c);
+	ctx.out.folds.push({ start: ls, end: lineEnd(ctx, c) });
+	closeBlock(ctx, construct, k, c, {
+		start: cs + lineAt(ctx, c).indexOf('@'), end: closeEnd,
+	});
+	consumeLine(ctx, c);
 	return c + 1;
 }
 

@@ -158,11 +158,14 @@ test('environment: the verbatim TeX / mermaid / equation bodies', () => {
 	]);
 });
 
-test('environment: a sigil is not part of the name; unclosed → close null', () => {
-	const c = only('@begin(.note)\nbody', 'environment');
+test('environment: a sigil is not part of the name; unclosed → no environment, as the engine prints it (text)', () => {
+	const c = only('@begin(.note)\nbody\n@end(note)', 'environment');
 	assert.equal(c.name, 'note');
-	assert.equal(c.close, null);
 	assert.equal(c.body, 'body');
+	// Until 2026-11-27 an environment with `close: null`, framed to the end
+	// of the note in live edit (the owner's rule: pairs nest like well-formed
+	// parentheses, and what pairs with nothing is text).
+	assert.deepEqual(scanJmarkdown('@begin(.note)\nbody').constructs.filter((x) => x.kind === 'environment'), []);
 });
 
 test('html, script and style blocks', () => {
