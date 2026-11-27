@@ -23,6 +23,9 @@ import { fork } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { scanJmarkdown } from '../src/renderer/editor/jmd/jmarkdown-scan.js';
 
+globalThis.window ??= { clew: { invoke: async () => null, on: () => () => {} }, addEventListener() {}, removeEventListener() {} };
+const { numberDocument } = await import('../src/renderer/editor/live/numbering.js');
+
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'clew-env-pairing-'));
 after(() => fs.rmSync(root, { recursive: true, force: true }));
 const watchWorker = createRequire(import.meta.url).resolve('jmarkdown/src/watch-worker.js');
@@ -122,3 +125,23 @@ for (const [name, lines] of Object.entries(NOTES)) {
 		assert.deepEqual(scannerEnvironments(note), engine);
 	});
 }
+
+// Live edit's numbers (live/numbering.js) are the engine's where openers pair
+// with nothing (the owner's yes, 2026-11-27: shared/env-pairing.js) — each
+// numbered environment's line and number, from the engine's HTML
+// (`data-source-line` with `data-xref-number`) and from numberDocument.
+test('live edit numbers environments as the engine does, openers that pair with nothing counting for nothing', async () => {
+	const note = [
+		'# Numbers', '',
+		'@begin(theorem){#stray}', 'Never closed.', '',
+		'@begin(theorem){#t}', 'A claim.', '@end(theorem)', '',
+		'@begin(lemma){#l}', '@begin(corollary)', 'Crossed.', '@end(lemma)', '@end(corollary)', '',
+		'@begin(theorem)', 'Two openers,', '@begin(theorem)', 'one closer.', '@end(theorem)', '',
+		'@begin(corollary){#c}', 'x', '@end(theorem) and more', '@end(corollary)', '',
+	].join('\n');
+	const html = await engineHtml('numbers', note);
+	const engine = [...html.matchAll(/<[a-z]+\b[^>]*data-source-line="(\d+)"[^>]*data-xref-number="([^"]+)"/g)].map((m) => [Number(m[1]), m[2]]);
+	assert.ok(engine.length >= 4, `the engine numbered them: ${JSON.stringify(engine)}`);
+	const clew = [...numberDocument(note).lines.entries()].filter(([, e]) => e.kind !== 'heading').map(([line, e]) => [line, e.number]);
+	assert.deepEqual(clew, engine);
+});

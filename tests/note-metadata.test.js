@@ -91,6 +91,21 @@ test('labels: every source form, their hosts, and what is not a label', () => {
 	assert.equal(by.fnl.kind, 'footnote');
 });
 
+test('labels: environments pair as the engine pairs them — an opener nothing closes holds no label, @end(b) closes no @begin(a)', () => {
+	// The owner's yes, 2026-11-27 (env-pairing.js): reading view prints a
+	// reference to the stray one's label as ??, so completion offers none.
+	const text = '@begin(theorem){#stray}\nNever closed.\n\n@begin(theorem){#t}\nx\n@end(lemma)\ny @label[inner]\n@end(theorem)\n';
+	const by = Object.fromEntries(extractNoteMetadata(text).labels.map((l) => [l.key, l]));
+	assert.equal(by.stray, undefined);
+	assert.equal(by.t.kind, 'theorem');
+	assert.deepEqual(by.t.host, { from: 4, to: 8 }, 'its own closer ends it, not @end(lemma)');
+	assert.equal(by.inner.kind, 'theorem', 'a label after @end(lemma) still the theorem\'s');
+	// Nor does a closer with text after it, which the engine reads as none.
+	const more = Object.fromEntries(extractNoteMetadata('@begin(theorem){#t}\nx\n@end(theorem) and more\ny @label[inner]\n@end(theorem)\n').labels.map((l) => [l.key, l]));
+	assert.equal(more.inner.kind, 'theorem');
+	assert.deepEqual(more.t.host, { from: 1, to: 5 });
+});
+
 test('labels: the @begin sigils (`.name`, `<name>`) keep a known name\'s kind', () => {
 	const text = '@begin(<figure>)[Cap]{#f}\nx @label[inner]\n@end(figure)\n\n@begin( .theorem )[T]{#t}\ny\n@end(<theorem>)\n\n@begin(<note>){#n}\nz\n@end(note)\n';
 	const by = Object.fromEntries(extractNoteMetadata(text).labels.map((l) => [l.key, l]));

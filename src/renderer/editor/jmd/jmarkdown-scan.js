@@ -79,6 +79,7 @@ import {
 	MARKDOWN_MATH_CONFIG,
 } from './math-segments.js';
 import { scanMermaid } from './mermaid-scan.js';
+import { PAIRING_LINE, closerOf } from '../../../shared/env-pairing.js';
 
 /** @typedef {{ start: number, end: number, face: string }} CaptureRange */
 
@@ -674,45 +675,11 @@ function scanBlocks(ctx, from) {
 	closePassed(ctx.lineCount);
 }
 
-/**
- * The line that closes the `@begin(name)` on line `k`, paired as the engine
- * pairs them (begin-end-core.js's tokenizer): the first `@end(name)` of the
- * SAME name after it — alone on its line, a sigil and spaces allowed — each
- * same-name `@begin(name)` on the way needing an `@end(name)` of its own;
- * other names are its body's business. `bound` is the line that closes the
- * environment around it, which an inner pair never crosses. Fenced code and
- * maths are masked blank, so a closer inside them is none. -1 when there is
- * none: the opener is then text, in the engine and here.
- *
- * @param {{ line: number, begin: boolean, name: string }[]} pairing - pairingLines'.
- * @param {number} k - The opener's line index.
- * @param {string} name
- * @param {number} bound - The first line index not searched.
- * @returns {number}
- */
-function closerOf(pairing, k, name, bound) {
-	// The first listed line after `k` (the list is in line order).
-	let lo = 0;
-	let hi = pairing.length;
-	while (lo < hi) {
-		const mid = (lo + hi) >> 1;
-		if (pairing[mid].line <= k) lo = mid + 1; else hi = mid;
-	}
-	let depth = 0;
-	for (let i = lo; i < pairing.length && pairing[i].line < bound; i += 1) {
-		const p = pairing[i];
-		if (p.name !== name) continue;
-		if (p.begin) depth += 1;
-		else if (depth === 0) return p.line;
-		else depth -= 1;
-	}
-	return -1;
-}
 
 /**
- * Every line from `from` on that closerOf weighs, in order: an `@begin(name)`
- * (anything after it) or an `@end(name)` alone on its line, each with its
- * name — read once per scan, not once per opener.
+ * Every line from `from` on that closerOf weighs (shared/env-pairing.js —
+ * the one rule the scanner, live edit's numbering and the note index share),
+ * in order, each with its name — read once per scan, not once per opener.
  *
  * @param {object} ctx
  * @param {number} from
@@ -723,7 +690,7 @@ function pairingLines(ctx, from) {
 	// One pass of a native regex over the text, not a line rebuilt from the
 	// masked copy per line (that cost Big.md's scan 1.2 ms of 10.6): a match
 	// whose `@` the copy has blanked is in code or maths, and none.
-	const re = /^[ \t]*@(?:(begin)\([ \t]*[.<]?[ \t]*([A-Za-z][\w-]*\*?)[ \t]*>?[ \t]*\)|end\([ \t]*[.<]?[ \t]*([A-Za-z][\w-]*\*?)[ \t]*>?[ \t]*\)[ \t\r]*$)/gm;
+	const re = new RegExp(PAIRING_LINE.source, 'gm');
 	re.lastIndex = from < ctx.lineCount ? ctx.lineStarts[from] : ctx.text.length;
 	let line = from;
 	let m;

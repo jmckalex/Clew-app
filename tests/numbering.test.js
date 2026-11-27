@@ -24,6 +24,29 @@ test('typed words come from the engine: equation parenthesised, capitalised form
 	assert.equal(typedRefText('section', '2.1'), `section${nbsp}2.1`);
 });
 
+test('environments pair as the engine pairs them: one nothing closes is not counted, its label none; @end(b) closes no @begin(a)', () => {
+	// The owner's yes, 2026-11-27 (shared/env-pairing.js): the engine prints
+	// such an opener as text, so the theorem after it is Theorem 1 there —
+	// until then 2 here.
+	let n = num('@begin(theorem){#stray}\nNever closed.\n\n@begin(theorem){#t}\nA\n@end(theorem)\n\n@begin(lemma){#l}\nB\n@end(lemma)\n');
+	assert.deepEqual([n.labels.get('t').number, n.labels.get('l').number], ['1', '2']);
+	assert.equal(n.labels.get('stray'), undefined, 'the stray opener\'s label is none');
+	assert.deepEqual([...n.lines.keys()], [4, 8], 'only the paired openers numbered');
+	// Crossed: the theorem closes at its own @end; the lemma, its closer
+	// outside the theorem, is text.
+	n = num('@begin(theorem){#t}\n@begin(lemma){#l}\nx\n@end(theorem)\n@end(lemma)\n\n@begin(corollary){#c}\ny\n@end(corollary)\n');
+	assert.deepEqual([n.labels.get('t').number, n.labels.get('c').number], ['1', '2']);
+	assert.equal(n.labels.get('l'), undefined);
+	// A closer of another name closes nothing: the label inside the theorem
+	// after it is still the theorem's.
+	n = num('@begin(theorem){#t}\nx\n@end(lemma)\ny @label[inner]\n@end(theorem)\n');
+	assert.equal(n.labels.get('inner').number, '1');
+	assert.equal(n.labels.get('inner').type, 'theorem');
+	// Nor does one with text after it, which the engine reads as no closer.
+	n = num('@begin(theorem){#t}\nx\n@end(theorem) and more\ny @label[inner]\n@end(theorem)\n');
+	assert.equal(n.labels.get('inner').type, 'theorem', 'still inside the theorem');
+});
+
 test('theorem kinds share ONE counter; proof is unnumbered', () => {
 	const n = num('@begin(theorem)[Main]{#t}\nA\n@end(theorem)\n\n@begin(proof){#p}\nB\n@end(proof)\n\n@begin(lemma){#l}\nC\n@end(lemma)\n\n@begin(corollary){id=c}\nD\n@end(corollary)\n');
 	assert.deepEqual([n.labels.get('t').number, n.labels.get('l').number, n.labels.get('c').number], ['1', '2', '3']);

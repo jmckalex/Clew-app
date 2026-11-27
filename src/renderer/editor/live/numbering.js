@@ -44,6 +44,7 @@
 // maps the same name onto its own vendor/jmarkdown.
 import { typedRefText as engineTypedRefText } from '#jmarkdown/crossref.js';
 import { attrLabel, THEOREM_KINDS } from '../../../shared/note-metadata.js';
+import { pairingEntries, pairer } from '../../../shared/env-pairing.js';
 
 /** The engine's sectioning ladder (sectioning.js — asserted equal by
  *  tests/numbering.test.js, which reads the vendored file). */
@@ -197,6 +198,10 @@ function compute(text, numbered, book = null) {
 	const classic = classicOrder(raw.slice(meta.end));
 	/** Open environments: {name, colons, line, number, type, numbered, title, sub}. */
 	const envs = [];
+	// `@begin`/`@end` pair as the engine pairs them (shared/env-pairing.js):
+	// an opener nothing closes is text — not counted, its label none — and
+	// `@end(b)` never closes `@begin(a)` (the owner's rule, 2026-11-27).
+	const pairs = pairer(pairingEntries(raw, (i) => !lines[i].trim()));
 
 	const record = (key, info) => {
 		const prev = out.labels.get(key);
@@ -213,7 +218,8 @@ function compute(text, numbered, book = null) {
 		const close = line.trim() ? ENV_CLOSE_RE.exec(rawLine) : null;
 		if (close && envs.length) {
 			let at = envs.length - 1;
-			if (close[1]) while (at >= 0 && envs[at].name !== close[1]) at -= 1;
+			// `@end(…)`: only the innermost open environment's own closer.
+			if (close[1]) at = pairs.closes(i) ? envs.findLastIndex((e) => !e.colons) : -1;
 			else while (at >= 0 && !envs[at].colons) at -= 1;
 			if (at >= 0) {
 				for (const env of envs.splice(at)) {
@@ -225,7 +231,8 @@ function compute(text, numbered, book = null) {
 				continue;
 			}
 		}
-		const open = !verbatim && line.trim() ? ENV_OPEN_RE.exec(rawLine) : null;
+		let open = !verbatim && line.trim() ? ENV_OPEN_RE.exec(rawLine) : null;
+		if (open && !open[2] && pairs.opens(i) < 0) open = null;
 		if (open) {
 			const name = open[1] ?? open[3];
 			const env = { name, colons: Boolean(open[2]), line: lineNo, title: (open[4] ?? '').trim(), numbered: false, pending: [] };

@@ -17,6 +17,12 @@
 //          from the content's left), how many rules it draws, how many top
 //          feet (┌, an opener) and feet (└, a closer) —
 //          live-clew-only-scenario.js's measure
+//   numbers heads=[<line>:<head text>, …] refs=[<each @cref chip's text>]
+//          `Numbers.md`: theorems after a stray opener, a crossed pair, two
+//          openers and one closer, a closer with text after it — numbered as
+//          the engine numbers them (live/numbering.js through shared/env-
+//          pairing.js, the owner's yes 2026-11-27): an opener that pairs with
+//          nothing counts for nothing
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const { workspaceStore, editorPool, ipc } = window.__clew;
 const log = (s) => console.log('smoke-live-env-nesting: ' + s);
@@ -69,3 +75,28 @@ for (let n = 3; n <= view.state.doc.lines; n += 1) {
 	out.push(`${n}:${el ? measure(el) : 'none'}`);
 }
 log(`lines [${out.join(', ')}]`);
+
+// Numbers after openers that pair with nothing: the engine prints this note
+// (measured, 2026-11-27) as Theorem 1 (line 6), Lemma 2 (10), Theorem 3 (18),
+// Corollary 4 (22) — tests/env-pairing.test.js holds live edit's numbers to
+// it; here, what live edit draws.
+await ipc.invoke('clew:note-write', { path: 'Numbers.md', content: [
+	'# Numbers', '',
+	'@begin(theorem){#stray}', 'Never closed.', '',
+	'@begin(theorem){#t}', 'A claim.', '@end(theorem)', '',
+	'@begin(lemma){#l}', '@begin(corollary)', 'Crossed.', '@end(lemma)', '@end(corollary)', '',
+	'@begin(theorem)', 'Two openers,', '@begin(theorem)', 'one closer.', '@end(theorem)', '',
+	'@begin(corollary){#c}', 'x', '@end(theorem) and more', '@end(corollary)', '',
+	'See @cref[t], @cref[l] and @cref[c].',
+].join('\n') });
+const numTab = workspaceStore.openNote('Numbers.md', { newTab: true, defaultMode: 'live' });
+workspaceStore.setTabMode(numTab.id, 'live');
+await until(() => document.querySelector('.cm-editor.cm-live .le-ref'));
+const numView = editorPool.get(numTab.id).view;
+numView.dispatch({ selection: { anchor: 0 } });
+await sleep(600);
+const numHeads = [...numView.contentDOM.querySelectorAll('.le-env-head')]
+	.map((h) => `${numView.state.doc.lineAt(numView.posAtDOM(h)).number}:${h.textContent}`);
+const refs = [...numView.contentDOM.querySelectorAll('.le-ref')].map((r) => r.textContent);
+log(`numbers heads=${JSON.stringify(numHeads)} refs=${JSON.stringify(refs)}`);
+

@@ -18,6 +18,7 @@
 // not the rendering engine, and reading a scene is the same kind of cheap
 // structural parse as everything else in this file.
 import { parseExcalidraw, drawingText } from './excalidraw-file.js';
+import { pairingEntries, pairer } from './env-pairing.js';
 
 const FENCE_RE = /^(```|~~~).*$[\s\S]*?^\1\s*$/gm;
 const INLINE_CODE_RE = /`[^`\n]*`/g;
@@ -193,6 +194,10 @@ export function extractNoteMetadata(text) {
 		for (let k = 0; k < count; k++) fenced.add(first + k);
 	}
 	const isBoundary = (n) => rawLines[n].trim() === '' && !fenced.has(n);
+	// `@begin`/`@end` pair as the engine pairs them (env-pairing.js): an
+	// opener nothing closes is text, its label none — reading view prints a
+	// reference to it as ?? — and `@end(b)` never closes `@begin(a)`.
+	const pairs = pairer(pairingEntries(rawLines, (n) => fenced.has(n)));
 
 	// Skip frontmatter lines for headings/tags/links scanning.
 	const fmLineCount = frontmatter.end ? text.slice(0, frontmatter.end).split('\n').length - 1 : 0;
@@ -235,13 +240,15 @@ export function extractNoteMetadata(text) {
 		const raw = rawLines[i] ?? '';
 		const verbatim = envs.length > 0 && VERBATIM.has(envs[envs.length - 1].name);
 		const close = !fenced.has(i) ? ENV_CLOSE_RE.exec(raw) : null;
-		const open = !fenced.has(i) && !close ? ENV_OPEN_RE.exec(raw) : null;
+		let open = !fenced.has(i) && !close ? ENV_OPEN_RE.exec(raw) : null;
+		if (open && !open[2] && !verbatim && pairs.opens(i) < 0) open = null;
 		if (close && envs.length) {
 			const name = close[1];
-			// `@end(x)` closes the innermost open x; a bare `:::` the innermost
-			// ::: directive.
+			// `@end(x)` closes the innermost open environment when it is that
+			// one's own closer, and nothing otherwise; a bare `:::` the
+			// innermost ::: directive.
 			let at = envs.length - 1;
-			if (name) while (at >= 0 && envs[at].name !== name) at--;
+			if (name) at = pairs.closes(i) ? envs.findLastIndex((e) => !e.colons) : -1;
 			else while (at >= 0 && !envs[at].colons) at--;
 			if (at >= 0) {
 				for (const env of envs.splice(at)) for (const l of env.labels) l.host.to = lineNo;
