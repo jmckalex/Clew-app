@@ -58,6 +58,44 @@ function markOf(cls) {
  *  "19 October 2026", whatever this Mac's locale. */
 const todayText = () => new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 
+/** The names the engine gives a meaning of its own when the header sets no
+ *  such key: a table of contents, lists of figures, tables and listings,
+ *  the book's matter markers. Their chip says the name, as it always did. */
+const ENGINE_MARKERS = new Set(['TOC', 'LOF', 'LOT', 'LOL', 'frontmatter', 'mainmatter', 'backmatter', 'appendix']);
+
+/** A header value as reading view shows it: the engine puts it in as HTML,
+ *  so its text — read from an inert <template>, nothing loaded or run — with
+ *  the whitespace a browser collapses collapsed. */
+function varText(value) {
+	const tpl = document.createElement('template');
+	tpl.innerHTML = value;
+	return tpl.content.textContent.replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * `{{name}}`'s chip (the owner's ask, 2026-11-28): the header's value as
+ * reading view prints it, in the note's face — a chip, so it is plain that
+ * the text is substituted; a name the header does not set, as written and in
+ * the danger colour (reading view prints it as written: a typo, most likely);
+ * the engine's own markers by name.
+ */
+function varChip(c) {
+	if (c.value !== null && c.value !== undefined) {
+		const shown = varText(c.value);
+		return new ChipWidget({
+			cls: `le-var le-var-set${shown ? '' : ' le-var-empty'}`,
+			text: shown || 'empty',
+			title: `{{${c.raw}}} — the header's “${c.raw}”${shown ? '' : ', which is empty'}`,
+		});
+	}
+	if (ENGINE_MARKERS.has(c.raw)) return new ChipWidget({ cls: 'le-var', text: c.name, title: `{{${c.raw}}}` });
+	return new ChipWidget({
+		cls: 'le-var le-var-unset',
+		text: `{{${c.raw}}}`,
+		title: `The header sets no “${c.raw}”: reading view prints {{${c.raw}}} as written`,
+	});
+}
+
 const STYLED = new Set(['strong', 'intense', 'italic', 'underline', 'highlight', 'strike', 'sub', 'sup', 'code']);
 
 /**
@@ -218,7 +256,7 @@ function build(view) {
 				break;
 			}
 			case 'mustache':
-				widget(c.from, c.to, new ChipWidget({ cls: 'le-var', text: c.name, title: `{{${c.name}}}` }));
+				widget(c.from, c.to, varChip(c));
 				break;
 			case 'directiveInline':
 			case 'directiveAt':

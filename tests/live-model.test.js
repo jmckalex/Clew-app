@@ -320,6 +320,23 @@ test('footnotes, citations, tags, block ids, terms, mustaches', () => {
 	assert.equal(m[4].id.length > 0, true);
 });
 
+test('a {{name}} carries the header\'s value, looked up as written; none without the key; a header key wins over {{TOC}}', () => {
+	// The owner's ask, 2026-11-28: live edit shows what reading view prints.
+	const doc = '---\ntitle: Hello world\nTOC: own\n---\n\nA {{title}} b {{ title }} c {{Title}} d {{nope}}.\n\n{{TOC}}\n';
+	const vars = model(doc).filter((c) => c.kind === 'mustache').map((c) => [c.raw, c.name, c.value]);
+	assert.deepEqual(vars, [
+		['title', 'title', 'Hello world'],
+		[' title ', 'title', null],
+		['Title', 'Title', null],
+		['nope', 'nope', null],
+		['TOC', 'TOC', 'own'],
+	]);
+	// No header key TOC: {{TOC}} alone on its line is the table of contents.
+	assert.deepEqual(model('A {{title}}.\n\n{{TOC}}\n').map((c) => [c.kind, c.value ?? null]), [['mustache', null], ['toc', null]]);
+	// A header edit is a new document: its value with it.
+	assert.equal(model('---\ntitle: Changed\n---\n\n{{title}}\n').find((c) => c.kind === 'mustache').value, 'Changed');
+});
+
 test('a multi-line footnote is concealed whole, like a one-line one; an unclosed one is no construct', () => {
 	const note = one('A[fn: one\n\ntwo] b\n', 'footnote');
 	assert.deepEqual(note.hiddenText, ['[fn: one\n\ntwo]']);

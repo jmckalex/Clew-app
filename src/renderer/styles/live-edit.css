@@ -61,6 +61,20 @@
 .le-fullcite { text-decoration: underline dotted var(--clew-text-faint); text-underline-offset: 3px; }
 .le-fullcite.le-cite-missing { color: var(--clew-danger); text-decoration-color: var(--clew-danger); }
 .le-var { font-family: var(--clew-mono-font); }
+/* {{name}} with a header value: the value as reading view prints it, in the
+   note's own face and colour; the chip says it is substituted. A long value
+   wraps, its background on every line. */
+.le-var-set.le-chip {
+	font-family: inherit;
+	font-size: 0.92em;
+	color: var(--clew-text-normal);
+	white-space: normal;
+	-webkit-box-decoration-break: clone;
+	box-decoration-break: clone;
+}
+.le-var-empty.le-chip { color: var(--clew-text-faint); font-style: italic; }
+/* A name the header does not set: printed as written in reading view. */
+.le-var-unset.le-chip { color: var(--clew-danger); text-decoration: underline dotted; }
 .le-label, .le-today, .le-directive-chip, .le-embed-chip { color: var(--clew-text-muted); background: var(--clew-bg-tertiary); }
 .le-block-id { background: none; color: var(--clew-text-faint); margin-left: 0.3em; }
 .le-block-id:hover { color: var(--clew-accent); }

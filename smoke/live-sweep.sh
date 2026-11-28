@@ -30,6 +30,7 @@ node smoke/make-live-vault.mjs $S/v-nf >/dev/null; run live-nested-fence $S/v-nf
 node smoke/make-hover-vault.mjs $S/v-lp; run link-preview $S/v-lp CLEW_SMOKE_FRAME_SCRIPT=smoke/link-preview-frame.js CLEW_SMOKE_FRAME_MATCH=__clew_block__
 node smoke/make-hover-vault.mjs $S/v-lpo; run link-preview-open $S/v-lpo
 node smoke/make-spell-vault.mjs $S/v-sp; run spellcheck $S/v-sp CLEW_SMOKE_SPELL_LANGUAGES=1
+node smoke/make-vars-vault.mjs $S/v-vars; run live-vars $S/v-vars CLEW_SMOKE_FRAME_SCRIPT=smoke/live-vars-frame.js CLEW_SMOKE_FRAME_MATCH=Vars.md
 node smoke/make-live-vault.mjs $S/v-pp >/dev/null; run preview-pane $S/v-pp CLEW_SMOKE_FRAME_SCRIPT=smoke/preview-pane-frame.js CLEW_SMOKE_FRAME_MATCH=__clew_block__
 node smoke/make-crossref-vault.mjs $S/v-xr; run crossref $S/v-xr CLEW_SMOKE_FRAME_SCRIPT=smoke/crossref-frame.js CLEW_SMOKE_FRAME_MATCH=vault/
 node smoke/make-live-vault.mjs $S/v-sm >/dev/null; run slash-menu $S/v-sm

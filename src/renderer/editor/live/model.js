@@ -48,6 +48,7 @@ import { MATH_ENVIRONMENT_NAMES } from '../jmd/math-segments.js';
 import { resolveType, calloutGeneration } from '#jmarkdown/callout-table.js';
 import { IMAGE_EXT } from '../../../shared/file-types.js';
 import { headerlessTables } from '../tables.js';
+import { headerVariables, headerSlice } from './header-vars.js';
 import {
 	isRichFence, RICH_DIRECTIVES, RICH_ENVIRONMENTS, RICH_HTML,
 } from './rich-fences.js';
@@ -96,6 +97,10 @@ function build(doc, tree, config) {
 	const out = [];
 	const text = (a, b) => doc.sliceString(a, b);
 	const lineOf = (pos) => doc.lineAt(pos);
+	/** The header's values for `{{name}}` (header-vars.js), read once a
+	 *  build, and only for a note that has one. */
+	let vars = null;
+	const headerVars = () => (vars ??= headerVariables(headerSlice(doc)));
 
 	/** Push a construct; `extents` default from its level. */
 	const add = (kind, tier, level, from, to, extra = {}) => {
@@ -589,11 +594,17 @@ function build(doc, tree, config) {
 				});
 				break;
 			case 'mustache': {
-				const name = text(s.name.start, s.name.end).trim();
-				if (name === 'TOC' && alone(s.start, s.end)) {
+				// `raw` is the name as the engine looks it up (`{{ title }}` is
+				// not `title`); `value` the header's, or null — reading view
+				// then prints `{{raw}}` as written (header-vars.js). A header
+				// key is substituted before {{TOC}} is anything else.
+				const raw = text(s.name.start, s.name.end);
+				const name = raw.trim();
+				const value = headerVars().get(raw) ?? null;
+				if (value === null && name === 'TOC' && alone(s.start, s.end)) {
 					add('toc', 'A', 'block', s.start, s.end, { hidden: [{ from: s.start, to: s.end }] });
 				} else {
-					add('mustache', 'A', 'inline', s.start, s.end, { name, hidden: [{ from: s.start, to: s.end }] });
+					add('mustache', 'A', 'inline', s.start, s.end, { name, raw, value, hidden: [{ from: s.start, to: s.end }] });
 				}
 				break;
 			}
