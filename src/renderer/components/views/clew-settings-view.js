@@ -76,6 +76,7 @@ class ClewSettingsView extends ClewElement {
 				this.#numberRow('Editor line width (em)', 'editorLineWidth', 44, 20, 120),
 				this.#numberRow('Fill column (hard-wrap)', 'fillColumn', 72, 40, 120),
 				this.#checkRow('Auto-fill while typing', 'autoFill'),
+				...this.#spellRows(),
 				this.#selectRow('Link previews on hover', 'linkPreview',
 					[['hover', 'Always'], ['mod', navigator.platform.startsWith('Mac') ? 'With ⌘ held' : 'With Ctrl held'], ['off', 'Off']]),
 				this.#selectRow('Links followed from a link preview open', 'linkPreviewOpens',
@@ -920,6 +921,49 @@ class ClewSettingsView extends ClewElement {
 
 		refresh();
 		return [this.#row('LibreOffice engine', button), hint];
+	}
+
+	/**
+	 * Spell checking (renderer/editor/spellcheck.js, main/spellcheck.js):
+	 * the switch, and — where this host lets the dictionaries be chosen
+	 * (Windows and Linux, SPELL_INFO's `chooseLanguages`) — their languages.
+	 * A host that does not answer (or a Mac) shows the switch alone.
+	 */
+	#spellRows() {
+		const mod = navigator.platform.startsWith('Mac');
+		const hint = this.#hint(mod
+			? 'macOS’s own spell checker, in the languages chosen in System Settings → Keyboard → Text Input. '
+				+ 'Right-click a marked word for suggestions or Learn Spelling. Code, maths, citations, link targets, '
+				+ 'directives and the front matter are not checked.'
+			: 'Right-click a marked word for suggestions or Add to Dictionary. Code, maths, citations, link targets, '
+				+ 'directives and the front matter are not checked. The dictionaries are downloaded from Google’s '
+				+ 'servers the first time a language is used; nothing you type is sent.');
+		const input = document.createElement('input');
+		input.type = 'text';
+		input.spellcheck = false;
+		input.className = 'settings-spell-languages';
+		const row = this.#row('Spelling languages', input);
+		const languagesHint = this.#hint('');
+		row.hidden = true;
+		languagesHint.hidden = true;
+		const show = (info) => {
+			if (!info?.chooseLanguages || !this.isConnected) return;
+			row.hidden = false;
+			languagesHint.hidden = false;
+			const chosen = settingsStore.get('spellcheckLanguages');
+			input.value = Array.isArray(chosen) ? chosen.join(', ') : '';
+			input.placeholder = info.fromSystem ? `${info.languages.join(', ')} (your system’s)` : '';
+			languagesHint.textContent = (info.unknown.length ? `Not available: ${info.unknown.join(', ')}. ` : '')
+				+ 'Language codes separated by commas; empty for your system’s language. Available: '
+				+ `${info.available.join(', ')}.`;
+		};
+		const ask = () => ipc.invoke(CH.SPELL_INFO).then(show, () => {});
+		input.addEventListener('change', () => {
+			settingsStore.set('spellcheckLanguages', input.value.split(/[,\s]+/).filter(Boolean));
+			ask();
+		});
+		ask();
+		return [this.#checkRow('Check spelling', 'spellcheck'), hint, row, languagesHint];
 	}
 
 	/** A settings-hint paragraph under the row before it. */

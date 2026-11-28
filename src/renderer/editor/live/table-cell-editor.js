@@ -38,6 +38,7 @@ import { autocompletion, closeBrackets, closeBracketsKeymap, completionKeymap } 
 import { noteMarkdown } from '../jmd/markdown-config.js';
 import { clewHighlighting } from '../theme.js';
 import { jmdOverlay } from '../jmd/overlay.js';
+import { noteSpellcheck } from '../spellcheck.js';
 import { wikilinkCompletions } from '../complete/wikilinks.js';
 import { slashCellCompletions } from '../complete/slash-commands.js';
 import { crossrefCompletions } from '../complete/crossrefs.js';
@@ -128,6 +129,8 @@ function cellState(main, text, head) {
 			escapeFilter,
 			Prec.highest(keymap.of(cellKeys(main))),
 			keymap.of([...closeBracketsKeymap, ...completionKeymap, ...defaultKeymap]),
+			// A cell's words are checked as the note's are (spellcheck.js).
+			noteSpellcheck(),
 			EditorView.lineWrapping,
 			EditorView.editorAttributes.of({ class: 'le-cell-editor cm-live' }),
 			cellTheme,

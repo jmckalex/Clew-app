@@ -23,6 +23,7 @@ import { settings } from './settings.js';
 import { trust, setTrustNotice } from './trust.js';
 import { readVaultRequests } from './vault-requests.js';
 import { startUpdateChecks } from './updater.js';
+import { applySpellSettings, attachEditMenu } from './spellcheck.js';
 import { CH } from '../shared/channels.js';
 import { registerPreviewScheme, installPreviewProtocol, installAppProtocol, installFrameProtocol } from './protocol.js';
 import { VaultSession, focusedSession, sessionForVault, sessionForWindow } from './session.js';
@@ -146,6 +147,10 @@ export function createWindow(vaultPath = null) {
 	// Defense in depth for the unsandboxed preview frames: nothing may
 	// navigate the app's main frame away from the bundled index.html.
 	win.webContents.on('will-navigate', (event) => event.preventDefault());
+
+	// The right-click menu of an editable place: spelling suggestions, Learn
+	// Spelling, Cut/Copy/Paste (main/spellcheck.js).
+	attachEditMenu(win);
 
 	// A dirty office tab (LibreOffice edits are NOT auto-saved) must get its
 	// Save / Discard / Cancel moment before the window goes. The renderer is
@@ -382,6 +387,12 @@ function watchRendererDist() {
 app.whenReady().then(async () => {
 	settings.load();
 	registerIpc();
+	// Spell checking on or off, and its dictionaries, before any window.
+	try {
+		applySpellSettings();
+	} catch (err) {
+		console.error('spellcheck:', err);
+	}
 	// About Clew: where the figure engines' source is offered (GPL; Ghostscript
 	// AGPL) — THIRD-PARTY-NOTICES.md, "The figure engines".
 	app.setAboutPanelOptions({

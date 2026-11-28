@@ -35,6 +35,12 @@ const DEFAULTS = {
 	selectionBubble: true,
 	// The `//` menu (editor/complete/slash-commands.js).
 	slashCommands: true,
+	// Spell checking in the note editor (renderer/editor/spellcheck.js,
+	// main/spellcheck.js): the platform's checker, kept off what is not prose.
+	spellcheck: true,
+	// Windows and Linux only (Hunspell; macOS's checker follows the system's
+	// languages): the dictionaries' language codes, [] for the system's own.
+	spellcheckLanguages: [],
 	// Link hover previews (editor/link-hover.js): 'hover' | 'mod' | 'off'.
 	linkPreview: 'hover',
 	// Where a link followed from one opens — its Open, its "No note called …"

@@ -38,6 +38,7 @@ import { noteMarkdown } from './jmd/markdown-config.js';
 import { liveCompartment } from './live/index.js';
 import { jmdFolding } from './jmd/folding.js';
 import { autoFillHandler } from './fill.js';
+import { noteSpellcheck } from './spellcheck.js';
 import { settingsStore } from '../state/settings-store.js';
 
 /**
@@ -97,6 +98,9 @@ export function makeNoteState(doc, handlerRef, { normalSyntax = false } = {}) {
 				enabled: settingsStore.get('autoFill') === true,
 				column: settingsStore.get('fillColumn') ?? 72,
 			})),
+			// The platform's spell checker, kept off what is not prose
+			// (spellcheck.js; the setting applies live).
+			noteSpellcheck(),
 			search({ top: true }),
 			// The keys, in order (note-keys.js — lang-markdown's keymap among
 			// them, after Enter in a list item).

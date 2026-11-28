@@ -43,6 +43,9 @@ export const CH = {
 	WORKSPACE_SAVE: 'clew:workspace-save',
 	SETTINGS_GET: 'clew:settings-get',
 	SETTINGS_SET: 'clew:settings-set',
+	// Spell checking's languages, for Settings (main/spellcheck.js#spellInfo):
+	// { chooseLanguages, platform, available, languages, unknown, fromSystem }.
+	SPELL_INFO: 'clew:spell-info',
 	VSTATE_LOAD: 'clew:vstate-load',
 	VSTATE_SAVE: 'clew:vstate-save',
 	VAULT_SETTINGS_GET: 'clew:vault-settings-get',

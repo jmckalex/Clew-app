@@ -52,6 +52,7 @@ import { iconTable } from './callout-files.js';
 import { iconKey } from '#jmarkdown/callout-definitions.js';
 import { colonConverter } from './colon-conversion.js';
 import { isExcalidrawPath } from '../shared/file-types.js';
+import { applySpellSettings, spellInfo } from './spellcheck.js';
 import fs from 'node:fs';
 import nodePath from 'node:path';
 
@@ -336,7 +337,11 @@ export function registerIpc() {
 				session.send(CH.EV_CALLOUTS_CHANGED);
 			}
 		}
+		// Spell checking is the session's (main/spellcheck.js); the editors
+		// read `spellcheck` themselves.
+		if (key === 'spellcheck' || key === 'spellcheckLanguages') applySpellSettings();
 	});
+	handleGlobal(CH.SPELL_INFO, () => spellInfo());
 	// Custom callout types for the sender's vault, resolved. The vault's
 	// list is read from disk, so a hand edit is what this answers with.
 	handle(CH.CALLOUTS_RESOLVED, (s) => {
