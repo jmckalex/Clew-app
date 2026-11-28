@@ -206,7 +206,10 @@ note API, plugins, and every settings key.
   (the queue is read ONCE, after the scenario returns, so a flow of many
   steps is queued whole: `until` waits — ≤`ms`, 15 s by default — for an
   app-page element, a sheet's next state, where a fixed wait would guess; a
-  click's `button: 'right'` is a right-click, the explorer's menus)
+  click's `button: 'right'` is a right-click, the explorer's menus; its
+  `hold` keeps the button down that many ms, as a hand does — sent back to
+  back, a click can finish before a focus change its press set off lands,
+  which hid the link preview's lost clicks until 2026-11-28)
   (`drag` presses at `from`, moves with the button held and releases at
   `to` — each end `{x,y}` or `{selector, dx?, dy?}`, found when its turn
   comes: the Book panel's grip;

@@ -638,7 +638,9 @@ if (process.env.CLEW_SMOKE) {
 				// {move:{x,y}} | {move:{selector}} | {text:'abc'} |
 				// {combo:{key:'s',modifiers:2}} | {wait:ms} | {until:{selector,ms?}}]
 				// — a click may carry `modifiers` too, e.g. {click:{x,y},modifiers:4},
-				// and `button: 'right'`; and
+				// `button: 'right'`, and `hold` (ms between press and release, as a
+				// hand holds a button: back to back, a click can finish before
+				// what the press set off — a focus change — lands); and
 				// {wheel:{x,y,deltaY}} scrolls (modifiers CDP
 				// bitmask: Alt 1, Ctrl 2, Meta 4, Shift 8).
 				// window.__clewSmokeClipboard (string) preloads the clipboard;
@@ -829,6 +831,7 @@ if (process.env.CLEW_SMOKE) {
 							await dbg.sendCommand('Input.dispatchMouseEvent', { type: 'mouseMoved', button: 'none', ...base });
 							for (let count = 1; count <= clicks; count++) {
 								await dbg.sendCommand('Input.dispatchMouseEvent', { type: 'mousePressed', button, clickCount: count, ...base });
+								if (ev.hold) await sleep(ev.hold);
 								await dbg.sendCommand('Input.dispatchMouseEvent', { type: 'mouseReleased', button, clickCount: count, ...base });
 							}
 						} else if (typeof ev.text === 'string') {
