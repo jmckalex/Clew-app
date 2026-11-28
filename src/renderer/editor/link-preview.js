@@ -34,6 +34,7 @@ import { showCitation } from './live/events.js';
 import { allBibEntries } from './complete/citations.js';
 import { openEntryPdf } from '../bib-pdf.js';
 import { openInNewTab } from './link-at.js';
+import { settingsStore } from '../state/settings-store.js';
 
 const DELAY_MS = 500;
 const GRACE_MS = 300;
@@ -42,6 +43,9 @@ const MIN_H = 80;
 const MAX_H = 360;
 /** Messages a preview may send that the host acts on. */
 const FOLLOWED = new Set(['link-click', 'external-link', 'open-external-file']);
+
+/** Where a link followed from the popover opens: Settings → Appearance. */
+const opens = () => (settingsStore.get('linkPreviewOpens') === 'this-tab' ? 'this-tab' : 'new-tab');
 
 /** A spec's identity: the same key re-shows without a reload. */
 const keyOf = (spec) => `${spec.kind}:${spec.text ?? spec.path ?? spec.name}`;
@@ -170,7 +174,9 @@ class ClewLinkPreview extends FloatingPane {
 		this.open.textContent = spec.cite ? 'Show in Library' : 'Open';
 		this.open.title = spec.cite
 			? 'Show this entry in the References panel’s Library (⌘-click: open its PDF, if it has one)'
-			: openInNewTab(spec, false) ? 'Open in a new tab (⌘-click: in this tab)' : 'Open (⌘-click: in this pane)';
+			: /\.pdf$/i.test(spec.path ?? '') ? 'Open (⌘-click: in this pane)'
+				: openInNewTab(spec.path, false, opens()) ? 'Open in a new tab (⌘-click: in this tab)'
+					: 'Open (⌘-click: in a new tab)';
 		this.frame.hidden = spec.kind !== 'block';
 		this.image.hidden = spec.kind !== 'image';
 		this.card.hidden = spec.kind !== 'unresolved';
@@ -220,6 +226,8 @@ class ClewLinkPreview extends FloatingPane {
 		if (msg.type === 'escape') { this.hide(); return; }
 		if (!FOLLOWED.has(msg.type)) return;
 		this.hide();
+		// A link clicked in it opens where Open would (its `newTab` is ⌘).
+		if (msg.type === 'link-click') msg = { ...msg, newTab: openInNewTab(msg.target, Boolean(msg.newTab), opens()) };
 		handlePreviewMessage(msg, {
 			mode: 'block', tabId: workspaceStore.activeTab()?.id ?? null, path: this.#sourcePath, post: (m) => this.postToFrame(m),
 		});
@@ -239,9 +247,9 @@ class ClewLinkPreview extends FloatingPane {
 			}, () => showCitation(key));
 			return;
 		}
-		// Anything else in a tab of its own, never over the note being read
-		// (⌘-click: in this tab) — link-at.js#openInNewTab.
-		const newTab = openInNewTab(spec, modified);
+		// Anything else where the setting says, ⌘-click the other —
+		// link-at.js#openInNewTab.
+		const newTab = openInNewTab(spec.path ?? spec.name, modified, opens());
 		if (spec.kind === 'unresolved') actions.openWikilink(spec.name, { newTab });
 		else {
 			const heading = spec.text?.match(/#([^|\]]+)/)?.[1];

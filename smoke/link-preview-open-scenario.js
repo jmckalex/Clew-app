@@ -1,13 +1,15 @@
 // Where a link followed from a link preview opens (docs/dev/live-edit.md
 // §5.11): its Open button, its "No note called …" card, and a link clicked
-// INSIDE it. The owner, 2026-11-28: Open replaced the tab being read — Open
-// and the card now open a tab of their own, ⌘-click this tab. Real pointer
+// INSIDE it. The owner, 2026-11-28: Open replaced the tab being read — all
+// three now open a tab of their own, ⌘-click this tab, and the setting
+// `linkPreviewOpens` ('new-tab' | 'this-tab', Settings → Appearance) turns
+// that round (a PDF goes as a PDF link goes, either way). Real pointer
 // moves and clicks, each held 80 ms as a hand holds one (a click sent back to
 // back finished before the focus change it set off, and hid the bug in step
 // 7), over `Hover.md` in a scratch copy of the demo vault: `node
 // smoke/make-hover-vault.mjs <dir>`. Each step starts from a known state —
 // Hover.md the one tab, in live edit unless said — so its result never
-// depends on the one before:
+// depends on the one before. linkPreviewOpens 'new-tab' (the default):
 //   1. hover [[Welcome]], click Open    → `plain new-tab=true hover-kept=true active=Welcome.md tabs=2`
 //   2. Welcome.md already in a tab of this pane, the same
 //                                       → `reused active=Welcome.md tabs=2 its-tab=true`
@@ -16,13 +18,19 @@
 //   5. [[Gap one]]'s card               → `card new-tab=true hover-kept=true active=Gap one.md tabs=2`
 //   6. [[Gap two]]'s card, ⌘            → `card-meta in-place=true active=Gap two.md tabs=1`
 //   7. the guide section's first link, clicked in the popover
-//                                       → `inner in-place=true active=Guide/Vaults and Files.md tabs=1`
+//                                       → `inner new-tab=true hover-kept=true active=Guide/Vaults and Files.md tabs=2`
 //      (until 2026-11-28 the press moved focus into the popover's frame, the
-//      window's blur hid it, and the click never arrived: `in-place=false
-//      active=Hover.md`)
-//   8. the same, ⌘                      → `inner-meta new-tab=true hover-kept=true active=Guide/Vaults and Files.md tabs=2`
+//      window's blur hid it, and the click never arrived: `active=Hover.md`)
+//   8. the same, ⌘                      → `inner-meta in-place=true active=Guide/Vaults and Files.md tabs=1`
 //   9. a press on the section's heading in the popover, then Esc
 //                                       → `escape pressed-shown=true hidden=true editor-focused=true`
+// linkPreviewOpens 'this-tab':
+//  10. Open                             → `this-tab open in-place=true active=Welcome.md tabs=1`
+//  11. ⌘-click Open                     → `this-tab open-meta new-tab=true hover-kept=true active=Welcome.md tabs=2`
+//  12. [[Gap three]]'s card             → `this-tab card in-place=true active=Gap three.md tabs=1`
+//  13. a link in the popover            → `this-tab inner in-place=true active=Guide/Vaults and Files.md tabs=1`
+//  14. Settings → Appearance's row, its select set to the current tab
+//                                       → `settings row=true options=new-tab,this-tab shown=new-tab stored=this-tab`
 // A step's log says what happened, so a run on code without the rule says
 // `false` where it differs.
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -35,6 +43,7 @@ const until = async (test, ms = 8000) => {
 workspaceStore.setSidebar('left', { open: false });
 workspaceStore.setSidebar('right', { open: false });
 settingsStore.set('linkPreview', 'hover');
+settingsStore.set('linkPreviewOpens', 'new-tab');
 const tab = workspaceStore.openNote('Hover.md', { newTab: true, defaultMode: 'live' });
 workspaceStore.setTabMode(tab.id, 'live');
 
@@ -42,8 +51,8 @@ const tabs = () => workspaceStore.allGroups().flatMap((g) => g.tabs);
 const view = () => editorPool.get(tab.id).view;
 const hoverTab = () => workspaceStore.findTab(tab.id)?.tab;
 const drawn = () => until(() => document.querySelector('.cm-editor.cm-live .le-wikilink[data-le-target="Welcome"]'));
-/** Hover.md the only tab, active, in `mode`. */
-async function reset(mode) {
+/** Hover.md the only tab, active, in `mode`, with `opens` as the setting. */
+async function reset(mode, opens = 'new-tab') {
 	for (const t of tabs()) {
 		if (t.id === tab.id) continue;
 		workspaceStore.closeTab(t.id, { force: true });
@@ -52,6 +61,7 @@ async function reset(mode) {
 	workspaceStore.activateTab(tab.id);
 	if (hoverTab().path !== 'Hover.md') workspaceStore.navigate(tab.id, 'Hover.md');
 	workspaceStore.setTabMode(tab.id, mode);
+	settingsStore.set('linkPreviewOpens', opens);
 	if (mode === 'live') await drawn();
 	if (mode === 'live') view().focus();
 	await sleep(800);
@@ -104,6 +114,10 @@ window.__clewSmokeInput = [
 	go(8), ...inner(8, META),                                                               // 8
 	go(9), ...AWAY, link('Welcome#The guide'), SHOWN, go('9-ready'), HEADING, { wait: 600 }, go('9-pressed'),
 	{ combo: { key: 'Escape', modifiers: 0 } },                                             // 9
+	go(10), ...AWAY, link('Welcome'), SHOWN, { wait: 300 }, OPEN,                           // 10
+	go(11), ...AWAY, link('Welcome'), SHOWN, { wait: 300 }, { ...OPEN, modifiers: META },   // 11
+	go(12), ...AWAY, link('Gap three'), CARD_SHOWN, { wait: 300 }, CARD,                    // 12
+	go(13), ...inner(13),                                                                   // 13
 	{ wait: 4000 },
 ];
 
@@ -150,12 +164,12 @@ async function popoverReady(n) {
 	await reset('live');
 	mark(7);
 	await popoverReady(7);
-	log(`inner ${inPlace(await landed(GUIDE), GUIDE)}`);
+	log(`inner ${newTab(await landed(GUIDE))}`);
 
 	await reset('live');
 	mark(8);
 	await popoverReady(8);
-	log(`inner-meta ${newTab(await landed(GUIDE))}`);
+	log(`inner-meta ${inPlace(await landed(GUIDE), GUIDE)}`);
 
 	await reset('live');
 	mark(9);
@@ -166,4 +180,34 @@ async function popoverReady(n) {
 	await until(() => !linkPreview().describe().visible, 2000);
 	await sleep(300);
 	log(`escape pressed-shown=${pressed} hidden=${!linkPreview().describe().visible} editor-focused=${view().hasFocus}`);
+
+	await reset('live', 'this-tab');
+	mark(10);
+	log(`this-tab open ${inPlace(await landed('Welcome.md'), 'Welcome.md')}`);
+
+	await reset('live', 'this-tab');
+	mark(11);
+	log(`this-tab open-meta ${newTab(await landed('Welcome.md'))}`);
+
+	await reset('live', 'this-tab');
+	mark(12);
+	log(`this-tab card ${inPlace(await landed('Gap three.md'), 'Gap three.md')}`);
+
+	await reset('live', 'this-tab');
+	mark(13);
+	await popoverReady(13);
+	log(`this-tab inner ${inPlace(await landed(GUIDE), GUIDE)}`);
+
+	// The row (a native <select>'s popup is out of the harness's reach, so
+	// its value is set and its change event sent, as choosing does).
+	await reset('live');
+	window.__clew.actions.openSettings();
+	await until(() => document.querySelector('.settings-view select'));
+	await sleep(500);
+	const select = [...document.querySelectorAll('.settings-view select')]
+		.find((el) => [...el.options].some((o) => o.value === 'this-tab'));
+	const shown = select?.value;
+	if (select) { select.value = 'this-tab'; select.dispatchEvent(new Event('change')); }
+	await sleep(300);
+	log(`settings row=${Boolean(select)} options=${select ? [...select.options].map((o) => o.value).join(',') : ''} shown=${shown} stored=${settingsStore.get('linkPreviewOpens')}`);
 } catch (err) { log('ERROR ' + err.stack); } })();

@@ -78,6 +78,10 @@ class ClewSettingsView extends ClewElement {
 				this.#checkRow('Auto-fill while typing', 'autoFill'),
 				this.#selectRow('Link previews on hover', 'linkPreview',
 					[['hover', 'Always'], ['mod', navigator.platform.startsWith('Mac') ? 'With ⌘ held' : 'With Ctrl held'], ['off', 'Off']]),
+				this.#selectRow('Links followed from a link preview open', 'linkPreviewOpens',
+					[['new-tab', 'In a new tab'], ['this-tab', 'In the current tab']]),
+				this.#hint(`Its Open button, its “No note called …” card, and a link clicked inside it. `
+					+ `${navigator.platform.startsWith('Mac') ? '⌘' : 'Ctrl'}-click does the other; a PDF opens as a PDF link does.`),
 				this.#selectRow('Live preview of maths and diagrams while editing', 'previewPane',
 					[['on', 'On'], ['off', 'Off']]),
 				this.#selectRow('Footnotes in the margin (sidenotes)', 'sidenotes',

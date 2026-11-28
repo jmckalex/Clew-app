@@ -189,18 +189,24 @@ export function previewSpec(link, resolve) {
 }
 
 /**
- * The `newTab` the popover's Open hands actions.openWikilink for a spec (the
- * owner's report 2026-11-28: Open replaced the tab being read). A note or a
- * file opens in a tab of its own — its tab, where this pane already has one —
- * and ⌘-click (`modified`) opens it in this tab, as Open used to. A PDF keeps
- * a PDF link's own rule, where `newTab` is ⌘'s "this pane": it never replaces
- * the note in any case, and goes to another pane when the window is split
- * (tree.js#openFileBeside).
+ * The `newTab` actions.openWikilink is handed for a link followed from a link
+ * preview — its Open, its "No note called …" card, a link clicked inside it
+ * (the owner, 2026-11-28: Open replaced the tab being read). With `opens`
+ * 'new-tab' (the setting `linkPreviewOpens`, the default) a note or a file
+ * opens in a tab of its own — its tab, where this pane already has one — and
+ * ⌘-click (`modified`) in this tab; 'this-tab' the other way round. A PDF
+ * keeps a PDF link's own rule whatever the setting, where `newTab` is ⌘'s
+ * "this pane": it never replaces the note in any case, and goes to another
+ * pane when the window is split (tree.js#openFileBeside).
  *
- * @param {{ path?: string } | null} spec - previewSpec's
+ * @param {string|null|undefined} target - a vault path (a preview's spec) or
+ *   a link's target as written (a click in the preview: `Note#Heading`,
+ *   `paper.pdf#page=3`)
  * @param {boolean} modified - ⌘ (Ctrl elsewhere) held on the click
+ * @param {'new-tab'|'this-tab'} [opens]
  * @returns {boolean}
  */
-export function openInNewTab(spec, modified) {
-	return /\.pdf$/i.test(spec?.path ?? '') ? modified : !modified;
+export function openInNewTab(target, modified, opens = 'new-tab') {
+	if (/\.pdf$/i.test(String(target ?? '').split('#')[0])) return modified;
+	return opens === 'this-tab' ? modified : !modified;
 }

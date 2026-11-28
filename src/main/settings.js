@@ -37,6 +37,10 @@ const DEFAULTS = {
 	slashCommands: true,
 	// Link hover previews (editor/link-hover.js): 'hover' | 'mod' | 'off'.
 	linkPreview: 'hover',
+	// Where a link followed from one opens — its Open, its "No note called …"
+	// card, a link clicked in it (editor/link-at.js#openInNewTab; the owner,
+	// 2026-11-28): 'new-tab' | 'this-tab', ⌘-click the other.
+	linkPreviewOpens: 'new-tab',
 	// The live preview pane (editor/preview-pane.js): 'on' | 'off'.
 	previewPane: 'on',
 	// The graph's References toggle (clew-graph-view.js, §5.14).

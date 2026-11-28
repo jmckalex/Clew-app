@@ -104,15 +104,29 @@ test('a PDF page anchor parses as the heading part', () => {
 	assert.deepEqual([l.target, l.heading], ['paper.pdf', 'page=12']);
 });
 
-test('Open: a note or a file in a new tab, ⌘ in this one; a PDF by a PDF link\'s rule', () => {
-	// The owner's report 2026-11-28: Open replaced the tab being read.
-	for (const [line, needle] of [['[[Note]]', 'Note'], ['[[Note#Part]]', 'Note'], ['[x](Note.md)', 'x'], ['![[pic.png]]', 'pic']]) {
-		assert.equal(openInNewTab(spec(line, needle), false), true, `${line}: a tab of its own`);
-		assert.equal(openInNewTab(spec(line, needle), true), false, `${line}: ⌘ in this tab`);
+test('followed from a preview: a new tab by default, ⌘ this one; the setting turns it round; a PDF by a PDF link\'s rule', () => {
+	// The owner, 2026-11-28: Open replaced the tab being read; Open, the
+	// "No note called …" card and a link clicked inside the preview follow
+	// `linkPreviewOpens`.
+	const paths = [spec('[[Note]]', 'Note').path, spec('![[pic.png]]', 'pic').path, 'Gap one', 'Note#Part two', 'Folder/Note.md'];
+	for (const target of paths) {
+		assert.equal(openInNewTab(target, false), true, `${target}: a tab of its own by default`);
+		assert.equal(openInNewTab(target, true), false, `${target}: ⌘ in this tab`);
+		assert.equal(openInNewTab(target, false, 'new-tab'), true, `${target}: 'new-tab'`);
+		assert.equal(openInNewTab(target, false, 'this-tab'), false, `${target}: 'this-tab' in this tab`);
+		assert.equal(openInNewTab(target, true, 'this-tab'), true, `${target}: 'this-tab', ⌘ a tab of its own`);
 	}
-	// A PDF never replaces the note either way; ⌘ is "this pane" there.
-	assert.equal(openInNewTab(spec('[[doc.pdf]]', 'doc'), false), false);
-	assert.equal(openInNewTab(spec('[[doc.pdf]]', 'doc'), true), true);
-	assert.equal(openInNewTab({ path: 'Docs/Paper.PDF' }, false), false, 'any case');
-	assert.equal(openInNewTab({ path: 'Docs/old.pdf.md' }, false), true, 'a note whose name holds .pdf is a note');
+	// A PDF never replaces the note either way; ⌘ is "this pane" there,
+	// whatever the setting — a path, or a link's target with its page.
+	for (const target of [spec('[[doc.pdf]]', 'doc').path, 'Docs/Paper.PDF', 'paper.pdf#page=3']) {
+		for (const opens of ['new-tab', 'this-tab']) {
+			assert.equal(openInNewTab(target, false, opens), false, `${target} ${opens}`);
+			assert.equal(openInNewTab(target, true, opens), true, `${target} ${opens}, ⌘`);
+		}
+	}
+	assert.equal(openInNewTab('Docs/old.pdf.md', false), true, 'a note whose name holds .pdf is a note');
+	assert.equal(openInNewTab('Note#About x.pdf', false), true, 'a heading naming a PDF is still the note');
+	assert.equal(openInNewTab(undefined, false), true, 'no target: the setting');
+	assert.equal(openInNewTab('Note', false, null), true, 'a value that is neither choice (a hand-edited settings file) is the default');
+	assert.equal(openInNewTab('Note', false, 'bogus'), true);
 });

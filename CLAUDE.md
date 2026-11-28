@@ -1473,11 +1473,14 @@ except where the selection touches a construct. The durable design is
   under the pointer from the editor, `preview-client/client.js` from
   reading mode (`link-hover`/`link-unhover`). A note previews as
   `![[path#heading|bare]]` through the block endpoint, in ONE iframe kept
-  across hovers and blanked 30 s after closing. Its **Open** never
-  replaces the tab being read (the owner's report 2026-11-28): a note or a
-  file opens in a tab of its own — its tab, where this pane has one — and
-  ⌘-click in this tab; a PDF goes as a PDF link goes (`link-at.js#
-  openInNewTab`; `smoke/link-preview-open-scenario.js`). A press in its
+  across hovers and blanked 30 s after closing. What is followed from it —
+  its **Open**, its "No note called …" card, a link clicked inside it —
+  opens where the setting `linkPreviewOpens` says (the owner's choices
+  2026-11-28; Open had replaced the tab being read): `new-tab` (the
+  default) a note or a file in a tab of its own — its tab, where this pane
+  has one — ⌘-click this tab; `this-tab` the other way round; a PDF as a
+  PDF link goes either way (`link-at.js#openInNewTab`;
+  `smoke/link-preview-open-scenario.js`). A press in its
   frame takes focus there, and the window's blur that makes is not a reason
   to close (it was: the popover hid under the press and no link in it could
   be clicked, until 2026-11-28); Esc there closes it, focus going back to
@@ -1595,7 +1598,7 @@ except where the selection touches a construct. The durable design is
   (`live/sidenotes.js`). Setting `sidenotes`.
 - Settings: `defaultEditMode`, `liveReveal`, `liveRender{Math,Fences,Embeds}`,
   `liveFrameCap`, `editorToolbar(+Prev)`, `editorToolbarGroups`,
-  `selectionBubble`, `slashCommands`, `linkPreview`, `previewPane`, `graphReferences`, `sidenotes`; `newTabMode` accepts `live`. Documents over 500 KB
+  `selectionBubble`, `slashCommands`, `linkPreview`, `linkPreviewOpens`, `previewPane`, `graphReferences`, `sidenotes`; `newTabMode` accepts `live`. Documents over 500 KB
   fall back to source with a banner. Scenarios: `live-*` in smoke/ (README).
 
 ### Note API (scripts in rendered notes)
