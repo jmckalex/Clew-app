@@ -106,6 +106,13 @@ test('the header\'s first line never closes it: `--- x: 1` there is a key (the e
 	assert.equal(headerSlice(Text.of(['---', '--- x: 1', '---', 'body'])), '---\n--- x: 1\n---');
 });
 
+test('the opener may carry spaces or tabs after its dashes, as the engine\'s `^---[ \\t]*\\r?\\n` allows', () => {
+	// Clew-boss's surviving mutant on 6af8a0d: `/^---\\n/` passed every test.
+	assert.equal(headerVariables('--- \ntitle: X\n---\n').get('title'), 'X');
+	assert.equal(headerVariables('---\t \ntitle: Y\n---\n').get('title'), 'Y');
+	assert.equal(headerVariables('---\r\ntitle: Z\n---\n').get('title'), 'Z', 'a CRLF opener');
+});
+
 test('a header nothing closes is the whole note, as the engine reads it', () => {
 	const vars = headerVariables('---\ntitle: X\nmore text\n\nlast');
 	assert.equal(vars.get('title'), 'X\nmore text\nlast');
