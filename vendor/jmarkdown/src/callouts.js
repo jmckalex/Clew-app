@@ -67,6 +67,10 @@ import {
 } from './callout-table.js';
 import { cssColorToRgb, legibleOnLight, iconLatex, calloutLatex } from './callout-latex.js';
 import { escapeTexText } from './latex-escape.js';
+// `Joined quotes` (quote-joins.js): where a quote or callout ends, and the
+// flags read below, set only while that key is on. Imported here, where the
+// flags are read; it registers itself.
+import { joinClasses } from './quote-joins.js';
 
 // The table's names, for anyone importing callouts.js as before.
 export {
@@ -214,12 +218,17 @@ export const calloutBlock = {
 			const custom = spec.color ? cssColorToRgb(spec.color) : null;
 			const accent = calloutAccent(token.calloutType).slice(1);
 			const rgb = custom ? legibleOnLight(custom) : [0, 2, 4].map((i) => parseInt(accent.slice(i, i + 2), 16));
-			return calloutLatex({
+			const latex = calloutLatex({
 				rgb,
 				icon: iconLatex(calloutIconGeometry(token.calloutType)),
 				title,
 				body: this.parser.parse(token.tokens).trim(),
 			});
+			// Joined after (quote-joins.js): the paragraph that follows goes on
+			// unindented. A tcolorbox ends its paragraph whether or not a blank
+			// line follows it, so the blank line is replaced by \noindent, which
+			// does what the missing blank line does after \end{quote}.
+			return token.jmdJoinedAfter ? latex.replace(/\n\n$/, '\n\\noindent\n') : latex;
 		}
 
 		const title = token.title
@@ -235,15 +244,18 @@ export const calloutBlock = {
 		// applying and a vault's own CSS snippets (which target Obsidian's
 		// names) keep working.
 		const classes = `callout markdown-alert markdown-alert-${token.calloutType}${spec.color ? ' callout-custom' : ''}`;
+		// jmd-joined-before / jmd-joined-after, last in the class list:
+		// quote-joins.js, only while `Joined quotes` is on; otherwise nothing.
+		const joined = joinClasses(token) ? ` ${joinClasses(token)}` : '';
 		const head = `${calloutIcon(token.calloutType)}<span class="callout-title-inner">${title}</span>`;
 
 		if (token.fold) {
 			const open = token.fold === '+' ? ' open' : '';
-			return `<details class="${classes} is-collapsible" data-callout="${token.calloutType}"${custom}${open}>`
+			return `<details class="${classes} is-collapsible${joined}" data-callout="${token.calloutType}"${custom}${open}>`
 				+ `<summary class="callout-title markdown-alert-title">${head}</summary>`
 				+ `<div class="callout-content">\n${body}</div></details>\n`;
 		}
-		return `<div class="${classes}" data-callout="${token.calloutType}"${custom}>`
+		return `<div class="${classes}${joined}" data-callout="${token.calloutType}"${custom}>`
 			+ `<p class="callout-title markdown-alert-title">${head}</p>`
 			+ `<div class="callout-content">\n${body}</div></div>\n`;
 	},

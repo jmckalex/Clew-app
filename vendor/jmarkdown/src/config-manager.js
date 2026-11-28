@@ -102,6 +102,11 @@ export const DEFAULT_CONFIG = {
 	// header's Title with no Date gets \date{} (additional-directives.js,
 	// latex-template.js). Off: the title lines as they always were.
 	'LaTeX maketitle': false,
+	// A quote ends at its first line with no `>` (no lazy continuation), and
+	// a quote or callout with no blank line between it and a paragraph joins
+	// it: classes in HTML, no paragraph break in LaTeX (src/quote-joins.js).
+	// Off: quotes as CommonMark reads them, as they always were.
+	'Joined quotes': false,
 	// How LaTeX sets code: `minted` (Pygments, which LaTeX runs while it
 	// compiles) or `highlight.js` (coloured by the build in Pygments' default
 	// colours, set with fvextra — no shell escape; src/latex-highlight.js).
@@ -372,6 +377,12 @@ class ConfigManager {
 				// latex-template.js.
 				str = value[0].trim().toLowerCase();
 				this.config["LaTeX maketitle"] = (str == "true");
+				break;
+			case "Joined_quotes":
+				// Space-keyed, read while tokenizing and rendering by
+				// quote-joins.js.
+				str = value[0].trim().toLowerCase();
+				this.config["Joined quotes"] = (str == "true");
 				break;
 			case "LaTeX_highlighter":
 				// Space-keyed, read at render time by latex-highlight.js.
