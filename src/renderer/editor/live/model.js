@@ -398,13 +398,22 @@ function build(doc, tree, config) {
 			if (type) {
 				const headFrom = first.from + afterMarks.offset + (afterMarks.rest.length - afterMarks.rest.trimStart().length);
 				const titleFrom = first.to - m[3].length;
-				const last = lineOf(node.to);
+				// The box ends at the callout's last line that carries its `>`s,
+				// as the engine ends it (callouts.js: the first line without `>`
+				// closes the callout — measured, reading view sets that line as
+				// a paragraph after the box). lezer's Blockquote runs on over a
+				// lazy continuation line, CommonMark's rule; until 2026-11-28 the
+				// box did too.
+				let lastN = first.number;
+				const endN = lineOf(node.to).number;
+				while (lastN < endN && stripQuotes(doc.line(lastN + 1).text, depth) !== null) lastN += 1;
+				const last = doc.line(lastN);
 				const body = last.number > first.number
 					? { from: doc.line(first.number + 1).from, to: last.to } : null;
 				add('callout', 'A', 'line', first.from, first.to, {
 					type, rawType: m[1], fold: m[2], depth,
 					title: m[3].trim() ? { from: titleFrom, to: first.to } : null,
-					block: { from: node.from, to: node.to }, body,
+					block: { from: node.from, to: last.to }, body,
 					hidden: [{ from: headFrom, to: titleFrom }],
 				});
 				for (let n = first.number; n <= last.number; n += 1) {

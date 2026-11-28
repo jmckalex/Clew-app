@@ -337,6 +337,21 @@ test('a {{name}} carries the header\'s value, looked up as written; none without
 	assert.equal(model('---\ntitle: Changed\n---\n\n{{title}}\n').find((c) => c.kind === 'mustache').value, 'Changed');
 });
 
+test('a callout ends at its last `>` line, as the engine ends it: a line without one is not in its box', () => {
+	// jmarkdown's callout tokenizer stops at the first line without `>`
+	// (measured: reading view sets "Not in the callout." as a paragraph after
+	// the box); lezer's Blockquote runs on over it — CommonMark's lazy line.
+	const m = model('> [!note] Title\n> Body of the callout.\nNot in the callout.\n\nAfter.\n');
+	const quotes = m.filter((c) => c.kind === 'quote').map((c) => [c.text, Boolean(c.calloutFirst), Boolean(c.calloutLast)]);
+	assert.deepEqual(quotes, [['> [!note] Title', true, false], ['> Body of the callout.', false, true]]);
+	const callout = m.find((c) => c.kind === 'callout');
+	assert.equal(callout.body.to, '> [!note] Title\n> Body of the callout.'.length, 'its body ends with its last `>` line');
+	assert.equal(callout.block.to, callout.body.to);
+	// A nested callout's lines carry both `>`s.
+	const nested = model('> outer\n> > [!tip] Inner\n> > inner body\n> back in the outer quote\n');
+	assert.deepEqual(nested.filter((c) => c.kind === 'quote' && c.calloutLast).map((c) => c.text), ['> > inner body']);
+});
+
 test('a multi-line footnote is concealed whole, like a one-line one; an unclosed one is no construct', () => {
 	const note = one('A[fn: one\n\ntwo] b\n', 'footnote');
 	assert.deepEqual(note.hiddenText, ['[fn: one\n\ntwo]']);
