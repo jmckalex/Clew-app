@@ -457,6 +457,9 @@ clew-search-panel .search-results { flex: 1; }
 	padding: 6px 0;
 	font-size: 13.5px;
 }
+/* A row a host does not offer (the spelling languages on a Mac): `display:
+   flex` above would otherwise show it whatever its `hidden` says. */
+.settings-row[hidden] { display: none; }
 .settings-row input[type='text'], .settings-row input[type='number'], .settings-row select {
 	font: inherit;
 	font-size: 13px;

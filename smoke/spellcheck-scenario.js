@@ -25,11 +25,14 @@
 //      then "celll" right-clicked → misspelled=celll (a cell's words are checked)
 //  12. the row's other cell, not being edited, right-clicked → its table
 //      menu (`table-menu=true`), and no smoke-context-menu line (the page took it)
-//  13. Settings → Appearance (run with CLEW_SMOKE_SPELL_LANGUAGES=1, which
-//      shows the Windows/Linux languages row on a Mac): `settings check-row=true
-//      checked=true languages-row=true placeholder="en-GB (your system’s)"`;
-//      "en_gb, xx" entered → `stored=["en_gb","xx"] not-available=xx`; the
-//      box unticked → `unticked spellcheck=false`
+//  13. Settings → Appearance, the languages row SEEN where the host offers it
+//      and nowhere else. Run with CLEW_SMOKE_SPELL_LANGUAGES=1 (a Mac offering
+//      the Windows/Linux row): `settings check-row=true checked=true
+//      languages-row=true offered=true placeholder="en-GB (your system’s)"`;
+//      "en_gb, xx" entered → `stored=["en_gb","xx"] not-available=xx`; the box
+//      unticked → `unticked spellcheck=false`. Without it, as on a Mac:
+//      `languages-row=false offered=false` (dev.26 said `languages-row=true
+//      offered=false` — the row's `display: flex` beat its `hidden`).
 // Without the marks (spellcheck.js's decorations taken out, measured): steps
 // 2–5 say misspelled=inlnecode, betta, tagret, Smithh.
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -171,9 +174,15 @@ window.__clewSmokeInput = [
 	const spellRow = [...document.querySelectorAll('.settings-view .settings-row')].find((r) => r.querySelector('label')?.textContent === 'Check spelling');
 	const box = spellRow?.querySelector('input[type=checkbox]');
 	const languages = () => document.querySelector('.settings-view .settings-spell-languages');
-	await until(() => languages() && !languages().closest('.settings-row').hidden, 3000);
-	log(`step 13 settings check-row=${Boolean(box)} checked=${box?.checked} languages-row=${Boolean(languages() && !languages().closest('.settings-row').hidden)} placeholder=${JSON.stringify(languages()?.placeholder)}`);
-	if (languages()) {
+	// Whether the row is SEEN, not its attribute (dev.26 showed it on a Mac:
+	// the row's `display: flex` beat `hidden`, the owner's report 2026-11-28),
+	// against whether this host offers it (CLEW_SMOKE_SPELL_LANGUAGES=1 makes
+	// a Mac offer it).
+	const wanted = (await window.__clew.ipc.invoke('clew:spell-info'))?.chooseLanguages === true;
+	const seen = () => Boolean(languages()?.closest('.settings-row')?.getClientRects().length);
+	await until(() => languages() && seen() === wanted, 3000);
+	log(`step 13 settings check-row=${Boolean(box)} checked=${box?.checked} languages-row=${seen()} offered=${wanted} placeholder=${JSON.stringify(wanted ? languages()?.placeholder : '')}`);
+	if (wanted && languages()) {
 		languages().value = 'en_gb, xx';
 		languages().dispatchEvent(new Event('change'));
 		await until(() => languages().closest('.settings-row').nextElementSibling.textContent.startsWith('Not available'), 3000);
