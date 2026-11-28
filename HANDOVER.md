@@ -703,6 +703,7 @@ commit `main` then fast-forwarded to.
 | dev.23 | `33c0f7a` | 2026-11-26 | Export notes as PDF into the vault's root shown in the explorer; live edit's environments a rule per level with a └ foot, `@begin(clew-only)`'s head |
 | dev.24 | `d751de3` | 2026-11-27 | ⌥⌘E inserts an environment whose name is typed once; live edit's environments get a ┌ foot at each opener and draw a body without the indentation the engine strips |
 | dev.25 | `5a2b534` | 2026-11-27 | Live edit: `@begin`/`@end` paired by name as the engine pairs them (an opener nothing closes is text, its number and label none), spaces around a name ignored, an unnamed `@begin()` drawn as written, an environment's two names edited as one; jmarkdown fd9df17 (fenced code skipped when pairing) |
+| dev.26 | `9bcd744` | 2026-11-28 | Spell checking in the note editor (the platform's checker, kept off code, maths, citations, link targets and directives; a right-click menu with suggestions and Learn Spelling; Settings → Appearance → "Check spelling", languages off the Mac); link previews: Open, the "No note called …" card and a link clicked inside one open in a new tab (`linkPreviewOpens`, ⌘ the other), and a link clicked inside one is followed at all (it was not with the editor focused); fenced code read as marked reads it in numbering and the index (shared/code-fences.js), jmarkdown 85eefad; the engine on its own lockfile in dev and CI (marked 16.2.1 everywhere) |
 
 ## 0.12.0 — released
 
