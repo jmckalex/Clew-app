@@ -1,5 +1,8 @@
 // A scratch copy of the demo vault plus Hover.md, for
-// link-preview-scenario.js: `node smoke/make-hover-vault.mjs <dir>`.
+// link-preview-scenario.js and link-preview-open-scenario.js:
+// `node smoke/make-hover-vault.mjs <dir>`. The three Gap links are notes
+// that do not exist — one for each "No note called …" card the Open
+// scenario clicks, since a click creates its note.
 // The demo vault is copied without its .clew/ state, so every run starts
 // with a clean workspace.
 import { cpSync, rmSync, writeFileSync } from 'node:fs';
@@ -28,6 +31,12 @@ writeFileSync(join(dir, 'Hover.md'), `# Hover
 [[sample.pdf|external]]
 
 [site](https://example.com)
+
+[[Gap one]]
+
+[[Gap two]]
+
+[[Gap three]]
 
 Last.
 `);

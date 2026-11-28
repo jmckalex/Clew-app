@@ -871,12 +871,17 @@ goes away when the pointer does. Source mode, live edit AND reading mode.
   the fragment cache. Thirty seconds after closing, `src = about:blank`.
   Messages: `ready` → theme + app-chords; `size` → height; `link-click`,
   `external-link`, `open-external-file` → `frame-host.js` in `block` mode
-  (the popover closes first); everything else, `focused` included,
-  ignored. The iframe's `color-scheme` follows the theme, as `.le-frame`'s.
-- **Closing**: Escape, a pointerdown outside it, window blur, any
+  (the popover closes first); `escape` (Esc pressed in it) closes it;
+  everything else, `focused` included, ignored. The iframe's `color-scheme`
+  follows the theme, as `.le-frame`'s.
+- **Closing**: Escape, a pointerdown outside it, window blur — except the
+  blur of focus moving INTO its own frame, which a press on a link or text
+  in it does (until 2026-11-28 that hid it under the press, and no link in
+  it could be clicked: `smoke/link-preview-open-scenario.js` step 7) — any
   `layout-changed` (tab or mode switch), and — from the editor plugin — any
-  non-modifier keydown in the editor or a scroll of it. It never takes
-  focus: `hover` touches nothing but its own DOM.
+  non-modifier keydown in the editor or a scroll of it. Hovering never takes
+  focus: `hover` touches nothing but its own DOM. A press in it does; on
+  closing, focus goes back to what had it when it showed.
 - **The editor plugin** `editor/link-hover.js` is in the note state's base
   extensions (both modes; the cell editor does not carry it ◆ — a cell is
   its own editor and v1 leaves it out). A rAF-throttled `mousemove` on the

@@ -54,6 +54,7 @@ class ClewLinkPreview extends FloatingPane {
 	#hideTimer = null;
 	#height = MIN_H;
 	#pointerInside = false;
+	#before = null;        // what had focus when it showed (a press in it takes focus)
 
 	connectedCallback() {
 		this.innerHTML = '';
@@ -87,7 +88,12 @@ class ClewLinkPreview extends FloatingPane {
 		this.addEventListener('pointerleave', () => { this.#pointerInside = false; this.unhover(); });
 		this.onKey = (e) => { if (e.key === 'Escape' && !this.hidden) this.hide(); };
 		this.onPointerDown = (e) => { if (!this.hidden && !this.contains(e.target)) this.hide(); };
-		this.onBlur = () => this.hide();
+		// A press on a link or text in the frame moves focus INTO it, which
+		// blurs this window too: hiding then took the frame away under the
+		// press, and the click never arrived — a link in a popover was followed
+		// only when focus was already outside the app page (measured
+		// 2026-11-28). The app itself losing focus still hides it.
+		this.onBlur = () => { if (document.activeElement !== this.frame) this.hide(); };
 		document.addEventListener('keydown', this.onKey, true);
 		document.addEventListener('pointerdown', this.onPointerDown, true);
 		window.addEventListener('blur', this.onBlur);
@@ -141,6 +147,9 @@ class ClewLinkPreview extends FloatingPane {
 		clearTimeout(this.#hideTimer);
 		this.#pointerInside = false;
 		if (this.hidePane()) this.classList.remove('shown');
+		// Focus left in the hidden frame would take the next keys nowhere:
+		// back to what had it.
+		if (document.activeElement === this.frame) this.#before?.focus?.({ preventScroll: true });
 	}
 
 	blankFrame() {
@@ -150,6 +159,7 @@ class ClewLinkPreview extends FloatingPane {
 
 	async #show(spec, rect, sourcePath) {
 		const sameTarget = this.#spec && keyOf(this.#spec) === keyOf(spec);
+		if (document.activeElement !== this.frame) this.#before = document.activeElement;
 		this.#spec = spec;
 		this.#rect = rect;
 		this.#sourcePath = sourcePath;
@@ -205,7 +215,9 @@ class ClewLinkPreview extends FloatingPane {
 
 	onFrameMessage(msg) {
 		// Following a link inside the preview happens in the window; a click
-		// in it never makes it the active tab (`focused` ignored).
+		// in it never makes it the active tab (`focused` ignored). Esc there
+		// — focus is in the frame after a press in it — closes it.
+		if (msg.type === 'escape') { this.hide(); return; }
 		if (!FOLLOWED.has(msg.type)) return;
 		this.hide();
 		handlePreviewMessage(msg, {

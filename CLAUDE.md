@@ -1477,7 +1477,11 @@ except where the selection touches a construct. The durable design is
   replaces the tab being read (the owner's report 2026-11-28): a note or a
   file opens in a tab of its own — its tab, where this pane has one — and
   ⌘-click in this tab; a PDF goes as a PDF link goes (`link-at.js#
-  openInNewTab`; `smoke/link-preview-open-scenario.js`). The plugin has no
+  openInNewTab`; `smoke/link-preview-open-scenario.js`). A press in its
+  frame takes focus there, and the window's blur that makes is not a reason
+  to close (it was: the popover hid under the press and no link in it could
+  be clicked, until 2026-11-28); Esc there closes it, focus going back to
+  what had it. The plugin has no
   `update` — keep it that way; a keystroke must not pay for hovering.
 - **The live preview pane** (§5.12; source mode AND live edit): while the
   cursor is in a formula or a diagram block, `<clew-preview-pane>` shows
