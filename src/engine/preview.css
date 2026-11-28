@@ -117,6 +117,17 @@ blockquote {
 	+ p:not(:has(> mjx-container[display='true']:only-child))) {
 	text-indent: 1.5em;
 }
+/* A quote or a callout inside its paragraph — no blank line between it and
+   the text it touches (jmarkdown 8ce758d's `Joined quotes`, which Clew turns
+   on for reading view and exports; the owner's choice 2026-11-28): half a
+   line from that text, where a paragraph break has a whole line; the text
+   after it is the paragraph going on (p.jmd-continued), never indented. */
+p:has(+ :is(blockquote, .callout).jmd-joined-before) { margin-bottom: 0.5em; }
+blockquote.jmd-joined-before > :first-child { margin-top: 0.5em; }
+blockquote.jmd-joined-after > :last-child { margin-bottom: 0.5em; }
+.callout[data-callout].jmd-joined-before { margin-top: 0.5em; }
+.callout[data-callout].jmd-joined-after { margin-bottom: 0.5em; }
+p.jmd-continued { margin-top: 0.5em; text-indent: 0; }
 code {
 	font-family: 'SF Mono', Menlo, Consolas, monospace;
 	font-size: 0.875em;

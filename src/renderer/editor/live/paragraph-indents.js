@@ -29,6 +29,8 @@ const NOT_PROSE = /^[ \t]*(?:@begin\(|@end\(|@[\w-]+\+\[|@(?:title|subtitle|auth
 const ENDS_IN_DISPLAY = /(?:\$\$|\\\])[ \t]*$/;
 /** A callout's head, on its quote's first line. */
 const CALLOUT_HEAD = /^[ \t]*(?:>[ \t]?)*\[![\w-]+\]/;
+/** A quote's own line (the engine's `^ {0,3}>`, jmarkdown 8ce758d). */
+const QUOTE_LINE = /^ {0,3}>/;
 
 /** The block before `node` among its siblings — past a quote's or a list's
  *  own markers. */
@@ -63,7 +65,13 @@ export function paragraphIndents(state, ranges) {
 				const indent = prev.name === 'Paragraph'
 					? prose(prev) && !CALLOUT_HEAD.test(doc.lineAt(prev.from).text)
 						&& !ENDS_IN_DISPLAY.test(doc.sliceString(prev.from, prev.to))
-					: prev.name === 'Blockquote' && !CALLOUT_HEAD.test(doc.lineAt(prev.from).text);
+					// A quote; a callout only when its last line has no `>` — the
+					// engine (`Joined quotes`, which Clew turns on) ends it before
+					// that line and sets the line as a paragraph going on
+					// (p.jmd-continued), so the block before this one is a
+					// paragraph. lezer reads that line into the quote (CommonMark).
+					: prev.name === 'Blockquote' && (!CALLOUT_HEAD.test(doc.lineAt(prev.from).text)
+						|| !QUOTE_LINE.test(doc.lineAt(prev.to).text));
 				if (indent) out.add(doc.lineAt(node.from).from);
 				return false;
 			},

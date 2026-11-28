@@ -1,7 +1,8 @@
 // A vault for paragraphs-scenario.js: `node smoke/make-paragraphs-vault.mjs <dir>`.
 // Paras.md has a paragraph after a heading, one after another, a quote set
 // apart by blank lines, a paragraph after it, a list, a paragraph after that,
-// and a displayed equation inside a sentence. Generic words only.
+// a displayed equation inside a sentence, and a quote inside a paragraph (no
+// blank line around it: jmarkdown's `Joined quotes`). Generic words only.
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -31,4 +32,10 @@ $$
 and the sentence goes on after it.
 
 Last paragraph, after the one with the equation.
+
+Before a quote inside the paragraph:
+> A quoted line, in the paragraph.
+and the paragraph goes on after it.
+
+A new paragraph after the joined quote.
 `);

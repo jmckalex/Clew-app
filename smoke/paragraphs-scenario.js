@@ -31,6 +31,13 @@ const right = workspaceStore.splitWithClone(workspaceStore.activeGroup().id, 'ri
 const liveTab = right?.tabs?.[0];
 if (liveTab) workspaceStore.setTabMode(liveTab.id, 'live');
 await sleep(2500);
+/** The joined quote's lines in live edit: the continuation is drawn as the
+ *  paragraph going on — no quote class — and, indented, not indented. */
+const joinedLines = () => {
+	const lines = [...document.querySelectorAll('.cm-editor.cm-live .cm-line')];
+	const at = lines.findIndex((l) => l.textContent.startsWith('A quoted line, in'));
+	return lines.slice(at, at + 2).map((l) => `${l.textContent.trim().split(/\s+/).slice(0, 2).join(' ')}|quote=${l.classList.contains('le-quote')}|indent=${getComputedStyle(l).textIndent}`);
+};
 /** Live edit's indented lines: their first two words, and the first one's indent. */
 const liveLines = (style) => {
 	const lines = [...document.querySelectorAll('.cm-editor.cm-live .cm-line.le-para-indent')];
@@ -42,6 +49,7 @@ log(`from=${from} to=${to}`);
 settingsStore.set('readingParagraphs', to);
 await sleep(1500);
 log(liveLines(to));
+log(`live joined ${JSON.stringify(joinedLines())}`);
 if (vaultStore.pathExists?.('print.flag')) {
 	const result = await ipc.invoke('clew:export-notes-print', { paths: ['Paras.md'] }).catch((err) => ({ error: String(err) }));
 	log(`printed ${JSON.stringify(result?.written ?? result)}`);

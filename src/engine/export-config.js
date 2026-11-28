@@ -64,6 +64,12 @@ export function configureExportBuild(configManager, { to, latexStyle = null, bib
 	// exported EMPTY — HTML, LaTeX and a 0-byte PDF, no error (Clew-docs,
 	// 2026-10-20). Notes and books alike (book.js reads it for chapters).
 	configManager.set('Header style', 'fenced');
+	// Quotes joined to their paragraph as reading view joins them (render-
+	// service.js's generated config; jmarkdown 8ce758d, the owner's choice
+	// 2026-11-28): in LaTeX the text after a joined quote goes on unindented.
+	// Set before the header is merged, so a note's own `Joined quotes: false`
+	// still wins.
+	configManager.set('Joined quotes', true);
 	// An HTML export cites as reading view does: the vault's `Biblify`
 	// (shared/citation-files.js#vaultBiblify, the object reading view's
 	// generated config carries, null when the vault names no file) set over

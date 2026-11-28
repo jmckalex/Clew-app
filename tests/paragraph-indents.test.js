@@ -36,7 +36,7 @@ const cheerio = createRequire(watchWorker)('cheerio');
 function engineHtml(note) {
 	fs.mkdirSync(path.join(root, 'home'), { recursive: true });
 	fs.mkdirSync(path.join(root, '.jmarkdown'), { recursive: true });
-	fs.writeFileSync(path.join(root, '.jmarkdown', 'config.json'), JSON.stringify({ 'Header style': 'fenced' }));
+	fs.writeFileSync(path.join(root, '.jmarkdown', 'config.json'), JSON.stringify({ 'Header style': 'fenced', 'Joined quotes': true }));
 	fs.writeFileSync(path.join(root, 'Note.md'), note);
 	const worker = fork(watchWorker, [], { cwd: root, stdio: ['ignore', 'pipe', 'pipe', 'ipc'], env: { ...process.env, HOME: path.join(root, 'home') } });
 	return new Promise((resolve, reject) => {
@@ -110,6 +110,29 @@ After the second callout.
 
 After the table.
 
+Before a quote inside the paragraph:
+> a quoted line,
+and the paragraph goes on.
+
+A new paragraph after the joined quote.
+
+> A quote joined only below,
+and its paragraph goes on.
+
+Before a callout inside the paragraph:
+> [!note] Joined
+> its body
+and the paragraph goes on after the callout.
+
+A new paragraph after the joined callout.
+
+Before a callout ended by an indented marker:
+> [!tip] Joined again
+> its body
+    > four spaces in: no longer the callout's
+
+A new paragraph after that one.
+
 Last.
 `;
 
@@ -120,7 +143,8 @@ function readingIndents(html) {
 	const out = new Map();
 	$('p[data-source-line]').each((_, el) => {
 		const prev = $(el).prev()[0];
-		const indented = !displayOnly(el) && Boolean(prev)
+		// preview.css: a joined quote's continuation is never indented.
+		const indented = !displayOnly(el) && !$(el).hasClass('jmd-continued') && Boolean(prev)
 			&& ((prev.tagName === 'p' && !displayOnly(prev)) || prev.tagName === 'blockquote');
 		out.set(Number($(el).attr('data-source-line')), indented);
 	});
@@ -128,7 +152,8 @@ function readingIndents(html) {
 }
 
 test('live edit indents exactly the paragraphs reading view indents', async () => {
-	const reading = readingIndents(await engineHtml(NOTE));
+	const html = await engineHtml(NOTE);
+	const reading = readingIndents(html);
 	const state = EditorState.create({ doc: NOTE, extensions: [noteMarkdown({})] });
 	ensureSyntaxTree(state, NOTE.length, 5000);
 	const live = new Set(paragraphIndents(state, [{ from: 0, to: NOTE.length }]).map((pos) => state.doc.lineAt(pos).number));
@@ -148,6 +173,12 @@ test('live edit indents exactly the paragraphs reading view indents', async () =
 	assert.equal(at('After the environment.'), false);
 	assert.equal(at('After the callout.'), false);
 	assert.equal(at('After the table.'), false);
+	assert.equal(at('and the paragraph goes on.'), false, 'a continuation is never indented');
+	assert.equal(at('A new paragraph after the joined quote.'), true);
+	assert.equal(at('A new paragraph after the joined callout.'), true, "after a callout's continuation, as after a paragraph");
+	assert.equal(at('A new paragraph after that one.'), true, 'a `>` four spaces in leaves the callout, as the engine reads it');
+	// The engine really joined them (jmarkdown 8ce758d).
+	assert.ok(/class="jmd-continued"|jmd-continued/.test(html), 'the engine marked a continuation');
 	// Where the engine stamps no line (a display's own <p>, a callout's
 	// body), reading view's rule said outright: neither is indented.
 	const lines = NOTE.split('\n');

@@ -260,6 +260,13 @@ export class RenderService {
 			// rendering notes that carry no metadata header of their own.
 			'Pandoc citations': this.#vaultOptions.pandocCitations === true,
 			'Header style': 'fenced',
+			// A quote ends at its first line without `>`, and one with no blank
+			// line between it and a paragraph belongs to that paragraph — the
+			// text after it marked a continuation (jmarkdown 8ce758d; the
+			// owner's choice 2026-11-28; preview.css sets the spacing, and in
+			// the book style no indent). Exports the same (export-config.js).
+			// A note's header can still say false.
+			'Joined quotes': true,
 			// Whether a note may make the engine run code: script blocks,
 			// Math.…(…) and calc(…) in prose, math.…(, Mathematica, and the
 			// Load …/Extension … header keys. Off, each is refused by name in

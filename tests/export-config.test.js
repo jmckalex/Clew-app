@@ -61,6 +61,17 @@ test('every export reads a header as reading view does: `---`-fenced only', () =
 	}
 });
 
+test('every export joins quotes as reading view does, a header still able to say no', () => {
+	for (const to of ['html', 'latex']) {
+		const cm = engineConfig();
+		configureExportBuild(cm, { to, defaults: DEFAULTS });
+		assert.equal(cm.get('Joined quotes'), true, to);
+		// Set before the header's merge, so the header's own key replaces it.
+		cm.mergeMetadata({ 'Joined quotes': ['false'] });
+		assert.notEqual(cm.get('Joined quotes'), true, `${to}: the header wins`);
+	}
+});
+
 test('HTML: the vault\'s Biblify over the user\'s config, all but the file; LaTeX: none of it', () => {
 	const biblify = { bibliography: '/v/refs.bib', resolve: true, 'bibliography style': 'house', template: { name: 'house', file: '/v/house.csl' } };
 	const user = { Biblify: { bibliography: '/home/mine.bib', 'bibliography style': 'vancouver', resolve: false, 'add toc entry': true } };
