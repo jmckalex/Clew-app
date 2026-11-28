@@ -85,6 +85,10 @@ class ClewSettingsView extends ClewElement {
 					+ `${navigator.platform.startsWith('Mac') ? '⌘' : 'Ctrl'}-click does the other; a PDF opens as a PDF link does.`),
 				this.#selectRow('Live preview of maths and diagrams while editing', 'previewPane',
 					[['on', 'On'], ['off', 'Off']]),
+				this.#selectRow('Paragraphs', 'readingParagraphs',
+					[['spaced', 'Spaced'], ['indented', 'Indented (book style)']]),
+				this.#hint('How paragraphs are set apart in reading view, its PDF and live edit: by a line of space, '
+					+ 'or, as in a book, by indenting each new one — the first after a heading, a list or another block not.'),
 				this.#selectRow('Footnotes in the margin (sidenotes)', 'sidenotes',
 					[['auto', 'When the pane is wide enough'], ['on', 'Always'], ['off', 'Never']]),
 				this.#selectRow('PDF paper size (reading-view export)', 'printPaperSize',

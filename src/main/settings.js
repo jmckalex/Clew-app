@@ -51,6 +51,9 @@ const DEFAULTS = {
 	previewPane: 'on',
 	// The graph's References toggle (clew-graph-view.js, §5.14).
 	graphReferences: false,
+	// How paragraphs are set apart in reading view, its PDF and live edit
+	// (renderer/lib/preview-look.js): 'spaced' | 'indented' (book style).
+	readingParagraphs: 'spaced',
 	// Footnotes in the margin (§5.16): 'auto' (a wide pane with room) | 'on' | 'off'.
 	sidenotes: 'auto',
 	explorerOpenMode: 'new-tab', // how newly created note tabs open ('source'|'reading')

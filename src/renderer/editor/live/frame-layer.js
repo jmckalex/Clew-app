@@ -27,6 +27,7 @@
 // the drawn range. Heights come back from the frame (`size`, reported by the
 // client in block mode) and flow into the placeholder through a state effect
 // — one round trip, and CodeMirror re-measures.
+import { themeMessage, LOOK_KEYS } from '../../lib/preview-look.js';
 import { ViewPlugin, EditorView } from '@codemirror/view';
 import { liveStateField } from './reveal-field.js';
 import { liveConfigFacet } from './config.js';
@@ -95,7 +96,7 @@ class FrameLayer {
 		this.frontMatter = this.#frontMatter();
 		this.offKv = ipc.on(CH.EV_KV_CHANGED, (payload) => this.#broadcast({ type: 'event', name: 'kv', payload }));
 		this.offTheme = settingsStore.on('settings-changed', (key) => {
-			if (key === 'theme') this.#broadcast({ type: 'theme', theme: document.body.dataset.theme ?? 'dark' });
+			if (LOOK_KEYS.has(key)) this.#broadcast(themeMessage());
 			// A global TeX fragment: main reconfigures on its own schedule
 			// (settingsStore emits before the write lands), so wait longer.
 			if (ENGINE_APP_KEYS.has(key)) this.#restaleAll(900);
@@ -456,7 +457,7 @@ class FrameLayer {
 			case 'ready':
 				record.ready = true;
 				record.state = 'ready';
-				this.#post(record, { type: 'theme', theme: document.body.dataset.theme ?? 'dark' });
+				this.#post(record, themeMessage());
 				this.#post(record, { type: 'app-chords', chords: effectiveChords() });
 				for (const queued of record.queue.splice(0)) this.#post(record, queued);
 				return;

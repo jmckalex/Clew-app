@@ -19,6 +19,7 @@ import { ipc, CH } from '../../ipc.js';
 import * as actions from '../../commands/actions.js';
 import { effectiveChords } from '../../commands/registry.js';
 import { handlePreviewMessage } from '../../editor/live/frame-host.js';
+import { themeMessage } from '../../lib/preview-look.js';
 import { linkPreview } from '../../editor/link-preview.js';
 import { previewMode, vaultResolvers } from '../../editor/link-hover.js';
 import { parseTarget, previewSpec } from '../../editor/link-at.js';
@@ -69,7 +70,7 @@ class ClewPreviewView extends ClewElement {
 			this.#post({ type: 'scroll-to-line', line, behavior: 'auto' });
 		});
 		this.listen(settingsStore, 'settings-changed', (key) => {
-			this.#post({ type: 'theme', theme: document.body.dataset.theme ?? 'dark' });
+			this.#post(themeMessage());
 			if (key === 'sidenotes') this.#post({ type: 'sidenotes', mode: settingsStore.get('sidenotes') ?? 'auto' });
 		});
 		// Back/Forward over anchor jumps restore a same-path entry, which the
@@ -198,7 +199,7 @@ class ClewPreviewView extends ClewElement {
 			case 'ready': {
 				this.#clientReady = true;
 				clearTimeout(this.#readyWatch);
-				this.#post({ type: 'theme', theme: document.body.dataset.theme ?? 'dark' });
+				this.#post(themeMessage());
 				// The app's chords, so the iframe can forward EVERY app
 				// shortcut rather than a hardcoded few — an iframe keydown
 				// never reaches the app window's dispatcher on its own.

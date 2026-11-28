@@ -515,3 +515,9 @@ body[data-theme='light'] .le-frame { color-scheme: light; }
 	color: var(--clew-text-muted); border-left: 2px solid var(--clew-accent); padding-left: 8px; pointer-events: auto;
 }
 .le-sidenote-number { font-weight: 600; color: var(--clew-accent); }
+
+/* Book-style paragraphs (Settings → Appearance → Paragraphs: indented): a new
+   paragraph's first line indented where reading view indents it
+   (live/paragraph-indents.js). The blank lines between paragraphs stay — they
+   are lines one types on — so the indent is the signal here. */
+.cm-line.le-para-indent { text-indent: 1.5em; }

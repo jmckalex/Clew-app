@@ -100,6 +100,23 @@ blockquote {
 	border-left: 3px solid var(--preview-border);
 	color: var(--preview-muted);
 }
+/* Paragraphs set apart by indents, as in a book (Settings → Appearance →
+   Paragraphs, the owner's choice 2026-11-28; renderer/lib/preview-look.js and
+   the print view put it on <html>): no space between paragraphs, and a new
+   one indented when it follows another paragraph or a quote — never the first
+   after a heading, a list or another block, nor the text after a displayed
+   equation, which in mathematical writing goes on with its sentence (the
+   engine writes the display as a paragraph of its own whether or not blank
+   lines surround it, so the usual case is the default) or the display's own
+   paragraph, which an indent would push off centre. :where() keeps every
+   rule as weak as a bare `p`: a paragraph rule of Clew's own (a sidenote's)
+   still wins. */
+:where(html[data-paragraphs='indented']) p { margin: 0; }
+:where(html[data-paragraphs='indented']) blockquote { margin: 0.5em 0; }
+:where(html[data-paragraphs='indented'] :is(p:not(:has(> mjx-container[display='true']:only-child)), blockquote)
+	+ p:not(:has(> mjx-container[display='true']:only-child))) {
+	text-indent: 1.5em;
+}
 code {
 	font-family: 'SF Mono', Menlo, Consolas, monospace;
 	font-size: 0.875em;

@@ -65,6 +65,8 @@ class EditorPool extends Emitter {
 		});
 		settingsStore.on('settings-changed', (key) => {
 			if (LIVE_SETTINGS.has(key)) this.reconfigureLive();
+			// Book-style paragraphs: only the drawing changes (inline-layer.js).
+			if (key === 'readingParagraphs') this.rebuildLive();
 		});
 		// A plugin declaring fences or numbered environments came or went.
 		onPluginEngineDeclarations(() => this.reconfigureLive());

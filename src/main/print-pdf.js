@@ -25,6 +25,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { BrowserWindow } from 'electron';
 import { writeFileAtomic } from './fs-utils.js';
+import { settings } from './settings.js';
 
 const READY_TIMEOUT_MS = 30000;
 const POLL_MS = 150;
@@ -119,8 +120,10 @@ export async function printNoteToPdf({ sessionId, callerToken = null, relPath, o
 		await win.loadURL(url);
 		if (book) await win.webContents.insertCSS(BOOK_PRINT_CSS);
 		await win.webContents.executeJavaScript(ARM_SCRIPT);
+		// Light, whatever the app is; the paragraphs as reading view sets them.
+		const paragraphs = settings.get('readingParagraphs') === 'indented' ? 'indented' : 'spaced';
 		win.webContents.executeJavaScript(
-			`window.postMessage({ source: 'clew-preview-host', type: 'theme', theme: 'light' }, 'clew-preview://vault'); true;`);
+			`window.postMessage({ source: 'clew-preview-host', type: 'theme', theme: 'light', paragraphs: '${paragraphs}' }, 'clew-preview://vault'); true;`);
 		// The caller token (docs/dev/frame-bridge.md §1): this page is TOP-level,
 		// with no host to answer its ask, so it is handed the token the same
 		// way — a canvas embed's cards render through the fragment endpoint,

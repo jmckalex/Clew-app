@@ -19,6 +19,7 @@
 // A subclass calls `initPane()` from connectedCallback and `destroyPane()`
 // from disconnectedCallback, and may override `onFrameSize(height)` and
 // `onFrameMessage(msg)`.
+import { themeMessage, LOOK_KEYS } from '../../lib/preview-look.js';
 import { blockUrl, blockDocumentUrl } from '../../lib/preview-url.js';
 import { renderPost } from '../../lib/caller-token.js';
 import { viewportEdges } from '../../lib/viewport.js';
@@ -50,7 +51,7 @@ export class FloatingPane extends HTMLElement {
 			if (!msg || msg.source !== 'clew-preview' || event.source !== this.frame.contentWindow || event.origin !== PREVIEW_ORIGIN) return;
 			if (msg.type === 'ready') {
 				this.frameReady = true;
-				this.postToFrame({ type: 'theme', theme: document.body.dataset.theme ?? 'dark' });
+				this.postToFrame(themeMessage());
 				this.postToFrame({ type: 'app-chords', chords: effectiveChords() });
 			} else if (msg.type === 'size') {
 				this.frameHeight = Math.round(msg.height);
@@ -61,7 +62,7 @@ export class FloatingPane extends HTMLElement {
 		};
 		window.addEventListener('message', this.onPaneMessage);
 		this.offPaneTheme = settingsStore.on('settings-changed', (key) => {
-			if (key === 'theme') this.postToFrame({ type: 'theme', theme: document.body.dataset.theme ?? 'dark' });
+			if (LOOK_KEYS.has(key)) this.postToFrame(themeMessage());
 		});
 		// Never take focus: a press on the pane's own chrome keeps the
 		// editor's. (What is inside the iframe is the subclass's affair.)

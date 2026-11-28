@@ -44,6 +44,8 @@ import { localCiteText } from './cite-label.js';
 import { calloutColor } from '#jmarkdown/callout-table.js';
 import { guarded } from './guarded.js';
 import { envStacks, envRuleStyle, frameOf, bodyIndents } from './env-rules.js';
+import { paragraphIndents } from './paragraph-indents.js';
+import { paragraphStyle } from '../../lib/preview-look.js';
 
 const HIDE = Decoration.replace({});
 const markCache = new Map();
@@ -56,6 +58,7 @@ function markOf(cls) {
 /** Inline constructs whose delimiters hide and whose body gets a class. */
 /** `@today` as the engine prints it (additional-directives.js#todayText):
  *  "19 October 2026", whatever this Mac's locale. */
+let warnedIndents = false;
 const todayText = () => new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 
 /** The names the engine gives a meaning of its own when the header sets no
@@ -372,6 +375,16 @@ function build(view) {
 		for (const c of model) guarded(c, () => lineConstruct(c), out, replaced, frames);
 		for (const [n, stack] of envStacks(frames, (n) => inView(doc.line(n).from, doc.line(n).to))) {
 			out.push(Decoration.line({ attributes: { style: envRuleStyle(stack, n) } }).range(doc.line(n).from));
+		}
+		// Book-style paragraphs (Settings → Appearance → Paragraphs): a new
+		// paragraph's first line indented where reading view indents it
+		// (paragraph-indents.js). A throw costs the indents, nothing else.
+		if (paragraphStyle() === 'indented') {
+			try {
+				for (const pos of paragraphIndents(state, visible)) lineClass(pos, 'le-para-indent');
+			} catch (err) {
+				if (!warnedIndents) { warnedIndents = true; console.warn('live edit: paragraph indents', err); }
+			}
 		}
 		// The bodies' indentation, last: never where a construct hid the line's
 		// start itself (a list's later line, a quote in an item — their columns

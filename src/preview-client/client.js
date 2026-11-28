@@ -77,11 +77,14 @@ window.addEventListener('message', (event) => {
 	else if (msg.type === 'scroll-to-line') scrollToLine(msg.line, msg.behavior ?? 'auto');
 	else if (msg.type === 'theme') {
 		document.documentElement.dataset.theme = msg.theme;
+		// How paragraphs are set apart (renderer/lib/preview-look.js;
+		// preview.css reads it): a host that does not say leaves it spaced.
+		document.documentElement.dataset.paragraphs = msg.paragraphs === 'indented' ? 'indented' : 'spaced';
 		// Web Awesome widgets pick their palette from these classes.
 		document.documentElement.classList.toggle('wa-dark', msg.theme !== 'light');
 		document.documentElement.classList.toggle('wa-light', msg.theme === 'light');
 		configureMermaid(msg.theme);
-		broadcastThemeToNested(msg.theme);
+		broadcastThemeToNested(msg.theme, document.documentElement.dataset.paragraphs);
 	}
 	else if (msg.type === 'canvas-changed') refreshCanvasEmbeds(msg.path);
 	else if (msg.type === 'sidenotes') { sidenoteMode = msg.mode ?? 'auto'; layoutSidenotes(); }

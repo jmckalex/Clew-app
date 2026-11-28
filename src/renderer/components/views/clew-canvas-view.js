@@ -18,6 +18,7 @@
 // click), so dragging always wins; affordances (handles, anchors, marquee,
 // previews) are drawn geometry in an overlay SVG and hit-tested in world
 // space, never via DOM targets.
+import { themeMessage } from '../../lib/preview-look.js';
 import { ClewElement } from '../base/clew-element.js';
 import { workspaceStore } from '../../state/workspace-store.js';
 import { vaultStore, isNotePath } from '../../state/vault-store.js';
@@ -2386,7 +2387,7 @@ class ClewCanvasView extends ClewElement {
 				break;
 			case 'ready':
 				embed.ready = true;
-				this.#postEmbed(embed, { type: 'theme', theme: document.body.dataset.theme ?? 'dark' });
+				this.#postEmbed(embed, themeMessage());
 				for (const queued of embed.pending.splice(0)) this.#postEmbed(embed, queued);
 				break;
 			case 'link-click':
@@ -2444,7 +2445,7 @@ class ClewCanvasView extends ClewElement {
 
 	#broadcastTheme() {
 		for (const embed of this.#embeds.values()) {
-			this.#postEmbed(embed, { type: 'theme', theme: document.body.dataset.theme ?? 'dark' });
+			this.#postEmbed(embed, themeMessage());
 		}
 	}
 }

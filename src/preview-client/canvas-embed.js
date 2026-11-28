@@ -315,10 +315,10 @@ async function upgradeCard(el, text) {
 }
 
 /** The app theme changed — push it into nested note iframes too. */
-export function broadcastThemeToNested(theme) {
+export function broadcastThemeToNested(theme, paragraphs) {
 	for (const frame of document.querySelectorAll('iframe.canvas-embed-note-frame')) {
 		frame.contentWindow?.postMessage(
-			{ source: 'clew-preview-host', type: 'theme', theme }, PREVIEW_ORIGIN);
+			{ source: 'clew-preview-host', type: 'theme', theme, paragraphs }, PREVIEW_ORIGIN);
 	}
 }
 
@@ -337,6 +337,7 @@ window.addEventListener('message', (event) => {
 			source: 'clew-preview-host',
 			type: 'theme',
 			theme: document.documentElement.dataset.theme ?? 'dark',
+			paragraphs: document.documentElement.dataset.paragraphs,
 		}, event.origin);
 	} else if (msg.type === 'link-click' || msg.type === 'external-link') {
 		postTo(window.parent, msg, parentOrigin());
