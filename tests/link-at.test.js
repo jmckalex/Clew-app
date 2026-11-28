@@ -1,7 +1,7 @@
 // Link hover previews' pure half (src/renderer/editor/link-at.js).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { linkAt, parseTarget, previewSpec } from '../src/renderer/editor/link-at.js';
+import { linkAt, parseTarget, previewSpec, openInNewTab } from '../src/renderer/editor/link-at.js';
 
 const at = (line, needle) => linkAt(line, line.indexOf(needle));
 
@@ -102,4 +102,17 @@ test('a PDF page anchor parses as the heading part', () => {
 	assert.deepEqual([t.target, t.heading], ['paper.pdf', 'page=12']);
 	const l = at('See [[paper.pdf#page=12]] there', 'paper');
 	assert.deepEqual([l.target, l.heading], ['paper.pdf', 'page=12']);
+});
+
+test('Open: a note or a file in a new tab, ⌘ in this one; a PDF by a PDF link\'s rule', () => {
+	// The owner's report 2026-11-28: Open replaced the tab being read.
+	for (const [line, needle] of [['[[Note]]', 'Note'], ['[[Note#Part]]', 'Note'], ['[x](Note.md)', 'x'], ['![[pic.png]]', 'pic']]) {
+		assert.equal(openInNewTab(spec(line, needle), false), true, `${line}: a tab of its own`);
+		assert.equal(openInNewTab(spec(line, needle), true), false, `${line}: ⌘ in this tab`);
+	}
+	// A PDF never replaces the note either way; ⌘ is "this pane" there.
+	assert.equal(openInNewTab(spec('[[doc.pdf]]', 'doc'), false), false);
+	assert.equal(openInNewTab(spec('[[doc.pdf]]', 'doc'), true), true);
+	assert.equal(openInNewTab({ path: 'Docs/Paper.PDF' }, false), false, 'any case');
+	assert.equal(openInNewTab({ path: 'Docs/old.pdf.md' }, false), true, 'a note whose name holds .pdf is a note');
 });

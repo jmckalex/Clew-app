@@ -856,7 +856,10 @@ goes away when the pointer does. Source mode, live edit AND reading mode.
   before showing, none when moving from one link to another while it is
   open (or with `now` — a ⌘ press in `mod` mode), 300 ms of grace on
   leaving so the pointer can cross into it. A header names the target
-  (`Welcome › The guide`) with an **Open** button (⌘-click: new tab); the
+  (`Welcome › The guide`) with an **Open** button — a new tab, or the
+  note's own where this pane has one; ⌘-click: this tab (the owner's report
+  2026-11-28: Open replaced the tab being read); a PDF as a PDF link goes,
+  `link-at.js#openInNewTab` —; the
   body is 440 px wide, the document's reported height clamped to 80–360 px,
   scrolling inside beyond that, with 6/14 px of padding the popover adds ◆
   (a block document has no margin of its own — a live frame sits flush with

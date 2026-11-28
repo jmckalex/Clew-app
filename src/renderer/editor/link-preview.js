@@ -33,6 +33,7 @@ import { FloatingPane } from '../components/chrome/floating-pane.js';
 import { showCitation } from './live/events.js';
 import { allBibEntries } from './complete/citations.js';
 import { openEntryPdf } from '../bib-pdf.js';
+import { openInNewTab } from './link-at.js';
 
 const DELAY_MS = 500;
 const GRACE_MS = 300;
@@ -67,7 +68,6 @@ class ClewLinkPreview extends FloatingPane {
 		this.open.type = 'button';
 		this.open.className = 'link-preview-open';
 		this.open.textContent = 'Open';
-		this.open.title = 'Open (⌘-click: in a new tab)';
 		this.open.addEventListener('click', (e) => this.#follow(e.metaKey || e.ctrlKey));
 		this.header.append(this.name, this.open);
 		this.body = document.createElement('div');
@@ -160,7 +160,7 @@ class ClewLinkPreview extends FloatingPane {
 		this.open.textContent = spec.cite ? 'Show in Library' : 'Open';
 		this.open.title = spec.cite
 			? 'Show this entry in the References panel’s Library (⌘-click: open its PDF, if it has one)'
-			: 'Open (⌘-click: in a new tab)';
+			: openInNewTab(spec, false) ? 'Open in a new tab (⌘-click: in this tab)' : 'Open (⌘-click: in this pane)';
 		this.frame.hidden = spec.kind !== 'block';
 		this.image.hidden = spec.kind !== 'image';
 		this.card.hidden = spec.kind !== 'unresolved';
@@ -213,7 +213,7 @@ class ClewLinkPreview extends FloatingPane {
 		});
 	}
 
-	#follow(newTab) {
+	#follow(modified) {
 		const spec = this.#spec;
 		if (!spec) return;
 		this.hide();
@@ -221,12 +221,15 @@ class ClewLinkPreview extends FloatingPane {
 		// does — or with ⌘, the entry's PDF when it has one.
 		if (spec.cite) {
 			const key = spec.cite[0];
-			if (!newTab) { showCitation(key); return; }
+			if (!modified) { showCitation(key); return; }
 			allBibEntries().then((entries) => {
 				if (!openEntryPdf(entries.find((e) => e.key === key))) showCitation(key);
 			}, () => showCitation(key));
 			return;
 		}
+		// Anything else in a tab of its own, never over the note being read
+		// (⌘-click: in this tab) — link-at.js#openInNewTab.
+		const newTab = openInNewTab(spec, modified);
 		if (spec.kind === 'unresolved') actions.openWikilink(spec.name, { newTab });
 		else {
 			const heading = spec.text?.match(/#([^|\]]+)/)?.[1];
